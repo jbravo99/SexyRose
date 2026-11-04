@@ -1,0 +1,7880 @@
+/* Diccionario de la interfaz: "texto en español": ["English", "Português"]. {x} = texto variable, {n} = número.
+   Generado desde i18n/dict.json (python3 i18n_build.py). Para corregir una traducción, editá i18n/dict.json y volvé a generar. */
+HH.I18N = {
+" La seña de la reserva se paga directo a {x}.": [
+" The booking deposit is paid directly to {x}.",
+" O sinal da reserva é pago direto para {x}."
+],
+"% (recomendado)": [
+"% (recommended)",
+"% (recomendado)"
+],
+"(en revisión)": [
+"(under review)",
+"(em análise)"
+],
+"(hasta {n})": [
+"(up to {n})",
+"(até {n})"
+],
+"(mínimo {n})": [
+"(at least {n})",
+"(mínimo {n})"
+],
+"(opcional)": [
+"(optional)",
+"(opcional)"
+],
+"+{n}% vs. el mes pasado": [
+"+{n}% vs. last month",
+"+{n}% vs. o mês passado"
+],
+", después el resto.": [
+", then the rest.",
+", depois o resto."
+],
+", te reembolsamos. El tiempo empieza a correr cuando acepta.": [
+", we'll refund you. The clock starts when they accept.",
+", reembolsamos você. O prazo começa a contar quando ela aceita."
+],
+". Cuando la aprobemos, tu perfil se muda ahí.": [
+". Once we approve it, your profile moves there.",
+". Quando aprovarmos, seu perfil passa para lá."
+],
+". Las reservas, el chat y el contenido suelto no tienen comisión.": [
+". Bookings, chat and individual content have no commission.",
+". Reservas, chat e conteúdo avulso não têm comissão."
+],
+". Nunca tu email ni los datos de tu tarjeta.": [
+". Never your email or card details.",
+". Nunca seu email nem os dados do seu cartão."
+],
+". Tocá un horario para marcarlo como ocupado o bloqueado.": [
+". Tap a time slot to mark it as busy or blocked.",
+". Toque em um horário para marcá-lo como ocupado ou bloqueado."
+],
+"/ mes": [
+"/ month",
+"/ mês"
+],
+"@usuario o número": [
+"@username or number",
+"@usuário ou número"
+],
+"A las {n} en la puerta del museo. Te paso el punto exacto por acá el día anterior.": [
+"At {n} at the museum entrance. I'll send you the exact spot here the day before.",
+"Às {n} na porta do museu. Te mando o ponto exato por aqui no dia anterior."
+],
+"Abiertas": [
+"Open",
+"Abertas"
+],
+"Abrir WhatsApp": [
+"Open WhatsApp",
+"Abrir WhatsApp"
+],
+"Abrir chat": [
+"Open chat",
+"Abrir chat"
+],
+"Abrir chat en vivo": [
+"Open live chat",
+"Abrir chat ao vivo"
+],
+"Acceso": [
+"Access",
+"Acesso"
+],
+"Acceso 24 h": [
+"24-hour access",
+"Acesso por 24 h"
+],
+"Acceso {n} días": [
+"{n}-day access",
+"Acesso de {n} dias"
+],
+"Accesos vencidos": [
+"Expired access",
+"Acessos expirados"
+],
+"Acción requerida": [
+"Action required",
+"Ação necessária"
+],
+"Acción sin handler:": [
+"Action without handler:",
+"Ação sem handler:"
+],
+"Aceptado · esperando pago": [
+"Accepted · awaiting payment",
+"Aceito · aguardando pagamento"
+],
+"Aceptados": [
+"Accepted",
+"Aceitos"
+],
+"Aceptar": [
+"Accept",
+"Aceitar"
+],
+"Aceptar cambio": [
+"Accept change",
+"Aceitar alteração"
+],
+"Aceptar pedido": [
+"Accept request",
+"Aceitar pedido"
+],
+"Aceptar y cotizar": [
+"Accept and quote",
+"Aceitar e fazer orçamento"
+],
+"Aceptar y enviar": [
+"Accept and send",
+"Aceitar e enviar"
+],
+"Aceptar y enviar {x}": [
+"Accept and send {x}",
+"Aceitar e enviar {x}"
+],
+"Aceptá con un precio o rechazalo": [
+"Accept with a price or decline it",
+"Aceite com um preço ou recuse"
+],
+"Acompañante": [
+"Companion",
+"Acompanhante"
+],
+"Acompañante demo": [
+"Demo companion",
+"Acompanhante demo"
+],
+"Acompañante nueva · plan Oro": [
+"New companion · Gold plan",
+"Nova acompanhante · plano Ouro"
+],
+"Acompañante · plan Star": [
+"Companion · Star plan",
+"Acompanhante · plano Star"
+],
+"Acompañantes cerca": [
+"Companions nearby",
+"Acompanhantes por perto"
+],
+"Acompañantes en": [
+"Companions in",
+"Acompanhantes em"
+],
+"Acompañantes en todas las ciudades": [
+"Companions in all cities",
+"Acompanhantes em todas as cidades"
+],
+"Acompañantes en {x}": [
+"Companions in {x}",
+"Acompanhantes em {x}"
+],
+"Acordá las salidas por acá o por WhatsApp. Siempre en lugares públicos.": [
+"Plan your outings here or on WhatsApp. Always in public places.",
+"Combine os passeios por aqui ou pelo WhatsApp. Sempre em lugares públicos."
+],
+"Acoso o bullying": [
+"Harassment or bullying",
+"Assédio ou bullying"
+],
+"Acoso o trato abusivo a clientes": [
+"Harassment or abusive treatment of clients",
+"Assédio ou tratamento abusivo com clientes"
+],
+"Activalo desde": [
+"Turn it on from",
+"Ative em"
+],
+"Activar": [
+"Activate",
+"Ativar"
+],
+"Activar plan": [
+"Activate plan",
+"Ativar plano"
+],
+"Activar un plan": [
+"Activate a plan",
+"Ativar um plano"
+],
+"Actividad": [
+"Activity",
+"Atividade"
+],
+"Actividad principal": [
+"Main activity",
+"Atividade principal"
+],
+"Activá un plan": [
+"Activate a plan",
+"Ative um plano"
+],
+"Actualizar": [
+"Refresh",
+"Atualizar"
+],
+"Acá vas a ver me gusta, ventas, pedidos, reservas y solicitudes de chat.": [
+"Here you'll see likes, sales, requests, bookings and chat requests.",
+"Aqui você vai ver curtidas, vendas, pedidos, reservas e solicitações de chat."
+],
+"Acá vas a ver tus compras, pedidos, reservas y chats.": [
+"Here you'll see your purchases, requests, bookings and chats.",
+"Aqui você vai ver suas compras, pedidos, reservas e chats."
+],
+"Acá vas a ver worker.": [
+"Here you'll see worker.",
+"Aqui você vai ver worker."
+],
+"Admin": [
+"Admin",
+"Admin"
+],
+"Admin demo": [
+"Demo admin",
+"Admin demo"
+],
+"Adrogué": [
+"Adrogué",
+"Adrogué"
+],
+"Adónde te transferimos lo que vendés. Se liquida cada semana.": [
+"Where we send what you earn from sales. Paid out weekly.",
+"Para onde transferimos o que você vende. O pagamento é feito toda semana."
+],
+"Agenda": [
+"Schedule",
+"Agenda"
+],
+"Agenda activada. Completá tu horario hábil y tu link de pago.": [
+"Schedule turned on. Add your available hours and your payment link.",
+"Agenda ativada. Preencha seu horário disponível e seu link de pagamento."
+],
+"Agenda de reservas": [
+"Booking schedule",
+"Agenda de reservas"
+],
+"Agenda desactivada": [
+"Schedule turned off",
+"Agenda desativada"
+],
+"Agenda disponible desde el plan Oro": [
+"Calendar available from the Gold plan",
+"Agenda disponível a partir do plano Ouro"
+],
+"Agenda guardada. Falta completar datos para recibir reservas.": [
+"Calendar saved. You still need to complete some details to receive bookings.",
+"Agenda salva. Faltam alguns dados para receber reservas."
+],
+"Agenda guardada. Ya podés recibir reservas.": [
+"Calendar saved. You can now receive bookings.",
+"Agenda salva. Você já pode receber reservas."
+],
+"Agenda online": [
+"Online calendar",
+"Agenda online"
+],
+"Agregar": [
+"Add",
+"Adicionar"
+],
+"Agregar fotos": [
+"Add photos",
+"Adicionar fotos"
+],
+"Agregar otra passkey": [
+"Add another passkey",
+"Adicionar outra passkey"
+],
+"Agregar video": [
+"Add video",
+"Adicionar vídeo"
+],
+"Agrupá piezas premium a un precio único.": [
+"Bundle premium pieces at a single price.",
+"Agrupe peças premium por um preço único."
+],
+"Agrupá {n} o {n} piezas premium a un precio redondo. Un pack se vende más fácil que una pieza suelta.": [
+"Bundle {n} or {n} premium pieces at a round price. A pack sells more easily than a single piece.",
+"Agrupe {n} ou {n} peças premium por um preço redondo. Um pacote vende mais fácil que uma peça avulsa."
+],
+"Ahora": [
+"Now",
+"Agora"
+],
+"Ahora, hasta el": [
+"Now, until",
+"Agora, até"
+],
+"Ajustes": [
+"Settings",
+"Ajustes"
+],
+"Al día": [
+"Up to date",
+"Em dia"
+],
+"Algo falló al mostrar esta sección": [
+"Something went wrong showing this section",
+"Algo deu errado ao exibir esta seção"
+],
+"Alguien": [
+"Someone",
+"Alguém"
+],
+"Alias": [
+"Alias",
+"Apelido"
+],
+"All Activity": [
+"All Activity",
+"All Activity"
+],
+"Alta de postulantes": [
+"Applicant onboarding",
+"Cadastro de candidatas"
+],
+"Alta · ante la duda, escala": [
+"High · escalates when in doubt",
+"Alta · na dúvida, escala"
+],
+"Altura": [
+"Height",
+"Altura"
+],
+"Altura (cm)": [
+"Height (cm)",
+"Altura (cm)"
+],
+"Ampliar a {x} km": [
+"Expand to {x} km",
+"Ampliar para {x} km"
+],
+"Anterior": [
+"Previous",
+"Anterior"
+],
+"Anteriores": [
+"Past",
+"Anteriores"
+],
+"Antes": [
+"Before",
+"Antes"
+],
+"Anticipación mínima": [
+"Minimum notice",
+"Antecedência mínima"
+],
+"Aparecen en el feed público y son lo que más visitas trae a tu perfil. Uno por semana alcanza.": [
+"They show up in the public feed and bring the most visits to your profile. One a week is enough.",
+"Aparecem no feed público e são o que mais traz visitas ao seu perfil. Um por semana basta."
+],
+"Aparecé primera en todo el sitio": [
+"Appear first across the whole site",
+"Apareça em primeiro em todo o site"
+],
+"Apariciones": [
+"Impressions",
+"Aparições"
+],
+"Apariciones en listados": [
+"Listing impressions",
+"Aparições em listagens"
+],
+"Aplicar": [
+"Apply",
+"Aplicar"
+],
+"Aprobar automáticamente cuando todo coincide": [
+"Approve automatically when everything matches",
+"Aprovar automaticamente quando tudo coincidir"
+],
+"Archivo": [
+"File",
+"Arquivo"
+],
+"Armá un pack": [
+"Build a pack",
+"Monte um pacote"
+],
+"Arrastrá la card o usá el teclado. A la derecha se abre el WhatsApp de la acompañante; a la izquierda pasás a la siguiente.": [
+"Drag the card or use the keyboard. Right opens the companion's WhatsApp; left moves on to the next one.",
+"Arraste o card ou use o teclado. Para a direita, abre o WhatsApp da acompanhante; para a esquerda, você passa para a próxima."
+],
+"Arte": [
+"Art",
+"Arte"
+],
+"Artículo guardado": [
+"Article saved",
+"Artigo salvo"
+],
+"Asistente": [
+"Assistant",
+"Assistente"
+],
+"Asistente AI de soporte": [
+"AI support assistant",
+"Assistente de IA de suporte"
+],
+"Asistente SexyRose": [
+"SexyRose assistant",
+"Assistente SexyRose"
+],
+"Asistente activo en la web": [
+"Assistant active on the website",
+"Assistente ativo no site"
+],
+"Asistente de ayuda": [
+"Help assistant",
+"Assistente de ajuda"
+],
+"Asistente guardado": [
+"Assistant saved",
+"Assistente salvo"
+],
+"Asistente · cuenta de empresa": [
+"Assistant · business account",
+"Assistente · conta empresarial"
+],
+"Así aparecés en el listado. Se actualiza mientras escribís.": [
+"This is how you appear in the listing. It updates as you type.",
+"É assim que você aparece na lista. Atualiza enquanto você digita."
+],
+"Así te llegan los avisos del asistente de SexyRose (+{n} {n} {n} {n}-{n}). En esta demo podés tocar los botones como si respondieras desde tu teléfono.": [
+"This is how alerts from the SexyRose assistant reach you (+{n} {n} {n} {n}-{n}). In this demo you can tap the buttons as if you were replying from your phone.",
+"É assim que chegam os avisos do assistente da SexyRose (+{n} {n} {n} {n}-{n}). Nesta demo, você pode tocar nos botões como se respondesse pelo celular."
+],
+"Así te ven los clientes": [
+"How clients see you",
+"Assim os clientes veem você"
+],
+"Así ven tu perfil los clientes.": [
+"This is how clients see your profile.",
+"É assim que os clientes veem seu perfil."
+],
+"Atlética": [
+"Athletic",
+"Atlética"
+],
+"Atrás": [
+"Back",
+"Voltar"
+],
+"Avellaneda": [
+"Avellaneda",
+"Avellaneda"
+],
+"Avisale al cliente por chat. Como la cancelás vos, corresponde devolver la seña.": [
+"Let the client know via chat. Since you're the one canceling, the deposit should be refunded.",
+"Avise o cliente pelo chat. Como quem cancela é você, o sinal deve ser devolvido."
+],
+"Avisarme cada solicitud al": [
+"Notify me of each request at",
+"Me avisar de cada solicitação no"
+],
+"Avisos de reservas": [
+"Booking notifications",
+"Avisos de reservas"
+],
+"Avisos por WhatsApp": [
+"WhatsApp alerts",
+"Avisos pelo WhatsApp"
+],
+"Ayer": [
+"Yesterday",
+"Ontem"
+],
+"Ayuda": [
+"Help",
+"Ajuda"
+],
+"Bahía Blanca": [
+"Bahía Blanca",
+"Bahía Blanca"
+],
+"Baja · responde más, escala menos": [
+"Low · answers more, escalates less",
+"Baixa · responde mais, escala menos"
+],
+"Bandeja": [
+"Inbox",
+"Caixa de entrada"
+],
+"Banfield": [
+"Banfield",
+"Banfield"
+],
+"Base de conocimiento": [
+"Knowledge base",
+"Base de conhecimento"
+],
+"Berazategui": [
+"Berazategui",
+"Berazategui"
+],
+"Bloqueado": [
+"Blocked",
+"Bloqueado"
+],
+"Bloqueado · Día libre": [
+"Blocked · Day off",
+"Bloqueado · Dia de folga"
+],
+"Bloquear": [
+"Block",
+"Bloquear"
+],
+"Bloquear a": [
+"Block",
+"Bloquear"
+],
+"Bloquear a {x}": [
+"Block {x}",
+"Bloquear {x}"
+],
+"Bloquear horario": [
+"Block time slot",
+"Bloquear horário"
+],
+"Bloquear usuario": [
+"Block user",
+"Bloquear usuário"
+],
+"Bloqueaste a este usuario. Si querés volver a escribirle, desbloquealo.": [
+"You blocked this user. If you want to message them again, unblock them.",
+"Você bloqueou este usuário. Se quiser voltar a falar com ele, desbloqueie."
+],
+"Borrar": [
+"Delete",
+"Excluir"
+],
+"Borrar artículo": [
+"Delete article",
+"Excluir artigo"
+],
+"Borrar contenido": [
+"Delete content",
+"Excluir conteúdo"
+],
+"Borrar historia": [
+"Delete story",
+"Excluir story"
+],
+"Borrar pack": [
+"Delete pack",
+"Excluir pacote"
+],
+"Bot activo": [
+"Bot active",
+"Bot ativo"
+],
+"Bot de WhatsApp guardado": [
+"WhatsApp bot saved",
+"Bot de WhatsApp salvo"
+],
+"Bot:": [
+"Bot:",
+"Bot:"
+],
+"Brasil": [
+"Brazil",
+"Brasil"
+],
+"Bronce": [
+"Bronze",
+"Bronze"
+],
+"Buen día": [
+"Good morning",
+"Bom dia"
+],
+"Buen día, {x}": [
+"Good morning, {x}",
+"Bom dia, {x}"
+],
+"Buen momento para subir una historia.": [
+"A good time to post a story.",
+"Bom momento para postar um story."
+],
+"Buenas noches": [
+"Good evening",
+"Boa noite"
+],
+"Buenas tardes": [
+"Good afternoon",
+"Boa tarde"
+],
+"Buenísimo. Si necesitás algo más, escribime.": [
+"Great. If you need anything else, message me.",
+"Ótimo. Se precisar de mais alguma coisa, me escreva."
+],
+"Buscala en la base de localidades. Si no está, escribila y elegí dónde queda. La revisamos y, cuando la aprobemos, tu perfil se muda ahí.": [
+"Search for it in the list of places. If it isn't there, type it and choose where it is. We'll review it and, once approved, your profile moves there.",
+"Procure na lista de localidades. Se não estiver, escreva e escolha onde fica. Vamos revisar e, quando aprovarmos, seu perfil passa para lá."
+],
+"Buscar ciudad, provincia o país": [
+"Search city, state, or country",
+"Buscar cidade, estado ou país"
+],
+"Buscar conversación": [
+"Search conversations",
+"Buscar conversa"
+],
+"Buscar ubicación": [
+"Search location",
+"Buscar localização"
+],
+"Buscá tu localidad y elegila de la lista.": [
+"Search for your town and pick it from the list.",
+"Busque sua localidade e escolha na lista."
+],
+"CVV": [
+"CVV",
+"CVV"
+],
+"Cada acompañante envía su documento, una selfie y un video corto que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Cuando se aprueba, el perfil muestra el sello Verificada. Los perfiles nuevos pueden publicarse mientras la verificación está en curso.": [
+"Each companion submits her ID, a selfie, and a short video that the SexyRose team reviews: we confirm she's an adult and that she's the person in the photos. Once approved, the profile shows the Verified badge. New profiles can go live while verification is in progress.",
+"Cada acompanhante envia seu documento, uma selfie e um vídeo curto que a equipe da SexyRose analisa: confirmamos que ela é maior de idade e que é a pessoa das fotos. Quando aprovado, o perfil mostra o selo Verificada. Perfis novos podem ser publicados enquanto a verificação está em andamento."
+],
+"Cada vez que alguien compra tu contenido": [
+"Every time someone buys your content",
+"Toda vez que alguém compra seu conteúdo"
+],
+"Café": [
+"Coffee",
+"Café"
+],
+"Café de la mañana en Palermo": [
+"Morning coffee in Palermo",
+"Café da manhã em Palermo"
+],
+"Café · {x} · {n}:{n} a {n}:{n} h": [
+"Coffee · {x} · {n}:{n} to {n}:{n}",
+"Café · {x} · {n}:{n} às {n}:{n}"
+],
+"Cambiar": [
+"Change",
+"Alterar"
+],
+"Cambiar a": [
+"Switch to",
+"Mudar para"
+],
+"Cambiar a Bronce": [
+"Switch to Bronze",
+"Mudar para Bronze"
+],
+"Cambiar a Diamante": [
+"Switch to Diamond",
+"Mudar para Diamante"
+],
+"Cambiar a Plata": [
+"Switch to Silver",
+"Mudar para Prata"
+],
+"Cambiar a Platino": [
+"Switch to Platinum",
+"Mudar para Platina"
+],
+"Cambiar a Star": [
+"Switch to Star",
+"Mudar para Star"
+],
+"Cambiar contraseña": [
+"Change password",
+"Alterar senha"
+],
+"Cambiar foto": [
+"Change photo",
+"Trocar foto"
+],
+"Cambiar foto {n}": [
+"Change photo {n}",
+"Trocar foto {n}"
+],
+"Cambiar plan": [
+"Change plan",
+"Mudar de plano"
+],
+"Cambiar precio": [
+"Change price",
+"Alterar preço"
+],
+"Cambiar tarifa": [
+"Change rate",
+"Alterar tarifa"
+],
+"Cambios guardados": [
+"Changes saved",
+"Alterações salvas"
+],
+"Cambiá de plan": [
+"Change plan",
+"Mude de plano"
+],
+"Campana": [
+"Campana",
+"Campana"
+],
+"Cancelada": [
+"Canceled",
+"Cancelada"
+],
+"Cancelada por el cliente": [
+"Canceled by the client",
+"Cancelada pelo cliente"
+],
+"Cancelada por la acompañante: corresponde que te devuelva la seña.": [
+"Canceled by the companion: they should refund your deposit.",
+"Cancelada pela acompanhante: ela deve devolver seu sinal."
+],
+"Cancelada por vos.": [
+"Canceled by you.",
+"Cancelada por você."
+],
+"Canceladaclient.": [
+"Canceladaclient.",
+"Canceladaclient."
+],
+"Canceladaworker.": [
+"Canceladaworker.",
+"Canceladaworker."
+],
+"Cancelar": [
+"Cancel",
+"Cancelar"
+],
+"Cancelar pedido": [
+"Cancel request",
+"Cancelar pedido"
+],
+"Cancelar reserva": [
+"Cancel booking",
+"Cancelar reserva"
+],
+"Cancelar salida": [
+"Cancel outing",
+"Cancelar passeio"
+],
+"Cancelar viaje": [
+"Cancel trip",
+"Cancelar viagem"
+],
+"Cancelar y reembolsar": [
+"Cancel and refund",
+"Cancelar e reembolsar"
+],
+"Cargá desde cuándo y hasta cuándo vas a estar en otra ciudad. Mientras tanto, tu perfil aparece en esa ciudad.": [
+"Enter when you'll be in another city, from and until what date. In the meantime, your profile shows up in that city.",
+"Informe de quando até quando você vai estar em outra cidade. Enquanto isso, seu perfil aparece nessa cidade."
+],
+"Castelar": [
+"Castelar",
+"Castelar"
+],
+"Cataluña": [
+"Catalonia",
+"Catalunha"
+],
+"Categorías": [
+"Categories",
+"Categorias"
+],
+"Cena": [
+"Dinner",
+"Jantar"
+],
+"Cerca": [
+"Nearby",
+"Perto de mim"
+],
+"Cerca de mí": [
+"Nearby",
+"Perto de mim"
+],
+"Cerradas": [
+"Closed",
+"Fechadas"
+],
+"Cerrar": [
+"Close",
+"Fechar"
+],
+"Cerrar sesión": [
+"Log out",
+"Sair"
+],
+"Cerrá sesión y volvé a entrar.": [
+"Log out and log back in.",
+"Saia e entre novamente."
+],
+"Cerrás sesión en este dispositivo. Tus compras y chats quedan guardados en tu cuenta.": [
+"You'll be logged out on this device. Your purchases and chats stay saved in your account.",
+"Você vai sair neste dispositivo. Suas compras e chats ficam salvos na sua conta."
+],
+"Chat": [
+"Chat",
+"Chat"
+],
+"Chat USD {n}": [
+"Chat USD {n}",
+"Chat USD {n}"
+],
+"Chat activo": [
+"Chat active",
+"Chat ativo"
+],
+"Chat con": [
+"Chat with",
+"Chat com"
+],
+"Chat con {x} · {n} minutos": [
+"Chat with {x} · {n} minutes",
+"Chat com {x} · {n} minutos"
+],
+"Chat de hoy": [
+"Today's chat",
+"Chat de hoje"
+],
+"Chat en vivo": [
+"Live chat",
+"Chat ao vivo"
+],
+"Chat en vivo (precio por sesión)": [
+"Live chat (price per session)",
+"Chat ao vivo (preço por sessão)"
+],
+"Chat en vivo con": [
+"Live chat with",
+"Chat ao vivo com"
+],
+"Chat en vivo con {x}": [
+"Live chat with {x}",
+"Chat ao vivo com {x}"
+],
+"Chat en vivo por sesiones": [
+"Live chat by session",
+"Chat ao vivo por sessões"
+],
+"Chat en vivo por sesiones, viajes y novedades por zona.": [
+"Live chat by session, trips, and local updates.",
+"Chat ao vivo por sessões, viagens e novidades por região."
+],
+"Chat en vivo y reembolsos": [
+"Live chat and refunds",
+"Chat ao vivo e reembolsos"
+],
+"Chat en vivo ·": [
+"Live chat ·",
+"Chat ao vivo ·"
+],
+"Chat en vivo · desde": [
+"Live chat · from",
+"Chat ao vivo · a partir de"
+],
+"Chat en vivo · desde USD {n}": [
+"Live chat · from USD {n}",
+"Chat ao vivo · a partir de USD {n}"
+],
+"Chat en vivo · no disponible ahora": [
+"Live chat · not available now",
+"Chat ao vivo · indisponível agora"
+],
+"Chat en vivo · {n} días": [
+"Live chat · {n} days",
+"Chat ao vivo · {n} dias"
+],
+"Chat en vivo · {x}": [
+"Live chat · {x}",
+"Chat ao vivo · {x}"
+],
+"Chat por sesiones ·": [
+"Session-based chat ·",
+"Chat por sessões ·"
+],
+"Chat por sesiones · Star": [
+"Chat by session · Star",
+"Chat por sessões · Star"
+],
+"Chat · no disponible ahora": [
+"Chat · not available now",
+"Chat · indisponível agora"
+],
+"Chats activos": [
+"Active chats",
+"Chats ativos"
+],
+"Checkout de demostración. El procesador de pagos global está por definir (Stripe, dLocal u otro). No se cobra nada.": [
+"Demo checkout. The global payment processor is still to be decided. Nothing is charged.",
+"Checkout de demonstração. O processador de pagamentos global ainda será definido. Nada é cobrado."
+],
+"Cine": [
+"Movies",
+"Cinema"
+],
+"Ciudad": [
+"City",
+"Cidade"
+],
+"Ciudad a definir": [
+"City to be decided",
+"Cidade a definir"
+],
+"Ciudad de Buenos Aires": [
+"Buenos Aires City",
+"Cidade de Buenos Aires"
+],
+"Ciudad de México": [
+"Mexico City",
+"Cidade do México"
+],
+"Cliente": [
+"Client",
+"Cliente"
+],
+"Cliente anónimo": [
+"Anonymous client",
+"Cliente anônimo"
+],
+"Cliente con compras": [
+"Client with purchases",
+"Cliente com compras"
+],
+"Cliente demo": [
+"Demo client",
+"Cliente demo"
+],
+"Cliente desde el {x}.": [
+"Client since {x}.",
+"Cliente desde {x}."
+],
+"Cliente · alias": [
+"Client · alias",
+"Cliente · apelido"
+],
+"Cliente · sin verificación de identidad": [
+"Client · no identity verification",
+"Cliente · sem verificação de identidade"
+],
+"Cobros": [
+"Payouts",
+"Recebimentos"
+],
+"Cobros de las acompañantes": [
+"Companion payouts",
+"Recebimentos das acompanhantes"
+],
+"Cobrá por tu tiempo y tu contenido, con tus reglas": [
+"Get paid for your time and your content, on your terms",
+"Receba pelo seu tempo e pelo seu conteúdo, com suas regras"
+],
+"Cobrás en USD": [
+"You get paid in USD",
+"Você recebe em USD"
+],
+"Coincidencia mínima de rostro": [
+"Minimum face match",
+"Correspondência mínima do rosto"
+],
+"Comisiones": [
+"Commissions",
+"Comissões"
+],
+"Comisiones cobradas hasta hoy:": [
+"Commissions charged to date:",
+"Comissões cobradas até hoje:"
+],
+"Como WhatsApp, solo se muestra a quien desliza tu perfil a la derecha.": [
+"Like WhatsApp, it's only shown to people who swipe right on your profile.",
+"Assim como o WhatsApp, só aparece para quem desliza seu perfil para a direita."
+],
+"Como figura en la tarjeta": [
+"As shown on the card",
+"Como aparece no cartão"
+],
+"Compara la selfie y el video con la foto del documento, confirma que es una persona real (prueba de vida) y que el documento indica 18 años o más. Si todo coincide, la cuenta queda verificada sin intervención. Si algo no coincide o no se lee, pasa a Acompañantes → Por verificar.": [
+"It compares the selfie and the video with the ID photo, confirms it's a real person (liveness check) and that the ID shows age 18 or older. If everything matches, the account is verified automatically. If something doesn't match or can't be read, it goes to Companions → To verify.",
+"Compara a selfie e o vídeo com a foto do documento, confirma que é uma pessoa real (prova de vida) e que o documento indica 18 anos ou mais. Se tudo coincidir, a conta fica verificada sem intervenção. Se algo não coincidir ou não puder ser lido, vai para Acompanhantes → A verificar."
+],
+"Compartir": [
+"Share",
+"Compartilhar"
+],
+"Compartí tu ubicación para filtrar por distancia": [
+"Share your location to filter by distance",
+"Compartilhe sua localização para filtrar por distância"
+],
+"Compañía para salidas": [
+"Company for outings",
+"Companhia para passeios"
+],
+"Compañía para tu próxima": [
+"Company for your next",
+"Companhia para o seu próximo"
+],
+"Compañía para tu próxima *salida*.": [
+"Company for your next *outing*.",
+"Companhia para o seu próximo *passeio*."
+],
+"Compañía y buena conversación para la actividad que propongas: un café, una muestra, una caminata, un recital, una cena de trabajo. El plan, la duración y la tarifa los acordás directamente con la acompañante por WhatsApp.": [
+"Company and good conversation for whatever activity you suggest: a coffee, an exhibition, a walk, a concert, a business dinner. You agree on the plan, length, and rate directly with the companion on WhatsApp.",
+"Companhia e boa conversa para a atividade que você propuser: um café, uma exposição, uma caminhada, um show, um jantar de trabalho. O plano, a duração e a tarifa você combina diretamente com a acompanhante pelo WhatsApp."
+],
+"Completá el email y la contraseña.": [
+"Enter your email and password.",
+"Preencha o email e a senha."
+],
+"Completá tu perfil": [
+"Complete your profile",
+"Complete seu perfil"
+],
+"Completá título y respuesta": [
+"Fill in the title and answer",
+"Preencha o título e a resposta"
+],
+"Comprado": [
+"Purchased",
+"Comprado"
+],
+"Comprado el {x}": [
+"Purchased on {x}",
+"Comprado em {x}"
+],
+"Comprado el {x} · disponible hasta el": [
+"Purchased on {x} · available until",
+"Comprado em {x} · disponível até"
+],
+"Comprado el {x} · venció el": [
+"Purchased on {x} · expired on",
+"Comprado em {x} · venceu em"
+],
+"Comprar contenido": [
+"Buy content",
+"Comprar conteúdo"
+],
+"Comprar pack": [
+"Buy pack",
+"Comprar pacote"
+],
+"Compras": [
+"Shopping",
+"Compras"
+],
+"Compras de contenido y vencimientos": [
+"Content purchases and expirations",
+"Compras de conteúdo e vencimentos"
+],
+"Compraste \"{x}\" de": [
+"You bought \"{x}\" from",
+"Você comprou \"{x}\" de"
+],
+"Compraste un pack de": [
+"You bought a pack from",
+"Você comprou um pacote de"
+],
+"Comunidad de Madrid": [
+"Community of Madrid",
+"Comunidade de Madri"
+],
+"Con la agenda los clientes reservan salidas en tus horarios libres y te pagan la seña por adelantado.": [
+"With the calendar, clients book outings during your free time slots and pay you the deposit in advance.",
+"Com a agenda, os clientes reservam passeios nos seus horários livres e pagam o sinal antecipado."
+],
+"Con una passkey entrás de forma segura y rápida con tu huella, tu cara, el bloqueo de pantalla o tu gestor de contraseñas. Sin escribir la contraseña.": [
+"With a passkey you log in quickly and securely with your fingerprint, your face, your screen lock or your password manager. No password typing.",
+"Com uma passkey você entra de forma rápida e segura com sua digital, seu rosto, o bloqueio de tela ou seu gerenciador de senhas. Sem digitar a senha."
+],
+"Concepto": [
+"Description",
+"Descrição"
+],
+"Configuración": [
+"Settings",
+"Configurações"
+],
+"Configurar cobros": [
+"Set up payouts",
+"Configurar recebimentos"
+],
+"Confirmada": [
+"Confirmed",
+"Confirmada"
+],
+"Confirmar": [
+"Confirm",
+"Confirmar"
+],
+"Confirmá que los datos son tuyos y que sos mayor de {n}": [
+"Confirm that this information is yours and that you're over {n}",
+"Confirme que os dados são seus e que você é maior de {n} anos"
+],
+"Consulta cerrada": [
+"Inquiry closed",
+"Consulta encerrada"
+],
+"Contacto": [
+"Contact",
+"Contato"
+],
+"Contacto con filtro": [
+"Filtered contact",
+"Contato com filtro"
+],
+"Contactos": [
+"Contacts",
+"Contatos"
+],
+"Contactos (WhatsApp y Telegram)": [
+"Contacts (WhatsApp and Telegram)",
+"Contatos (WhatsApp e Telegram)"
+],
+"Contactá con": [
+"Contact",
+"Fale com"
+],
+"Contactá con {x}": [
+"Contact {x}",
+"Fale com {x}"
+],
+"Contale brevemente por qué": [
+"Briefly tell them why",
+"Conte brevemente o porquê"
+],
+"Contale qué querés": [
+"Tell her what you want",
+"Conte o que você quer"
+],
+"Contale qué te gustaría hacer.": [
+"Tell them what you'd like to do.",
+"Conte o que você gostaria de fazer."
+],
+"Contale un poco más: mínimo {n} caracteres.": [
+"Tell them a bit more: at least {n} characters.",
+"Conte um pouco mais: mínimo de {n} caracteres."
+],
+"Contanos qué pasó. Cuanto más concreto, mejor.": [
+"Tell us what happened. The more specific, the better.",
+"Conte o que aconteceu. Quanto mais específico, melhor."
+],
+"Contanos qué pasó. El equipo revisa cada reporte y puede suspender el perfil.": [
+"Tell us what happened. The team reviews every report and may suspend the profile.",
+"Conte o que aconteceu. A equipe revisa cada denúncia e pode suspender o perfil."
+],
+"Contanos un poco más": [
+"Tell us a bit more",
+"Conte um pouco mais para nós"
+],
+"Contanos un poco más (mínimo {n} caracteres)": [
+"Tell us a bit more (at least {n} characters)",
+"Conte um pouco mais para nós (mínimo de {n} caracteres)"
+],
+"Contanos un poco más: mínimo {n} caracteres.": [
+"Tell us a bit more: at least {n} characters.",
+"Conte um pouco mais para nós: mínimo de {n} caracteres."
+],
+"Contenido": [
+"Content",
+"Conteúdo"
+],
+"Contenido borrado": [
+"Content deleted",
+"Conteúdo excluído"
+],
+"Contenido desbloqueado": [
+"Content unlocked",
+"Conteúdo desbloqueado"
+],
+"Contenido exclusivo": [
+"Exclusive content",
+"Conteúdo exclusivo"
+],
+"Contenido hecho para vos. Elegís foto, video o pack y pagás al pedir. Si la acompañante acepta, te lo envía acá; si no, te reembolsamos.": [
+"Content made for you. Choose a photo, video, or pack and pay when you request it. If the companion accepts, she sends it to you here; if not, we refund you.",
+"Conteúdo feito para você. Escolha foto, vídeo ou pacote e pague ao pedir. Se a acompanhante aceitar, ela envia aqui; se não, reembolsamos você."
+],
+"Contenido inapropiado o sexual": [
+"Inappropriate or sexual content",
+"Conteúdo impróprio ou sexual"
+],
+"Contenido no permitido": [
+"Content not allowed",
+"Conteúdo não permitido"
+],
+"Contenido o datos que involucran a menores": [
+"Content or data involving minors",
+"Conteúdo ou dados envolvendo menores"
+],
+"Contenido premium": [
+"Premium content",
+"Conteúdo premium"
+],
+"Contenido publicado": [
+"Published content",
+"Conteúdo publicado"
+],
+"Contenido que vende": [
+"Content that sells",
+"Conteúdo que vende"
+],
+"Contenido sexual o sugerente": [
+"Sexual or suggestive content",
+"Conteúdo sexual ou sugestivo"
+],
+"Contenido suelto": [
+"Individual content",
+"Conteúdo avulso"
+],
+"Contextura": [
+"Build",
+"Porte físico"
+],
+"Continuar verificación (": [
+"Continue verification (",
+"Continuar verificação ("
+],
+"Contraseña": [
+"Password",
+"Senha"
+],
+"Contraseña actual": [
+"Current password",
+"Senha atual"
+],
+"Contraseña actualizada": [
+"Password updated",
+"Senha atualizada"
+],
+"Contraseña demo{n} para todas. Entrás con un clic.": [
+"Password demo{n} for all of them. Log in with one click.",
+"Senha demo{n} para todas. Você entra com um clique."
+],
+"Contá qué te gusta hacer, qué barrios conocés y qué idiomas hablás.": [
+"Tell people what you like to do, which neighborhoods you know and which languages you speak.",
+"Conte o que você gosta de fazer, quais bairros conhece e quais idiomas fala."
+],
+"Contá un poco más qué querés (mínimo {n} caracteres).": [
+"Tell us a bit more about what you want (at least {n} characters).",
+"Conte um pouco mais sobre o que você quer (mínimo de {n} caracteres)."
+],
+"Coordinar encuentro": [
+"Arrange a meeting",
+"Combinar encontro"
+],
+"Copiado": [
+"Copied",
+"Copiado"
+],
+"Copiar": [
+"Copy",
+"Copiar"
+],
+"Copiar link": [
+"Copy link",
+"Copiar link"
+],
+"Cotizaciones, entregas y cambios de estado.": [
+"Quotes, deliveries, and status changes.",
+"Orçamentos, entregas e mudanças de status."
+],
+"Crear cuenta": [
+"Create account",
+"Criar conta"
+],
+"Crear cuenta de cliente": [
+"Create client account",
+"Criar conta de cliente"
+],
+"Crear cuenta y seguir": [
+"Create account and continue",
+"Criar conta e continuar"
+],
+"Crear mi perfil y reservar": [
+"Create my profile and book",
+"Criar meu perfil e reservar"
+],
+"Crear pack": [
+"Create pack",
+"Criar pacote"
+],
+"Crear passkey": [
+"Create passkey",
+"Criar chave de acesso"
+],
+"Creá tu cuenta de cliente": [
+"Create your client account",
+"Crie sua conta de cliente"
+],
+"Creá tu perfil": [
+"Create your profile",
+"Crie seu perfil"
+],
+"Creá tu perfil, subí fotos y empezá a aparecer en el sitio.": [
+"Create your profile, upload photos, and start showing up on the site.",
+"Crie seu perfil, envie fotos e comece a aparecer no site."
+],
+"Creá una passkey": [
+"Create a passkey",
+"Crie uma chave de acesso"
+],
+"Cuando el asistente no puede resolver algo, la consulta aparece acá.": [
+"When the assistant can't resolve something, the inquiry shows up here.",
+"Quando o assistente não consegue resolver algo, a consulta aparece aqui."
+],
+"Cuando llegue un pedido o un mensaje, lo vas a ver acá.": [
+"When a request or message comes in, you'll see it here.",
+"Quando chegar um pedido ou uma mensagem, você vai ver aqui."
+],
+"Cuando pagues, empieza a producirlo.": [
+"Once you pay, they'll start producing it.",
+"Quando você pagar, ela começa a produzir."
+],
+"Cuando un cliente te escriba, la conversación aparece acá.": [
+"When a client messages you, the conversation shows up here.",
+"Quando um cliente escrever para você, a conversa aparece aqui."
+],
+"Cuando un cliente te escribe": [
+"When a client messages you",
+"Quando um cliente te escreve"
+],
+"Cuando una acompañante te escribe.": [
+"When a companion messages you.",
+"Quando uma acompanhante te escreve."
+],
+"Cuando vendas tu primer contenido, lo vas a ver acá.": [
+"When you sell your first content, you'll see it here.",
+"Quando você vender seu primeiro conteúdo, vai vê-lo aqui."
+],
+"Cuando venza, podés volver a reservar si hay un slot libre.": [
+"When it expires, you can book again if there's a free slot.",
+"Quando vencer, você pode reservar de novo se houver um horário livre."
+],
+"Cuenta": [
+"Account",
+"Conta"
+],
+"Cuenta actualizada": [
+"Account updated",
+"Conta atualizada"
+],
+"Cuenta con alias para comprar fotos, videos, packs y chat. Para mirar perfiles y escribir por WhatsApp no necesitás cuenta.": [
+"An account with an alias to buy photos, videos, packs, and chat. You don't need an account to browse profiles and message on WhatsApp.",
+"Conta com apelido para comprar fotos, vídeos, pacotes e chat. Para ver perfis e escrever pelo WhatsApp, você não precisa de conta."
+],
+"Cuenta creada": [
+"Account created",
+"Conta criada"
+],
+"Cuenta dada de baja": [
+"Account deactivated",
+"Conta desativada"
+],
+"Cuentas de demostración": [
+"Demo accounts",
+"Contas de demonstração"
+],
+"Cuántas veces aparecés, cuántos entran a tu perfil y cuántos te escriben. Solo lo ves vos.": [
+"How often you appear, how many open your profile and how many message you. Only you see this.",
+"Quantas vezes você aparece, quantos abrem seu perfil e quantos te escrevem. Só você vê."
+],
+"Cuánto tiempo puede ver el cliente lo que le enviás, desde la entrega. Lo ve antes de pagar.": [
+"How long the client can view what you send, starting from delivery. They see this before paying.",
+"Por quanto tempo o cliente pode ver o que você envia, a partir da entrega. Ele vê isso antes de pagar."
+],
+"Cuánto tiempo puede verlo el cliente desde que lo compra. Si lo cambiás, aplica a las compras nuevas.": [
+"How long the client can view it after buying. If you change it, it applies to new purchases.",
+"Por quanto tempo o cliente pode ver depois de comprar. Se você mudar, vale para as novas compras."
+],
+"Cuánto tiempo ve el pack quien lo compra. Aplica a las compras nuevas.": [
+"How long the buyer can view the pack. Applies to new purchases.",
+"Por quanto tempo quem compra vê o pacote. Vale para as novas compras."
+],
+"Cédula de identidad": [
+"National ID card",
+"Cédula de identidade"
+],
+"Código": [
+"Code",
+"Código"
+],
+"Código de país": [
+"Country code",
+"Código do país"
+],
+"Cómo contactar a una acompañante": [
+"How to contact a companion",
+"Como entrar em contato com uma acompanhante"
+],
+"Cómo deslizar": [
+"How to swipe",
+"Como deslizar"
+],
+"Cómo te encuentran": [
+"How people find you",
+"Como te encontram"
+],
+"Cómo te van a ver los clientes": [
+"How clients will see you",
+"Como os clientes vão ver você"
+],
+"DNI, cédula o pasaporte vigente.": [
+"Valid national ID, ID card or passport.",
+"DNI, cédula ou passaporte válido."
+],
+"Dale, lo cargás en Agenda.": [
+"Sure, add it in Calendar.",
+"Beleza, cadastre na Agenda."
+],
+"Datos básicos": [
+"Basic info",
+"Dados básicos"
+],
+"Datos cortos que se ven en tu perfil. Todo es opcional.": [
+"Short details shown on your profile. All optional.",
+"Dados curtos que aparecem no seu perfil. Tudo é opcional."
+],
+"Datos de acceso, verificación, cobros y visibilidad.": [
+"Login details, verification, payouts, and visibility.",
+"Dados de acesso, verificação, recebimentos e visibilidade."
+],
+"Datos de cobro guardados": [
+"Payout details saved",
+"Dados de recebimento salvos"
+],
+"Datos de demo reiniciados": [
+"Demo data reset",
+"Dados da demo reiniciados"
+],
+"Datos guardados": [
+"Details saved",
+"Dados salvos"
+],
+"De dónde llegan": [
+"Where they come from",
+"De onde chegam"
+],
+"De dónde viene": [
+"Coming from",
+"De onde vem"
+],
+"De frente, con buena luz y la cara descubierta: sin anteojos de sol, gorra ni filtros.": [
+"Facing the camera, in good light and with your face uncovered: no sunglasses, cap or filters.",
+"De frente, com boa luz e o rosto descoberto: sem óculos de sol, boné ou filtros."
+],
+"De visita": [
+"Visiting",
+"De visita"
+],
+"De visita a contacto": [
+"From visit to contact",
+"Da visita ao contato"
+],
+"De visita hasta el": [
+"Visiting until",
+"De visita até"
+],
+"De visita hasta el {x}": [
+"Visiting until {x}",
+"De visita até {x}"
+],
+"De visita hasta el {x} · vive en {x}": [
+"Visiting until {x} · lives in {x}",
+"De visita até {x} · mora em {x}"
+],
+"Dejamos de usar tu ubicación": [
+"We stopped using your location",
+"Paramos de usar sua localização"
+],
+"Dejar de usar la agenda": [
+"Stop using the schedule",
+"Parar de usar a agenda"
+],
+"Dejar de usar mi ubicación": [
+"Stop using my location",
+"Parar de usar minha localização"
+],
+"Dejar de usarla": [
+"Stop using it",
+"Parar de usar"
+],
+"Del": [
+"From",
+"De"
+],
+"Del {x} al {x}": [
+"From {x} to {x}",
+"De {x} a {x}"
+],
+"Del {x} al {x} · {n} días · aparecés en {x} desde el {x}": [
+"From {x} to {x} · {n} days · you appear in {x} starting {x}",
+"De {x} a {x} · {n} dias · você aparece em {x} a partir de {x}"
+],
+"Delgada": [
+"Slim",
+"Magra"
+],
+"Demo con resultados simulados. En producción lo hace el proveedor de verificación de identidad.": [
+"Demo with simulated results. In production, the identity verification provider handles this.",
+"Demo com resultados simulados. Em produção, isso é feito pelo provedor de verificação de identidade."
+],
+"Demo: responde con la base de conocimiento. En producción, Claude (Anthropic).": [
+"Demo: answers from the knowledge base. In production, Claude (Anthropic).",
+"Demo: responde com a base de conhecimento. Em produção, Claude (Anthropic)."
+],
+"Demo: responde con la base de conocimiento. En producción, {x}.": [
+"Demo: it answers from the knowledge base. In production, {x}.",
+"Demo: responde com a base de conhecimento. Em produção, {x}."
+],
+"Deporte": [
+"Sports",
+"Esporte"
+],
+"Desbloqueados": [
+"Unlocked",
+"Desbloqueados"
+],
+"Desbloquear": [
+"Unlock",
+"Desbloquear"
+],
+"Desbloquear a": [
+"Unblock",
+"Desbloquear"
+],
+"Desbloquear a {x}": [
+"Unblock {x}",
+"Desbloquear {x}"
+],
+"Desbloquear {x}": [
+"Unlock {x}",
+"Desbloquear {x}"
+],
+"Desbloquear {x} por USD {n}": [
+"Unlock {x} for USD {n}",
+"Desbloquear {x} por USD {n}"
+],
+"Desbloquear ·": [
+"Unlock ·",
+"Desbloquear ·"
+],
+"Desbloquear · USD {n}": [
+"Unlock · USD {n}",
+"Desbloquear · USD {n}"
+],
+"Descripción": [
+"Description",
+"Descrição"
+],
+"Desde": [
+"From",
+"De"
+],
+"Desde USD {n} / h": [
+"From USD {n} / h",
+"A partir de USD {n} / h"
+],
+"Deslizá hacia arriba para ver otro": [
+"Swipe up to see another",
+"Deslize para cima para ver outro"
+],
+"Después podés sumar más desde tu perfil.": [
+"You can add more later from your profile.",
+"Depois você pode adicionar mais pelo seu perfil."
+],
+"Destacada en todo el sitio por": [
+"Featured across the site for",
+"Destaque em todo o site por"
+],
+"Destacadas en": [
+"Featured in",
+"Destaques em"
+],
+"Destacadas en {x}": [
+"Featured in {x}",
+"Destaques em {x}"
+],
+"Destino": [
+"Destination",
+"Destino"
+],
+"Destino programado": [
+"Scheduled destination",
+"Destino programado"
+],
+"Detalle": [
+"Details",
+"Detalhe"
+],
+"Detectar mi zona": [
+"Detect my area",
+"Detectar minha região"
+],
+"Diamante": [
+"Diamond",
+"Diamante"
+],
+"Dirección del link {n}": [
+"Link {n} URL",
+"Endereço do link {n}"
+],
+"Disponible hasta el {x} · quedan": [
+"Available until {x} · remaining",
+"Disponível até {x} · restam"
+],
+"Disponible para chat": [
+"Available for chat",
+"Disponível para chat"
+],
+"Distancia desde tu ubicación": [
+"Distance from your location",
+"Distância da sua localização"
+],
+"Distancia máxima": [
+"Maximum distance",
+"Distância máxima"
+],
+"Distancias aproximadas": [
+"Approximate distances",
+"Distâncias aproximadas"
+],
+"Documento": [
+"ID document",
+"Documento"
+],
+"Documento, selfie y un video corto de {n} segundos. Lo revisamos en menos de {n} h.": [
+"ID, selfie, and a short {n}-second video. We review it in under {n} h.",
+"Documento, selfie e um vídeo curto de {n} segundos. Analisamos em menos de {n} h."
+],
+"Documento, selfie y un video corto. Es una sola vez y lleva unos minutos.": [
+"ID, selfie and a short video. It's a one-time step and takes a few minutes.",
+"Documento, selfie e um vídeo curto. É uma única vez e leva alguns minutos."
+],
+"Domingo": [
+"Sunday",
+"Domingo"
+],
+"Domingo desde": [
+"Sunday from",
+"Domingo de"
+],
+"Domingo hasta": [
+"Sunday until",
+"Domingo até"
+],
+"Dorso": [
+"Back",
+"Verso"
+],
+"Duración": [
+"Duration",
+"Duração"
+],
+"Duración del acceso": [
+"Access duration",
+"Duração do acesso"
+],
+"Duración del acceso a pedidos a medida": [
+"Custom request access duration",
+"Duração do acesso a pedidos personalizados"
+],
+"Duran {n} h": [
+"They last {n} h",
+"Duram {n} h"
+],
+"Duran {n} h y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.": [
+"They last {n} h and appear on Home with your ring. Perfect for showing your day.",
+"Duram {n} h e aparecem no Início com seu anel. O melhor para mostrar seu dia."
+],
+"Día": [
+"Day",
+"Dia"
+],
+"Edad": [
+"Age",
+"Idade"
+],
+"Editar": [
+"Edit",
+"Editar"
+],
+"Editar artículo": [
+"Edit article",
+"Editar artigo"
+],
+"Editar mi perfil": [
+"Edit my profile",
+"Editar meu perfil"
+],
+"Editar pack": [
+"Edit pack",
+"Editar pacote"
+],
+"Editar {x}": [
+"Edit {x}",
+"Editar {x}"
+],
+"Ej.: Morón": [
+"E.g.: Morón",
+"Ex.: Morón"
+],
+"Ej.: Viajero BA": [
+"E.g.: BA Traveler",
+"Ex.: Viajante BA"
+],
+"Ej.: propuso algo fuera de las reglas de la plataforma.": [
+"E.g.: they suggested something against the platform rules.",
+"Ex.: propôs algo fora das regras da plataforma."
+],
+"Ej.: salida con un cliente habitual": [
+"E.g.: outing with a regular client",
+"Ex.: passeio com um cliente habitual"
+],
+"El WhatsApp se ve después de tocar Me interesa.": [
+"WhatsApp shows after you tap I'm interested.",
+"O WhatsApp aparece depois de tocar em Tenho interesse."
+],
+"El acceso a este pedido venció el {x}.": [
+"Access to this request expired on {x}.",
+"O acesso a este pedido venceu em {x}."
+],
+"El asistente deja de usarlo para responder.": [
+"The assistant will stop using it to reply.",
+"O assistente deixa de usá-lo para responder."
+],
+"El asistente responde solo con esto. Si no encuentra la respuesta, escala a una persona.": [
+"The assistant only answers with this. If it can't find the answer, it escalates to a person.",
+"O assistente responde apenas com isto. Se não encontrar a resposta, escala para uma pessoa."
+],
+"El bot está apagado. Activalo en Ajustes.": [
+"The bot is off. Turn it on in Settings.",
+"O bot está desligado. Ative em Configurações."
+],
+"El cliente elige foto, video o pack según tus precios y paga al pedir. Si aceptás, le enviás el contenido desde acá; si rechazás, le devolvemos el dinero.": [
+"The client chooses a photo, video, or pack based on your prices and pays when requesting. If you accept, you send the content from here; if you decline, we refund them.",
+"O cliente escolhe foto, vídeo ou pacote de acordo com seus preços e paga ao pedir. Se você aceitar, envia o conteúdo por aqui; se recusar, devolvemos o dinheiro."
+],
+"El cliente paga por adelantado y el pedido pasa a “Pagado”. Después lo entregás desde acá.": [
+"The client pays in advance and the request moves to “Paid”. Then you deliver it from here.",
+"O cliente paga antecipado e o pedido passa para “Pago”. Depois você entrega por aqui."
+],
+"El cliente recibe el motivo. Sé clara y amable: muchas veces vuelve a pedir otra cosa.": [
+"The client gets the reason. Be clear and kind: they often come back to ask for something else.",
+"O cliente recebe o motivo. Seja clara e gentil: muitas vezes ele volta a pedir outra coisa."
+],
+"El cliente ve la reserva como rechazada. Si ya te pagó la seña, devolvésela por el mismo medio.": [
+"The client will see the booking as declined. If they already paid the deposit, refund it the same way.",
+"O cliente vê a reserva como recusada. Se ele já pagou o sinal, devolva pelo mesmo meio."
+],
+"El cliente ya pagó: subí o elegí el contenido": [
+"The client already paid: upload or choose the content",
+"O cliente já pagou: envie ou escolha o conteúdo"
+],
+"El código no coincide. Revisalo e intentá de nuevo.": [
+"The code doesn't match. Check it and try again.",
+"O código não coincide. Confira e tente de novo."
+],
+"El documento indica menor de 18. Verificá solo si comprobaste a mano que el documento fue mal leído y es mayor de edad.": [
+"The ID shows under 18. Only verify if you manually confirmed the ID was misread and the person is of legal age.",
+"O documento indica menor de 18. Verifique apenas se você confirmou manualmente que o documento foi lido errado e a pessoa é maior de idade."
+],
+"El fin tiene que ser después del inicio": [
+"The end has to be after the start",
+"O fim precisa ser depois do início"
+],
+"El link de pago tiene que empezar con https://": [
+"The payment link must start with https://",
+"O link de pagamento precisa começar com https://"
+],
+"El precio mínimo es USD {n}": [
+"The minimum price is USD {n}",
+"O preço mínimo é USD {n}"
+],
+"El próximo paso es verificar tu email. Después vas a ver los beneficios de cada categoría y sus precios para elegir tu plan.": [
+"The next step is to verify your email. Then you'll see each tier's benefits and prices so you can choose your plan.",
+"O próximo passo é verificar seu email. Depois você vai ver os benefícios de cada categoria e seus preços para escolher seu plano."
+],
+"El video es de una persona real, no de una foto o pantalla": [
+"The video is of a real person, not a photo or a screen",
+"O vídeo é de uma pessoa real, não de uma foto ou tela"
+],
+"El video puede durar hasta": [
+"The video can be up to",
+"O vídeo pode durar até"
+],
+"El video puede durar hasta {x}": [
+"The video can be up to {x}",
+"O vídeo pode durar até {x}"
+],
+"El video tiene que durar entre {n} y {n} segundos": [
+"The video must be between {n} and {n} seconds long",
+"O vídeo precisa ter entre {n} e {n} segundos"
+],
+"Elegir": [
+"Choose",
+"Escolher"
+],
+"Elegir de lo que ya tengo": [
+"Choose from what I already have",
+"Escolher do que eu já tenho"
+],
+"Elegiste no usar la agenda. Podés activarla cuando quieras.": [
+"You chose not to use the calendar. You can turn it on whenever you want.",
+"Você escolheu não usar a agenda. Pode ativá-la quando quiser."
+],
+"Elegí 2 o más piezas.": [
+"Choose 2 or more pieces.",
+"Escolha 2 ou mais peças."
+],
+"Elegí al menos {n} piezas premium": [
+"Choose at least {n} premium pieces",
+"Escolha pelo menos {n} peças premium"
+],
+"Elegí al menos {n} tipos de salida": [
+"Choose at least {n} outing types",
+"Escolha pelo menos {n} tipos de passeio"
+],
+"Elegí al menos {n}. Son los filtros que usan los clientes.": [
+"Choose at least {n}. These are the filters clients use.",
+"Escolha pelo menos {n}. São os filtros que os clientes usam."
+],
+"Elegí con quién tomar un café, recorrer un museo o ir a un evento en tu ciudad. Deslizás, abrís WhatsApp y arman el plan. Sin registro: tu identidad queda reservada.": [
+"Choose who to grab a coffee with, tour a museum with, or go to an event with in your city. Swipe, open WhatsApp, and make the plan together. No sign-up: your identity stays private.",
+"Escolha com quem tomar um café, visitar um museu ou ir a um evento na sua cidade. Deslize, abra o WhatsApp e combinem o plano. Sem cadastro: sua identidade fica preservada."
+],
+"Elegí cuánto querés crecer": [
+"Choose how much you want to grow",
+"Escolha quanto você quer crescer"
+],
+"Elegí cuánto tiempo. {x} tiene {n} minutos para aceptar; si no, te reembolsamos. El tiempo empieza a correr cuando acepta.": [
+"Choose how long. {x} has {n} minutes to accept; if not, we refund you. The clock starts when she accepts.",
+"Escolha quanto tempo. {x} tem {n} minutos para aceitar; se não, reembolsamos você. O tempo começa a contar quando ela aceita."
+],
+"Elegí cómo vas a usar SexyRose.": [
+"Choose how you'll use SexyRose.",
+"Escolha como você vai usar a SexyRose."
+],
+"Elegí día y horario": [
+"Choose a day and time",
+"Escolha dia e horário"
+],
+"Elegí dónde queda": [
+"Choose where it is",
+"Escolha onde fica"
+],
+"Elegí dónde va anidada.": [
+"Choose where it's nested.",
+"Escolha onde ela fica aninhada."
+],
+"Elegí el archivo que vas a enviar": [
+"Choose the file you'll send",
+"Escolha o arquivo que você vai enviar"
+],
+"Elegí el destino.": [
+"Choose the destination.",
+"Escolha o destino."
+],
+"Elegí el día": [
+"Choose the day",
+"Escolha o dia"
+],
+"Elegí hasta {n} intereses": [
+"Choose up to {n} interests",
+"Escolha até {n} interesses"
+],
+"Elegí la ciudad": [
+"Choose the city",
+"Escolha a cidade"
+],
+"Elegí las fechas de llegada y de regreso.": [
+"Choose your arrival and return dates.",
+"Escolha as datas de chegada e de volta."
+],
+"Elegí las piezas del pack": [
+"Choose the pieces for the pack",
+"Escolha as peças do pacote"
+],
+"Elegí o grabá un video": [
+"Choose or record a video",
+"Escolha ou grave um vídeo"
+],
+"Elegí qué contenido enviar": [
+"Choose which content to send",
+"Escolha qual conteúdo enviar"
+],
+"Elegí qué salidas ofrecés": [
+"Choose which outings you offer",
+"Escolha quais passeios você oferece"
+],
+"Elegí tu ciudad": [
+"Choose your city",
+"Escolha sua cidade"
+],
+"Elegí un alias de al menos 2 letras.": [
+"Choose an alias with at least 2 letters.",
+"Escolha um apelido com pelo menos 2 letras."
+],
+"Elegí un archivo para publicar": [
+"Choose a file to post",
+"Escolha um arquivo para publicar"
+],
+"Elegí un motivo": [
+"Choose a reason",
+"Escolha um motivo"
+],
+"Elegí un método de cobro": [
+"Choose a payout method",
+"Escolha um método de recebimento"
+],
+"Elegí un plan": [
+"Choose a plan",
+"Escolha um plano"
+],
+"Elegí un video": [
+"Choose a video",
+"Escolha um vídeo"
+],
+"Elegí una acompañante": [
+"Choose a companion",
+"Escolha uma acompanhante"
+],
+"Elegí una contraseña distinta a la actual": [
+"Choose a password different from your current one",
+"Escolha uma senha diferente da atual"
+],
+"Elegí una conversación": [
+"Choose a conversation",
+"Escolha uma conversa"
+],
+"Elegí una foto": [
+"Choose a photo",
+"Escolha uma foto"
+],
+"Elegí una foto o escribí un texto.": [
+"Choose a photo or write some text.",
+"Escolha uma foto ou escreva um texto."
+],
+"Elegí una imagen (JPG o PNG)": [
+"Choose an image (JPG or PNG)",
+"Escolha uma imagem (JPG ou PNG)"
+],
+"Elegí una.": [
+"Choose one.",
+"Escolha uma."
+],
+"Elegí uno": [
+"Choose one",
+"Escolha um"
+],
+"Elegí {n} o más piezas premium y poneles un precio. Es lo que más se vende.": [
+"Choose {n} or more premium pieces and set a price. It's what sells best.",
+"Escolha {n} ou mais peças premium e defina um preço. É o que mais vende."
+],
+"Elegí {n}, {n} o {n} minutos. Desde USD {n}.": [
+"Choose {n}, {n}, or {n} minutes. From USD {n}.",
+"Escolha {n}, {n} ou {n} minutos. A partir de USD {n}."
+],
+"Elegís día, horario y actividad. La seña se paga con el link de pago de la acompañante; SexyRose no la cobra.": [
+"You choose the day, time, and activity. The deposit is paid through the companion's payment link; SexyRose doesn't collect it.",
+"Você escolhe dia, horário e atividade. O sinal é pago pelo link de pagamento da acompanhante; a SexyRose não o cobra."
+],
+"Elegís el tipo de pedido y lo pagás al pedirlo. Si la acompañante lo rechaza o no lo entrega, te reembolsamos. Lo recibís en Mi cuenta → Pedidos.": [
+"You choose the type of request and pay when you place it. If the companion declines or doesn't deliver it, we'll refund you. You'll receive it in My account → Orders.",
+"Você escolhe o tipo de pedido e paga ao fazer o pedido. Se a acompanhante recusar ou não entregar, reembolsamos você. Você recebe em Minha conta → Pedidos."
+],
+"Eliminar mi cuenta": [
+"Delete my account",
+"Excluir minha conta"
+],
+"Email": [
+"Email",
+"E-mail"
+],
+"Email de cobro": [
+"Payout email",
+"E-mail de recebimento"
+],
+"Email del equipo (escalamientos)": [
+"Team email (escalations)",
+"Email da equipe (escalonamentos)"
+],
+"Email o contraseña incorrectos.": [
+"Incorrect email or password.",
+"Email ou senha incorretos."
+],
+"Email o contraseña incorrectos. Para la demo, la contraseña es demo1234.": [
+"Incorrect email or password. For the demo, the password is demo1234.",
+"Email ou senha incorretos. Para a demo, a senha é demo1234."
+],
+"Email verificado": [
+"Email verified",
+"Email verificado"
+],
+"Empezar": [
+"Get started",
+"Começar"
+],
+"En \"Cerca de mí\" tu ubicación se usa solo en tu dispositivo, nunca se envía. Las acompañantes figuran con precisión de barrio. Para comprar o chatear alcanza con un alias y un email.": [
+"In \"Nearby\", your location is only used on your device and is never sent. Companions are shown with neighborhood-level accuracy. To buy or chat, an alias and an email are enough.",
+"Em \"Perto de mim\", sua localização é usada só no seu dispositivo e nunca é enviada. As acompanhantes aparecem com precisão de bairro. Para comprar ou conversar, basta um apelido e um email."
+],
+"En USD. El cliente elige foto, video o pack, paga ese precio al pedir y vos aceptás enviándolo o lo rechazás (se le reembolsa).": [
+"In USD. The client chooses a photo, video, or pack, pays that price when requesting, and you either accept by sending it or decline (they get a refund).",
+"Em USD. O cliente escolhe foto, vídeo ou pacote, paga esse preço ao pedir e você aceita enviando ou recusa (ele é reembolsado)."
+],
+"En el celular abre la cámara frontal": [
+"On mobile it opens the front camera",
+"No celular, abre a câmera frontal"
+],
+"En el perfil de las acompañantes con agenda vas a ver el botón Reservar salida.": [
+"On the profile of companions with a calendar, you'll see the Book outing button.",
+"No perfil das acompanhantes com agenda, você vai ver o botão Reservar passeio."
+],
+"En el sitio desde {x} · Actualizado el {x} · {n} visitas": [
+"On the site since {x} · Updated on {x} · {n} visits",
+"No site desde {x} · Atualizado em {x} · {n} visitas"
+],
+"En esta demo el video no se guarda: se muestra una portada generada.": [
+"In this demo the video isn't saved: a generated cover is shown.",
+"Nesta demo o vídeo não é salvo: é exibida uma capa gerada."
+],
+"En esta demo la cargás a mano.": [
+"In this demo you enter it manually.",
+"Nesta demo você digita à mão."
+],
+"En la demo los videos de más de {n} KB no se guardan en el navegador: queda el lugar reservado. Con Cloudinary configurado se sube completo.": [
+"In the demo, videos over {n} KB aren't saved in the browser: a placeholder is kept instead. With Cloudinary set up, the full video is uploaded.",
+"Na demo, vídeos com mais de {n} KB não são salvos no navegador: fica só o espaço reservado. Com o Cloudinary configurado, o vídeo é enviado completo."
+],
+"En línea": [
+"Online",
+"Online"
+],
+"En otras ciudades": [
+"In other cities",
+"Em outras cidades"
+],
+"En producción.": [
+"In production.",
+"Em produção."
+],
+"En revisión": [
+"Under review",
+"Em análise"
+],
+"En {x} desde el": [
+"In {x} from",
+"Em {x} a partir de"
+],
+"En {x} desde el {x}": [
+"In {x} from {x}",
+"Em {x} a partir de {x}"
+],
+"Enter": [
+"Enter",
+"Enter"
+],
+"Entrar": [
+"Log in",
+"Entrar"
+],
+"Entrar como {x}": [
+"Log in as {x}",
+"Entrar como {x}"
+],
+"Entrar con passkey": [
+"Log in with passkey",
+"Entrar com chave de acesso"
+],
+"Entrar y seguir": [
+"Log in and continue",
+"Entrar e continuar"
+],
+"Entraste como": [
+"Logged in as",
+"Você entrou como"
+],
+"Entraste como {x}": [
+"Logged in as {x}",
+"Você entrou como {x}"
+],
+"Entregado": [
+"Delivered",
+"Entregue"
+],
+"Entregado el": [
+"Delivered on",
+"Entregue em"
+],
+"Entregado el {x} ·": [
+"Delivered on {x} ·",
+"Entregue em {x} ·"
+],
+"Entregado el {x} · USD {n}": [
+"Delivered on {x} · USD {n}",
+"Entregue em {x} · USD {n}"
+],
+"Entregado el {x}.": [
+"Delivered on {x}.",
+"Entregue em {x}."
+],
+"Entregados": [
+"Delivered",
+"Entregues"
+],
+"Entregar": [
+"Deliver",
+"Entregar"
+],
+"Entrá a tu cuenta": [
+"Log in to your account",
+"Entre na sua conta"
+],
+"Entrá con tu huella, tu cara o el bloqueo de pantalla, sin escribir la contraseña.": [
+"Log in with your fingerprint, face, or screen lock, without typing your password.",
+"Entre com sua digital, seu rosto ou o bloqueio de tela, sem digitar a senha."
+],
+"Entrá con una cuenta demo": [
+"Log in with a demo account",
+"Entre com uma conta demo"
+],
+"Entrá con una cuenta demo:": [
+"Log in with a demo account:",
+"Entre com uma conta demo:"
+],
+"Enviado. Ya lo tiene en su cuenta.": [
+"Sent. It's already in their account.",
+"Enviado. Já está na conta dele."
+],
+"Enviar": [
+"Send",
+"Enviar"
+],
+"Enviar al cliente": [
+"Send to client",
+"Enviar ao cliente"
+],
+"Enviar para revisión": [
+"Submit for review",
+"Enviar para análise"
+],
+"Enviar reporte": [
+"Send report",
+"Enviar denúncia"
+],
+"Equipo": [
+"Team",
+"Equipe"
+],
+"Error al subir": [
+"Upload error",
+"Erro ao enviar"
+],
+"Es el mejor momento para reservar el tuyo.": [
+"It's the best time to book yours.",
+"É o melhor momento para reservar o seu."
+],
+"Es el número al que te escriben los clientes cuando deslizan tu perfil a la derecha.": [
+"It's the number clients message you on when they swipe right on your profile.",
+"É o número pelo qual os clientes falam com você quando deslizam seu perfil para a direita."
+],
+"Es el número al que te escriben los clientes.": [
+"This is the number clients will message you at.",
+"É o número pelo qual os clientes vão te escrever."
+],
+"Es lo único que ven las acompañantes. Puede no ser tu nombre real.": [
+"It's the only thing companions see. It doesn't have to be your real name.",
+"É a única coisa que as acompanhantes veem. Não precisa ser seu nome real."
+],
+"Es opcional. Si no la usás, los clientes te siguen contactando como hasta ahora.": [
+"It's optional. If you don't use it, clients will keep contacting you as they do now.",
+"É opcional. Se você não usar, os clientes continuam te contatando como até agora."
+],
+"Es tu foto principal: la siguiente pasa a ser la principal.": [
+"It's your main photo: the next one will become the main one.",
+"É sua foto principal: a próxima passa a ser a principal."
+],
+"Esa cuenta no es de cliente. Usá \"Iniciar sesión\".": [
+"That account isn't a client account. Use \"Log in\".",
+"Essa conta não é de cliente. Use \"Entrar\"."
+],
+"Esa passkey no corresponde a ninguna cuenta.": [
+"That passkey doesn't match any account.",
+"Essa passkey não corresponde a nenhuma conta."
+],
+"Esa sección es para": [
+"That section is for",
+"Essa seção é para"
+],
+"Esa sección es para {x}": [
+"That section is for {x}",
+"Essa seção é para {x}"
+],
+"Esas fechas se superponen con otro viaje.": [
+"Those dates overlap with another trip.",
+"Essas datas se sobrepõem a outra viagem."
+],
+"Escala a una persona:": [
+"Escalates to a person:",
+"Escala para uma pessoa:"
+],
+"Escape": [
+"Escape",
+"Escape"
+],
+"Escribile para arrancar la conversación.": [
+"Message them to start the conversation.",
+"Escreva para começar a conversa."
+],
+"Escribí el nombre y elegí dónde queda.": [
+"Type the name and choose where it is.",
+"Digite o nome e escolha onde fica."
+],
+"Escribí el nombre.": [
+"Enter the name.",
+"Escreva o nome."
+],
+"Escribí en primera persona, como si le contaras a alguien que acaba de llegar a tu ciudad. Mínimo recomendado: {n} caracteres.": [
+"Write in the first person, as if you were telling someone who just arrived in your city. Recommended minimum: {n} characters.",
+"Escreva em primeira pessoa, como se estivesse contando para alguém que acabou de chegar à sua cidade. Mínimo recomendado: {n} caracteres."
+],
+"Escribí tu consulta": [
+"Write your question",
+"Escreva sua dúvida"
+],
+"Escribí tu nombre": [
+"Enter your name",
+"Digite seu nome"
+],
+"Escribí tu nombre público.": [
+"Enter your public name.",
+"Escreva seu nome público."
+],
+"Escribí tu presentación": [
+"Write your intro",
+"Escreva sua apresentação"
+],
+"Escribí un mensaje": [
+"Write a message",
+"Escreva uma mensagem"
+],
+"Escribí un mensaje.": [
+"Write a message.",
+"Escreva uma mensagem."
+],
+"Ese destino es tu ciudad. Elegí otra.": [
+"That destination is your city. Choose another one.",
+"Esse destino é a sua cidade. Escolha outro."
+],
+"Ese email ya está en uso": [
+"That email is already in use",
+"Esse e-mail já está em uso"
+],
+"Ese horario ya no está disponible": [
+"That time slot is no longer available",
+"Esse horário não está mais disponível"
+],
+"Ese horario ya no está libre. Se mantiene el original.": [
+"That time slot is no longer available. The original one is kept.",
+"Esse horário não está mais livre. O original foi mantido."
+],
+"España": [
+"Spain",
+"Espanha"
+],
+"Español": [
+"Spanish",
+"Espanhol"
+],
+"Español, Inglés": [
+"Spanish, English",
+"Espanhol, Inglês"
+],
+"Español, Inglés, Portugués": [
+"Spanish, English, Portuguese",
+"Espanhol, Inglês, Português"
+],
+"Esperando al dispositivo…": [
+"Waiting for the device…",
+"Aguardando o dispositivo…"
+],
+"Esperando el pago del cliente": [
+"Waiting for the client's payment",
+"Aguardando o pagamento do cliente"
+],
+"Esperando que acepte": [
+"Waiting for her to accept",
+"Aguardando aceitação"
+],
+"Esperando que {x} acepte": [
+"Waiting for {x} to accept",
+"Aguardando {x} aceitar"
+],
+"Esperando respuesta de": [
+"Waiting for a reply from",
+"Aguardando resposta de"
+],
+"Esperando seña": [
+"Awaiting deposit",
+"Aguardando sinal"
+],
+"Esta acompañante no está tomando reservas": [
+"This companion isn't taking bookings",
+"Esta acompanhante não está aceitando reservas"
+],
+"Esta cuenta está bloqueada. Escribinos a ayuda@sexyrose.net": [
+"This account is blocked. Email us at ayuda@sexyrose.net",
+"Esta conta está bloqueada. Escreva para ayuda@sexyrose.net"
+],
+"Esta página no está disponible": [
+"This page isn't available",
+"Esta página não está disponível"
+],
+"Esta semana": [
+"This week",
+"Esta semana"
+],
+"Estado de São Paulo": [
+"State of São Paulo",
+"Estado de São Paulo"
+],
+"Estados Unidos": [
+"United States",
+"Estados Unidos"
+],
+"Estadísticas": [
+"Statistics",
+"Estatísticas"
+],
+"Estadísticas completas desde el plan Diamante": [
+"Full statistics from the Diamond plan",
+"Estatísticas completas a partir do plano Diamante"
+],
+"Estadísticas detalladas (próximamente)": [
+"Detailed stats (coming soon)",
+"Estatísticas detalhadas (em breve)"
+],
+"Estafa o fraude": [
+"Scam or fraud",
+"Golpe ou fraude"
+],
+"Este build no incluye las vistas públicas. Elegí una acompañante para abrir su panel.": [
+"This build doesn't include the public views. Choose a companion to open their dashboard.",
+"Este build não inclui as telas públicas. Escolha uma acompanhante para abrir o painel dela."
+],
+"Este mes": [
+"This month",
+"Este mês"
+],
+"Este navegador o esta página no permiten passkeys. Entrá con email y contraseña.": [
+"This browser or page doesn't support passkeys. Log in with email and password.",
+"Este navegador ou esta página não permitem passkeys. Entre com email e senha."
+],
+"Este navegador o esta página no permiten passkeys. Podés crearla después desde Ajustes, abriendo el sitio en https o localhost.": [
+"This browser or page doesn't support passkeys. You can create one later from Settings by opening the site over https or localhost.",
+"Este navegador ou esta página não permitem passkeys. Você pode criá-la depois em Configurações, abrindo o site em https ou localhost."
+],
+"Este pedido ya no está esperando pago": [
+"This request is no longer awaiting payment",
+"Este pedido não está mais aguardando pagamento"
+],
+"Este perfil no es visible para el público: active.": [
+"This profile isn't visible to the public: active.",
+"Este perfil não está visível para o público: active."
+],
+"Este perfil no es visible para el público: está suspendido o pendiente de activación.": [
+"This profile isn't visible to the public: it's suspended or pending activation.",
+"Este perfil não está visível para o público: está suspenso ou com ativação pendente."
+],
+"Este perfil no es visible para el público: faltan requisitos por completar.": [
+"This profile isn't publicly visible: some requirements are still missing.",
+"Este perfil não está visível ao público: faltam requisitos a completar."
+],
+"Este perfil no es visible para el público: no tiene un plan activo.": [
+"This profile isn't visible to the public: it doesn't have an active plan.",
+"Este perfil não está visível para o público: não tem um plano ativo."
+],
+"Este perfil no es visible para el público: ocultaste tu cuenta.": [
+"This profile isn't visible to the public: you hid your account.",
+"Este perfil não está visível para o público: você ocultou sua conta."
+],
+"Este perfil no está disponible": [
+"This profile isn't available",
+"Este perfil não está disponível"
+],
+"Estos horarios están libres en tu agenda. ¿Cuál le propongo?": [
+"These time slots are free in your calendar. Which one should I suggest?",
+"Estes horários estão livres na sua agenda. Qual eu proponho?"
+],
+"Estás de visita en": [
+"You're visiting",
+"Você está de visita em"
+],
+"Estás disponible para chat": [
+"You're available for chat",
+"Você está disponível para chat"
+],
+"Evento": [
+"Event",
+"Evento"
+],
+"Exigencia para responder solo": [
+"Threshold for answering on its own",
+"Exigência para responder sozinho"
+],
+"Explorar perfiles": [
+"Browse profiles",
+"Explorar perfis"
+],
+"Ezeiza": [
+"Ezeiza",
+"Ezeiza"
+],
+"Facebook": [
+"Facebook",
+"Facebook"
+],
+"Falta el escrito": [
+"The written text is missing",
+"Falta o texto"
+],
+"Falta el video": [
+"The video is missing",
+"Falta o vídeo"
+],
+"Faltan pasos por completar": [
+"Some steps are still missing",
+"Faltam etapas para concluir"
+],
+"Fecha": [
+"Date",
+"Data"
+],
+"Feed de shorts": [
+"Shorts feed",
+"Feed de Shorts"
+],
+"Filtro de shorts": [
+"Shorts filter",
+"Filtro de Shorts"
+],
+"Filtros": [
+"Filters",
+"Filtros"
+],
+"Finalizada": [
+"Completed",
+"Finalizada"
+],
+"Foto": [
+"Photo",
+"Foto"
+],
+"Foto agregada": [
+"Photo added",
+"Foto adicionada"
+],
+"Foto cambiada": [
+"Photo changed",
+"Foto alterada"
+],
+"Foto nítida, sin reflejos y con los cuatro bordes a la vista.": [
+"Sharp photo, no glare and with all four edges visible.",
+"Foto nítida, sem reflexos e com as quatro bordas visíveis."
+],
+"Foto principal actualizada": [
+"Main photo updated",
+"Foto principal atualizada"
+],
+"Foto quitada": [
+"Photo removed",
+"Foto removida"
+],
+"Foto · Hace {n} días · USD {n}": [
+"Photo · {n} days ago · USD {n}",
+"Foto · Há {n} dias · USD {n}"
+],
+"Foto · {n} vistas": [
+"Photo · {n} views",
+"Foto · {n} visualizações"
+],
+"Foto · {x}": [
+"Photo · {x}",
+"Foto · {x}"
+],
+"Fotografía": [
+"Photography",
+"Fotografia"
+],
+"Fotos": [
+"Photos",
+"Fotos"
+],
+"Fotos ({n})": [
+"Photos ({n})",
+"Fotos ({n})"
+],
+"Fotos reales, de cara visible y en lugares públicos.": [
+"Real photos, with your face visible, in public places.",
+"Fotos reais, com o rosto visível e em lugares públicos."
+],
+"Fotos y videos del perfil": [
+"Profile photos and videos",
+"Fotos e vídeos do perfil"
+],
+"Fotos, videos y shorts de tus salidas o de tu rutina: sueltos, en packs o a pedido. Vos fijás el precio.": [
+"Photos, videos and shorts of your outings or your routine: individually, in packs or on request. You set the price.",
+"Fotos, vídeos e shorts dos seus passeios ou da sua rotina: avulsos, em pacotes ou sob pedido. Você define o preço."
+],
+"Fraude o cobros indebidos": [
+"Fraud or improper charges",
+"Fraude ou cobranças indevidas"
+],
+"Frente": [
+"Front",
+"Frente"
+],
+"Frentepasaporte": [
+"Frentepasaporte",
+"Frentepasaporte"
+],
+"Fuera de estos horarios la agenda queda como no hábil y no se puede reservar.": [
+"Outside these hours, the schedule is marked unavailable and can't be booked.",
+"Fora desses horários, a agenda fica indisponível e não é possível reservar."
+],
+"Galería": [
+"Gallery",
+"Galeria"
+],
+"Galería: {n} fotos y {n} videos": [
+"Gallery: {n} photos and {n} videos",
+"Galeria: {n} fotos e {n} vídeos"
+],
+"Gastronomía": [
+"Food",
+"Gastronomia"
+],
+"Genial, gracias. Te pedí también unas fotos del recorrido.": [
+"Great, thanks. I also requested some photos from the tour.",
+"Ótimo, obrigado. Também te pedi umas fotos do passeio."
+],
+"Grabá unos 5 segundos mirando a la cámara y girá la cabeza despacio a un lado y al otro. Sirve para confirmar que sos una persona real en este momento.": [
+"Record about 5 seconds looking at the camera and slowly turn your head to one side and then the other. This confirms you're a real person right now.",
+"Grave uns 5 segundos olhando para a câmera e vire a cabeça devagar para um lado e para o outro. Isso serve para confirmar que você é uma pessoa real neste momento."
+],
+"Gratis": [
+"Free",
+"Grátis"
+],
+"Guadalajara": [
+"Guadalajara",
+"Guadalajara"
+],
+"Guardado. Ojo: se superpone con una reserva existente.": [
+"Saved. Heads up: it overlaps with an existing booking.",
+"Salvo. Atenção: se sobrepõe a uma reserva existente."
+],
+"Guardar": [
+"Save",
+"Salvar"
+],
+"Guardar agenda": [
+"Save schedule",
+"Salvar agenda"
+],
+"Guardar cambios": [
+"Save changes",
+"Salvar alterações"
+],
+"Guardar cobros": [
+"Save payouts",
+"Salvar recebimentos"
+],
+"Guardar pack": [
+"Save pack",
+"Salvar pacote"
+],
+"Guardar perfil": [
+"Save profile",
+"Salvar perfil"
+],
+"Guardar precio": [
+"Save price",
+"Salvar preço"
+],
+"Hablar con una persona": [
+"Talk to a person",
+"Falar com uma pessoa"
+],
+"Hace": [
+"Ago",
+"Há"
+],
+"Hace {x} ·": [
+"{x} ago ·",
+"Há {x} ·"
+],
+"Hacerlo": [
+"Do it",
+"Fazer"
+],
+"Haedo": [
+"Haedo",
+"Haedo"
+],
+"Hasta": [
+"Until",
+"Até"
+],
+"Hasta {n} km": [
+"Up to {n} km",
+"Até {n} km"
+],
+"Hasta {n} links a tus redes o páginas. Se muestran en tu página de links, junto a tus botones de SexyRose.": [
+"Up to {n} links to your social media or pages. They're shown on your links page, next to your SexyRose buttons.",
+"Até {n} links para suas redes ou páginas. Eles aparecem na sua página de links, junto aos seus botões da SexyRose."
+],
+"Helado": [
+"Ice cream",
+"Sorvete"
+],
+"Historia": [
+"History",
+"História"
+],
+"Historia borrada": [
+"Story deleted",
+"Story excluído"
+],
+"Historia publicada por {n} h": [
+"Story posted for {n} h",
+"Story publicado por {n} h"
+],
+"Historial": [
+"History",
+"Histórico"
+],
+"Historial de pagos": [
+"Payment history",
+"Histórico de pagamentos"
+],
+"Historias": [
+"Stories",
+"Stories"
+],
+"Historias de hoy": [
+"Today's stories",
+"Stories de hoje"
+],
+"Historias ilimitadas": [
+"Unlimited stories",
+"Stories ilimitados"
+],
+"Hola": [
+"Hi",
+"Oi"
+],
+"Hola Vale, viajo a Buenos Aires el {n}. ¿Tenés disponible una tarde para recorrer museos?": [
+"Hi Vale, I'm coming to Buenos Aires on the {n}. Do you have an afternoon free to visit some museums?",
+"Oi, Vale, vou para Buenos Aires no dia {n}. Você tem uma tarde livre para visitar museus?"
+],
+"Hola de nuevo": [
+"Welcome back",
+"Olá de novo"
+],
+"Hola {x}. ¿En qué te ayudo?": [
+"Hi {x}. How can I help you?",
+"Olá, {x}. Como posso ajudar?"
+],
+"Hola,": [
+"Hi,",
+"Oi,"
+],
+"Hola, {x}": [
+"Hi, {x}",
+"Olá, {x}"
+],
+"Hola, ¿cómo funciona el chat en vivo?": [
+"Hi, how does live chat work?",
+"Oi, como funciona o chat ao vivo?"
+],
+"Hola. ¿En qué te ayudo?": [
+"Hi. How can I help you?",
+"Oi. Como posso te ajudar?"
+],
+"Hombre": [
+"Man",
+"Homem"
+],
+"Hombres": [
+"Men",
+"Homens"
+],
+"Horario de inicio": [
+"Start time",
+"Horário de início"
+],
+"Horario guardado. Fuera de ese horario tu agenda queda como no hábil.": [
+"Hours saved. Outside those hours your calendar is marked as outside working hours.",
+"Horário salvo. Fora desse horário sua agenda fica como fora do horário de atendimento."
+],
+"Horario hábil": [
+"Available hours",
+"Horário disponível"
+],
+"Horario liberado": [
+"Time slot freed up",
+"Horário liberado"
+],
+"Horario marcado como": [
+"Time slot marked as",
+"Horário marcado como"
+],
+"Horizontal": [
+"Horizontal",
+"Horizontal"
+],
+"Hoy": [
+"Today",
+"Hoje"
+],
+"Hurlingham": [
+"Hurlingham",
+"Hurlingham"
+],
+"Identidad falsa o fotos de otra persona": [
+"Fake identity or someone else's photos",
+"Identidade falsa ou fotos de outra pessoa"
+],
+"Idioma": [
+"Language",
+"Idioma"
+],
+"Idiomas": [
+"Languages",
+"Idiomas"
+],
+"Indicá el punto de encuentro": [
+"Enter the meeting point",
+"Indique o ponto de encontro"
+],
+"Indicá el punto de encuentro (un lugar público)": [
+"Enter the meeting point (a public place)",
+"Informe o ponto de encontro (um lugar público)"
+],
+"Indicá tu ciudad": [
+"Enter your city",
+"Informe sua cidade"
+],
+"Infringe derechos de autor": [
+"Infringes copyright",
+"Viola direitos autorais"
+],
+"Inglés": [
+"English",
+"Inglês"
+],
+"Ingresos": [
+"Earnings",
+"Ganhos"
+],
+"Ingresos de los últimos {n} meses": [
+"Earnings for the last {n} months",
+"Ganhos dos últimos {n} meses"
+],
+"Ingresos este mes": [
+"Earnings this month",
+"Ganhos este mês"
+],
+"Ingresos por contenido": [
+"Content earnings",
+"Ganhos com conteúdo"
+],
+"Ingresá la duración como m:ss (por ejemplo {n}:{n})": [
+"Enter the duration as m:ss (for example {n}:{n})",
+"Informe a duração como m:ss (por exemplo {n}:{n})"
+],
+"Ingresá un email válido.": [
+"Enter a valid email.",
+"Informe um email válido."
+],
+"Iniciar sesión": [
+"Log in",
+"Entrar"
+],
+"Inicio": [
+"Home",
+"Início"
+],
+"Iniciá otra sesión": [
+"Start another session",
+"Inicie outra sessão"
+],
+"Iniciá sesión para continuar": [
+"Log in to continue",
+"Entre para continuar"
+],
+"Instrucciones para el asistente": [
+"Instructions for the assistant",
+"Instruções para o assistente"
+],
+"Intereses": [
+"Interests",
+"Interesses"
+],
+"Involucra a menores": [
+"Involves minors",
+"Envolve menores"
+],
+"Ir a mi panel": [
+"Go to my dashboard",
+"Ir para meu painel"
+],
+"Ir a mi sección": [
+"Go to my section",
+"Ir para minha seção"
+],
+"Ir al inicio": [
+"Go to Home",
+"Ir para o Início"
+],
+"Ituzaingó": [
+"Ituzaingó",
+"Ituzaingó"
+],
+"JPG o PNG": [
+"JPG or PNG",
+"JPG ou PNG"
+],
+"Jueves": [
+"Thursday",
+"Quinta-feira"
+],
+"Jueves desde": [
+"Thursday from",
+"Quinta-feira a partir de"
+],
+"Jueves hasta": [
+"Thursday until",
+"Quinta-feira até"
+],
+"Julieta (plan C, nueva)": [
+"Julieta (plan C, new)",
+"Julieta (plano C, nova)"
+],
+"La acompañante": [
+"The companion",
+"A acompanhante"
+],
+"La acompañante definió por cuánto tiempo se ve cada contenido. Podés volver a comprarlo desde su perfil.": [
+"The companion set how long each piece of content can be viewed. You can buy it again from her profile.",
+"A acompanhante definiu por quanto tempo cada conteúdo fica visível. Você pode comprá-lo de novo no perfil dela."
+],
+"La acompañante no pudo tomar este pedido.": [
+"The companion couldn't take this request.",
+"A acompanhante não pôde aceitar este pedido."
+],
+"La acompañante solo ve tu alias,": [
+"The companion only sees your alias,",
+"A acompanhante só vê seu apelido,"
+],
+"La acompañante te propone cambiar a": [
+"The companion suggests switching to",
+"A acompanhante propõe mudar para"
+],
+"La acompañante ve la reserva como cancelada. Si ya pagaste la seña, coordiná con ella la devolución por chat o WhatsApp.": [
+"The companion sees the booking as canceled. If you already paid the deposit, arrange the refund with her via chat or WhatsApp.",
+"A acompanhante vê a reserva como cancelada. Se você já pagou o sinal, combine a devolução com ela pelo chat ou WhatsApp."
+],
+"La clave de API del modelo se configura en el servidor, nunca en el navegador. El asistente solo usa la base de conocimiento de Soporte y no ve datos de pago.": [
+"The model's API key is configured on the server, never in the browser. The assistant only uses the Support knowledge base and can't see payment data.",
+"A chave de API do modelo é configurada no servidor, nunca no navegador. O assistente usa apenas a base de conhecimento de Suporte e não vê dados de pagamento."
+],
+"La contraseña actual no es correcta": [
+"The current password is incorrect",
+"A senha atual está incorreta"
+],
+"La contraseña tiene que tener al menos 8 caracteres.": [
+"The password must be at least 8 characters long.",
+"A senha precisa ter pelo menos 8 caracteres."
+],
+"La cuenta de Payoneer o PayPal, o el contacto para coordinar la transferencia.": [
+"The Payoneer or PayPal account, or the contact to arrange the transfer.",
+"A conta do Payoneer ou PayPal, ou o contato para combinar a transferência."
+],
+"La edad tiene que estar entre {n} y {n}": [
+"Age must be between {n} and {n}",
+"A idade precisa estar entre {n} e {n}"
+],
+"La fecha de llegada no puede ser anterior a hoy.": [
+"The arrival date can't be earlier than today.",
+"A data de chegada não pode ser anterior a hoje."
+],
+"La fecha de regreso tiene que ser igual o posterior a la de llegada.": [
+"The return date must be the same as or later than the arrival date.",
+"A data de volta precisa ser igual ou posterior à de chegada."
+],
+"La más cercana está a": [
+"The nearest one is",
+"A mais próxima está a"
+],
+"La nueva contraseña necesita al menos {n} caracteres": [
+"The new password needs at least {n} characters",
+"A nova senha precisa ter pelo menos {n} caracteres"
+],
+"La que elijas al integrarlo": [
+"The one you choose when integrating it",
+"A que você escolher ao integrá-lo"
+],
+"La que se ve en el swipe y en las historias.": [
+"The one shown in swipe and in stories.",
+"A que aparece no swipe e nos stories."
+],
+"La respuesta automática no le sirvió": [
+"The automatic reply didn't help them",
+"A resposta automática não ajudou"
+],
+"La sesión de chat terminó": [
+"The chat session has ended",
+"A sessão de chat terminou"
+],
+"La seña de la reserva se paga directo a {x}.": [
+"The booking deposit is paid directly to {x}.",
+"O sinal da reserva é pago direto para {x}."
+],
+"La solicitud ya no está disponible": [
+"The request is no longer available",
+"A solicitação não está mais disponível"
+],
+"La tarifa por salida la acordás directamente con el cliente. El contenido se paga en la plataforma y lo ves acreditado en tu panel.": [
+"You agree on the per-outing rate directly with the client. Content is paid on the platform and you'll see it credited in your dashboard.",
+"A tarifa por passeio você combina diretamente com o cliente. O conteúdo é pago na plataforma e você vê o crédito no seu painel."
+],
+"La verificación automática marcó:": [
+"The automatic verification flagged:",
+"A verificação automática sinalizou:"
+],
+"La web se muestra en español, inglés o portugués según tu navegador. Podés cambiarlo desde el selector de idioma en la barra superior.": [
+"The website is shown in Spanish, English or Portuguese depending on your browser. You can change it from the language selector in the top bar.",
+"O site é exibido em espanhol, inglês ou português conforme seu navegador. Você pode mudar no seletor de idioma da barra superior."
+],
+"Lanús": [
+"Lanús",
+"Lanús"
+],
+"Las Stars aparecen primero en el swipe, en el inicio y en los shorts de su provincia o estado. Cada provincia/estado tiene {n} lugares, contados por dónde vive cada acompañante. Si una Star viaja a una provincia que ya está completa, se muestra igual mientras dure el viaje.": [
+"Stars appear first in swipe, on Home and in Shorts in their province or state. Each province/state has {n} spots, counted by where each companion lives. If a Star travels to a province that's already full, she's still shown for the duration of the trip.",
+"As Stars aparecem primeiro no swipe, no Início e nos Shorts da sua província ou estado. Cada província/estado tem {n} vagas, contadas pelo lugar onde cada acompanhante mora. Se uma Star viaja para uma província que já está completa, ela aparece mesmo assim enquanto durar a viagem."
+],
+"Las contraseñas no coinciden": [
+"Passwords don't match",
+"As senhas não coincidem"
+],
+"Las distancias son orientativas: las acompañantes figuran con precisión de barrio y tu ubicación nunca sale de este dispositivo.": [
+"Distances are approximate: companions are listed at neighborhood level and your location never leaves this device.",
+"As distâncias são aproximadas: as acompanhantes aparecem com precisão de bairro e sua localização nunca sai deste dispositivo."
+],
+"Las fotos de la feria quedaron buenísimas.": [
+"The photos from the fair turned out great.",
+"As fotos da feira ficaram ótimas."
+],
+"Las fotos, videos y shorts marcados como premium se compran dentro de SexyRose, en dólares. También podés comprar packs o pedir contenido a medida: la acompañante cotiza, pagás en la plataforma y te lo entrega acá mismo.": [
+"Photos, videos and Shorts marked as premium are purchased inside SexyRose, in dollars. You can also buy packs or ask for custom content: the companion quotes a price, you pay on the platform and she delivers it right here.",
+"As fotos, vídeos e Shorts marcados como premium são comprados dentro do SexyRose, em dólares. Você também pode comprar pacotes ou pedir conteúdo personalizado: a acompanhante faz o orçamento, você paga na plataforma e ela entrega aqui mesmo."
+],
+"Las fotos, videos y shorts que compres aparecen acá, listos para ver cuando quieras.": [
+"The photos, videos and shorts you buy show up here, ready to watch whenever you want.",
+"As fotos, vídeos e shorts que você comprar aparecem aqui, prontos para ver quando quiser."
+],
+"Las passkeys necesitan el sitio en https o localhost.": [
+"Passkeys require the site to be on https or localhost.",
+"As passkeys precisam do site em https ou localhost."
+],
+"Las piezas sueltas suman USD {n}. Un pack conviene si sale menos.": [
+"The individual pieces add up to USD {n}. A pack is worth it if it costs less.",
+"As peças avulsas somam USD {n}. Um pacote vale a pena se custar menos."
+],
+"Las piezas sueltas suman {x}. Un pack conviene si sale menos.": [
+"The individual pieces add up to {x}. A pack is worth it if it costs less.",
+"As peças avulsas somam {x}. Um pacote compensa se sair mais barato."
+],
+"Las reservas se hacen con una cuenta de cliente": [
+"Bookings are made with a client account",
+"As reservas são feitas com uma conta de cliente"
+],
+"Las reservas son para cuentas de cliente": [
+"Bookings are for client accounts",
+"As reservas são para contas de cliente"
+],
+"Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las suscripciones de acompañantes se cancelan desde el panel y siguen activas hasta el fin del período pago. Las compras de contenido no tienen devolución una vez desbloqueadas.": [
+"Outings are canceled with the person you arranged them with, via WhatsApp and with advance notice. Companion subscriptions are canceled from the dashboard and stay active until the end of the paid period. Content purchases are non-refundable once unlocked.",
+"Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. As assinaturas de acompanhantes são canceladas pelo painel e continuam ativas até o fim do período pago. As compras de conteúdo não têm reembolso depois de desbloqueadas."
+],
+"Las salidas son siempre en lugares públicos. Si algo te incomoda, usá \"Reportar\" en el perfil, el chat o la reserva: lo revisa el equipo. Si estás en peligro, llamá a emergencias de tu país.": [
+"Outings are always in public places. If something makes you uncomfortable, use \"Report\" on the profile, the chat or the booking: the team will review it. If you're in danger, call your country's emergency number.",
+"Os passeios são sempre em lugares públicos. Se algo incomodar você, use \"Denunciar\" no perfil, no chat ou na reserva: a equipe vai revisar. Se você estiver em perigo, ligue para a emergência do seu país."
+],
+"Las salidas son siempre en lugares públicos: cafés, museos, parques, eventos. Los perfiles de acompañantes pasan por verificación de identidad y cualquier conducta inapropiada se puede reportar desde el perfil. El WhatsApp se comparte solo después de que vos mostrás interés.": [
+"Outings are always in public places: cafés, museums, parks, events. Companion profiles go through identity verification and any inappropriate behavior can be reported from the profile. WhatsApp is only shared after you show interest.",
+"Os passeios são sempre em lugares públicos: cafés, museus, parques, eventos. Os perfis de acompanhantes passam por verificação de identidade e qualquer conduta inadequada pode ser denunciada pelo perfil. O WhatsApp só é compartilhado depois que você demonstra interesse."
+],
+"Las {n} mejores salidas del mes": [
+"The {n} best outings of the month",
+"Os {n} melhores passeios do mês"
+],
+"Le aparece en el asistente": [
+"It shows up for them in the assistant",
+"Aparece para ele no assistente"
+],
+"Le llega desbloqueado a su cuenta en el momento. Lo nuevo que subas queda guardado como privado en tu contenido.": [
+"It's unlocked in their account instantly. Anything new you upload is saved as private in your content.",
+"Chega desbloqueado na conta dele na hora. O que você enviar de novo fica salvo como privado no seu conteúdo."
+],
+"Le pasé tu consulta al equipo (#": [
+"I passed your question to the team (#",
+"Passei sua dúvida para a equipe (#"
+],
+"Le pasé tu consulta al equipo. Te respondemos acá y por email.": [
+"I passed your question to the team. We'll reply here and by email.",
+"Passei sua dúvida para a equipe. Vamos responder aqui e por e-mail."
+],
+"Lectura": [
+"Reading",
+"Leitura"
+],
+"Legal": [
+"Legal",
+"Legal"
+],
+"Liberar horario": [
+"Free up slot",
+"Liberar horário"
+],
+"Link copiado": [
+"Link copied",
+"Link copiado"
+],
+"Link directo o compartido": [
+"Direct or shared link",
+"Link direto ou compartilhado"
+],
+"Links": [
+"Links",
+"Links"
+],
+"Listo": [
+"Done",
+"Pronto"
+],
+"Listo · tocá para cambiar": [
+"Done · tap to change",
+"Pronto · toque para alterar"
+],
+"Listo, arrancamos de nuevo": [
+"Done, starting over",
+"Pronto, vamos recomeçar"
+],
+"Listo, cambiaste el horario": [
+"Done, you changed the time",
+"Pronto, você mudou o horário"
+],
+"Listo, la reserva quedó confirmada. Te recordamos el día anterior.": [
+"Done, the booking is confirmed. We'll remind you the day before.",
+"Pronto, a reserva foi confirmada. Vamos lembrar você no dia anterior."
+],
+"Listo, no te lo mostramos más": [
+"Done, we won't show it to you again",
+"Pronto, não vamos mostrar mais"
+],
+"Listo, tu cuenta está creada": [
+"Done, your account is created",
+"Pronto, sua conta foi criada"
+],
+"Listo.": [
+"Done.",
+"Pronto."
+],
+"Listo. {x}": [
+"Done. {x}",
+"Pronto. {x}"
+],
+"Listo: ahora figurás en": [
+"Done: you now appear in",
+"Pronto: agora você aparece em"
+],
+"Listo: ahora figurás en {x}": [
+"Done: you now appear in {x}",
+"Pronto: agora você aparece em {x}"
+],
+"Listo: la verificación automática confirmó tu identidad.": [
+"Done: the automatic verification confirmed your identity.",
+"Pronto: a verificação automática confirmou sua identidade."
+],
+"Listo: verificamos tu identidad": [
+"Done: we verified your identity",
+"Pronto: verificamos sua identidade"
+],
+"Llegaste al límite de historias de hoy de tu plan": [
+"You've reached your plan's story limit for today",
+"Você atingiu o limite de stories de hoje do seu plano"
+],
+"Llegaste al límite de hoy.": [
+"You've reached today's limit.",
+"Você atingiu o limite de hoje."
+],
+"Llegaste al límite diario de": [
+"You've reached the daily limit of",
+"Você atingiu o limite diário de"
+],
+"Llego el": [
+"Arriving on",
+"Chego em"
+],
+"Lo cargo en el panel": [
+"I'll add it in the dashboard",
+"Vou adicionar no painel"
+],
+"Lo privado se vende suelto o en packs, sin límite. Tus fotos y videos públicos van en Mi perfil.": [
+"Private content is sold individually or in packs, with no limit. Your public photos and videos go in My profile.",
+"O conteúdo privado é vendido avulso ou em pacotes, sem limite. Suas fotos e vídeos públicos ficam em Meu perfil."
+],
+"Lo que cobraste": [
+"What you've earned",
+"O que você recebeu"
+],
+"Lo que pasó hoy": [
+"What happened today",
+"O que aconteceu hoje"
+],
+"Lo que todos preguntan antes de empezar": [
+"What everyone asks before getting started",
+"O que todo mundo pergunta antes de começar"
+],
+"Lo tengo listo en 3 días. ¿Te sirve con subtítulos?": [
+"I'll have it ready in 3 days. Does it work for you with subtitles?",
+"Fica pronto em 3 dias. Pode ser com legendas?"
+],
+"Localidad": [
+"Town",
+"Cidade"
+],
+"Lomas de Zamora": [
+"Lomas de Zamora",
+"Lomas de Zamora"
+],
+"Los archivos se suben a Cloudinary.": [
+"Files are uploaded to Cloudinary.",
+"Os arquivos são enviados para o Cloudinary."
+],
+"Los cambios se publican al guardar.": [
+"Changes are published when you save.",
+"As alterações são publicadas ao salvar."
+],
+"Los clientes compran cuando sienten que hay alguien del otro lado. Activá las notificaciones.": [
+"Clients buy when they feel there's someone on the other side. Turn on notifications.",
+"Os clientes compram quando sentem que tem alguém do outro lado. Ative as notificações."
+],
+"Los clientes eligen día, horario y actividad según tu disponibilidad, y te pagan la seña con tu propio link de pago. SexyRose no cobra ni retiene la seña.": [
+"Clients choose the day, time and activity based on your availability, and pay you the deposit through your own payment link. SexyRose doesn't collect or hold the deposit.",
+"Os clientes escolhem dia, horário e atividade de acordo com sua disponibilidade, e pagam o sinal pelo seu próprio link de pagamento. O SexyRose não cobra nem retém o sinal."
+],
+"Los clientes reservan solo en tus horarios libres y te pagan la seña con tu link.": [
+"Clients only book during your free slots and pay you the deposit through your link.",
+"Os clientes só reservam nos seus horários livres e pagam o sinal pelo seu link."
+],
+"Los clientes solo ven horarios libres: no ven reservas de otros, ni si estás ocupada o bloqueada.": [
+"Clients only see free slots: they don't see other people's bookings, or whether you're busy or blocked.",
+"Os clientes só veem horários livres: não veem reservas de outras pessoas, nem se você está ocupada ou bloqueada."
+],
+"Los clientes ven la ciudad y las fechas, nunca dónde te alojás. Las salidas siguen siendo en lugares públicos.": [
+"Clients see the city and dates, never where you're staying. Outings are still in public places.",
+"Os clientes veem a cidade e as datas, nunca onde você está hospedada. Os passeios continuam sendo em lugares públicos."
+],
+"Los clientes ven la distancia aproximada a tu zona (precisión de ~{n} km), nunca tu dirección.": [
+"Clients see the approximate distance to your area (accurate to ~{n} km), never your address.",
+"Os clientes veem a distância aproximada até sua região (precisão de ~{n} km), nunca seu endereço."
+],
+"Los cobros se liquidan cada semana.": [
+"Payouts are settled every week.",
+"Os recebimentos são liquidados toda semana."
+],
+"Los links externos los agrega cada acompañante. SexyRose no controla ni se hace cargo del contenido de sitios de terceros.": [
+"External links are added by each companion. SexyRose doesn't control or take responsibility for the content of third-party sites.",
+"Os links externos são adicionados por cada acompanhante. O SexyRose não controla nem se responsabiliza pelo conteúdo de sites de terceiros."
+],
+"Los links externos son responsabilidad de cada acompañante. SexyRose no controla ni se hace cargo de su contenido.": [
+"External links are the responsibility of each companion. SexyRose doesn't control or take responsibility for their content.",
+"Os links externos são responsabilidade de cada acompanhante. O SexyRose não controla nem se responsabiliza pelo conteúdo deles."
+],
+"Los packs están disponibles desde el plan Oro": [
+"Packs are available from the Gold plan",
+"Os pacotes estão disponíveis a partir do plano Ouro"
+],
+"Los perfiles completos reciben más swipes a la derecha y más compras.": [
+"Complete profiles get more right swipes and more purchases.",
+"Perfis completos recebem mais swipes para a direita e mais compras."
+],
+"Los resultados se actualizan al instante, detrás de esta ventana.": [
+"Results update instantly, behind this window.",
+"Os resultados se atualizam na hora, atrás desta janela."
+],
+"Los viajes están disponibles desde el plan Platino": [
+"Trips are available from the Platinum plan",
+"As viagens estão disponíveis a partir do plano Platina"
+],
+"Lugar fijo arriba del inicio en tu provincia o estado. Solo {n} por estado/provincia. Incluye todo lo de Diamante.": [
+"Fixed spot at the top of Home in your province or state. Only {n} per state/province. Includes everything in Diamond.",
+"Lugar fixo no topo do Início na sua província ou estado. Só {n} por estado/província. Inclui tudo do Diamante."
+],
+"Lugar fijo arriba del inicio · {n} por estado/provincia": [
+"Fixed spot at the top of Home · {n} per state/province",
+"Lugar fixo no topo do Início · {n} por estado/província"
+],
+"Luján": [
+"Luján",
+"Luján"
+],
+"Lun a vie · {n} a {n} h": [
+"Mon to Fri · {n} to {n}",
+"Seg a sex · {n} às {n} h"
+],
+"Lunes": [
+"Monday",
+"Segunda-feira"
+],
+"Lunes desde": [
+"Monday from",
+"Segunda-feira a partir de"
+],
+"Lunes hasta": [
+"Monday until",
+"Segunda-feira até"
+],
+"Mantener el horario original": [
+"Keep the original time",
+"Manter o horário original"
+],
+"Mantenés el horario original": [
+"You keep the original time",
+"Você mantém o horário original"
+],
+"Marcar horario": [
+"Mark time slot",
+"Marcar horário"
+],
+"Marcar realizada": [
+"Mark as done",
+"Marcar como realizado"
+],
+"Marcás como": [
+"You mark as",
+"Você marca como"
+],
+"Marcás tu horario hábil; el resto queda como no hábil.": [
+"You mark your available hours; the rest stays as unavailable.",
+"Você marca seu horário disponível; o resto fica como indisponível."
+],
+"Martes": [
+"Tuesday",
+"Terça-feira"
+],
+"Martes desde": [
+"Tuesday from",
+"Terça-feira a partir de"
+],
+"Martes hasta": [
+"Tuesday until",
+"Terça-feira até"
+],
+"Martínez": [
+"Martínez",
+"Martínez"
+],
+"Mayor de {n} según el documento": [
+"Over {n} according to ID",
+"Maior de {n} segundo o documento"
+],
+"Me alegro. Cuando vuelvas a {x} avisame y vamos a la rambla.": [
+"Glad to hear it. When you're back in {x}, let me know and we'll go to the boardwalk.",
+"Que bom. Quando voltar para {x}, me avisa e a gente vai à orla."
+],
+"Me gusta": [
+"Like",
+"Curtir"
+],
+"Me gusta (Enter)": [
+"Like (Enter)",
+"Curtir (Enter)"
+],
+"Me gusta, abrir WhatsApp": [
+"Like, open WhatsApp",
+"Curtir, abrir WhatsApp"
+],
+"Me gusta, me interesa, ventas, pedidos, reservas y solicitudes de chat.": [
+"Likes, I'm interested, sales, requests, bookings and chat requests.",
+"Curtidas, Tenho interesse, vendas, pedidos, reservas e solicitações de chat."
+],
+"Me interesa": [
+"I'm interested",
+"Tenho interesse"
+],
+"Me interesa {x}": [
+"I'm interested {x}",
+"Tenho interesse {x}"
+],
+"Me voy el": [
+"Leaving on",
+"Saio em"
+],
+"Medellín": [
+"Medellín",
+"Medellín"
+],
+"Media": [
+"Medium",
+"Média"
+],
+"Mediana": [
+"Average",
+"Média"
+],
+"Mensaje": [
+"Message",
+"Mensagem"
+],
+"Mensaje (opcional)": [
+"Message (optional)",
+"Mensagem (opcional)"
+],
+"Mensaje para el cliente": [
+"Message for the client",
+"Mensagem para o cliente"
+],
+"Mensajes": [
+"Messages",
+"Mensagens"
+],
+"Mensajes nuevos": [
+"New messages",
+"Novas mensagens"
+],
+"Mercado Pago, PayPal, Stripe u otro. Tiene que empezar con https://. No publiques CBU ni alias en historias.": [
+"Mercado Pago, PayPal, Stripe or another. It must start with https://. Don't post your CBU or alias in stories.",
+"Mercado Pago, PayPal, Stripe ou outro. Precisa começar com https://. Não publique CBU nem alias nos stories."
+],
+"Mes anterior": [
+"Previous month",
+"Mês anterior"
+],
+"Mes transcurrido": [
+"Month to date",
+"Mês até agora"
+],
+"Mi cuenta": [
+"My account",
+"Minha conta"
+],
+"Mi cuenta → Reservas": [
+"My account → Bookings",
+"Minha conta → Reservas"
+],
+"Mi localidad no está en la lista": [
+"My town isn't on the list",
+"Minha cidade não está na lista"
+],
+"Mi panel": [
+"My dashboard",
+"Meu painel"
+],
+"Mi perfil": [
+"My profile",
+"Meu perfil"
+],
+"Mi perfil en SexyRose": [
+"My profile on SexyRose",
+"Meu perfil no SexyRose"
+],
+"Miembro desde {x}": [
+"Member since {x}",
+"Membro desde {x}"
+],
+"Mientras tanto, mirá otras acompañantes.": [
+"In the meantime, check out other companions.",
+"Enquanto isso, veja outras acompanhantes."
+],
+"Mientras tanto, subí contenido": [
+"In the meantime, upload content",
+"Enquanto isso, envie conteúdo"
+],
+"Mirá quién está cerca tuyo.": [
+"See who's near you.",
+"Veja quem está perto de você."
+],
+"Mirás y contactás sin registrarte": [
+"Browse and get in touch without signing up",
+"Você vê e entra em contato sem se cadastrar"
+],
+"Mis compras": [
+"My purchases",
+"Minhas compras"
+],
+"Mis fotos y videos": [
+"My photos and videos",
+"Minhas fotos e vídeos"
+],
+"Mis links": [
+"My links",
+"Meus links"
+],
+"Misma persona en la selfie y el documento": [
+"Same person in the selfie and the ID",
+"Mesma pessoa na selfie e no documento"
+],
+"Miércoles": [
+"Wednesday",
+"Quarta-feira"
+],
+"Miércoles desde": [
+"Wednesday from",
+"Quarta-feira a partir de"
+],
+"Miércoles hasta": [
+"Wednesday until",
+"Quarta-feira até"
+],
+"Moda": [
+"Fashion",
+"Moda"
+],
+"Modelo": [
+"Model",
+"Modelo"
+],
+"Modo aislado del panel": [
+"Isolated dashboard mode",
+"Modo isolado do painel"
+],
+"Modo demo: tu código es": [
+"Demo mode: your code is",
+"Modo demo: seu código é"
+],
+"Modo grilla": [
+"Grid view",
+"Modo grade"
+],
+"Modo swipe": [
+"Swipe mode",
+"Modo swipe"
+],
+"Monto": [
+"Amount",
+"Valor"
+],
+"Moreno": [
+"Moreno",
+"Moreno"
+],
+"Morón": [
+"Morón",
+"Morón"
+],
+"Mostramos primero las acompañantes de la ciudad que elijas. Podés cambiarla cuando quieras.": [
+"We show companions from the city you choose first. You can change it whenever you want.",
+"Mostramos primeiro as acompanhantes da cidade que você escolher. Você pode mudar quando quiser."
+],
+"Mostrando": [
+"Showing",
+"Mostrando"
+],
+"Mostrando todas las ubicaciones": [
+"Showing all locations",
+"Mostrando todas as localizações"
+],
+"Mostrando {x}": [
+"Showing {x}",
+"Mostrando {x}"
+],
+"Mostrar": [
+"Show",
+"Mostrar"
+],
+"Mostrar mi cuenta": [
+"Show my account",
+"Mostrar minha conta"
+],
+"Mostrarla": [
+"Show it",
+"Mostrar"
+],
+"Motivo": [
+"Reason",
+"Motivo"
+],
+"Motivo:": [
+"Reason:",
+"Motivo:"
+],
+"Motivo: {x}": [
+"Reason: {x}",
+"Motivo: {x}"
+],
+"Mujer": [
+"Woman",
+"Mulher"
+],
+"Mujeres": [
+"Women",
+"Mulheres"
+],
+"Museo": [
+"Museum",
+"Museu"
+],
+"Museo · {x} · {n}:{n} a {n}:{n} h": [
+"Museum · {x} · {n}:{n} to {n}:{n}",
+"Museu · {x} · {n}:{n} às {n}:{n} h"
+],
+"Más elegido": [
+"Most popular",
+"Mais escolhido"
+],
+"Más opciones": [
+"More options",
+"Mais opções"
+],
+"Más tarde": [
+"Later",
+"Mais tarde"
+],
+"Método de pago: por definir (Payoneer, PayPal o transferencia internacional).": [
+"Payment method: to be defined (Payoneer, PayPal or international transfer).",
+"Método de pagamento: a definir (Payoneer, PayPal ou transferência internacional)."
+],
+"Método preferido": [
+"Preferred method",
+"Método preferido"
+],
+"México": [
+"Mexico",
+"México"
+],
+"Mínimo USD {n}. Lo que paga cada cliente por desbloquearlo.": [
+"Minimum USD {n}. What each client pays to unlock it.",
+"Mínimo USD {n}. O que cada cliente paga para desbloquear."
+],
+"Mínimo {n} caracteres.": [
+"At least {n} characters.",
+"Mínimo de {n} caracteres."
+],
+"Música": [
+"Music",
+"Música"
+],
+"Nacionalidad": [
+"Nationality",
+"Nacionalidade"
+],
+"Nada con este filtro": [
+"Nothing with this filter",
+"Nada com este filtro"
+],
+"Nada de contenido sexual: la acompañante puede rechazarlo y te devolvemos el dinero.": [
+"No sexual content: the companion can decline it and we refund you.",
+"Nada de conteúdo sexual: a acompanhante pode recusar e devolvemos seu dinheiro."
+],
+"Nada en este estado": [
+"Nothing in this status",
+"Nada neste status"
+],
+"Nada por acá.": [
+"Nothing here.",
+"Nada por aqui."
+],
+"Nadie te ve en el sitio.": [
+"Nobody can see you on the site.",
+"Ninguém vê você no site."
+],
+"Nadie va a ver tu perfil, tus historias ni tus shorts, y el link a tu perfil deja de abrir. Conservás tu contenido, tus mensajes, tus ventas y tu plan. Podés volver a mostrarte cuando quieras.": [
+"No one will see your profile, stories or Shorts, and the link to your profile will stop working. You keep your content, messages, sales and plan. You can show yourself again whenever you want.",
+"Ninguém vai ver seu perfil, seus stories nem seus Shorts, e o link do seu perfil deixa de abrir. Você mantém seu conteúdo, suas mensagens, suas vendas e seu plano. Pode voltar a aparecer quando quiser."
+],
+"Naturaleza": [
+"Nature",
+"Natureza"
+],
+"Necesitamos confirmar que sos vos y que sos mayor de edad. Es una sola vez y lleva unos minutos.": [
+"We need to confirm it's you and that you're of legal age. It's a one-time step and takes a few minutes.",
+"Precisamos confirmar que é você e que você é maior de idade. É uma única vez e leva alguns minutos."
+],
+"Necesitás al menos {n} piezas premium publicadas para armar un pack. Subí contenido premium primero.": [
+"You need at least {n} published premium pieces to build a pack. Upload premium content first.",
+"Você precisa de pelo menos {n} peças premium publicadas para montar um pacote. Envie conteúdo premium primeiro."
+],
+"Necesitás un plan activo para responder.": [
+"You need an active plan to reply.",
+"Você precisa de um plano ativo para responder."
+],
+"Necochea": [
+"Necochea",
+"Necochea"
+],
+"Negocios": [
+"Business",
+"Negócios"
+],
+"Ninguno": [
+"None",
+"Nenhum"
+],
+"Ningún tipo de contenido o propuesta sexual, ni dentro ni fuera de la plataforma. Tampoco insistir después de un no, pedir datos personales que no fueron ofrecidos ni proponer encuentros en lugares privados. Quien lo hace queda fuera.": [
+"No sexual content or proposals of any kind, on or off the platform. Also no insisting after a no, asking for personal details that weren't offered, or suggesting meetings in private places. Anyone who does is removed.",
+"Nenhum tipo de conteúdo ou proposta sexual, nem dentro nem fora da plataforma. Também não é permitido insistir depois de um não, pedir dados pessoais que não foram oferecidos nem propor encontros em lugares privados. Quem fizer isso é removido."
+],
+"No aparecés en el inicio, el swipe, Cerca de mí, Stars, historias ni shorts, y tu perfil no abre por link. Conservás contenido, mensajes, ventas y plan.": [
+"You won't appear on Home, swipe, Nearby, Stars, stories or Shorts, and your profile won't open from a link. You keep your content, messages, sales and plan.",
+"Você não aparece no Início, no swipe, em Perto de mim, Stars, stories nem Shorts, e seu perfil não abre pelo link. Você mantém conteúdo, mensagens, vendas e plano."
+],
+"No aprobar: el documento indica menor de 18": [
+"Don't approve: the ID shows under 18",
+"Não aprovar: o documento indica menor de 18"
+],
+"No cargó su Telegram": [
+"No Telegram added",
+"Não informou o Telegram"
+],
+"No cumplió lo acordado": [
+"Didn't do what was agreed",
+"Não cumpriu o combinado"
+],
+"No disponible ahora": [
+"Not available now",
+"Indisponível agora"
+],
+"No disponible para chat": [
+"Not available for chat",
+"Indisponível para chat"
+],
+"No encontramos esa sección": [
+"We couldn't find that section",
+"Não encontramos essa seção"
+],
+"No encontramos esa ubicación.": [
+"We couldn't find that location.",
+"Não encontramos essa localização."
+],
+"No encontramos ese perfil": [
+"We couldn't find that profile",
+"Não encontramos esse perfil"
+],
+"No encontramos ese usuario": [
+"We couldn't find that user",
+"Não encontramos esse usuário"
+],
+"No encontramos tu perfil": [
+"We couldn't find your profile",
+"Não encontramos seu perfil"
+],
+"No encontré otros horarios libres en tu agenda para esa duración. Podés liberar horarios desde tu panel.": [
+"I couldn't find other free time slots in your calendar for that duration. You can free up time slots from your dashboard.",
+"Não encontrei outros horários livres na sua agenda para essa duração. Você pode liberar horários no seu painel."
+],
+"No encontró la respuesta en la base": [
+"It couldn't find the answer in the knowledge base",
+"Não encontrou a resposta na base"
+],
+"No encuentro mi localidad": [
+"I can't find my town",
+"Não encontro minha localidade"
+],
+"No existe la cuenta": [
+"The account doesn't exist",
+"A conta não existe"
+],
+"No hago ese tipo de salidas, pero puedo recomendarte a alguien.": [
+"I don't do that kind of outing, but I can recommend someone.",
+"Não faço esse tipo de passeio, mas posso indicar alguém."
+],
+"No hay acompañantes a menos de {x} km": [
+"No companions within {x} km",
+"Não há acompanhantes a menos de {x} km"
+],
+"No hay acompañantes publicadas por ahora": [
+"No companions published yet",
+"Ainda não há acompanhantes publicadas"
+],
+"No hay lugares Star libres en": [
+"No Star spots available in",
+"Não há vagas Star livres em"
+],
+"No hay lugares Star libres en {x}": [
+"No Star spots available in {x}",
+"Não há vagas Star livres em {x}"
+],
+"No hay packs por ahora": [
+"No packs yet",
+"Não há pacotes por enquanto"
+],
+"No hay perfiles con esos filtros": [
+"No profiles match those filters",
+"Não há perfis com esses filtros"
+],
+"No hay perfiles para {x} todavía": [
+"No profiles for {x} yet",
+"Ainda não há perfis para {x}"
+],
+"No hay postulantes con pasos pendientes": [
+"No applicants with pending steps",
+"Não há candidatas com etapas pendentes"
+],
+"No hay shorts con este filtro": [
+"No shorts with this filter",
+"Não há shorts com este filtro"
+],
+"No hay solicitudes nuevas.": [
+"No new requests.",
+"Não há novas solicitações."
+],
+"No hábil": [
+"Unavailable",
+"Indisponível"
+],
+"No incluido": [
+"Not included",
+"Não incluído"
+],
+"No me interesa": [
+"Not interested",
+"Não tenho interesse"
+],
+"No por ahora": [
+"Not now",
+"Agora não"
+],
+"No pudimos acceder a tu ubicación. Escribí la ciudad a mano.": [
+"We couldn't access your location. Type in the city manually.",
+"Não conseguimos acessar sua localização. Digite a cidade manualmente."
+],
+"No pudimos entrar con passkey.": [
+"We couldn't log you in with a passkey.",
+"Não conseguimos entrar com a passkey."
+],
+"No pudimos obtener tu ubicación a tiempo. Elegí la ciudad a mano o probá de nuevo.": [
+"We couldn't get your location in time. Choose the city manually or try again.",
+"Não conseguimos obter sua localização a tempo. Escolha a cidade manualmente ou tente de novo."
+],
+"No pudimos obtener tu ubicación.": [
+"We couldn't get your location.",
+"Não conseguimos obter sua localização."
+],
+"No pudimos obtener tu ubicación. Elegí la ciudad a mano o probá de nuevo.": [
+"We couldn't get your location. Choose the city manually or try again.",
+"Não conseguimos obter sua localização. Escolha a cidade manualmente ou tente de novo."
+],
+"No pudimos obtener tu ubicacióntimeout. Elegí la ciudad a mano o probá de nuevo.": [
+"We couldn't get your locationtimeout. Choose the city manually or try again.",
+"Não conseguimos obter sua localizaçãotimeout. Escolha a cidade manualmente ou tente de novo."
+],
+"No pudimos ubicar esa localidad. Probá elegirla de la lista.": [
+"We couldn't locate that town. Try choosing it from the list.",
+"Não conseguimos localizar essa localidade. Tente escolhê-la na lista."
+],
+"No pudimos ubicarla": [
+"We couldn't locate it",
+"Não conseguimos localizá-la"
+],
+"No pudimos validar tu verificación. Volvé a hacerla con buena luz y el documento completo a la vista.": [
+"We couldn't validate your verification. Do it again in good light with the whole ID visible.",
+"Não conseguimos validar sua verificação. Faça de novo com boa luz e o documento inteiro visível."
+],
+"No pudimos validar tu verificación: . Volvé a hacerla con buena luz y el documento completo a la vista.": [
+"We couldn't validate your verification: . Do it again in good light with the whole ID visible.",
+"Não conseguimos validar sua verificação: . Faça de novo com boa luz e o documento inteiro visível."
+],
+"No pudo tomar esta reserva. Si ya pagaste la seña, te la devuelve por el mismo medio.": [
+"They couldn't take this booking. If you already paid the deposit, they'll refund it through the same method.",
+"Ela não pôde aceitar esta reserva. Se você já pagou o sinal, ela devolve pelo mesmo meio."
+],
+"No quedan lugares Star este mes en": [
+"No Star spots left this month in",
+"Não restam vagas Star este mês em"
+],
+"No quedan lugares Star este mes en {x}": [
+"No Star spots left this month in {x}",
+"Não restam vagas Star este mês em {x}"
+],
+"No respondió a tiempo": [
+"Didn't reply in time",
+"Não respondeu a tempo"
+],
+"No se cobra nada.": [
+"Nothing is charged.",
+"Nada é cobrado."
+],
+"No se pudo copiar": [
+"Couldn't copy",
+"Não foi possível copiar"
+],
+"No se pudo crear la passkey.": [
+"Couldn't create the passkey.",
+"Não foi possível criar a passkey."
+],
+"No se pudo crear la passkey. Podés hacerlo después desde Ajustes.": [
+"Couldn't create the passkey. You can do it later from Settings.",
+"Não foi possível criar a passkey. Você pode fazer isso depois em Configurações."
+],
+"No se pudo leer la fecha de nacimiento": [
+"The date of birth couldn't be read",
+"Não foi possível ler a data de nascimento"
+],
+"No se pudo subir a Cloudinary:": [
+"Couldn't upload to Cloudinary:",
+"Não foi possível enviar para o Cloudinary:"
+],
+"No se pudo subir a Cloudinary: {x}": [
+"Couldn't upload to Cloudinary: {x}",
+"Não foi possível enviar ao Cloudinary: {x}"
+],
+"No tenemos permiso para ver tu ubicación. Podés habilitarlo en el navegador (ícono de candado de la barra de direcciones) o elegir la ciudad a mano.": [
+"We don't have permission to see your location. You can enable it in your browser (the padlock icon in the address bar) or choose the city manually.",
+"Não temos permissão para ver sua localização. Você pode habilitá-la no navegador (ícone de cadeado na barra de endereço) ou escolher a cidade manualmente."
+],
+"No tenés chats en curso. El chat en vivo se pide desde el perfil de cada acompañante, en sesiones de {n}, {n} o {n} minutos.": [
+"You don't have any ongoing chats. Live chat is requested from each companion's profile, in {n}, {n} or {n} minute sessions.",
+"Você não tem chats em andamento. O chat ao vivo é solicitado no perfil de cada acompanhante, em sessões de {n}, {n} ou {n} minutos."
+],
+"No tenés historias activas. Subí una foto de tu día: café, paseo, lo que estés haciendo.": [
+"You don't have any active stories. Post a photo of your day: coffee, a walk, whatever you're up to.",
+"Você não tem stories ativos. Publique uma foto do seu dia: um café, um passeio, o que você estiver fazendo."
+],
+"No tenés nada pendiente": [
+"You have nothing pending",
+"Você não tem nada pendente"
+],
+"No tenés viajes programados": [
+"You have no trips scheduled",
+"Você não tem viagens programadas"
+],
+"No tiene horarios libres para esa duración en las próximas semanas. Probá con menos horas.": [
+"They have no free time slots for that duration in the coming weeks. Try fewer hours.",
+"Ela não tem horários livres para essa duração nas próximas semanas. Tente com menos horas."
+],
+"No va a poder escribirte y la conversación se oculta de tu bandeja. Podés deshacerlo cuando quieras.": [
+"They won't be able to message you and the conversation will be hidden from your inbox. You can undo it anytime.",
+"Essa pessoa não vai poder te escrever e a conversa fica oculta na sua caixa de entrada. Você pode desfazer quando quiser."
+],
+"No, gracias": [
+"No, thanks",
+"Não, obrigado"
+],
+"No, hablar con una persona": [
+"No, talk to a person",
+"Não, falar com uma pessoa"
+],
+"Nombre": [
+"Name",
+"Nome"
+],
+"Nombre (ej.: {x})": [
+"Name (e.g., {x})",
+"Nome (ex.: {x})"
+],
+"Nombre completo": [
+"Full name",
+"Nome completo"
+],
+"Nombre de tu localidad": [
+"Name of your town",
+"Nome da sua localidade"
+],
+"Nombre del link {n}": [
+"Link {n} name",
+"Nome do link {n}"
+],
+"Nombre en la tarjeta": [
+"Name on card",
+"Nome no cartão"
+],
+"Nombre para mostrar": [
+"Display name",
+"Nome de exibição"
+],
+"Nombre público": [
+"Public name",
+"Nome público"
+],
+"Nordelta": [
+"Nordelta",
+"Nordelta"
+],
+"Nota (solo la ves vos)": [
+"Note (only you can see it)",
+"Nota (só você vê)"
+],
+"Nota de {x}:": [
+"Note from {x}:",
+"Nota de {x}:"
+],
+"Notificaciones": [
+"Notifications",
+"Notificações"
+],
+"Novedades de SexyRose": [
+"SexyRose news",
+"Novidades do SexyRose"
+],
+"Nueva": [
+"New",
+"Nova"
+],
+"Nueva contraseña": [
+"New password",
+"Nova senha"
+],
+"Nueva historia": [
+"New story",
+"Novo story"
+],
+"Nuevo artículo": [
+"New article",
+"Novo artigo"
+],
+"Nuevo pack": [
+"New pack",
+"Novo pacote"
+],
+"Nuevo pedido": [
+"New request",
+"Novo pedido"
+],
+"Nuevo pedido a medida": [
+"New custom request",
+"Novo pedido personalizado"
+],
+"Nuevos": [
+"New",
+"Novos"
+],
+"Nuevos mensajes": [
+"New messages",
+"Novas mensagens"
+],
+"Número de empresa": [
+"Business number",
+"Número da empresa"
+],
+"Número de empresa:": [
+"Business number:",
+"Número da empresa:"
+],
+"Número de tarjeta": [
+"Card number",
+"Número do cartão"
+],
+"Ocultar": [
+"Hide",
+"Ocultar"
+],
+"Ocultar mi cuenta": [
+"Hide my account",
+"Ocultar minha conta"
+],
+"Ocupado": [
+"Busy",
+"Ocupado"
+],
+"Ocupado · Salida coordinada por fuera": [
+"Busy · Outing arranged outside the platform",
+"Ocupado · Passeio combinado por fora"
+],
+"Ocupado: una salida que coordinaste por fuera. Bloqueado: un horario personal. En los dos casos, los clientes no pueden reservar ahí.": [
+"Busy: an outing you arranged outside the platform. Blocked: personal time. In both cases, clients can't book that slot.",
+"Ocupado: um passeio que você combinou por fora. Bloqueado: um horário pessoal. Nos dois casos, os clientes não podem reservar nesse horário."
+],
+"Ofrecimiento de servicios sexuales": [
+"Offering sexual services",
+"Oferta de serviços sexuais"
+],
+"Ok, la solicitud sigue como estaba. Podés responderla desde tu panel.": [
+"Okay, the request stays as it was. You can reply to it from your dashboard.",
+"Ok, a solicitação continua como estava. Você pode respondê-la pelo seu painel."
+],
+"Olivos": [
+"Olivos",
+"Olivos"
+],
+"Omitir": [
+"Skip",
+"Pular"
+],
+"Opcional. La acordás con cada cliente. No es un cobro de la plataforma.": [
+"Optional. You agree on it with each client. It's not a platform charge.",
+"Opcional. Você combina com cada cliente. Não é uma cobrança da plataforma."
+],
+"Ordenadas por ranking: Stars y plan A primero.": [
+"Sorted by ranking: Stars and plan A first.",
+"Ordenadas por ranking: Stars e plano A primeiro."
+],
+"Orlando": [
+"Orlando",
+"Orlando"
+],
+"Oro": [
+"Gold",
+"Ouro"
+],
+"Otro": [
+"Other",
+"Outro"
+],
+"Otro incumplimiento de las políticas": [
+"Other policy violation",
+"Outra violação das políticas"
+],
+"Pack": [
+"Pack",
+"Pacote"
+],
+"Pack a medida de {x}": [
+"Custom pack from {x}",
+"Pacote personalizado de {x}"
+],
+"Pack borrado": [
+"Pack deleted",
+"Pacote apagado"
+],
+"Pack creado": [
+"Pack created",
+"Pacote criado"
+],
+"Pack guardado": [
+"Pack saved",
+"Pacote salvo"
+],
+"Pack · Hace ayer · USD {n}": [
+"Pack · Yesterday · USD {n}",
+"Pacote · Ontem · USD {n}"
+],
+"Pack · Pedido el {x} · USD {n}": [
+"Pack · Requested on {x} · USD {n}",
+"Pacote · Pedido em {x} · USD {n}"
+],
+"Packs": [
+"Packs",
+"Pacotes"
+],
+"Packs comprados": [
+"Purchased packs",
+"Pacotes comprados"
+],
+"Packs y pedidos a medida": [
+"Packs and custom requests",
+"Pacotes e pedidos personalizados"
+],
+"Packs, pedidos a medida y agenda": [
+"Packs, custom requests and calendar",
+"Pacotes, pedidos personalizados e agenda"
+],
+"Packs, pedidos a medida y agenda de reservas.": [
+"Packs, custom requests and booking calendar.",
+"Pacotes, pedidos personalizados e agenda de reservas."
+],
+"Pagado ·": [
+"Paid ·",
+"Pago ·"
+],
+"Pagado · en producción": [
+"Paid · in progress",
+"Pago · em produção"
+],
+"Pagado · esperando respuesta": [
+"Paid · awaiting response",
+"Pago · aguardando resposta"
+],
+"Pagados": [
+"Paid",
+"Pagos"
+],
+"Pagar": [
+"Pay",
+"Pagar"
+],
+"Pagar pedido a medida": [
+"Pay custom request",
+"Pagar pedido personalizado"
+],
+"Pagar seña": [
+"Pay deposit",
+"Pagar sinal"
+],
+"Pagar seña USD {n}": [
+"Pay USD {n} deposit",
+"Pagar sinal de USD {n}"
+],
+"Pagar {x}": [
+"Pay {x}",
+"Pagar {x}"
+],
+"Pagaste USD {n}.": [
+"You paid USD {n}.",
+"Você pagou USD {n}."
+],
+"Pagaste una sesión de {x} min ({x}). Si no acepta en": [
+"You paid for a {x}-min session ({x}). If they don't accept within",
+"Você pagou uma sessão de {x} min ({x}). Se não aceitar em"
+],
+"Pagaste {x}.": [
+"You paid {x}.",
+"Você pagou {x}."
+],
+"Pagaste {x}. Te avisamos por mensaje cuando lo entregue.": [
+"You paid {x}. We'll message you when it's delivered.",
+"Você pagou {x}. Avisamos por mensagem quando for entregue."
+],
+"Pago aprobado ·": [
+"Payment approved ·",
+"Pagamento aprovado ·"
+],
+"Pago aprobado · {x}": [
+"Payment approved · {x}",
+"Pagamento aprovado · {x}"
+],
+"Pagos en USD": [
+"Payments in USD",
+"Pagamentos em USD"
+],
+"Pagué la seña de una reserva pero todavía figura \"esperando seña\".": [
+"I paid the deposit for a booking but it still says \"awaiting deposit\".",
+"Paguei o sinal de uma reserva, mas ainda aparece \"aguardando sinal\"."
+],
+"Pagá la seña con el link de {x}. Cuando la reciba, confirma la reserva. El pago es fuera de SexyRose.": [
+"Pay the deposit with {x}'s link. Once she receives it, she'll confirm the booking. Payment happens outside SexyRose.",
+"Pague o sinal pelo link de {x}. Quando ela receber, confirma a reserva. O pagamento é feito fora do SexyRose."
+],
+"Pagás ahora USD {n}. Si {x} acepta, te envía el contenido directo a tu cuenta y lo podés ver durante": [
+"You pay USD {n} now. If {x} accepts, she sends the content straight to your account and you can view it for",
+"Você paga USD {n} agora. Se {x} aceitar, ela envia o conteúdo direto para sua conta e você pode ver durante"
+],
+"Pagás ahora USD {n}. Si {x} acepta, te envía el contenido directo a tu cuenta. Si lo rechaza, te reembolsamos el total.": [
+"You pay USD {n} now. If {x} accepts, she sends the content straight to your account. If she declines, we refund you in full.",
+"Você paga USD {n} agora. Se {x} aceitar, ela envia o conteúdo direto para sua conta. Se recusar, devolvemos o valor total."
+],
+"Pagás un plan mensual para estar publicada. Cuanto más alto el plan, más arriba aparecés y más herramientas para ganar tenés. Podés cambiarlo cuando quieras.": [
+"You pay a monthly plan to be listed. The higher the plan, the higher you appear and the more tools you have to earn. You can change it anytime.",
+"Você paga um plano mensal para ficar publicada. Quanto mais alto o plano, mais acima você aparece e mais ferramentas para ganhar você tem. Pode mudar quando quiser."
+],
+"Palabras clave": [
+"Keywords",
+"Palavras-chave"
+],
+"Panel admin": [
+"Admin dashboard",
+"Painel admin"
+],
+"Para acompañantes": [
+"For companions",
+"Para acompanhantes"
+],
+"Para acompañantes, clientes y administración. Para mirar perfiles y escribir por WhatsApp no hace falta cuenta; para comprar contenido, sí (sin verificación de identidad).": [
+"For companions, clients and admins. You don't need an account to browse profiles and message on WhatsApp; you do to buy content (no identity verification).",
+"Para acompanhantes, clientes e administração. Para ver perfis e escrever pelo WhatsApp não precisa de conta; para comprar conteúdo, sim (sem verificação de identidade)."
+],
+"Para chatear necesitás una cuenta de cliente. Sin verificación de identidad.": [
+"To chat you need a client account. No identity verification.",
+"Para conversar você precisa de uma conta de cliente. Sem verificação de identidade."
+],
+"Para comprar contenido necesitás una cuenta de cliente. Solo alias, email y contraseña: sin verificación de identidad.": [
+"To buy content you need a client account. Just an alias, email and password: no identity verification.",
+"Para comprar conteúdo você precisa de uma conta de cliente. Só apelido, email e senha: sem verificação de identidade."
+],
+"Para comprar contenido usá una cuenta de cliente.": [
+"To buy content, use a client account.",
+"Para comprar conteúdo, use uma conta de cliente."
+],
+"Para comprar necesitás una cuenta de cliente. No pedimos documento ni verificación de identidad.": [
+"To buy you need a client account. We don't ask for ID or identity verification.",
+"Para comprar você precisa de uma conta de cliente. Não pedimos documento nem verificação de identidade."
+],
+"Para confirmarla, pagá la seña de": [
+"To confirm it, pay the deposit of",
+"Para confirmá-la, pague o sinal de"
+],
+"Para coordinar la salida, usá WhatsApp. El chat es para charlar y pedir contenido.": [
+"To arrange the outing, use WhatsApp. The chat is for talking and requesting content.",
+"Para combinar o passeio, use o WhatsApp. O chat é para conversar e pedir conteúdo."
+],
+"Para pedir contenido a medida necesitás una cuenta de cliente. Sin verificación de identidad.": [
+"To request custom content you need a client account. No identity verification.",
+"Para pedir conteúdo personalizado você precisa de uma conta de cliente. Sem verificação de identidade."
+],
+"Para recibir reservas: cargá tu tarifa orientativa por hora en Mi perfil, pegá tu link de pago, marcá tu horario hábil (al menos un día).": [
+"To receive bookings: add your suggested hourly rate in My profile, paste your payment link, set your working hours (at least one day).",
+"Para receber reservas: informe sua tarifa por hora em Meu perfil, cole seu link de pagamento, marque seu horário de atendimento (pelo menos um dia)."
+],
+"Para recibir reservas: pegá tu link de pago, marcá tu horario hábil (al menos un día).": [
+"To receive bookings: paste your payment link, set your working hours (at least one day).",
+"Para receber reservas: cole seu link de pagamento, marque seu horário de atendimento (pelo menos um dia)."
+],
+"Para recuperar tus compras. No se muestra a nadie.": [
+"To recover your purchases. It isn't shown to anyone.",
+"Para recuperar suas compras. Não é mostrado a ninguém."
+],
+"Para reservar una salida necesitás una cuenta de cliente. Sin verificación de identidad.": [
+"To book an outing you need a client account. No identity verification.",
+"Para reservar um passeio você precisa de uma conta de cliente. Sem verificação de identidade."
+],
+"Para una foto elegí una imagen (JPG o PNG)": [
+"For a photo, choose an image (JPG or PNG)",
+"Para uma foto, escolha uma imagem (JPG ou PNG)"
+],
+"Para vender más": [
+"To sell more",
+"Para vender mais"
+],
+"Para vos": [
+"For you",
+"Para você"
+],
+"Pasaporte": [
+"Passport",
+"Passaporte"
+],
+"Paseo": [
+"Walk",
+"Passeio"
+],
+"Paseo · {x} · {n}:{n} a {n}:{n} h": [
+"Walk · {x} · {n}:{n} to {n}:{n}",
+"Passeio · {x} · {n}:{n} às {n}:{n} h"
+],
+"Paso": [
+"Pass",
+"Passar"
+],
+"Paso (X)": [
+"Pass (X)",
+"Passar (X)"
+],
+"Paso, siguiente perfil": [
+"Pass, next profile",
+"Passar, próximo perfil"
+],
+"Passkey": [
+"Passkey",
+"Passkey"
+],
+"Passkey creada": [
+"Passkey created",
+"Passkey criada"
+],
+"PayPal": [
+"PayPal",
+"PayPal"
+],
+"Payoneer": [
+"Payoneer",
+"Payoneer"
+],
+"Pedido a medida ·": [
+"Custom request ·",
+"Pedido personalizado ·"
+],
+"Pedido a medida · video librería": [
+"Custom request · bookstore video",
+"Pedido personalizado · vídeo na livraria"
+],
+"Pedido a medida · {x}": [
+"Custom request · {x}",
+"Pedido personalizado · {x}"
+],
+"Pedido aceptado. Le avisamos al cliente para que pague.": [
+"Request accepted. We'll let the client know so they can pay.",
+"Pedido aceito. Avisamos o cliente para que ele pague."
+],
+"Pedido cancelado": [
+"Request canceled",
+"Pedido cancelado"
+],
+"Pedido de": [
+"Request from",
+"Pedido de"
+],
+"Pedido de cliente": [
+"Client request",
+"Pedido de cliente"
+],
+"Pedido de {x}": [
+"Request from {x}",
+"Pedido de {x}"
+],
+"Pedido de {x} · ya pagó USD {n}": [
+"Request from {x} · already paid USD {n}",
+"Pedido de {x} · já pagou USD {n}"
+],
+"Pedido el": [
+"Requested on",
+"Pedido em"
+],
+"Pedido el {x} ·": [
+"Requested on {x} ·",
+"Pedido em {x} ·"
+],
+"Pedido enviado a": [
+"Request sent to",
+"Pedido enviado para"
+],
+"Pedido enviado a {x}": [
+"Request sent to {x}",
+"Pedido enviado para {x}"
+],
+"Pedido enviado. Te avisamos cuando": [
+"Request sent. We'll let you know when",
+"Pedido enviado. Vamos te avisar quando"
+],
+"Pedido enviado. Te avisamos cuando aprobemos": [
+"Request sent. We'll let you know when we approve",
+"Pedido enviado. Vamos te avisar quando aprovarmos"
+],
+"Pedido enviado. Te avisamos cuando {x}": [
+"Request sent. We'll let you know when {x}",
+"Pedido enviado. Avisamos quando {x}"
+],
+"Pedido rechazado": [
+"Request declined",
+"Pedido recusado"
+],
+"Pedido rechazado · reembolsamos al cliente": [
+"Request declined · we refund the client",
+"Pedido recusado · reembolsamos o cliente"
+],
+"Pedidos": [
+"Requests",
+"Pedidos"
+],
+"Pedidos a medida": [
+"Custom requests",
+"Pedidos personalizados"
+],
+"Pedidos nuevos y pagos confirmados": [
+"New requests and confirmed payments",
+"Novos pedidos e pagamentos confirmados"
+],
+"Pedile a una acompañante fotos de una salida, un video saludo o recomendaciones de su ciudad. Te cotiza y pagás recién cuando acepta.": [
+"Ask a companion for photos from an outing, a greeting video or recommendations for her city. She sends you a quote and you only pay once she accepts.",
+"Peça a uma acompanhante fotos de um passeio, um vídeo de saudação ou recomendações da cidade dela. Ela te passa um orçamento e você só paga quando ela aceita."
+],
+"Pedir \"{x}\"": [
+"Request \"{x}\"",
+"Pedir \"{x}\""
+],
+"Pedir contenido a": [
+"Request content from",
+"Pedir conteúdo para"
+],
+"Pedir contenido a medida": [
+"Request custom content",
+"Pedir conteúdo personalizado"
+],
+"Pedir contenido a {x}": [
+"Request content from {x}",
+"Pedir conteúdo a {x}"
+],
+"Pediste sumar": [
+"You asked to add",
+"Você pediu para adicionar"
+],
+"Pendientes": [
+"Pending",
+"Pendentes"
+],
+"Perfecto, no usás la agenda. Si cambiás de idea, la activás desde tu panel.": [
+"Got it, you don't use the calendar. If you change your mind, you can turn it on from your dashboard.",
+"Perfeito, você não usa a agenda. Se mudar de ideia, pode ativá-la pelo seu painel."
+],
+"Perfecto. ¿Qué horario te queda cómodo?": [
+"Perfect. What time works for you?",
+"Perfeito. Qual horário fica bom para você?"
+],
+"Perfil de {x}": [
+"{x}'s profile",
+"Perfil de {x}"
+],
+"Perfil guardado": [
+"Profile saved",
+"Perfil salvo"
+],
+"Perfil {n}% completo": [
+"Profile {n}% complete",
+"Perfil {n}% completo"
+],
+"Perfiles cerca tuyo": [
+"Profiles near you",
+"Perfis perto de você"
+],
+"Perfiles nuevos en tu ciudad y promociones.": [
+"New profiles in your city and promotions.",
+"Novos perfis na sua cidade e promoções."
+],
+"Perfiles verificados": [
+"Verified profiles",
+"Perfis verificados"
+],
+"Permiso de ubicación denegado. Podés elegir la ciudad a mano.": [
+"Location permission denied. You can choose the city manually.",
+"Permissão de localização negada. Você pode escolher a cidade manualmente."
+],
+"Perú": [
+"Peru",
+"Peru"
+],
+"Pidió hablar con una persona": [
+"Asked to talk to a person",
+"Pediu para falar com uma pessoa"
+],
+"Pidió pagos fuera de la plataforma": [
+"Asked for payments outside the platform",
+"Pediu pagamentos fora da plataforma"
+],
+"Piezas incluidas": [
+"Included pieces",
+"Peças incluídas"
+],
+"Pilar": [
+"Pilar",
+"Pilar"
+],
+"Pinamar": [
+"Pinamar",
+"Pinamar"
+],
+"Plan": [
+"Plan",
+"Plano"
+],
+"Plan Bronce": [
+"Bronze plan",
+"Plano Bronze"
+],
+"Plan C · Oro": [
+"Plan C · Gold",
+"Plano C · Ouro"
+],
+"Plan Oro": [
+"Gold plan",
+"Plano Ouro"
+],
+"Plan Star": [
+"Star plan",
+"Plano Star"
+],
+"Plan actual": [
+"Current plan",
+"Plano atual"
+],
+"Plan {x}": [
+"{x} plan",
+"Plano {x}"
+],
+"Planes mensuales": [
+"Monthly plans",
+"Planos mensais"
+],
+"Planes para acompañantes": [
+"Plans for companions",
+"Planos para acompanhantes"
+],
+"Plata": [
+"Silver",
+"Prata"
+],
+"Platino": [
+"Platinum",
+"Platina"
+],
+"Podés hacer otro cuando quieras.": [
+"You can do another one whenever you want.",
+"Você pode fazer outro quando quiser."
+],
+"Podés pedir la baja escribiendo \"hablar con una persona\" acá: el equipo la gestiona y te confirma por email.": [
+"You can request to close your account by typing \"talk to a person\" here: the team handles it and confirms by email.",
+"Você pode pedir o cancelamento escrevendo \"falar com uma pessoa\" aqui: a equipe cuida disso e confirma por email."
+],
+"Podés pedirle contenido a medida.": [
+"You can ask her for custom content.",
+"Você pode pedir conteúdo personalizado a ela."
+],
+"Podés volver a empezar y verlos de nuevo.": [
+"You can start over and see them again.",
+"Você pode recomeçar e vê-los de novo."
+],
+"Poné tu nombre": [
+"Enter your name",
+"Digite seu nome"
+],
+"Poné un nombre para mostrar": [
+"Enter a display name",
+"Digite um nome de exibição"
+],
+"Poné un título": [
+"Add a title",
+"Adicione um título"
+],
+"Poné un título al pack": [
+"Give the pack a title",
+"Dê um título ao pacote"
+],
+"Por responder": [
+"Awaiting reply",
+"A responder"
+],
+"Por seguridad no se pueden compartir teléfonos, links, mails ni usuarios de otras redes en el chat.": [
+"For safety, phone numbers, links, emails and usernames from other networks can't be shared in the chat.",
+"Por segurança, não é possível compartilhar telefones, links, emails nem usuários de outras redes no chat."
+],
+"Portugués": [
+"Portuguese",
+"Português"
+],
+"Postulante": [
+"Applicant",
+"Candidata"
+],
+"Precio": [
+"Price",
+"Preço"
+],
+"Precio Foto en USD": [
+"Photo price in USD",
+"Preço da foto em USD"
+],
+"Precio Pack en USD": [
+"Pack price in USD",
+"Preço do pacote em USD"
+],
+"Precio Video en USD": [
+"Video price in USD",
+"Preço do vídeo em USD"
+],
+"Precio actualizado": [
+"Price updated",
+"Preço atualizado"
+],
+"Precio del pack": [
+"Pack price",
+"Preço do pacote"
+],
+"Precio {n} minutos": [
+"Price for {n} minutes",
+"Preço de {n} minutos"
+],
+"Precios de pedidos a medida": [
+"Custom request prices",
+"Preços de pedidos personalizados"
+],
+"Preguntas frecuentes": [
+"FAQ",
+"Perguntas frequentes"
+],
+"Premium": [
+"Premium",
+"Premium"
+],
+"Presentación": [
+"Intro",
+"Apresentação"
+],
+"Presentación en inglés": [
+"Intro in English",
+"Apresentação em inglês"
+],
+"Primer mes con cobros": [
+"First month with earnings",
+"Primeiro mês com recebimentos"
+],
+"Primera en el swipe de tu provincia o estado": [
+"First in swipe in your province or state",
+"Primeira no swipe da sua província ou estado"
+],
+"Primero cargá tu WhatsApp en Mi perfil.": [
+"First add your WhatsApp in My profile.",
+"Primeiro adicione seu WhatsApp em Meu perfil."
+],
+"Primero las de": [
+"First, those from",
+"Primeiro as de"
+],
+"Primero las de {x}, después el resto.": [
+"Those from {x} first, then the rest.",
+"Primeiro as de {x}, depois o resto."
+],
+"Principal": [
+"Main",
+"Principal"
+],
+"Prioridad": [
+"Priority",
+"Prioridade"
+],
+"Privacidad": [
+"Privacy",
+"Privacidade"
+],
+"Privacidad y ubicación": [
+"Privacy and location",
+"Privacidade e localização"
+],
+"Privado (pago)": [
+"Private (paid)",
+"Privado (pago)"
+],
+"Privado: se ve borroso hasta que el cliente lo compra, sin límite. Las fotos y videos públicos se cargan en Mi perfil.": [
+"Private: it looks blurred until the client buys it, no limit. Public photos and videos go in My profile.",
+"Privado: aparece desfocado até o cliente comprar, sem limite. Fotos e vídeos públicos são enviados em Meu perfil."
+],
+"Probar": [
+"Try",
+"Testar"
+],
+"Probar como cliente": [
+"Try as a client",
+"Testar como cliente"
+],
+"Probar una pregunta": [
+"Try a question",
+"Testar uma pergunta"
+],
+"Probá con otra ubicación o quitando filtros.": [
+"Try another location or remove some filters.",
+"Tente outra localização ou remova filtros."
+],
+"Probá con otro filtro o subí algo nuevo.": [
+"Try another filter or upload something new.",
+"Tente outro filtro ou envie algo novo."
+],
+"Probá con otro filtro.": [
+"Try another filter.",
+"Tente outro filtro."
+],
+"Probá quitando alguna actividad o ampliando el rango de edad.": [
+"Try removing an activity or widening the age range.",
+"Tente remover alguma atividade ou ampliar a faixa de idade."
+],
+"Probá quitando la ciudad o la actividad.": [
+"Try removing the city or the activity.",
+"Tente remover a cidade ou a atividade."
+],
+"Probá una pregunta": [
+"Try a question",
+"Teste uma pergunta"
+],
+"Procesando…": [
+"Processing…",
+"Processando…"
+],
+"Programar destino": [
+"Schedule destination",
+"Programar destino"
+],
+"Proponer otro horario": [
+"Suggest another time",
+"Propor outro horário"
+],
+"Provincia / estado": [
+"Province / state",
+"Província / estado"
+],
+"Provincia de Buenos Aires": [
+"Buenos Aires Province",
+"Província de Buenos Aires"
+],
+"Prueba de vida": [
+"Liveness check",
+"Prova de vida"
+],
+"Próximas salidas": [
+"Upcoming outings",
+"Próximos passeios"
+],
+"Próximos": [
+"Upcoming",
+"Próximos"
+],
+"Próximos destinos": [
+"Upcoming destinations",
+"Próximos destinos"
+],
+"Publicado como premium ·": [
+"Published as premium ·",
+"Publicado como premium ·"
+],
+"Publicado el {x}": [
+"Posted on {x}",
+"Publicado em {x}"
+],
+"Publicados": [
+"Published",
+"Publicados"
+],
+"Publicar": [
+"Publish",
+"Publicar"
+],
+"Publicar historia": [
+"Post story",
+"Publicar story"
+],
+"Publicar mi perfil": [
+"Publish my profile",
+"Publicar meu perfil"
+],
+"Publicá el tuyo": [
+"Publish yours",
+"Publique o seu"
+],
+"Publicá tu primer contenido": [
+"Publish your first content",
+"Publique seu primeiro conteúdo"
+],
+"Puede que haya cambiado de nombre o que ya no esté publicado.": [
+"It may have changed its name or no longer be published.",
+"Pode ter mudado de nome ou não estar mais publicado."
+],
+"Puede que la acompañante ya no esté publicada.": [
+"The companion may no longer be published.",
+"Pode ser que a acompanhante não esteja mais publicada."
+],
+"Punta del Este": [
+"Punta del Este",
+"Punta del Este"
+],
+"Punto de encuentro": [
+"Meeting point",
+"Ponto de encontro"
+],
+"Página de la foto": [
+"Photo page",
+"Página da foto"
+],
+"Página de la fotopasaporte": [
+"Passport photo page",
+"Página da foto do passaporte"
+],
+"Públicas: las ve cualquiera. La principal es la del swipe. Mínimo {n} para publicar tu perfil.": [
+"Public: anyone can see them. The main one is the swipe photo. At least {n} to publish your profile.",
+"Públicas: qualquer pessoa vê. A principal é a do swipe. Mínimo de {n} para publicar seu perfil."
+],
+"Públicos y cortos (hasta {n} segundos): una presentación, un paseo, tu lugar favorito.": [
+"Public and short (up to {n} seconds): an intro, a walk, your favorite place.",
+"Públicos e curtos (até {n} segundos): uma apresentação, um passeio, seu lugar favorito."
+],
+"Públicos y cortos (hasta {x} segundos): una presentación, un paseo, tu lugar favorito.": [
+"Public and short (up to {x} seconds): an intro, a walk, your favorite place.",
+"Públicos e curtos (até {x} segundos): uma apresentação, um passeio, seu lugar favorito."
+],
+"Quedan": [
+"Remaining:",
+"Restam"
+],
+"Quedan {n} en {x}": [
+"{n} left in {x}",
+"Restam {n} em {x}"
+],
+"Quedan {x} en": [
+"{x} left in",
+"Restam {x} em"
+],
+"Quiero hablar con una persona": [
+"I want to talk to a person",
+"Quero falar com uma pessoa"
+],
+"Quiero ser Star": [
+"I want to be a Star",
+"Quero ser Star"
+],
+"Quitar": [
+"Remove",
+"Remover"
+],
+"Quitar filtros": [
+"Clear filters",
+"Limpar filtros"
+],
+"Quitar foto": [
+"Remove photo",
+"Remover foto"
+],
+"Quitar foto {n}": [
+"Remove photo {n}",
+"Remover foto {n}"
+],
+"Quitar passkeys": [
+"Remove passkeys",
+"Remover passkeys"
+],
+"Quitar video": [
+"Remove video",
+"Remover vídeo"
+],
+"Quitar video {n}": [
+"Remove video {n}",
+"Remover vídeo {n}"
+],
+"Qué es Stars": [
+"What is Stars",
+"O que é Stars"
+],
+"Qué hiciste, dónde, con quién fuiste": [
+"What you did, where, who you went with",
+"O que você fez, onde, com quem foi"
+],
+"Qué pasó": [
+"What happened",
+"O que aconteceu"
+],
+"Qué vas a necesitar": [
+"What you'll need",
+"O que você vai precisar"
+],
+"Ramos Mejía": [
+"Ramos Mejía",
+"Ramos Mejía"
+],
+"Realizada": [
+"Completed",
+"Realizada"
+],
+"Rechazada": [
+"Declined",
+"Recusada"
+],
+"Rechazada por la acompañante": [
+"Declined by the companion",
+"Recusada pela acompanhante"
+],
+"Rechazado · reembolsado": [
+"Declined · refunded",
+"Recusado · reembolsado"
+],
+"Rechazados": [
+"Declined",
+"Recusados"
+],
+"Rechazar": [
+"Decline",
+"Recusar"
+],
+"Rechazar pedido": [
+"Decline request",
+"Recusar pedido"
+],
+"Rechazar reserva": [
+"Decline booking",
+"Recusar reserva"
+],
+"Recibido. Lo revisamos y te avisamos": [
+"Received. We'll review it and let you know",
+"Recebido. Vamos analisar e te avisamos"
+],
+"Recibimos tu documento, tu selfie y tu video. Los revisamos en menos de {n} h y te avisamos por email.": [
+"We received your ID, selfie and video. We'll review them within {n} h and let you know by email.",
+"Recebemos seu documento, sua selfie e seu vídeo. Vamos revisá-los em menos de {n} h e te avisar por e-mail."
+],
+"Recientes": [
+"Recent",
+"Recentes"
+],
+"Recordar pasos a postulantes": [
+"Remind applicants of their steps",
+"Lembrar etapas às candidatas"
+],
+"Recordatorio de renovación": [
+"Renewal reminder",
+"Lembrete de renovação"
+],
+"Reembolsada": [
+"Refunded",
+"Reembolsada"
+],
+"Registrate": [
+"Sign up",
+"Cadastre-se"
+],
+"Región Metropolitana": [
+"Santiago Metropolitan Region",
+"Região Metropolitana"
+],
+"Reglas de la plataforma": [
+"Platform rules",
+"Regras da plataforma"
+],
+"Reiniciar datos de demo": [
+"Reset demo data",
+"Redefinir dados de demonstração"
+],
+"Reintentar": [
+"Retry",
+"Tentar novamente"
+],
+"Repetir nueva contraseña": [
+"Repeat new password",
+"Repita a nova senha"
+],
+"Reportar": [
+"Report",
+"Denunciar"
+],
+"Reportar a": [
+"Report",
+"Denunciar"
+],
+"Reportar a {x}": [
+"Report {x}",
+"Denunciar {x}"
+],
+"Reportar salida": [
+"Report outing",
+"Denunciar passeio"
+],
+"Reportar usuario": [
+"Report user",
+"Denunciar usuário"
+],
+"Reporte enviado. Gracias por avisar.": [
+"Report sent. Thanks for letting us know.",
+"Denúncia enviada. Obrigado por avisar."
+],
+"Reporte enviado. Lo revisamos en menos de {n} h": [
+"Report sent. We'll review it within {n} h",
+"Denúncia enviada. Vamos analisar em menos de {n} h"
+],
+"Reporte enviado. Lo revisamos en menos de {n} horas.": [
+"Report sent. We'll review it within {n} hours.",
+"Denúncia enviada. Vamos analisar em menos de {n} horas."
+],
+"Reproducir o pausar": [
+"Play or pause",
+"Reproduzir ou pausar"
+],
+"Reserva": [
+"Booking",
+"Reserva"
+],
+"Reserva cancelada": [
+"Booking canceled",
+"Reserva cancelada"
+],
+"Reserva confirmada": [
+"Booking confirmed",
+"Reserva confirmada"
+],
+"Reserva rechazada": [
+"Booking declined",
+"Reserva recusada"
+],
+"Reserva rechazada. Le avisamos al cliente. Si ya te pagó la seña, devolvésela por el mismo medio.": [
+"Booking declined. We let the client know. If they already paid you the deposit, refund it through the same method.",
+"Reserva recusada. Avisamos o cliente. Se ele já pagou o sinal, devolva pelo mesmo meio."
+],
+"Reserva solicitada": [
+"Booking requested",
+"Reserva solicitada"
+],
+"Reservar": [
+"Book",
+"Reservar"
+],
+"Reservar mi slot": [
+"Book my slot",
+"Reservar minha vaga"
+],
+"Reservar mi slot ·": [
+"Book my slot ·",
+"Reservar minha vaga ·"
+],
+"Reservar salida": [
+"Book outing",
+"Reservar passeio"
+],
+"Reservar una salida": [
+"Book an outing",
+"Reservar um passeio"
+],
+"Reservas": [
+"Bookings",
+"Reservas"
+],
+"Reservas de salidas": [
+"Outing bookings",
+"Reservas de passeios"
+],
+"Reservas y seña": [
+"Bookings and deposit",
+"Reservas e sinal"
+],
+"Reservaste": [
+"You booked",
+"Você reservou"
+],
+"Reservo una salida de compañía en un lugar público, sin contenido sexual de ningún tipo. Si alguna de las partes propone otra cosa, la cuenta se da de baja. La seña se paga directo a la acompañante: SexyRose no la cobra ni la gestiona.": [
+"I'm booking a companionship outing in a public place, with no sexual content of any kind. If either party proposes anything else, the account will be closed. The deposit is paid directly to the companion: SexyRose doesn't collect or manage it.",
+"Estou reservando um passeio de companhia em um lugar público, sem nenhum tipo de conteúdo sexual. Se alguma das partes propuser outra coisa, a conta será encerrada. O sinal é pago diretamente à acompanhante: o SexyRose não cobra nem gerencia esse valor."
+],
+"Responde con un saludo": [
+"Replies with a greeting",
+"Responde com uma saudação"
+],
+"Responder": [
+"Reply",
+"Responder"
+],
+"Responder rápido vende más": [
+"Replying fast sells more",
+"Responder rápido vende mais"
+],
+"Respondidas": [
+"Answered",
+"Respondidas"
+],
+"Respondé en menos de {n} h": [
+"Reply within {n} h",
+"Responda em menos de {n} h"
+],
+"Respondé todo lo que quieras": [
+"Reply as much as you want",
+"Responda o quanto quiser"
+],
+"Respuesta": [
+"Answer",
+"Resposta"
+],
+"Respuesta enviada": [
+"Reply sent",
+"Resposta enviada"
+],
+"Respuestas al instante · te pasa con una persona si hace falta": [
+"Instant answers · connects you with a person if needed",
+"Respostas na hora · te passa para uma pessoa se precisar"
+],
+"Respuestas de hoy:": [
+"Today's answers:",
+"Respostas de hoje:"
+],
+"Resumen": [
+"Summary",
+"Resumo"
+],
+"Revisión manual: algo no coincide o no se pudo leer": [
+"Manual review: something doesn't match or couldn't be read",
+"Revisão manual: algo não confere ou não pôde ser lido"
+],
+"Revisá el WhatsApp: necesita código de país y número": [
+"Check the WhatsApp number: it needs a country code and number",
+"Verifique o WhatsApp: precisa do código do país e do número"
+],
+"Revisá el email": [
+"Check the email",
+"Verifique o e-mail"
+],
+"Revisá el email de cobro": [
+"Check the payout email",
+"Verifique o e-mail de recebimento"
+],
+"Revisá el link \"": [
+"Check the link \"",
+"Verifique o link \""
+],
+"Revisá y enviá": [
+"Review and send",
+"Revise e envie"
+],
+"Revisé: es mayor de 18": [
+"Checked: 18 or older",
+"Revisei: é maior de 18"
+],
+"Robusta": [
+"Sturdy",
+"Robusta"
+],
+"Río Cuarto": [
+"Río Cuarto",
+"Río Cuarto"
+],
+"Río de Janeiro": [
+"Rio de Janeiro",
+"Rio de Janeiro"
+],
+"Salida cancelada": [
+"Outing canceled",
+"Passeio cancelado"
+],
+"Salida marcada como realizada": [
+"Outing marked as completed",
+"Passeio marcado como realizado"
+],
+"Salidas": [
+"Outings",
+"Passeios"
+],
+"Salidas en lugares públicos y con reglas claras.": [
+"Outings in public places with clear rules.",
+"Passeios em lugares públicos e com regras claras."
+],
+"Salidas en lugares públicos, sin contenido sexual. Decidís qué proponés, cuándo y con quién. Podés reportar y bloquear a quien no respete eso.": [
+"Outings in public places, with no sexual content. You decide what you offer, when and with whom. You can report and block anyone who doesn't respect that.",
+"Passeios em lugares públicos, sem conteúdo sexual. Você decide o que propõe, quando e com quem. Você pode denunciar e bloquear quem não respeitar isso."
+],
+"Salidas en lugares públicos. Reportá cualquier conducta inapropiada.": [
+"Outings in public places. Report any inappropriate behavior.",
+"Passeios em lugares públicos. Denuncie qualquer conduta inadequada."
+],
+"Salidas que ofrecés": [
+"Outings you offer",
+"Passeios que você oferece"
+],
+"Salidas que propone": [
+"Outings offered",
+"Passeios oferecidos"
+],
+"Salidas siempre en lugares públicos. Si alguien te incomoda, bloquealo y reportalo desde Mensajes.": [
+"Outings are always in public places. If someone makes you uncomfortable, block and report them from Messages.",
+"Passeios sempre em lugares públicos. Se alguém te incomodar, bloqueie e denuncie em Mensagens."
+],
+"San Antonio de Padua": [
+"San Antonio de Padua",
+"San Antonio de Padua"
+],
+"San Fernando": [
+"San Fernando",
+"San Fernando"
+],
+"San Justo": [
+"San Justo",
+"San Justo"
+],
+"San Miguel": [
+"San Miguel",
+"San Miguel"
+],
+"San Rafael": [
+"San Rafael",
+"San Rafael"
+],
+"Santa Fe": [
+"Santa Fe",
+"Santa Fe"
+],
+"Se canceló el ingreso con passkey.": [
+"Passkey sign-in was canceled.",
+"O acesso com passkey foi cancelado."
+],
+"Se paga con el link de pago de {x}. SexyRose no la cobra.": [
+"It's paid with {x}'s payment link. SexyRose doesn't collect it.",
+"É pago pelo link de pagamento de {x}. O SexyRose não cobra esse valor."
+],
+"Se renueva el {x} ·": [
+"Renews on {x} ·",
+"Renova em {x} ·"
+],
+"Se renueva el {x} · faltan {n} días": [
+"Renews on {x} · {n} days left",
+"Renova em {x} · faltam {n} dias"
+],
+"Se renueva el {x} · faltan {x} días": [
+"Renews on {x} · {x} days left",
+"Renova em {x} · faltam {x} dias"
+],
+"Se renueva el {x} · {n} días": [
+"Renews on {x} · {n} days",
+"Renova em {x} · {n} dias"
+],
+"Se renuevan cada 30 días. Cancelás cuando quieras.": [
+"They renew every 30 days. Cancel anytime.",
+"Renovam a cada 30 dias. Cancele quando quiser."
+],
+"Se ve {n} h en tu perfil y en el inicio": [
+"Shown for {n} h on your profile and the home page",
+"Fica visível por {n} h no seu perfil e no início"
+],
+"Secciones del panel": [
+"Dashboard sections",
+"Seções do painel"
+],
+"Sección": [
+"Section",
+"Seção"
+],
+"Sección \"Stars del mes\" en el inicio": [
+"\"Stars of the month\" section on Home",
+"Seção \"Stars do mês\" no Início"
+],
+"Sección Bronce en el inicio ({n}.ª)": [
+"Bronze section on Home (#{n})",
+"Seção Bronze no Início ({n}ª)"
+],
+"Sección Diamante en el inicio ({n}.ª)": [
+"Diamond section on Home (#{n})",
+"Seção Diamante no Início ({n}ª)"
+],
+"Sección Diamante, la primera debajo de Stars, con tarjetas grandes. Todas las herramientas y estadísticas detalladas.": [
+"Diamond section, the first one below Stars, with large cards. All tools and detailed stats.",
+"Seção Diamante, a primeira abaixo de Stars, com cards grandes. Todas as ferramentas e estatísticas detalhadas."
+],
+"Sección Oro en el inicio ({n}.ª)": [
+"Gold section on Home (#{n})",
+"Seção Ouro no Início ({n}ª)"
+],
+"Sección Plata en el inicio ({n}.ª)": [
+"Silver section on Home (#{n})",
+"Seção Prata no Início ({n}ª)"
+],
+"Sección Platino en el inicio ({n}.ª)": [
+"Platinum section on Home (#{n})",
+"Seção Platina no Início ({n}ª)"
+],
+"Seguir": [
+"Continue",
+"Continuar"
+],
+"Seguir deslizando": [
+"Keep swiping",
+"Continue deslizando"
+],
+"Seguridad y reportes": [
+"Safety and reports",
+"Segurança e denúncias"
+],
+"Seleccioná el texto y copialo": [
+"Select the text and copy it",
+"Selecione o texto e copie"
+],
+"Selfie": [
+"Selfie",
+"Selfie"
+],
+"Sello Star en tu perfil y tus cards": [
+"Star badge on your profile and your cards",
+"Selo Star no seu perfil e nos seus cards"
+],
+"Semana anterior": [
+"Previous week",
+"Semana anterior"
+],
+"Semana siguiente": [
+"Next week",
+"Próxima semana"
+],
+"Separadas por coma. Son las palabras con las que la gente pregunta.": [
+"Comma-separated. These are the words people use when they ask.",
+"Separadas por vírgula. São as palavras que as pessoas usam para perguntar."
+],
+"Separados por coma.": [
+"Separated by commas.",
+"Separados por vírgula."
+],
+"Sesión": [
+"Session",
+"Sessão"
+],
+"Sesión activa": [
+"Active session",
+"Sessão ativa"
+],
+"Sesión cerrada": [
+"Logged out",
+"Sessão encerrada"
+],
+"Sesión de": [
+"Session of",
+"Sessão de"
+],
+"Sesión de {x}": [
+"{x} session",
+"Sessão de {x}"
+],
+"SexyRose": [
+"SexyRose",
+"SexyRose"
+],
+"SexyRose, inicio": [
+"SexyRose, home",
+"SexyRose, início"
+],
+"Seña ({n}% de USD {n} × {n} h)": [
+"Deposit ({n}% of USD {n} × {n} h)",
+"Sinal ({n}% de USD {n} × {n} h)"
+],
+"Seña ({x}% de {x} × {x} h)": [
+"Deposit ({x}% of {x} × {x} h)",
+"Sinal ({x}% de {x} × {x} h)"
+],
+"Seña recibida · confirmar": [
+"Deposit received · confirm",
+"Sinal recebido · confirmar"
+],
+"Seña:": [
+"Deposit:",
+"Sinal:"
+],
+"Seña: {n}% de tu tarifa (USD {n}/h) × duración": [
+"Deposit: {n}% of your rate (USD {n}/h) × duration",
+"Sinal: {n}% da sua tarifa (USD {n}/h) × duração"
+],
+"Seña: {n}% de tu tarifa (sin tarifa) × duración": [
+"Deposit: {n}% of your rate (no rate) × duration",
+"Sinal: {n}% da sua tarifa (sem tarifa) × duração"
+],
+"Short": [
+"Short",
+"Short"
+],
+"Short exclusivo": [
+"Exclusive short",
+"Short exclusivo"
+],
+"Short {n}:{n} · {n} vistas": [
+"Short {n}:{n} · {n} views",
+"Short {n}:{n} · {n} visualizações"
+],
+"Short · {n}:{n} · {n} vistas · {n} ventas": [
+"Short · {n}:{n} · {n} views · {n} sales",
+"Short · {n}:{n} · {n} visualizações · {n} vendas"
+],
+"Short · {x}": [
+"Short · {x}",
+"Short · {x}"
+],
+"Shorts": [
+"Shorts",
+"Shorts"
+],
+"Si algo salió borroso, volvé y cambialo.": [
+"If something came out blurry, go back and change it.",
+"Se algo ficou borrado, volte e troque."
+],
+"Si la acompañante usa la agenda, en su perfil ves \"Reservar salida\"… Cuando recibe la seña, confirma la reserva.": [
+"If the companion uses the calendar, you'll see \"Book an outing\" on their profile… Once they receive the deposit, they confirm the booking.",
+"Se a acompanhante usa a agenda, você vê \"Reservar passeio\" no perfil… Quando recebe o sinal, ela confirma a reserva."
+],
+"Si lo dejás a mitad, retomás desde donde quedaste.": [
+"If you stop halfway, you'll pick up where you left off.",
+"Se parar no meio, você continua de onde parou."
+],
+"Si querés captar público internacional, escribí tu titular y tu presentación también en inglés. Los ven quienes navegan la web en inglés; el resto ve la versión en español.": [
+"If you want to reach an international audience, write your headline and your introduction in English too. People browsing the site in English see them; everyone else sees the Spanish version.",
+"Se você quer atrair público internacional, escreva seu título e sua apresentação também em inglês. Quem navega no site em inglês vê essa versão; o resto vê a versão em espanhol."
+],
+"Si querés, te avisamos cada solicitud por WhatsApp y respondés desde ahí.": [
+"If you want, we can notify you of each request on WhatsApp and you can reply from there.",
+"Se quiser, avisamos cada solicitação pelo WhatsApp e você responde por lá."
+],
+"Si viajás, seguí trabajando: aparecés en los listados del destino": [
+"If you travel, keep working: you show up in the listings at your destination",
+"Se você viajar, continue trabalhando: você aparece nas listagens do destino"
+],
+"Si viajás, seguí trabajando: aparecés en los listados del destino {n} días antes de llegar y tu ubicación cambia sola durante el viaje.": [
+"If you travel, keep working: you appear in the destination's listings {n} days before you arrive and your location updates automatically during the trip.",
+"Se você viajar, continue trabalhando: você aparece nas listagens do destino {n} dias antes de chegar e sua localização muda sozinha durante a viagem."
+],
+"Si {x} acepta, te envía el contenido directo acá. Si lo rechaza, te reembolsamos.": [
+"If {x} accepts, they'll send you the content right here. If they decline, we'll refund you.",
+"Se {x} aceitar, envia o conteúdo direto aqui. Se recusar, reembolsamos você."
+],
+"Si {x} acepta, te envía el directo acá. Si lo rechaza, te reembolsamos.": [
+"If {x} accepts, they'll send it to you right here. If they decline, we'll refund you.",
+"Se {x} aceitar, envia direto aqui. Se recusar, reembolsamos você."
+],
+"Si {x} acepta, te envía el pack directo acá. Si lo rechaza, te reembolsamos.": [
+"If {x} accepts, they'll send you the pack right here. If they decline, we'll refund you.",
+"Se {x} aceitar, o pacote chega direto aqui. Se recusar, reembolsamos você."
+],
+"Siempre en un lugar público. Nunca domicilios ni hoteles.": [
+"Always in a public place. Never homes or hotels.",
+"Sempre em um lugar público. Nunca residências nem hotéis."
+],
+"Sigue: {x}": [
+"Next: {x}",
+"A seguir: {x}"
+],
+"Siguiente": [
+"Next",
+"Próximo"
+],
+"Sin actividad todavía": [
+"No activity yet",
+"Sem atividade ainda"
+],
+"Sin actividades": [
+"No activities",
+"Sem atividades"
+],
+"Sin consultas": [
+"No inquiries",
+"Sem consultas"
+],
+"Sin consultas abiertas": [
+"No open inquiries",
+"Sem consultas abertas"
+],
+"Sin consultas abierto": [
+"No open inquiries",
+"Sem consultas abertas"
+],
+"Sin conversaciones.": [
+"No conversations.",
+"Sem conversas."
+],
+"Sin cuenta": [
+"No account",
+"Sem conta"
+],
+"Sin deslizar a la derecha no hay WhatsApp.": [
+"No right swipe, no WhatsApp.",
+"Sem deslizar para a direita, não tem WhatsApp."
+],
+"Sin documento ni selfie: no verificamos tu identidad. Tus compras, chats y pedidos quedan en tu cuenta.": [
+"No ID or selfie: we don't verify your identity. Your purchases, chats and requests stay in your account.",
+"Sem documento nem selfie: não verificamos sua identidade. Suas compras, chats e pedidos ficam na sua conta."
+],
+"Sin fotos todavía.": [
+"No photos yet.",
+"Ainda sem fotos."
+],
+"Sin indicar": [
+"Not specified",
+"Não informado"
+],
+"Sin lugares este mes": [
+"No spots this month",
+"Sem vagas este mês"
+],
+"Sin límite": [
+"Unlimited",
+"Sem limite"
+],
+"Sin mensajes todavía.": [
+"No messages yet.",
+"Ainda sem mensagens."
+],
+"Sin máximo": [
+"No maximum",
+"Sem máximo"
+],
+"Sin mínimo": [
+"No minimum",
+"Sem mínimo"
+],
+"Sin passkey": [
+"No passkey",
+"Sem passkey"
+],
+"Sin plan": [
+"No plan",
+"Sem plano"
+],
+"Sin plan activo no podés responder mensajes.": [
+"Without an active plan you can't reply to messages.",
+"Sem plano ativo você não pode responder mensagens."
+],
+"Sin sesión de chat en curso": [
+"No chat session in progress",
+"Nenhuma sessão de chat em andamento"
+],
+"Sin texto": [
+"No text",
+"Sem texto"
+],
+"Sin vencimiento": [
+"No expiration",
+"Sem vencimento"
+],
+"Sin verificar": [
+"Unverified",
+"Não verificada"
+],
+"Sin videos todavía.": [
+"No videos yet.",
+"Ainda sem vídeos."
+],
+"Sitio de publicidad y contenido.": [
+"Advertising and content site.",
+"Site de publicidade e conteúdo."
+],
+"Slot Stars": [
+"Stars slot",
+"Vaga Stars"
+],
+"Sobre mí": [
+"About me",
+"Sobre mim"
+],
+"Solicitado": [
+"Requested",
+"Solicitado"
+],
+"Solicitados": [
+"Requested",
+"Solicitados"
+],
+"Solicitar reserva": [
+"Request booking",
+"Solicitar reserva"
+],
+"Solicitud": [
+"Request",
+"Solicitação"
+],
+"Solicitud cancelada. Te reembolsamos.": [
+"Request canceled. We'll refund you.",
+"Solicitação cancelada. Reembolsamos você."
+],
+"Solicitud rechazada. Se reembolsa al cliente.": [
+"Request declined. The client will be refunded.",
+"Solicitação recusada. O cliente será reembolsado."
+],
+"Solicitudes · esperando seña": [
+"Requests · awaiting deposit",
+"Solicitações · aguardando sinal"
+],
+"Solo el barrio, nunca tu dirección.": [
+"Just the neighborhood, never your address.",
+"Só o bairro, nunca seu endereço."
+],
+"Solo se muestra a quien desliza tu perfil a la derecha.": [
+"Only shown to people who swipe your profile right.",
+"Só aparece para quem desliza seu perfil para a direita."
+],
+"Solo texto. No se pueden compartir teléfonos, links ni usuarios de otras redes.": [
+"Text only. Phone numbers, links and usernames from other networks can't be shared.",
+"Só texto. Não é possível compartilhar telefones, links nem usuários de outras redes."
+],
+"Solo texto. Por seguridad no se pueden compartir teléfonos, links ni usuarios de otras redes. Si algo te incomoda, reportalo.": [
+"Text only. For safety, you can't share phone numbers, links or usernames from other networks. If something makes you uncomfortable, report it.",
+"Só texto. Por segurança, não é possível compartilhar telefones, links nem usuários de outras redes. Se algo te incomodar, denuncie."
+],
+"Soporte": [
+"Support",
+"Suporte"
+],
+"Sos Star por": [
+"You're a Star for",
+"Você é Star por"
+],
+"Sos Star por {x}": [
+"You're a Star for {x}",
+"Você é Star por {x}"
+],
+"Soy mayor de 18 años y acepto los términos: salidas en lugares públicos, sin contenido sexual.": [
+"I'm 18 or older and I accept the terms: outings in public places, with no sexual content.",
+"Sou maior de 18 anos e aceito os termos: passeios em lugares públicos, sem conteúdo sexual."
+],
+"Soy mayor de {n} años y acepto los términos.": [
+"I'm at least {n} years old and accept the terms.",
+"Tenho {n} anos ou mais e aceito os termos."
+],
+"Spam": [
+"Spam",
+"Spam"
+],
+"Specialty coffee, museums and long talks": [
+"Specialty coffee, museums and long talks",
+"Specialty coffee, museums and long talks"
+],
+"Star": [
+"Star",
+"Star"
+],
+"Star hasta el": [
+"Star until",
+"Star até"
+],
+"Star hasta el {x} · {n} días": [
+"Star until {x} · {n} days",
+"Star até {x} · {n} dias"
+],
+"Stars": [
+"Stars",
+"Stars"
+],
+"Stars del mes": [
+"Stars of the month",
+"Stars do mês"
+],
+"Subir archivos nuevos": [
+"Upload new files",
+"Enviar novos arquivos"
+],
+"Subir contenido": [
+"Upload content",
+"Enviar conteúdo"
+],
+"Subir foto de perfil": [
+"Upload profile photo",
+"Enviar foto de perfil"
+],
+"Subir fotos ({n}/{n})": [
+"Upload photos ({n}/{n})",
+"Enviar fotos ({n}/{n})"
+],
+"Subir un archivo nuevo": [
+"Upload a new file",
+"Enviar um novo arquivo"
+],
+"Submit sin handler:": [
+"Submit sin handler:",
+"Submit sin handler:"
+],
+"Subí de plan": [
+"Upgrade your plan",
+"Mude de plano"
+],
+"Subí shorts gratis": [
+"Upload shorts for free",
+"Envie shorts grátis"
+],
+"Subí un short gratis para empezar a recibir visitas y una foto premium para vender.": [
+"Upload a free short to start getting visits and a premium photo to sell.",
+"Envie um short grátis para começar a receber visitas e uma foto premium para vender."
+],
+"Sumar mi localidad": [
+"Add my town",
+"Adicionar minha localidade"
+],
+"Suplantación de identidad": [
+"Impersonation",
+"Falsidade ideológica"
+],
+"Suscripción": [
+"Subscription",
+"Assinatura"
+],
+"Suscripción mensual · se renueva cada {n} días": [
+"Monthly subscription · renews every {n} days",
+"Assinatura mensal · renova a cada {n} dias"
+],
+"Swipe": [
+"Swipe",
+"Swipe"
+],
+"Swipe a la derecha → WhatsApp": [
+"Swipe right → WhatsApp",
+"Deslize para a direita → WhatsApp"
+],
+"Swipes a la derecha": [
+"Right swipes",
+"Swipes para a direita"
+],
+"Sáb y dom · {n} a {n} h": [
+"Sat and Sun · {n} to {n} h",
+"Sáb e dom · {n} às {n} h"
+],
+"Sábado": [
+"Saturday",
+"Sábado"
+],
+"Sábado desde": [
+"Saturday from",
+"Sábado das"
+],
+"Sábado hasta": [
+"Saturday until",
+"Sábado até"
+],
+"Sé Star en tu provincia o estado": [
+"Be a Star in your province or state",
+"Seja Star na sua província ou estado"
+],
+"Sí, lo revisé": [
+"Yes, I checked",
+"Sim, revisei"
+],
+"Sí, usar la agenda": [
+"Yes, use the calendar",
+"Sim, usar a agenda"
+],
+"Tandil": [
+"Tandil",
+"Tandil"
+],
+"Tarifa": [
+"Rate",
+"Tarifa"
+],
+"Tarifa a convenir": [
+"Rate to be agreed",
+"Valor a combinar"
+],
+"Tarifa orientativa por hora": [
+"Suggested hourly rate",
+"Tarifa de referência por hora"
+],
+"Tarifa orientativa: desde USD {n} por hora · la acordás directamente": [
+"Suggested rate: from USD {n} per hour · you agree on it directly",
+"Tarifa de referência: a partir de USD {n} por hora · vocês combinam diretamente"
+],
+"Tarifa orientativa: desde {x} por hora · la acordás directamente": [
+"Suggested rate: from {x} per hour · you agree on it directly",
+"Valor de referência: a partir de {x} por hora · você combina diretamente"
+],
+"Tarifas y contacto": [
+"Rates and contact",
+"Tarifas e contato"
+],
+"Te avisamos cuando se libere uno.": [
+"We'll let you know when one opens up.",
+"Avisamos quando uma vaga for liberada."
+],
+"Te enviamos un código de {n} dígitos a": [
+"We sent a {n}-digit code to",
+"Enviamos um código de {n} dígitos para"
+],
+"Te falta poco para publicar tu perfil": [
+"You're almost ready to publish your profile",
+"Falta pouco para publicar seu perfil"
+],
+"Te interesa": [
+"You're interested",
+"Você tem interesse"
+],
+"Te interesa {x}: ya podés escribirle.": [
+"You're interested in {x}: you can message now.",
+"Você tem interesse em {x}: já pode escrever."
+],
+"Te mandamos un código de 6 dígitos.": [
+"We sent you a 6-digit code.",
+"Enviamos um código de 6 dígitos."
+],
+"Te paso con una persona del equipo. Dejame tu email para responderte.": [
+"I'll pass you to someone on the team. Leave me your email so we can get back to you.",
+"Vou te passar para uma pessoa da equipe. Deixe seu email para podermos responder."
+],
+"Te presentás como": [
+"You introduce yourself as",
+"Você se apresenta como"
+],
+"Te reembolsamos": [
+"We'll refund you",
+"Reembolsamos você"
+],
+"Te ubicamos cerca de": [
+"We placed you near",
+"Localizamos você perto de"
+],
+"Teatro": [
+"Theater",
+"Teatro"
+],
+"Tecnología": [
+"Technology",
+"Tecnologia"
+],
+"Telegram": [
+"Telegram",
+"Telegram"
+],
+"Tell people what you like to do and which neighborhoods you know.": [
+"Tell people what you like to do and which neighborhoods you know.",
+"Conte o que você gosta de fazer e quais bairros conhece."
+],
+"Tenés que aceptar las condiciones de la salida": [
+"You must accept the outing's conditions",
+"Você precisa aceitar as condições do passeio"
+],
+"Tenés que confirmar que sos mayor de 18 y aceptar los términos.": [
+"You need to confirm you're 18 or older and accept the terms.",
+"Você precisa confirmar que é maior de 18 e aceitar os termos."
+],
+"Texto (opcional)": [
+"Text (optional)",
+"Texto (opcional)"
+],
+"Tigre": [
+"Tigre",
+"Tigre"
+],
+"Tipo": [
+"Type",
+"Tipo"
+],
+"Tipo de acompañante": [
+"Companion type",
+"Tipo de acompanhante"
+],
+"Tipo de contenido": [
+"Content type",
+"Tipo de conteúdo"
+],
+"Tipo de cuenta": [
+"Account type",
+"Tipo de conta"
+],
+"Tipo de documento": [
+"Document type",
+"Tipo de documento"
+],
+"Tipo de salida": [
+"Outing type",
+"Tipo de passeio"
+],
+"Tips para vender más": [
+"Tips to sell more",
+"Dicas para vender mais"
+],
+"Titular corto": [
+"Short headline",
+"Título curto"
+],
+"Titular en inglés": [
+"English headline",
+"Título em inglês"
+],
+"Tocá para elegir el archivo": [
+"Tap to choose the file",
+"Toque para escolher o arquivo"
+],
+"Tocá para elegir el video": [
+"Tap to choose the video",
+"Toque para escolher o vídeo"
+],
+"Tocá para elegir la foto": [
+"Tap to choose the photo",
+"Toque para escolher a foto"
+],
+"Tocá para elegir una imagen": [
+"Tap to choose an image",
+"Toque para escolher uma imagem"
+],
+"Tocá para elegir video": [
+"Tap to choose a video",
+"Toque para escolher um vídeo"
+],
+"Tocá para sacar o subir la foto": [
+"Tap to take or upload the photo",
+"Toque para tirar ou enviar a foto"
+],
+"Toda la actividad": [
+"All activity",
+"Toda a atividade"
+],
+"Todas": [
+"All",
+"Todas"
+],
+"Todas las ubicaciones": [
+"All locations",
+"Todas as localizações"
+],
+"Todavía no armaste ningún pack": [
+"You haven't created any packs yet",
+"Você ainda não montou nenhum pacote"
+],
+"Todavía no desbloqueaste contenido": [
+"You haven't unlocked any content yet",
+"Você ainda não desbloqueou conteúdo"
+],
+"Todavía no escribió su presentación.": [
+"She hasn't written her intro yet.",
+"Ela ainda não escreveu sua apresentação."
+],
+"Todavía no hay acompañantes publicadas en {x}. Te mostramos las de otras ciudades.": [
+"There are no companions published in {x} yet. Here are some from other cities.",
+"Ainda não há acompanhantes publicadas em {x}. Mostramos as de outras cidades."
+],
+"Todavía no hay all": [
+"No all yet",
+"Ainda não há all"
+],
+"Todavía no hay contenido": [
+"No content yet",
+"Ainda não há conteúdo"
+],
+"Todavía no hay fotos": [
+"No photos yet",
+"Ainda não há fotos"
+],
+"Todavía no hay mensajes": [
+"No messages yet",
+"Ainda não há mensagens"
+],
+"Todavía no hay mensajes.": [
+"No messages yet.",
+"Ainda não há mensagens."
+],
+"Todavía no hay mensajes. Contale qué te gustaría ver o preguntale por sus salidas.": [
+"No messages yet. Tell her what you'd like to see or ask about her outings.",
+"Ainda não há mensagens. Conte o que você gostaria de ver ou pergunte sobre os passeios dela."
+],
+"Todavía no hay perfiles publicados": [
+"No profiles published yet",
+"Ainda não há perfis publicados"
+],
+"Todavía no hay photo": [
+"No photo yet",
+"Ainda não há photo"
+],
+"Todavía no hay salidas confirmadas.": [
+"No confirmed outings yet.",
+"Ainda não há passeios confirmados."
+],
+"Todavía no hiciste pagos.": [
+"You haven't made any payments yet.",
+"Você ainda não fez pagamentos."
+],
+"Todavía no pediste contenido a medida": [
+"You haven't requested custom content yet",
+"Você ainda não pediu conteúdo personalizado"
+],
+"Todavía no publicaste contenido": [
+"You haven't published content yet",
+"Você ainda não publicou conteúdo"
+],
+"Todavía no reservaste salidas": [
+"You haven't booked any outings yet",
+"Você ainda não reservou passeios"
+],
+"Todavía no tenés cobros registrados.": [
+"You don't have any recorded payouts yet.",
+"Você ainda não tem recebimentos registrados."
+],
+"Todavía no tenés conversaciones": [
+"You don't have any conversations yet",
+"Você ainda não tem conversas"
+],
+"Todavía no tenés cuenta": [
+"You don't have an account yet",
+"Você ainda não tem conta"
+],
+"Todavía no tenés mensajes": [
+"You don't have any messages yet",
+"Você ainda não tem mensagens"
+],
+"Todavía no tenés pedidos a medida": [
+"You don't have any custom requests yet",
+"Você ainda não tem pedidos personalizados"
+],
+"Todavía no toma reservas por la agenda": [
+"Not taking calendar bookings yet",
+"Ainda não aceita reservas pela agenda"
+],
+"Todavía sin cobros": [
+"No payouts yet",
+"Ainda sem recebimentos"
+],
+"Todavía sin cobros este mes": [
+"No payments yet this month",
+"Ainda sem recebimentos este mês"
+],
+"Todavía sin swipes": [
+"No swipes yet",
+"Ainda sem swipes"
+],
+"Todo": [
+"All",
+"Tudo"
+],
+"Todo ({n})": [
+"All ({n})",
+"Tudo ({n})"
+],
+"Todo coincide: se puede aprobar": [
+"Everything matches: can be approved",
+"Tudo confere: pode ser aprovado"
+],
+"Todo el día": [
+"All day",
+"O dia todo"
+],
+"Todo el día ·": [
+"All day ·",
+"O dia todo ·"
+],
+"Todo el día · Día libre": [
+"All day · Day off",
+"O dia todo · Dia livre"
+],
+"Todo lo que cargás acá se muestra en tu perfil público. Guardá cuando termines.": [
+"Everything you enter here is shown on your public profile. Save when you're done.",
+"Tudo o que você preenche aqui aparece no seu perfil público. Salve quando terminar."
+],
+"Todo lo que te pagaron los clientes: contenido, packs, chat y pedidos, ya descontada la comisión de packs y pedidos si corresponde. Los planes y Stars no se descuentan de acá.": [
+"Everything clients paid you: content, packs, chat and requests, with the packs and requests commission already deducted where applicable. Plans and Stars are not deducted from here.",
+"Tudo o que os clientes pagaram a você: conteúdo, pacotes, chat e pedidos, já descontada a comissão de pacotes e pedidos, quando aplicável. Os planos e Stars não são descontados daqui."
+],
+"Todos": [
+"All",
+"Todos"
+],
+"Todos los lugares de {x} están libres": [
+"All spots in {x} are open",
+"Todas as vagas de {x} estão livres"
+],
+"Total": [
+"Total",
+"Total"
+],
+"Trans": [
+"Trans",
+"Trans"
+],
+"Transferencia internacional": [
+"International transfer",
+"Transferência internacional"
+],
+"Trato irrespetuoso": [
+"Disrespectful behavior",
+"Tratamento desrespeitoso"
+],
+"Tu acceso a este contenido venció": [
+"Your access to this content has expired",
+"Seu acesso a este conteúdo expirou"
+],
+"Tu actividad": [
+"Your activity",
+"Sua atividade"
+],
+"Tu ciudad": [
+"Your city",
+"Sua cidade"
+],
+"Tu contenido más visto": [
+"Your most viewed content",
+"Seu conteúdo mais visto"
+],
+"Tu cuenta": [
+"Your account",
+"Sua conta"
+],
+"Tu cuenta está bloqueada.": [
+"Your account is blocked.",
+"Sua conta está bloqueada."
+],
+"Tu cuenta está bloqueada. No podés realizar pagos.": [
+"Your account is blocked. You can't make payments.",
+"Sua conta está bloqueada. Você não pode fazer pagamentos."
+],
+"Tu cuenta está casi lista. Completá estos {n} pasos para activar tu perfil: hasta entonces no aparecés en el sitio.": [
+"Your account is almost ready. Complete these {n} steps to activate your profile: until then, you won't appear on the site.",
+"Sua conta está quase pronta. Complete estes {n} passos para ativar seu perfil: até lá, você não aparece no site."
+],
+"Tu cuenta está casi lista. Completá estos {x} pasos para activar tu perfil: hasta entonces no aparecés en el sitio.": [
+"Your account is almost ready. Complete these {x} steps to activate your profile: until then you won't appear on the site.",
+"Sua conta está quase pronta. Complete estas {x} etapas para ativar seu perfil: até lá você não aparece no site."
+],
+"Tu cuenta está oculta": [
+"Your account is hidden",
+"Sua conta está oculta"
+],
+"Tu cuenta está oculta.": [
+"Your account is hidden.",
+"Sua conta está oculta."
+],
+"Tu cuenta está oculta: nadie la ve en el sitio.": [
+"Your account is hidden: no one can see it on the site.",
+"Sua conta está oculta: ninguém a vê no site."
+],
+"Tu cuenta vuelve a estar visible": [
+"Your account is visible again",
+"Sua conta está visível novamente"
+],
+"Tu documento": [
+"Your document",
+"Seu documento"
+],
+"Tu email para responderte": [
+"Your email so we can reply",
+"Seu email para te respondermos"
+],
+"Tu ficha": [
+"Your details",
+"Sua ficha"
+],
+"Tu identidad está verificada. Los clientes ven la insignia en tu perfil.": [
+"Your identity is verified. Clients see the badge on your profile.",
+"Sua identidade está verificada. Os clientes veem o selo no seu perfil."
+],
+"Tu identidad ya está verificada.": [
+"Your identity is already verified.",
+"Sua identidade já está verificada."
+],
+"Tu link de pago": [
+"Your payment link",
+"Seu link de pagamento"
+],
+"Tu link para la bio:": [
+"Your link for your bio:",
+"Seu link para a bio:"
+],
+"Tu mensaje: “": [
+"Your message: “",
+"Sua mensagem: “"
+],
+"Tu navegador no permite ubicación. Escribí la ciudad a mano.": [
+"Your browser doesn't allow location access. Type the city manually.",
+"Seu navegador não permite localização. Digite a cidade manualmente."
+],
+"Tu nombre": [
+"Your name",
+"Seu nome"
+],
+"Tu perfil deja de aparecer en ese destino.": [
+"Your profile will no longer appear in that destination.",
+"Seu perfil deixa de aparecer nesse destino."
+],
+"Tu perfil deja de mostrar \"Reservar salida\". Las reservas ya confirmadas siguen vigentes y tu configuración queda guardada por si la volvés a activar.": [
+"Your profile will no longer show \"Book an outing\". Bookings already confirmed remain valid, and your settings are saved in case you turn it back on.",
+"Seu perfil deixa de mostrar \"Reservar passeio\". As reservas já confirmadas continuam valendo e sua configuração fica salva caso você volte a ativá-la."
+],
+"Tu perfil está completo pero pausado.": [
+"Your profile is complete but paused.",
+"Seu perfil está completo, mas pausado."
+],
+"Tu perfil está completo y publicado.": [
+"Your profile is complete and published.",
+"Seu perfil está completo e publicado."
+],
+"Tu perfil está suspendido por administración. Escribinos a ayuda para revisarlo.": [
+"Your profile has been suspended by the admin team. Write to Help so we can review it.",
+"Seu perfil foi suspenso pela administração. Escreva para a ajuda para revisarmos."
+],
+"Tu perfil muestra el botón": [
+"Your profile shows the button",
+"Seu perfil mostra o botão"
+],
+"Tu perfil no está publicado. Activá un plan para aparecer en el swipe y en el listado.": [
+"Your profile isn't published. Activate a plan to show up in Swipe and in the listing.",
+"Seu perfil não está publicado. Ative um plano para aparecer no Swipe e na listagem."
+],
+"Tu perfil publicado y verificado, para empezar.": [
+"Your profile published and verified, to get started.",
+"Seu perfil publicado e verificado, para começar."
+],
+"Tu plan": [
+"Your plan",
+"Seu plano"
+],
+"Tu plan actual": [
+"Your current plan",
+"Seu plano atual"
+],
+"Tu plan no incluye chat. Pasá a Estándar o superior para responder.": [
+"Your plan doesn't include chat. Upgrade to Standard or higher to reply.",
+"Seu plano não inclui chat. Passe para o Padrão ou superior para responder."
+],
+"Tu plan no incluye chat. Podés leer pero no responder.": [
+"Your plan doesn't include chat. You can read but not reply.",
+"Seu plano não inclui chat. Você pode ler, mas não responder."
+],
+"Tu plan no incluye contenido premium: podés publicar fotos y shorts gratis.": [
+"Your plan doesn't include premium content: you can post photos and shorts for free.",
+"Seu plano não inclui conteúdo premium: você pode publicar fotos e shorts grátis."
+],
+"Tu plan no permite contenido premium.": [
+"Your plan doesn't allow premium content.",
+"Seu plano não permite conteúdo premium."
+],
+"Tu plan permite": [
+"Your plan allows",
+"Seu plano permite"
+],
+"Tu plan permite hasta": [
+"Your plan allows up to",
+"Seu plano permite até"
+],
+"Tu plan permite hasta {x}": [
+"Your plan allows up to {x}",
+"Seu plano permite até {x}"
+],
+"Tu plan permite {x}": [
+"Your plan allows {x}",
+"Seu plano permite {x}"
+],
+"Tu respuesta": [
+"Your answer",
+"Sua resposta"
+],
+"Tu seguridad primero.": [
+"Your safety comes first.",
+"Sua segurança em primeiro lugar."
+],
+"Tu selfie": [
+"Your selfie",
+"Sua selfie"
+],
+"Tu semana": [
+"Your week",
+"Sua semana"
+],
+"Tu titular aparece acá": [
+"Your headline shows up here",
+"Seu título aparece aqui"
+],
+"Tu última sesión terminó.": [
+"Your last session ended.",
+"Sua última sessão terminou."
+],
+"Tu última sesión terminó. Elegí {n}, {n} o {n} minutos. Desde USD {n}.": [
+"Your last session ended. Choose {n}, {n} or {n} minutes. From USD {n}.",
+"Sua última sessão terminou. Escolha {n}, {n} ou {n} minutos. A partir de USD {n}."
+],
+"Tus compras, pedidos, reservas y chats.": [
+"Your purchases, requests, bookings and chats.",
+"Suas compras, pedidos, reservas e chats."
+],
+"Tus datos": [
+"Your details",
+"Seus dados"
+],
+"Tus documentos se guardan cifrados y solo los ve el equipo de verificación. Nunca aparecen en tu perfil.": [
+"Your documents are stored encrypted and only the verification team can see them. They never appear on your profile.",
+"Seus documentos são guardados criptografados e só a equipe de verificação os vê. Eles nunca aparecem no seu perfil."
+],
+"Tus fotos, videos y shorts": [
+"Your photos, videos and shorts",
+"Suas fotos, vídeos e shorts"
+],
+"Tus gustos y temas de conversación. Se ven en tu perfil, en Sobre mí.": [
+"Your interests and favorite topics. They show on your profile, under About me.",
+"Seus gostos e assuntos favoritos. Aparecem no seu perfil, em Sobre mim."
+],
+"Tus mejores días": [
+"Your best days",
+"Seus melhores dias"
+],
+"Tus mensajes con clientes aparecen acá. Respondé rápido: vende más.": [
+"Your messages with clients show up here. Reply quickly: it helps you sell more.",
+"Suas mensagens com clientes aparecem aqui. Responda rápido: você vende mais."
+],
+"Tus próximos destinos": [
+"Your upcoming destinations",
+"Seus próximos destinos"
+],
+"Tus shorts arriba del feed": [
+"Your shorts at the top of the feed",
+"Seus shorts no topo do feed"
+],
+"Términos": [
+"Terms",
+"Termos"
+],
+"Título": [
+"Title",
+"Título"
+],
+"USD / h": [
+"USD / h",
+"USD / h"
+],
+"USD por {n}, {n} y {n} minutos. El tiempo corre desde que aceptás.": [
+"USD for {n}, {n} and {n} minutes. The clock starts when you accept.",
+"USD por {n}, {n} e {n} minutos. O tempo começa a contar quando você aceita."
+],
+"USD {n}": [
+"USD {n}",
+"USD {n}"
+],
+"USD {n} c/u · Acceso {n} días · {n} ventas": [
+"USD {n} each · {n}-day access · {n} sales",
+"USD {n} cada · Acesso por {n} dias · {n} vendas"
+],
+"USD {n} c/u · {n} venta": [
+"USD {n} each · {n} sale",
+"USD {n} cada · {n} venda"
+],
+"USD {n} c/u · {n} ventas": [
+"USD {n} each · {n} sales",
+"USD {n} cada · {n} vendas"
+],
+"Ubicación": [
+"Location",
+"Localização"
+],
+"Ubicación de zona cargada · actualizar": [
+"Area location loaded · update",
+"Localização da região carregada · atualizar"
+],
+"Ubicación lista. No hay perfiles en tu ciudad todavía: te mostramos los más cercanos.": [
+"Location ready. There are no profiles in your city yet: here are the closest ones.",
+"Localização pronta. Ainda não há perfis na sua cidade: mostramos os mais próximos."
+],
+"Un cliente": [
+"A client",
+"Um cliente"
+],
+"Un horario personal en el que no trabajás": [
+"A personal time slot when you don't work",
+"Um horário pessoal em que você não trabalha"
+],
+"Un lugar con buena luz": [
+"A place with good light",
+"Um lugar com boa luz"
+],
+"Un lugar público. Ej.: entrada del Malba": [
+"A public place. E.g.: Malba entrance",
+"Um lugar público. Ex.: entrada do Malba"
+],
+"Un pack lleva al menos {n} archivos": [
+"A pack needs at least {n} files",
+"Um pacote precisa ter pelo menos {n} arquivos"
+],
+"Un pack lleva al menos {n} piezas": [
+"A pack needs at least {n} items",
+"Um pacote precisa ter pelo menos {n} peças"
+],
+"Un paso antes de elegir tu plan": [
+"One step before choosing your plan",
+"Um passo antes de escolher seu plano"
+],
+"Un pedido a medida es una foto o un video que un cliente te encarga: un saludo, una recomendación de lugares, una salida puntual. Vos decidís si lo aceptás y a qué precio. Cuando paga, lo entregás desde acá y el cobro se suma a tus ingresos.": [
+"A custom request is a photo or video a client orders from you: a greeting, place recommendations, a specific outing. You decide whether to accept it and at what price. Once they pay, you deliver it from here and the payment is added to your earnings.",
+"Um pedido personalizado é uma foto ou um vídeo que um cliente encomenda: uma saudação, uma recomendação de lugares, um passeio específico. Você decide se aceita e por qual preço. Quando ele paga, você entrega por aqui e o valor é somado aos seus ganhos."
+],
+"Un viaje puede durar hasta": [
+"A trip can last up to",
+"Uma viagem pode durar até"
+],
+"Un video corto: saludo, recomendación, recorrido": [
+"A short video: greeting, recommendation, tour",
+"Um vídeo curto: saudação, recomendação, passeio"
+],
+"Una foto pensada para vos": [
+"A photo made for you",
+"Uma foto pensada para você"
+],
+"Una línea que resuma tus salidas. Aparece debajo de tu nombre.": [
+"One line that sums up your outings. It appears below your name.",
+"Uma linha que resuma seus passeios. Aparece abaixo do seu nome."
+],
+"Una salida que coordinaste por fuera de la agenda": [
+"An outing you arranged outside the calendar",
+"Um passeio que você combinou fora da agenda"
+],
+"Unos minutos": [
+"A few minutes",
+"Alguns minutos"
+],
+"Usamos tu ubicación solo en este dispositivo para ordenar por distancia; no se guarda ni se comparte.": [
+"We use your location only on this device to sort by distance; it isn't saved or shared.",
+"Usamos sua localização só neste dispositivo para ordenar por distância; ela não é salva nem compartilhada."
+],
+"Usando tu ubicación": [
+"Using your location",
+"Usando sua localização"
+],
+"Usar como principal": [
+"Set as main",
+"Usar como principal"
+],
+"Usar esta localidad": [
+"Use this location",
+"Usar esta localidade"
+],
+"Usar foto {n} como principal": [
+"Set photo {n} as main",
+"Usar foto {n} como principal"
+],
+"Usar mi ubicación": [
+"Use my location",
+"Usar minha localização"
+],
+"Usuario": [
+"User",
+"Usuário"
+],
+"Usuario bloqueado": [
+"User blocked",
+"Usuário bloqueado"
+],
+"Usuario desbloqueado": [
+"User unblocked",
+"Usuário desbloqueado"
+],
+"Usá un porcentaje entre {n} y {n}": [
+"Use a percentage between {n} and {n}",
+"Use uma porcentagem entre {n} e {n}"
+],
+"Va a poder volver a escribirte y la conversación vuelve a tu bandeja.": [
+"They'll be able to message you again, and the conversation goes back to your inbox.",
+"Essa pessoa poderá voltar a escrever para você e a conversa volta para sua caixa de entrada."
+],
+"Valencia": [
+"Valencia",
+"Valencia"
+],
+"Valentina (plan A, Star)": [
+"Valentina (plan A, Star)",
+"Valentina (plano A, Star)"
+],
+"Varias fotos y/o videos sobre lo que pidas": [
+"Several photos and/or videos about what you ask for",
+"Várias fotos e/ou vídeos sobre o que você pedir"
+],
+"Vas a aparecer en ese destino {n} días antes de llegar, con la etiqueta \"En {ciudad} desde el…\". Durante el viaje, tu ubicación cambia sola y vuelve a tu ciudad al terminar.": [
+"You'll appear in that destination {n} days before you arrive, labeled \"In {ciudad} from…\". During the trip, your location changes automatically and goes back to your city when it ends.",
+"Você vai aparecer nesse destino {n} dias antes de chegar, com a etiqueta \"Em {ciudad} a partir de…\". Durante a viagem, sua localização muda sozinha e volta para sua cidade ao terminar."
+],
+"Vas a aparecer en ese destino {x} días antes de llegar, con la etiqueta \"En {ciudad} desde el…\". Durante el viaje, tu ubicación cambia sola y vuelve a tu ciudad al terminar.": [
+"You'll show up at that destination {x} days before you arrive, with the label \"In {ciudad} from…\". During the trip, your location changes automatically and goes back to your city when it ends.",
+"Você vai aparecer nesse destino {x} dias antes de chegar, com a etiqueta \"Em {ciudad} desde…\". Durante a viagem, sua localização muda sozinha e volta para sua cidade ao terminar."
+],
+"Vas a entrar solo con email y contraseña. Podés crear otra cuando quieras.": [
+"You'll sign in with just your email and password. You can create another one anytime.",
+"Você vai entrar só com email e senha. Pode criar outra quando quiser."
+],
+"Vas a sacarte una selfie y grabar un video corto.": [
+"You'll take a selfie and record a short video.",
+"Você vai tirar uma selfie e gravar um vídeo curto."
+],
+"Veces que tu tarjeta apareció en un listado": [
+"Times your card appeared in a listing",
+"Vezes que seu card apareceu numa listagem"
+],
+"Vence": [
+"Expires",
+"Vence"
+],
+"Vence en": [
+"Expires in",
+"Vence em"
+],
+"Vencido": [
+"Expired",
+"Vencido"
+],
+"Vendé fotos y videos individuales y publicá shorts.": [
+"Sell individual photos and videos and post shorts.",
+"Venda fotos e vídeos avulsos e publique shorts."
+],
+"Venta de fotos y videos": [
+"Photo and video sales",
+"Venda de fotos e vídeos"
+],
+"Venta de fotos y videos individuales": [
+"Sale of individual photos and videos",
+"Venda de fotos e vídeos avulsos"
+],
+"Ventas": [
+"Sales",
+"Vendas"
+],
+"Ver": [
+"View",
+"Ver"
+],
+"Ver WhatsApp": [
+"View WhatsApp",
+"Ver WhatsApp"
+],
+"Ver como cliente": [
+"View as client",
+"Ver como cliente"
+],
+"Ver cómo te llegan": [
+"See how they reach you",
+"Ver como chegam para você"
+],
+"Ver dentro de {x}": [
+"View in {x}",
+"Ver em {x}"
+],
+"Ver foto": [
+"View photo",
+"Ver foto"
+],
+"Ver foto {n}": [
+"View photo {n}",
+"Ver foto {n}"
+],
+"Ver historias": [
+"View stories",
+"Ver stories"
+],
+"Ver menos": [
+"Show less",
+"Ver menos"
+],
+"Ver mi perfil público": [
+"View my public profile",
+"Ver meu perfil público"
+],
+"Ver mis reservas": [
+"View my bookings",
+"Ver minhas reservas"
+],
+"Ver más": [
+"See more",
+"Ver mais"
+],
+"Ver perfil": [
+"View profile",
+"Ver perfil"
+],
+"Ver perfil (I)": [
+"View profile (I)",
+"Ver perfil (I)"
+],
+"Ver perfil de {x}": [
+"View {x}'s profile",
+"Ver perfil de {x}"
+],
+"Ver perfil público": [
+"View public profile",
+"Ver perfil público"
+],
+"Ver planes": [
+"See plans",
+"Ver planos"
+],
+"Ver página": [
+"View page",
+"Ver página"
+],
+"Ver todas las categorías": [
+"See all categories",
+"Ver todas as categorias"
+],
+"Ver todas las fotos y videos": [
+"View all photos and videos",
+"Ver todas as fotos e vídeos"
+],
+"Ver todo": [
+"View all",
+"Ver tudo"
+],
+"Ver todos": [
+"See all",
+"Ver todos"
+],
+"Ver video": [
+"View video",
+"Ver vídeo"
+],
+"Ver video {n}": [
+"View video {n}",
+"Ver vídeo {n}"
+],
+"Ver {n} historia de hoy": [
+"View {n} story from today",
+"Ver {n} story de hoje"
+],
+"Ver {n} historia de {x}": [
+"View {n} story from {x}",
+"Ver {n} story de {x}"
+],
+"Ver {n} historias de hoy": [
+"View {n} stories from today",
+"Ver {n} stories de hoje"
+],
+"Ver {n} historias de {x}": [
+"View {n} stories from {x}",
+"Ver {n} stories de {x}"
+],
+"Ver {x}": [
+"View {x}",
+"Ver {x}"
+],
+"Ver {x} {x} de hoy": [
+"See {x} {x} from today",
+"Ver {x} {x} de hoje"
+],
+"Verificaciones": [
+"Verifications",
+"Verificações"
+],
+"Verificación": [
+"Verification",
+"Verificação"
+],
+"Verificación analizada de nuevo": [
+"Verification reanalyzed",
+"Verificação analisada novamente"
+],
+"Verificación automática": [
+"Automatic verification",
+"Verificação automática"
+],
+"Verificación automática de identidad": [
+"Automatic identity verification",
+"Verificação automática de identidade"
+],
+"Verificación automática · ahora": [
+"Automatic verification · now",
+"Verificação automática · agora"
+],
+"Verificación automática · hace": [
+"Automatic verification ·",
+"Verificação automática · há"
+],
+"Verificación automática · recién": [
+"Automatic verification · just now",
+"Verificação automática · agora mesmo"
+],
+"Verificación de acompañantes": [
+"Companion verification",
+"Verificação de acompanhantes"
+],
+"Verificación de identidad": [
+"Identity verification",
+"Verificação de identidade"
+],
+"Verificación en curso": [
+"Verification in progress",
+"Verificação em andamento"
+],
+"Verificada": [
+"Verified",
+"Verificada"
+],
+"Verificada automáticamente": [
+"Automatically verified",
+"Verificada automaticamente"
+],
+"Verificar": [
+"Verify",
+"Verificar"
+],
+"Verificar WhatsApp": [
+"Verify WhatsApp",
+"Verificar WhatsApp"
+],
+"Verificar a": [
+"Verify",
+"Verificar"
+],
+"Verificar a {x}": [
+"Verify {x}",
+"Verificar {x}"
+],
+"Verificar email": [
+"Verify email",
+"Verificar email"
+],
+"Verificar identidad": [
+"Verify identity",
+"Verificar identidade"
+],
+"Verificar mi email": [
+"Verify my email",
+"Verificar meu email"
+],
+"Verificar mi identidad": [
+"Verify my identity",
+"Verificar minha identidade"
+],
+"Verificá tu email con un código de 6 dígitos. Después vas a ver los beneficios de cada categoría y sus precios.": [
+"Verify your email with a 6-digit code. Then you'll see each category's benefits and prices.",
+"Verifique seu email com um código de 6 dígitos. Depois você vai ver os benefícios de cada categoria e seus preços."
+],
+"Verificá tu email para ver los planes": [
+"Verify your email to see the plans",
+"Verifique seu email para ver os planos"
+],
+"Verificá tu identidad": [
+"Verify your identity",
+"Verifique sua identidade"
+],
+"Versión del modelo": [
+"Model version",
+"Versão do modelo"
+],
+"Versión en inglés": [
+"English version",
+"Versão em inglês"
+],
+"Vertical, corto": [
+"Vertical, short",
+"Vertical, curto"
+],
+"Viaje cancelado": [
+"Trip canceled",
+"Viagem cancelada"
+],
+"Viajes": [
+"Trips",
+"Viagens"
+],
+"Vicente López": [
+"Vicente López",
+"Vicente López"
+],
+"Video": [
+"Video",
+"Vídeo"
+],
+"Video a medida de {x}": [
+"Custom video from {x}",
+"Vídeo personalizado de {x}"
+],
+"Video agregado": [
+"Video added",
+"Vídeo adicionado"
+],
+"Video corto": [
+"Short video",
+"Vídeo curto"
+],
+"Video de 5 segundos": [
+"5-second video",
+"Vídeo de 5 segundos"
+],
+"Video quitado": [
+"Video removed",
+"Vídeo removido"
+],
+"Video s": [
+"Video s",
+"Vídeo s"
+],
+"Video {n}:{n} · {n} vistas": [
+"Video {n}:{n} · {n} views",
+"Vídeo {n}:{n} · {n} visualizações"
+],
+"Video ·": [
+"Video ·",
+"Vídeo ·"
+],
+"Video · Hace {n} días · USD {n}": [
+"Video · {n} days ago · USD {n}",
+"Vídeo · Há {n} dias · USD {n}"
+],
+"Video · Hace {n} h · USD {n}": [
+"Video · {n} h ago · USD {n}",
+"Vídeo · Há {n} h · USD {n}"
+],
+"Video · {x}": [
+"Video · {x}",
+"Vídeo · {x}"
+],
+"Videos": [
+"Videos",
+"Vídeos"
+],
+"Videos ({n})": [
+"Videos ({n})",
+"Vídeos ({n})"
+],
+"Viernes": [
+"Friday",
+"Sexta-feira"
+],
+"Viernes desde": [
+"Friday from",
+"Sexta-feira das"
+],
+"Viernes hasta": [
+"Friday until",
+"Sexta-feira até"
+],
+"Villa Carlos Paz": [
+"Villa Carlos Paz",
+"Villa Carlos Paz"
+],
+"Vinos": [
+"Wine",
+"Vinhos"
+],
+"Violencia o contenido gráfico": [
+"Violence or graphic content",
+"Violência ou conteúdo gráfico"
+],
+"Visibilidad": [
+"Visibility",
+"Visibilidade"
+],
+"Visible para todos": [
+"Visible to everyone",
+"Visível para todos"
+],
+"Visitante": [
+"Visitor",
+"Visitante"
+],
+"Visitas al perfil": [
+"Profile visits",
+"Visitas ao perfil"
+],
+"Visitas por día": [
+"Visits per day",
+"Visitas por dia"
+],
+"Vista previa": [
+"Preview",
+"Pré-visualização"
+],
+"Viste todos los perfiles": [
+"You've seen all the profiles",
+"Você viu todos os perfis"
+],
+"Viste todos los perfiles con estos filtros": [
+"You've seen all the profiles with these filters",
+"Você viu todos os perfis com estes filtros"
+],
+"Vive en": [
+"Lives in",
+"Mora em"
+],
+"Viña del Mar": [
+"Viña del Mar",
+"Viña del Mar"
+],
+"Volver": [
+"Back",
+"Voltar"
+],
+"Volver a analizar": [
+"Analyze again",
+"Analisar novamente"
+],
+"Volver a comprar": [
+"Buy again",
+"Comprar de novo"
+],
+"Volver a empezar": [
+"Start over",
+"Recomeçar"
+],
+"Volver a la bandeja": [
+"Back to inbox",
+"Voltar à caixa de entrada"
+],
+"Volver a mensajes": [
+"Back to messages",
+"Voltar às mensagens"
+],
+"Volver al inicio": [
+"Back to home",
+"Voltar ao início"
+],
+"Volver al resumen": [
+"Back to summary",
+"Voltar ao resumo"
+],
+"Volvés a aparecer en el sitio": [
+"You're visible on the site again",
+"Você volta a aparecer no site"
+],
+"Vos": [
+"You",
+"Você"
+],
+"Vos ponés las reglas": [
+"You set the rules",
+"Você define as regras"
+],
+"Vos:": [
+"You:",
+"Você:"
+],
+"Vos: Buen día, te confirmo el horario.": [
+"You: Good morning, confirming the time.",
+"Você: Bom dia, confirmo o horário."
+],
+"Vos: Dale, hablamos.": [
+"You: Sure, talk soon.",
+"Você: Combinado, a gente se fala."
+],
+"Vos: Genial, gracias. Te pedí también unas fotos del recorrido.": [
+"You: Great, thanks. I also asked you for some photos of the route.",
+"Você: Ótimo, obrigado. Também te pedi umas fotos do percurso."
+],
+"Vos: Gracias a vos.": [
+"You: Thank you too.",
+"Você: Eu que agradeço."
+],
+"Vos: Hoy te envío el video.": [
+"You: I'll send you the video today.",
+"Você: Hoje te envio o vídeo."
+],
+"Web": [
+"Web",
+"Web"
+],
+"Web · #{x} ·": [
+"Web · #{x} ·",
+"Web · #{x} ·"
+],
+"WhatsApp": [
+"WhatsApp",
+"WhatsApp"
+],
+"WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar. Coordiná el plan, el lugar público y la tarifa por ahí, o reservá el encuentro en su agenda.": [
+"WhatsApp opens with an intro message you can edit before sending. Arrange the plan, the public place and the rate there, or book the meeting on their calendar.",
+"O WhatsApp abre com uma mensagem de apresentação que você pode editar antes de enviar. Combine o plano, o lugar público e a tarifa por lá, ou reserve o encontro na agenda."
+],
+"Ya aparecés en el swipe y en el listado.": [
+"You now appear in Swipe and in the listings.",
+"Você já aparece no swipe e na listagem."
+],
+"Ya existe una cuenta con ese email.": [
+"An account with that email already exists.",
+"Já existe uma conta com esse email."
+],
+"Ya pagó": [
+"Already paid",
+"Já pagou"
+],
+"Ya pagó USD {n} · Pack": [
+"Already paid USD {n} · Pack",
+"Já pagou USD {n} · Pacote"
+],
+"Ya pagó USD {n} · Video": [
+"Already paid USD {n} · Video",
+"Já pagou USD {n} · Vídeo"
+],
+"Ya pagó {x} ·": [
+"Already paid {x} ·",
+"Já pagou {x} ·"
+],
+"Ya pasó un día, quiero hablar con una persona.": [
+"It's been a day, I want to talk to a person.",
+"Já passou um dia, quero falar com uma pessoa."
+],
+"Ya recibimos tu verificación. La revisamos en menos de {n} h.": [
+"We've received your verification. We'll review it in under {n} h.",
+"Já recebemos sua verificação. Vamos analisá-la em menos de {n} h."
+],
+"Ya tengo cuenta": [
+"I already have an account",
+"Já tenho conta"
+],
+"Zona": [
+"Area",
+"Bairro"
+],
+"Zona detectada:": [
+"Detected area:",
+"Região detectada:"
+],
+"Zona guardada. Escribí tu ciudad.": [
+"Area saved. Type your city.",
+"Região salva. Digite sua cidade."
+],
+"Zona o barrio": [
+"Area or neighborhood",
+"Zona ou bairro"
+],
+"a.from": [
+"a.from",
+"a.from"
+],
+"aceptó tu sesión de chat de {n} min": [
+"accepted your {n}-min chat session",
+"aceitou sua sessão de chat de {n} min"
+],
+"acompañante": [
+"companion",
+"acompanhante"
+],
+"acompañantes": [
+"companions",
+"acompanhantes"
+],
+"activa": [
+"active",
+"ativa"
+],
+"activas": [
+"active",
+"ativas"
+],
+"active": [
+"active",
+"active"
+],
+"acumulado": [
+"total to date",
+"acumulado"
+],
+"ago": [
+"Aug",
+"ago"
+],
+"ahora": [
+"now",
+"agora"
+],
+"answer": [
+"answer",
+"answer"
+],
+"ayer": [
+"yesterday",
+"ontem"
+],
+"b[key] ? 1 : a[key]": [
+"b[key] ? 1 : a[key]",
+"b[key] ? 1 : a[key]"
+],
+"bloqueás": [
+"block",
+"bloqueia"
+],
+"botón Ayuda en todas las páginas, menos admin, chat y shorts": [
+"Help button on every page except admin, chat and shorts",
+"botão Ajuda em todas as páginas, exceto admin, chat e shorts"
+],
+"bubble(p, cap + i)).join(\"\")}": [
+"bubble(p, cap + i)).join(\"\")}",
+"bubble(p, cap + i)).join(\"\")}"
+],
+"calendar": [
+"calendar",
+"calendar"
+],
+"cargá tu tarifa orientativa por hora en Mi perfil": [
+"add your suggested hourly rate in My profile",
+"cadastre seu valor de referência por hora em Meu perfil"
+],
+"cerrado": [
+"closed",
+"fechado"
+],
+"ciudades": [
+"cities",
+"cidades"
+],
+"compró \"{x}\" ·": [
+"bought \"{x}\" ·",
+"comprou \"{x}\" ·"
+],
+"compró el pack \"{x}\" ·": [
+"bought the pack \"{x}\" ·",
+"comprou o pacote \"{x}\" ·"
+],
+"con el equipo": [
+"with the team",
+"com a equipe"
+],
+"con su link de pago. Cuando {x} la reciba, marca la reserva como confirmada y la ves en": [
+"using their payment link. When {x} receives it, they mark the booking as confirmed and you'll see it in",
+"com o link de pagamento dela. Quando {x} receber, marca a reserva como confirmada e você a vê em"
+],
+"con {x} el {x}.": [
+"with {x} on {x}.",
+"com {x} em {x}."
+],
+"confirmada": [
+"confirmed",
+"confirmada"
+],
+"confirmó": [
+"confirmed",
+"confirmou"
+],
+"contactos": [
+"contacts",
+"contatos"
+],
+"contenido, packs, chat y pedidos": [
+"content, packs, chat and requests",
+"conteúdo, pacotes, chat e pedidos"
+],
+"conversación": [
+"conversation",
+"conversa"
+],
+"creá una cuenta de cliente": [
+"create a client account",
+"crie uma conta de cliente"
+],
+"dashboard": [
+"dashboard",
+"dashboard"
+],
+"de {n} acompañantes": [
+"of {n} companions",
+"de {n} acompanhantes"
+],
+"de {x} · comisión {x}%": [
+"of {x} · {x}% fee",
+"de {x} · comissão de {x}%"
+],
+"de {x} · {n} ítems": [
+"by {x} · {n} items",
+"de {x} · {n} itens"
+],
+"de {x} · {x} ítems": [
+"of {x} · {x} items",
+"de {x} · {x} itens"
+],
+"desde el {x}": [
+"from {x}",
+"a partir de {x}"
+],
+"desde la entrega. Si lo rechaza, te reembolsamos el total.": [
+"from delivery. If she declines, we refund you in full.",
+"a partir da entrega. Se recusar, devolvemos o valor total."
+],
+"desde que publicaste": [
+"since you posted",
+"desde que você publicou"
+],
+"día restante": [
+"day left",
+"dia restante"
+],
+"días restantes": [
+"days left",
+"dias restantes"
+],
+"email verificado": [
+"email verified",
+"email verificado"
+],
+"en USD": [
+"in USD",
+"em USD"
+],
+"en curso ahora": [
+"in progress now",
+"em andamento agora"
+],
+"en tu perfil": [
+"on your profile",
+"no seu perfil"
+],
+"está suspendido o pendiente de activación": [
+"is suspended or pending activation",
+"está suspenso ou com ativação pendente"
+],
+"hasta el {x}": [
+"until {x}",
+"até {x}"
+],
+"hasta el {x}. Los clientes de ahí te ven primero. Después volvés a {x}.": [
+"until {x}. Clients there see you first. Then you go back to {x}.",
+"até {x}. Os clientes de lá veem você primeiro. Depois você volta para {x}."
+],
+"jun": [
+"Jun",
+"jun"
+],
+"le dio me gusta a tu short \"{x}\"": [
+"liked your short \"{x}\"",
+"curtiu seu short \"{x}\""
+],
+"llega el": [
+"arrives on",
+"chega em"
+],
+"lo que coordinaste por fuera y": [
+"what you arranged elsewhere and",
+"o que você combinou por fora e"
+],
+"los horarios personales.": [
+"your personal time slots.",
+"os horários pessoais."
+],
+"los últimos {n}": [
+"the last {n}",
+"os últimos {n}"
+],
+"lugares por provincia o estado, cada mes": [
+"spots per province or state, each month",
+"vagas por província ou estado, a cada mês"
+],
+"m:ss, por ejemplo {n}:{n}": [
+"m:ss, for example {n}:{n}",
+"m:ss, por exemplo {n}:{n}"
+],
+"marcó": [
+"marked",
+"marcou"
+],
+"marcó <strong>Me interesa</strong> en tu perfil": [
+"marked <strong>I'm interested</strong> on your profile",
+"marcou <strong>Tenho interesse</strong> no seu perfil"
+],
+"marcó como realizada": [
+"marked as completed",
+"marcou como realizada"
+],
+"may": [
+"May",
+"mai"
+],
+"min ·": [
+"min ·",
+"min ·"
+],
+"new Date(e.at)": [
+"new Date(e.at)",
+"new Date(e.at)"
+],
+"no respondió tu solicitud de chat · te reembolsamos": [
+"didn't reply to your chat request · we refunded you",
+"não respondeu à sua solicitação de chat · reembolsamos você"
+],
+"no tiene el chat habilitado en su plan por ahora. Podés pedirle contenido a medida desde tus pedidos.": [
+"doesn't have chat enabled on their plan right now. You can ask for custom content from your requests.",
+"não tem o chat habilitado no plano por enquanto. Você pode pedir conteúdo personalizado pelos seus pedidos."
+],
+"nuevo": [
+"new",
+"novo"
+],
+"number": [
+"number",
+"number"
+],
+"oct": [
+"Oct",
+"out"
+],
+"ocupado": [
+"busy",
+"ocupado"
+],
+"para aceptar": [
+"to accept",
+"para aceitar"
+],
+"para cliente · ya pagó": [
+"for client · already paid",
+"para cliente · já pagou"
+],
+"para seguir respondiendo.": [
+"to keep replying.",
+"para continuar respondendo."
+],
+"para vender fotos y videos.": [
+"to sell photos and videos.",
+"para vender fotos e vídeos."
+],
+"para vender.": [
+"to sell.",
+"para vender."
+],
+"para volver a aparecer.": [
+"to show up again.",
+"para voltar a aparecer."
+],
+"pasaporte": [
+"passport",
+"passaporte"
+],
+"pasaportepasaporte": [
+"passportpassport",
+"passaportepassaporte"
+],
+"pcard(p)) .join(\"\")}": [
+"pcard(p)) .join(\"\")}",
+"pcard(p)) .join(\"\")}"
+],
+"pcard(p)).join(\"\")}": [
+"pcard(p)).join(\"\")}",
+"pcard(p)).join(\"\")}"
+],
+"pegá tu link de pago": [
+"paste your payment link",
+"cole seu link de pagamento"
+],
+"pending": [
+"pending",
+"pending"
+],
+"pidió una sesión de chat de {n} min": [
+"requested a {n}-min chat session",
+"pediu uma sessão de chat de {n} min"
+],
+"piezas entregadas": [
+"pieces delivered",
+"peças entregues"
+],
+"piezas sueltas y packs": [
+"single items and packs",
+"peças avulsas e pacotes"
+],
+"piezas · entregado el": [
+"pieces · delivered on",
+"peças · entregue em"
+],
+"quedan": [
+"remaining:",
+"restam"
+],
+"quedan {n}": [
+"{n} left",
+"restam {n}"
+],
+"quiere chatear {x} min": [
+"wants to chat for {x} min",
+"quer conversar {x} min"
+],
+"rechazó": [
+"declined",
+"recusou"
+],
+"recién": [
+"just now",
+"agora mesmo"
+],
+"reserva, reservar, seña, sena, agenda, horario, turno, coordinar encuentro, cancelar reserva, devolucion": [
+"booking, book, deposit, down payment, calendar, schedule, appointment, arrange a meeting, cancel booking, refund",
+"reserva, reservar, sinal, entrada, agenda, horário, horário marcado, combinar encontro, cancelar reserva, reembolso"
+],
+"salida": [
+"outing",
+"passeio"
+],
+"se renueva a las 00:00": [
+"renews at 00:00",
+"renova às 00:00"
+],
+"sep": [
+"Sep",
+"set"
+],
+"sep completo": [
+"Sep full",
+"set completo"
+],
+"sesiones de {n}, {n} o {n} min": [
+"{n}, {n} or {n} min sessions",
+"sessões de {n}, {n} ou {n} min"
+],
+"signup": [
+"signup",
+"signup"
+],
+"sin tarifa cargada": [
+"no rate set",
+"sem tarifa cadastrada"
+],
+"solicitó una reserva: Café · {x} · {n}:{n} a {n}:{n} h": [
+"requested a booking: Coffee · {x} · {n}:{n} to {n}:{n} h",
+"solicitou uma reserva: Café · {x} · {n}:{n} às {n}:{n} h"
+],
+"solicitó una reserva: Museo · {x} · {n}:{n} a {n}:{n} h": [
+"requested a booking: Museum · {x} · {n}:{n} to {n}:{n} h",
+"solicitou uma reserva: Museu · {x} · {n}:{n} às {n}:{n} h"
+],
+"solicitó una reserva: Paseo · {x} · {n}:{n} a {n}:{n} h": [
+"requested a booking: Walk · {x} · {n}:{n} to {n}:{n} h",
+"solicitou uma reserva: Passeio · {x} · {n}:{n} às {n}:{n} h"
+],
+"string": [
+"string",
+"string"
+],
+"t && tr.from": [
+"t && tr.from",
+"t && tr.from"
+],
+"te cotizó {x}.": [
+"quoted you {x}.",
+"te passou um orçamento de {x}."
+],
+"te envió tu pedido a medida": [
+"sent you your custom request",
+"enviou seu pedido personalizado"
+],
+"te pidió un foto a medida": [
+"asked you for a custom photo",
+"pediu uma foto personalizada para você"
+],
+"te pidió un pack a medida": [
+"asked you for a custom pack",
+"pediu um pacote personalizado para você"
+],
+"te pidió un video a medida": [
+"asked you for a custom video",
+"pediu um vídeo personalizado para você"
+],
+"tr.from": [
+"tr.from",
+"tr.from"
+],
+"tu país": [
+"your country",
+"seu país"
+],
+"una acompañante": [
+"a companion",
+"uma acompanhante"
+],
+"vence en {n} h": [
+"expires in {n} h",
+"vence em {n} h"
+],
+"vence en {x} h": [
+"expires in {x} h",
+"vence em {x} h"
+],
+"verificación en curso": [
+"verification in progress",
+"verificação em andamento"
+],
+"verificado": [
+"verified",
+"verificado"
+],
+"verified": [
+"verified",
+"verified"
+],
+"visitas": [
+"visits",
+"visitas"
+],
+"vistas": [
+"views",
+"visualizações"
+],
+"vs. {n} días anteriores": [
+"vs. previous {n} days",
+"vs. {n} dias anteriores"
+],
+"whatsapp": [
+"whatsapp",
+"whatsapp"
+],
+"whatsapp · #{x} ·": [
+"whatsapp · #{x} ·",
+"whatsapp · #{x} ·"
+],
+"worker": [
+"worker",
+"worker"
+],
+"y le llega por email a": [
+"and it's emailed to",
+"e chega por email para"
+],
+"y responder desde ahí: confirmar, rechazar o proponer otro horario.": [
+"and reply from there: confirm, decline or suggest another time.",
+"e responder por lá: confirmar, recusar ou propor outro horário."
+],
+"{ if (out.length": [
+"{ if (out.length",
+"{ if (out.length"
+],
+"{n} acompañantes en {x} y {n} en otras ciudades": [
+"{n} companions in {x} and {n} in other cities",
+"{n} acompanhantes em {x} e {n} em outras cidades"
+],
+"{n} años": [
+"{n} years old",
+"{n} anos"
+],
+"{n} años · ": [
+"{n} years old · ",
+"{n} anos · "
+],
+"{n} caracteres": [
+"{n} characters",
+"{n} caracteres"
+],
+"{n} ciudades": [
+"{n} cities",
+"{n} cidades"
+],
+"{n} cobros": [
+"{n} payments",
+"{n} recebimentos"
+],
+"{n} contenido vencido": [
+"{n} expired content",
+"{n} conteúdo vencido"
+],
+"{n} contenidos": [
+"{n} content items",
+"{n} conteúdos"
+],
+"{n} conversaciones · {n} sin leer": [
+"{n} conversations · {n} unread",
+"{n} conversas · {n} não lidas"
+],
+"{n} de {n}": [
+"{n} of {n}",
+"{n} de {n}"
+],
+"{n} de {n} libres en {x}": [
+"{n} of {n} available in {x}",
+"{n} de {n} livres em {x}"
+],
+"{n} días": [
+"{n} days",
+"{n} dias"
+],
+"{n} días antes de que venza tu plan": [
+"{n} days before your plan expires",
+"{n} dias antes de o seu plano vencer"
+],
+"{n} gratis · {n} premium": [
+"{n} free · {n} premium",
+"{n} grátis · {n} premium"
+],
+"{n} h": [
+"{n} h",
+"{n} h"
+],
+"{n} h → USD {n} · {n} h → USD {n}": [
+"{n} h → USD {n} · {n} h → USD {n}",
+"{n} h → USD {n} · {n} h → USD {n}"
+],
+"{n} historia por día": [
+"{n} story per day",
+"{n} story por dia"
+],
+"{n} historias por día": [
+"{n} stories per day",
+"{n} stories por dia"
+],
+"{n} horas": [
+"{n} hours",
+"{n} horas"
+],
+"{n} libres en {x}": [
+"{n} available in {x}",
+"{n} livres em {x}"
+],
+"{n} lugares por provincia o estado, cada mes": [
+"{n} spots per province or state, every month",
+"{n} vagas por província ou estado, todo mês"
+],
+"{n} mensaje sin leer": [
+"{n} unread message",
+"{n} mensagem não lida"
+],
+"{n} mensajes sin leer": [
+"{n} unread messages",
+"{n} mensagens não lidas"
+],
+"{n} min": [
+"{n} min",
+"{n} min"
+],
+"{n} min · USD {n}": [
+"{n} min · USD {n}",
+"{n} min · USD {n}"
+],
+"{n} o más": [
+"{n} or more",
+"{n} ou mais"
+],
+"{n} pedido por responder": [
+"{n} request to answer",
+"{n} pedido para responder"
+],
+"{n} pedidos por responder": [
+"{n} requests to answer",
+"{n} pedidos para responder"
+],
+"{n} perfil": [
+"{n} profile",
+"{n} perfil"
+],
+"{n} perfiles": [
+"{n} profiles",
+"{n} perfis"
+],
+"{n} perfiles por ver": [
+"{n} profiles to view",
+"{n} perfis para ver"
+],
+"{n} pieza": [
+"{n} item",
+"{n} peça"
+],
+"{n} piezas": [
+"{n} items",
+"{n} peças"
+],
+"{n} piezas · USD {n} · Sin vencimiento": [
+"{n} items · USD {n} · No expiration",
+"{n} peças · USD {n} · Sem vencimento"
+],
+"{n} piezas · entregado el {x}": [
+"{n} items · delivered on {x}",
+"{n} peças · entregue em {x}"
+],
+"{n} piezas · {n} pack": [
+"{n} items · {n} pack",
+"{n} peças · {n} pacote"
+],
+"{n} s": [
+"{n} s",
+"{n} s"
+],
+"{n} ventas": [
+"{n} sales",
+"{n} vendas"
+],
+"{n} visitas": [
+"{n} visits",
+"{n} visitas"
+],
+"{n}% de las visitas": [
+"{n}% of visits",
+"{n}% das visitas"
+],
+"{n}% del paso anterior": [
+"{n}% of previous step",
+"{n}% da etapa anterior"
+],
+"{n}:{n}–{n}:{n} · Salida coordinada por fuera": [
+"{n}:{n}–{n}:{n} · Outing arranged elsewhere",
+"{n}:{n}–{n}:{n} · Passeio combinado por fora"
+],
+"{n}s": [
+"{n}s",
+"{n}s"
+],
+"{x}": [
+"{x}",
+"{x}"
+],
+"{x} al {x}. Tocá un horario para marcarlo como ocupado o bloqueado.": [
+"{x} to {x}. Tap a time slot to mark it as busy or blocked.",
+"{x} a {x}. Toque em um horário para marcá-lo como ocupado ou bloqueado."
+],
+"{x} de {x}": [
+"{x} of {x}",
+"{x} de {x}"
+],
+"{x} no está disponible para chat ahora": [
+"{x} isn't available for chat now",
+"{x} não está disponível para chat agora"
+],
+"{x} para {x} · ya pagó USD {n}": [
+"{x} for {x} · already paid USD {n}",
+"{x} para {x} · já pagou USD {n}"
+],
+"{x} {n}:{n}": [
+"{x} {n}:{n}",
+"{x} {n}:{n}"
+],
+"{x} · seña USD {n}": [
+"{x} · deposit USD {n}",
+"{x} · sinal USD {n}"
+],
+"{x} · tarifa orientativa USD {n}/h": [
+"{x} · suggested rate USD {n}/h",
+"{x} · tarifa de referência USD {n}/h"
+],
+"{x} · {n} fotos y {n} videos": [
+"{x} · {n} photos and {n} videos",
+"{x} · {n} fotos e {n} vídeos"
+],
+"{x} · {n}:{n}": [
+"{x} · {n}:{n}",
+"{x} · {n}:{n}"
+],
+"{x} · {x} · {n}:{n} a {n}:{n} h": [
+"{x} · {x} · {n}:{n} to {n}:{n} h",
+"{x} · {x} · {n}:{n} às {n}:{n} h"
+],
+"{x}, {x} · Café, Museo, Helado": [
+"{x}, {x} · Coffee, Museum, Ice cream",
+"{x}, {x} · Café, Museu, Sorvete"
+],
+"{x}, {x} · Café, Paseo, Museo": [
+"{x}, {x} · Coffee, Walk, Museum",
+"{x}, {x} · Café, Passeio, Museu"
+],
+"{x}, {x} · Cena, Paseo, Café": [
+"{x}, {x} · Dinner, Walk, Coffee",
+"{x}, {x} · Jantar, Passeio, Café"
+],
+"{x}, {x} · Cena, Paseo, Evento": [
+"{x}, {x} · Dinner, Walk, Event",
+"{x}, {x} · Jantar, Passeio, Evento"
+],
+"{x}, {x} · Evento, Café, Museo": [
+"{x}, {x} · Event, Coffee, Museum",
+"{x}, {x} · Evento, Café, Museu"
+],
+"{x}, {x} · Evento, Cena, Deporte": [
+"{x}, {x} · Event, Dinner, Sports",
+"{x}, {x} · Evento, Jantar, Esporte"
+],
+"{x}, {x} · Museo, Café, Paseo": [
+"{x}, {x} · Museum, Coffee, Walk",
+"{x}, {x} · Museu, Café, Passeio"
+],
+"{x}, {x} · Paseo, Cena, Café": [
+"{x}, {x} · Walk, Dinner, Coffee",
+"{x}, {x} · Passeio, Jantar, Café"
+],
+"{x}, {x} · Paseo, Cena, Evento": [
+"{x}, {x} · Walk, Dinner, Event",
+"{x}, {x} · Passeio, Jantar, Evento"
+],
+"{x}, {x} · Paseo, Compras, Cena": [
+"{x}, {x} · Walk, Shopping, Dinner",
+"{x}, {x} · Passeio, Compras, Jantar"
+],
+"{x}, {x} · Paseo, Helado, Deporte": [
+"{x}, {x} · Walk, Ice cream, Sports",
+"{x}, {x} · Passeio, Sorvete, Esporte"
+],
+"{x}, {x} · Paseo, Museo, Evento": [
+"{x}, {x} · Walk, Museum, Event",
+"{x}, {x} · Passeio, Museu, Evento"
+],
+"¡Hola {x}! Sí, el {n} a la tarde estoy libre. Podemos arrancar por el Malba y después un café en Villa Crespo.": [
+"Hi {x}! Yes, I'm free on the afternoon of the {n}. We can start at Malba and then grab a coffee in Villa Crespo.",
+"Oi, {x}! Sim, no dia {n} à tarde estou livre. Podemos começar pelo Malba e depois tomar um café em Villa Crespo."
+],
+"· Hace": [
+"·",
+"· Há"
+],
+"· Hace {x} ·": [
+"· {x} ago ·",
+"· Há {x} ·"
+],
+"· Pedido el": [
+"· Requested on",
+"· Pedido em"
+],
+"· Pedido el {x} ·": [
+"· Requested on {x} ·",
+"· Pedido em {x} ·"
+],
+"· Perfiles cerca tuyo": [
+"· Profiles near you",
+"· Perfis perto de você"
+],
+"· USD {n} cobrados": [
+"· USD {n} collected",
+"· USD {n} recebidos"
+],
+"· entregado el": [
+"· delivered on",
+"· entregue em"
+],
+"· ordenamos por distancia": [
+"· sorted by distance",
+"· ordenados por distância"
+],
+"· pagado · quedan": [
+"· paid · remaining:",
+"· pago · restam"
+],
+"· por tu link de pago": [
+"· via your payment link",
+"· pelo seu link de pagamento"
+],
+"· seña": [
+"· deposit",
+"· sinal"
+],
+"· seña USD {n}": [
+"· deposit USD {n}",
+"· sinal USD {n}"
+],
+"· seña desde": [
+"· deposit from",
+"· sinal a partir de"
+],
+"· seña desde USD {n}": [
+"· deposit from USD {n}",
+"· sinal a partir de USD {n}"
+],
+"· sin agenda": [
+"· no calendar",
+"· sem agenda"
+],
+"· tocá para cambiar": [
+"· tap to change",
+"· toque para mudar"
+],
+"· {n} ítems": [
+"· {n} items",
+"· {n} itens"
+],
+"· {x} cobrados": [
+"· {x} collected",
+"· {x} recebidos"
+],
+"· {x} vistas": [
+"· {x} views",
+"· {x} visualizações"
+],
+"· · Perfiles cerca tuyo": [
+"· · Profiles near you",
+"· · Perfis perto de você"
+],
+"¿A quién se lo pedís?": [
+"Who are you asking?",
+"Para quem você está pedindo?"
+],
+"¿Cómo funciona la verificación?": [
+"How does verification work?",
+"Como funciona a verificação?"
+],
+"¿Cómo se cobra el contenido?": [
+"How is content paid for?",
+"Como funciona a cobrança do conteúdo?"
+],
+"¿Dentro de qué provincia, zona o país?": [
+"Within which province, area or country?",
+"Em qual província, região ou país?"
+],
+"¿Es seguro?": [
+"Is it safe?",
+"É seguro?"
+],
+"¿No aparece? Escribila a mano:": [
+"Not listed? Type it in:",
+"Não aparece? Digite manualmente:"
+],
+"¿No tenés cuenta?": [
+"Don't have an account?",
+"Não tem conta?"
+],
+"¿Puedo cancelar?": [
+"Can I cancel?",
+"Posso cancelar?"
+],
+"¿Querés borrar esta historia?": [
+"Delete this story?",
+"Quer apagar esta story?"
+],
+"¿Querés quitar este video de tu perfil?": [
+"Remove this video from your profile?",
+"Quer remover este vídeo do seu perfil?"
+],
+"¿Qué es SexyRose?": [
+"What is SexyRose?",
+"O que é o SexyRose?"
+],
+"¿Qué incluye una salida?": [
+"What does an outing include?",
+"O que inclui um passeio?"
+],
+"¿Qué no está permitido?": [
+"What isn't allowed?",
+"O que não é permitido?"
+],
+"¿Qué querés?": [
+"What do you want?",
+"O que você quer?"
+],
+"¿Te sirvió?": [
+"Was this helpful?",
+"Isso ajudou?"
+],
+"¿Vas a usar la agenda?": [
+"Will you use the calendar?",
+"Você vai usar a agenda?"
+],
+"¿Ya tenés cuenta?": [
+"Already have an account?",
+"Já tem conta?"
+],
+"Últimos cobros": [
+"Latest payments",
+"Últimos recebimentos"
+],
+"Últimos {n} meses": [
+"Last {n} months",
+"Últimos {n} meses"
+],
+"● Disponible para chat": [
+"● Available for chat",
+"● Disponível para chat"
+]
+};

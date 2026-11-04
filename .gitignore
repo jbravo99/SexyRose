@@ -1,0 +1,16 @@
+# Generados
+mvp/build/
+**/node_modules/
+__pycache__/
+*.pyc
+
+# Sistema
+.DS_Store
+._*
+
+# Secretos: nunca al repositorio
+.env
+.env.*
+!.env.example
+*.pem
+*.key

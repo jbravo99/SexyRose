@@ -1,0 +1,14 @@
+{
+  "name": "sexyrose-ssr",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Render del lado del servidor de SexyRose: cada dirección entrega la página ya armada para Google.",
+  "scripts": {
+    "start": "node server.mjs",
+    "build": "node build-static.mjs"
+  },
+  "dependencies": {
+    "jsdom": "25.0.1"
+  }
+}
