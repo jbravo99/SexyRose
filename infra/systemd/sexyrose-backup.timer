@@ -1,0 +1,12 @@
+# Plantilla: la instala infra/server/install-timers.sh.
+[Unit]
+Description=SexyRose: copia diaria de la base, 03:15 UTC
+
+[Timer]
+# Antes del posible reinicio automático de las 04:30.
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

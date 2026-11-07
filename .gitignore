@@ -14,3 +14,9 @@ __pycache__/
 !.env.example
 *.pem
 *.key
+app/public/demo/
+
+# Archivos personales que nunca van al repo
+passphrase.md
+*passphrase*
+*recovery*

@@ -1,0 +1,14 @@
+# Override para correr en local (Mac con Docker Desktop), sin túnel.
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up --build
+#
+# - Publica el app solo en 127.0.0.1:3000 (http://localhost:3000).
+# - Desactiva cloudflared (queda en el perfil "tunnel", que no se levanta salvo con --profile tunnel).
+
+services:
+  app:
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  cloudflared:
+    profiles: ["tunnel"]

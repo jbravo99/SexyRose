@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SexyRose">
+  <defs>
+    <linearGradient id="sr-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF5C8A"/>
+      <stop offset="1" stop-color="#B8577F"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#sr-bg)"/>
+  <path d="M17.5 17.5c4.6 1.2 9.4.6 14.5-4 5.1 4.6 9.9 5.2 14.5 4 2 13.6-4.2 22.5-14.5 22.5S15.5 31.1 17.5 17.5z" fill="#FFF4F7"/>
+  <path d="M22.5 25c4.2 5.6 14.8 5.6 19 0M27.5 21.5c1.8-3.4 7.4-3.6 9 .2 1.2 3-1.6 5.6-4.6 4.8" fill="none" stroke="#B12C57" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M32 39.5v13" stroke="#FFF4F7" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M32 49c-1.2-5.4-5-8.4-11-8.6 1.2 5.6 5 8.6 11 8.6zM32 46.5c1-4.4 4.2-6.8 9-7-1 4.6-4.2 7-9 7z" fill="#FFF4F7"/>
+</svg>

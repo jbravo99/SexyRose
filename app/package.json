@@ -1,0 +1,20 @@
+{
+  "name": "sexyrose-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SexyRose: sitio de lanzamiento, API de pre-registro y denuncias, admin mínimo y demo.",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/api.test.js",
+    "build:demo": "python3 scripts/build-demo.py"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

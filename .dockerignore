@@ -1,0 +1,26 @@
+# Contexto de build = raíz del repo (ver app/Dockerfile).
+# Nunca meter secretos ni basura en la imagen.
+
+.git
+.gitignore
+.dockerignore
+**/.DS_Store
+**/._*
+
+# Secretos
+.env
+.env.*
+**/*.pem
+**/*.key
+
+# Dependencias y generados (se instalan / generan dentro del build)
+**/node_modules
+**/__pycache__
+**/*.pyc
+mvp/build
+app/public/demo
+app/test
+
+# No hace falta en la imagen
+infra
+*.md

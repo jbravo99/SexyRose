@@ -1,0 +1,87 @@
+# SexyRose — producción (servidor).
+#
+# Uso (desde la raíz del repo):
+#   docker compose -f infra/docker-compose.yml up -d --build
+#
+# Las variables salen de ../.env (raíz del repo). Ver .env.example e infra/gen-env.sh.
+# Nada publica puertos: el tráfico público entra solo por cloudflared (Cloudflare Tunnel),
+# que llega al app por la red interna en http://app:3000.
+
+name: sexyrose
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    image: sexyrose-app:latest
+    env_file: ../.env
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend, edge]
+    # Sin "ports": solo accesible desde cloudflared por la red interna.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 256
+    init: true
+    logging: *logging
+
+  db:
+    image: postgres:16
+    env_file: ../.env   # usa POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    shm_size: 256m
+    mem_limit: 1g
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    logging: *logging
+
+  cloudflared:
+    # Imagen oficial de Cloudflare. "latest" para el lanzamiento (Cloudflare solo da soporte
+    # a versiones de hasta ~1 año). Mejora futura: fijar un tag de https://hub.docker.com/r/cloudflare/cloudflared/tags
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "run"]
+    env_file: ../.env   # usa TUNNEL_TOKEN
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [edge]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 256m
+    logging: *logging
+
+networks:
+  # db + app. Sin salida a internet.
+  backend:
+    internal: true
+  # app + cloudflared. Con salida (cloudflared -> Cloudflare; app -> Telegram).
+  edge: {}
+
+volumes:
+  pgdata:

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!--t:denunciar.meta.titulo-->Denunciar | SexyRose<!--/t--></title>
+<meta name="description" content="<!--t:denunciar.meta.descripcion-->Denunciá contenido o situaciones en SexyRose sin cuenta y de forma anónima si querés. Línea 145 para trata y 911 para emergencias.<!--/t-->">
+<link rel="canonical" href="{{SITE_URL}}/denunciar">
+<meta name="theme-color" content="#15131A">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SexyRose">
+<meta property="og:locale" content="es_AR">
+<meta property="og:title" content="<!--t:denunciar.meta.titulo-->Denunciar | SexyRose<!--/t-->">
+<meta property="og:description" content="<!--t:denunciar.meta.descripcion-->Denunciá contenido o situaciones en SexyRose sin cuenta y de forma anónima si querés. Línea 145 para trata y 911 para emergencias.<!--/t-->">
+<meta property="og:url" content="{{SITE_URL}}/denunciar">
+<meta property="og:image" content="{{SITE_URL}}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Poppins:wght@600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main"><!--t:comun.cabecera.saltar-->Saltar al contenido<!--/t--></a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="<!--t:comun.cabecera.marca-aria-->SexyRose, inicio<!--/t-->"><img src="/favicon.svg" alt="" width="32" height="32"><span><!--t:comun.cabecera.marca-->SexyRose<!--/t--></span></a>
+    <nav class="header-nav" aria-label="<!--t:comun.cabecera.nav-aria-->Principal<!--/t-->">
+      <a class="navlink" href="/#que-es"><!--t:comun.cabecera.enlace1-->Qué es<!--/t--></a>
+      <a class="navlink" href="/#promo"><!--t:comun.cabecera.enlace2-->Promo<!--/t--></a>
+      <a class="navlink" href="/demo/"><!--t:comun.cabecera.enlace3-->Ver demostración<!--/t--></a>
+      <a class="btn sm" href="/#preregistro"><!--t:comun.cabecera.enlace4-->Pre-registrarme<!--/t--></a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <div class="wrap narrow">
+    <div class="page-head">
+      <h1><!--e:denunciar.encabezado.titulo-->Denunciar<!--/e--></h1>
+      <p class="lead"><!--e:denunciar.encabezado.p-->Cualquier persona puede hacer una denuncia, sin cuenta y sin pagar. Si querés, podés hacerla de forma anónima.<!--/e--></p>
+    </div>
+
+    <div class="notice urgent" role="note">
+      <p><!--e:denunciar.aviso.p--><strong>Si alguien está en peligro ahora, llamá al 911.</strong> Si sos víctima de trata o creés que alguien lo es, podés llamar a la Línea 145 aunque no tengas pruebas.<!--/e--></p>
+    </div>
+
+    <div class="helpline section-gap">
+      <div class="card">
+        <span class="big"><!--e:denunciar.lineas.texto1-->145<!--/e--></span>
+        <p><!--e:denunciar.lineas.p1--><strong>Línea 145</strong>: denuncias de trata y explotación de personas en Argentina. Gratuita, anónima, las 24 horas, todos los días.<!--/e--></p>
+      </div>
+      <div class="card">
+        <span class="big"><!--e:denunciar.lineas.texto2-->911<!--/e--></span>
+        <p><!--e:denunciar.lineas.p2--><strong>Emergencias</strong>: si alguien corre peligro en este momento.<!--/e--></p>
+      </div>
+    </div>
+
+    <h2 class="form-title"><!--e:denunciar.form-denuncia.titulo-->Denunciar en SexyRose<!--/e--></h2>
+    <form id="form-denuncia" class="form-card" action="/api/denuncia" method="post" novalidate>
+      <div class="form-grid">
+        <fieldset class="field" aria-describedby="dn-categoria-err">
+          <legend><!--e:denunciar.form-denuncia.leyenda-->Qué querés denunciar<!--/e--></legend>
+          <div class="choices">
+            <label class="choice"><input type="radio" name="categoria" value="abuso_infantil" required><span><strong><!--e:denunciar.form-denuncia.destacado1-->Abuso o explotación de menores<!--/e--></strong><small><!--e:denunciar.form-denuncia.chico1-->Cualquier contenido o situación que involucre a una persona menor de 18 años.<!--/e--></small></span></label>
+            <label class="choice"><input type="radio" name="categoria" value="imagen_sin_consentimiento"><span><strong><!--e:denunciar.form-denuncia.destacado2-->Imagen íntima publicada sin consentimiento<!--/e--></strong><small><!--e:denunciar.form-denuncia.chico2-->Fotos o videos íntimos tuyos o de otra persona publicados sin su permiso.<!--/e--></small></span></label>
+            <label class="choice"><input type="radio" name="categoria" value="trata"><span><strong><!--e:denunciar.form-denuncia.destacado3-->Trata o explotación de personas<!--/e--></strong><small><!--e:denunciar.form-denuncia.chico3-->Alguien que publica por otra persona, la controla o se queda con su dinero.<!--/e--></small></span></label>
+            <label class="choice"><input type="radio" name="categoria" value="otro"><span><strong><!--e:denunciar.form-denuncia.destacado4-->Otro problema<!--/e--></strong><small><!--e:denunciar.form-denuncia.chico4-->Cualquier otra cosa que incumpla las reglas del sitio o la ley.<!--/e--></small></span></label>
+          </div>
+          <p class="field-error" id="dn-categoria-err"></p>
+        </fieldset>
+        <div class="field">
+          <label for="dn-url"><!--e:denunciar.form-denuncia.etiqueta-dn-url-->Enlace<!--/e--> <span class="opt"><!--e:denunciar.form-denuncia.texto1-->(opcional)<!--/e--></span></label>
+          <input class="input" id="dn-url" name="url" type="text" inputmode="url" maxlength="2000" autocomplete="off" placeholder="<!--t:denunciar.form-denuncia.dn-url-ejemplo-->https://<!--/t-->" aria-describedby="dn-url-hint dn-url-err">
+          <p class="hint" id="dn-url-hint"><!--e:denunciar.form-denuncia.dn-url-hint-->La dirección de la página o el perfil, si la tenés.<!--/e--></p>
+          <p class="field-error" id="dn-url-err"></p>
+        </div>
+        <div class="field">
+          <label for="dn-descripcion"><!--e:denunciar.form-denuncia.etiqueta-dn-descripcion-->Qué pasó<!--/e--></label>
+          <textarea class="textarea" id="dn-descripcion" name="descripcion" required minlength="10" maxlength="4000" aria-describedby="dn-descripcion-hint dn-descripcion-count dn-descripcion-err"></textarea>
+          <p class="counter" id="dn-descripcion-count" data-counter-for="dn-descripcion">0 de 4000 caracteres</p>
+          <p class="hint" id="dn-descripcion-hint"><!--e:denunciar.form-denuncia.dn-descripcion-hint-->Entre 10 y 4000 caracteres. No adjuntes ni pegues imágenes de abuso infantil: con el enlace y la descripción alcanza.<!--/e--></p>
+          <p class="field-error" id="dn-descripcion-err"></p>
+        </div>
+        <div class="field">
+          <label for="dn-email"><!--e:denunciar.form-denuncia.etiqueta-dn-email-->Tu email<!--/e--> <span class="opt"><!--e:denunciar.form-denuncia.texto2-->(opcional)<!--/e--></span></label>
+          <input class="input" id="dn-email" name="email" type="email" maxlength="254" autocomplete="email" aria-describedby="dn-email-hint dn-email-err">
+          <p class="hint" id="dn-email-hint"><!--e:denunciar.form-denuncia.dn-email-hint-->Podés denunciar de forma anónima, también en casos de abuso infantil. Si dejás tu email, lo usamos solo para responderte sobre esta denuncia.<!--/e--></p>
+          <p class="field-error" id="dn-email-err"></p>
+        </div>
+      </div>
+      <div class="hp" aria-hidden="true">
+        <label for="dn-website">No completes este campo</label>
+        <input id="dn-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <div class="form-foot">
+        <div class="status" role="status" aria-live="polite"></div>
+        <button class="btn block" type="submit"><!--t:denunciar.form-denuncia.boton-->Enviar denuncia<!--/t--></button>
+      </div>
+    </form>
+
+    <article class="legal after-form">
+      <h2><!--e:denunciar.que-pasa-despues.titulo-->Qué pasa después<!--/e--></h2>
+      <ul>
+        <li><!--e:denunciar.que-pasa-despues.li1--><strong>Posible abuso infantil:</strong> se quita de inmediato y se denuncia al NCMEC (EE. UU.) y a las autoridades argentinas.<!--/e--></li>
+        <li><!--e:denunciar.que-pasa-despues.li2--><strong>Imagen íntima sin consentimiento:</strong> se quita en un máximo de 48 horas desde un pedido válido, junto con sus copias idénticas.<!--/e--></li>
+        <li><!--e:denunciar.que-pasa-despues.li3--><strong>Otro contenido ilegal:</strong> se quita de inmediato al confirmarlo.<!--/e--></li>
+        <li><!--e:denunciar.que-pasa-despues.li4--><strong>Cualquier otra denuncia:</strong> se resuelve en un máximo de 7 días hábiles. Si dejaste tu email, te informamos la decisión y cómo apelarla.<!--/e--></li>
+      </ul>
+      <p><!--e:denunciar.que-pasa-despues.p-->El detalle está en la <a href="/contenido#denuncias">Política de contenido</a>. También podés escribir a <a href="mailto:{{REPORT_EMAIL}}">{{REPORT_EMAIL}}</a>.<!--/e--></p>
+    </article>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <nav aria-label="<!--t:comun.pie.nav-aria-->Políticas y ayuda<!--/t-->">
+      <ul>
+        <li><a href="/terminos"><!--t:comun.pie.enlace1-->Términos<!--/t--></a></li>
+        <li><a href="/privacidad"><!--t:comun.pie.enlace2-->Privacidad<!--/t--></a></li>
+        <li><a href="/contenido"><!--t:comun.pie.enlace3-->Contenido<!--/t--></a></li>
+        <li><a href="/trata"><!--t:comun.pie.enlace4-->Contra la trata<!--/t--></a></li>
+        <li><a href="/denunciar"><!--t:comun.pie.enlace5-->Denunciar<!--/t--></a></li>
+      </ul>
+    </nav>
+    <p class="adult"><!--e:comun.pie.p1-->Sitio de publicidad y contenido para mayores de 18.<!--/e--></p>
+    <p><!--e:comun.pie.p2-->Contacto: <a href="mailto:{{CONTACT_EMAIL}}">{{CONTACT_EMAIL}}</a><!--/e--></p>
+    <p><!--e:comun.pie.p3-->&copy; 2026 {{OPERADOR}}<!--/e--></p>
+  </div>
+</footer>
+<div id="textos-form" hidden>
+<span data-t="error-categoria"><!--t:denunciar.mensajes.error-categoria-->Elegí qué querés denunciar.<!--/t--></span>
+<span data-t="error-url-largo"><!--t:denunciar.mensajes.error-url-largo-->El enlace es demasiado largo.<!--/t--></span>
+<span data-t="error-url"><!--t:denunciar.mensajes.error-url-->Revisá el enlace: pegá la dirección completa (por ejemplo, https://sexyrose.net/...) o dejalo vacío.<!--/t--></span>
+<span data-t="error-descripcion-vacia"><!--t:denunciar.mensajes.error-descripcion-vacia-->Contanos qué pasó.<!--/t--></span>
+<span data-t="error-descripcion-corta"><!--t:denunciar.mensajes.error-descripcion-corta-->La descripción tiene que tener al menos 10 caracteres.<!--/t--></span>
+<span data-t="error-descripcion-larga"><!--t:denunciar.mensajes.error-descripcion-larga-->La descripción puede tener hasta 4000 caracteres.<!--/t--></span>
+<span data-t="error-email"><!--t:denunciar.mensajes.error-email-->Revisá el email: parece que no está bien escrito.<!--/t--></span>
+<span data-t="ok-denuncia"><!--t:denunciar.mensajes.ok-denuncia-->Recibimos tu denuncia. La vamos a revisar según los plazos de la Política de contenido.<!--/t--></span>
+<span data-t="ok-denuncia-referencia"><!--t:denunciar.mensajes.ok-denuncia-referencia-->Número de referencia:<!--/t--></span>
+<span data-t="enviando"><!--t:comun.mensajes.enviando-->Enviando…<!--/t--></span>
+<span data-t="revisar-campos"><!--t:comun.mensajes.revisar-campos-->Revisá los campos marcados.<!--/t--></span>
+<span data-t="ok-generico"><!--t:comun.mensajes.ok-generico-->Listo, recibimos tu envío.<!--/t--></span>
+<span data-t="error-429"><!--t:comun.mensajes.error-429-->Hiciste muchos envíos seguidos. Probá de nuevo en un rato.<!--/t--></span>
+<span data-t="error-500"><!--t:comun.mensajes.error-500-->Hubo un problema en el servidor. Probá de nuevo en unos minutos.<!--/t--></span>
+<span data-t="error-envio"><!--t:comun.mensajes.error-envio-->No pudimos enviar el formulario. Revisá los datos y probá de nuevo.<!--/t--></span>
+<span data-t="error-conexion"><!--t:comun.mensajes.error-conexion-->No pudimos conectarnos. Revisá tu conexión y probá de nuevo.<!--/t--></span>
+</div>
+<script src="/js/forms.js" defer></script>
+</body>
+</html>
