@@ -66,7 +66,7 @@ age -d -i ~/.config/sexyrose/backup-age.key sexyrose-db-20261105T031500Z.sql.gz.
    bash infra/server/deploy.sh --no-pull
    ```
 
-5. Revisar `/admin` y que los datos estén.
+5. Revisar el panel de admin y que los datos estén (la dirección: `bash infra/server/admin-path.sh`).
 
 ## Restaurar desde cero (servidor nuevo)
 

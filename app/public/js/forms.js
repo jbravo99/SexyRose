@@ -12,7 +12,7 @@
   var EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
   var TELEGRAM_USER_RE = /^@?[A-Za-z][A-Za-z0-9_]{4,31}$/;
 
-  /* Textos editables desde /admin/textos: la página trae un bloque oculto #textos-form con un
+  /* Textos editables desde el editor de textos del admin: la página trae un bloque oculto #textos-form con un
      <span data-t="clave"> por mensaje. Si falta (o está vacío), se usa el texto de acá. */
   function T(key, fallback) {
     var el = document.querySelector('#textos-form [data-t="' + key + '"]');

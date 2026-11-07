@@ -8,7 +8,8 @@ Repositorio privado. Fuente única del código: cada equipo (Mac, Linux) es una 
   - Pruebas con Playwright: `fullcheck.py`, `flows_final.py`, `ops_test.py`, `i18n_test.py`, `seo_test.py`
     (rutas fijas del sandbox; desde v56 necesitan `sessionStorage hh_age_ok=1`).
 - `app/` — sitio de lanzamiento (v1-lanzamiento): Node 22 + Express + Postgres. Portada con pre-registro,
-  páginas legales, /denunciar, /admin y la demo del MVP en /demo/ (se genera en el build). Pruebas: `cd app && npm test`.
+  páginas legales, /denunciar, el panel de admin (en una dirección secreta, `ADMIN_PATH`) y la demo del MVP en /demo/
+  (se genera en el build). Pruebas: `cd app && npm test`.
 - `infra/` — Docker Compose (app, db, cloudflared), scripts del servidor, copias y monitoreo. Guía completa: `infra/README.md`.
 - `V1-CONTRATO.md` — especificación del sitio de lanzamiento.
 
@@ -17,7 +18,8 @@ Repositorio privado. Fuente única del código: cada equipo (Mac, Linux) es una 
 bash infra/gen-env.sh --dev
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up --build
 ```
-Abrir http://127.0.0.1:3000 (admin en /admin; el usuario y la contraseña están en `.env`).
+Abrir http://127.0.0.1:3000. El admin no está en /admin (da 404): `gen-env.sh --dev` también genera su dirección
+secreta y `bash infra/server/admin-path.sh` la imprime (`http://localhost:3000/p-…`). El usuario y la contraseña están en `.env`.
 
 ## Retomar desde cualquier equipo
 1. `git pull` antes de empezar; `git push` al terminar.

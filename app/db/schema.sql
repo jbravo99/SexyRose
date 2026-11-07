@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS denuncias (
 );
 CREATE INDEX IF NOT EXISTS denuncias_creado_idx ON denuncias (creado DESC);
 
--- Textos del sitio editados desde /admin/textos. Sin fila, la página usa el texto del HTML.
+-- Textos del sitio editados desde el editor de textos del admin. Sin fila, la página usa el texto del HTML.
 CREATE TABLE IF NOT EXISTS textos (
   clave       text PRIMARY KEY,
   valor       text NOT NULL,

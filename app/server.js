@@ -27,6 +27,7 @@ export function loadConfig(env = process.env) {
     databaseUrl: str(env.DATABASE_URL),
     adminUser: str(env.ADMIN_USER),
     adminPassword: typeof env.ADMIN_PASSWORD === 'string' ? env.ADMIN_PASSWORD : '',
+    adminPath: str(env.ADMIN_PATH),
     ipHashSalt: typeof env.IP_HASH_SALT === 'string' ? env.IP_HASH_SALT : '',
     siteUrl: (str(env.SITE_URL) || 'https://sexyrose.net').replace(/\/+$/, ''),
     operatorName: str(env.OPERATOR_NAME) || 'SexyRose',
@@ -98,6 +99,12 @@ function normalizePhone(s) {
   const digits = s.replace(/\D/g, '');
   if (digits.length < 8 || digits.length > 15) return null;
   return (s.startsWith('+') ? '+' : '') + digits;
+}
+
+// Dirección secreta del admin (ADMIN_PATH): "/" + al menos 16 caracteres a-z, 0-9 o "-".
+// Misma regla que infra/server/admin-path.sh.
+export function validAdminPath(p) {
+  return typeof p === 'string' && /^\/[a-z0-9-]{16,}$/.test(p);
 }
 
 function validEmail(s) {
@@ -266,13 +273,29 @@ export function createApp(config) {
   const state = { dbReady: false, stopping: false };
   const rl = createRateLimiter();
   const adminEnabled = Boolean(config.adminUser) && typeof config.adminPassword === 'string' && config.adminPassword.length >= 12;
+  // El admin vive solo en ADMIN_PATH. Sin una dirección válida no se monta nada (todas sus rutas dan la 404 pública).
+  // La dirección nunca se escribe en los logs ni en respuestas públicas.
+  const A = validAdminPath(config.adminPath) ? config.adminPath : '';
+  const isAdminPath = (p) => Boolean(A) && (p === A || p.startsWith(A + '/'));
+  // Para logs: la ruta sin la dirección secreta (también en mayúsculas/minúsculas mezcladas).
+  const logPath = (p) => {
+    const lower = String(p).toLowerCase();
+    return A && (lower === A || lower.startsWith(A + '/')) ? '[admin]' + String(p).slice(A.length) : p;
+  };
 
   let salt = config.ipHashSalt;
   if (!salt) {
     salt = crypto.randomBytes(32).toString('hex');
     log('AVISO: falta IP_HASH_SALT; se usa una sal aleatoria temporal (los ip_hash cambian en cada reinicio).');
   }
-  if (!adminEnabled) log('AVISO: /admin deshabilitado (falta ADMIN_USER o ADMIN_PASSWORD tiene menos de 12 caracteres).');
+  if (!A) {
+    log('AVISO: admin deshabilitado: ADMIN_PATH falta o no es válida (tiene que empezar con "/", usar solo a-z, 0-9 y "-", '
+      + 'y tener al menos 16 caracteres después de la barra). Generala con: bash infra/server/admin-path.sh');
+  } else if (!adminEnabled) {
+    log('AVISO: admin deshabilitado (falta ADMIN_USER o ADMIN_PASSWORD tiene menos de 12 caracteres).');
+  } else {
+    log('admin habilitado (en la dirección secreta de ADMIN_PATH)');
+  }
   if (!config.databaseUrl) log('AVISO: falta DATABASE_URL; se usan las variables PG* por defecto.');
 
   const pool = new pg.Pool({
@@ -320,7 +343,7 @@ export function createApp(config) {
   };
   const PH_RE = /\{\{\s*(OPERADOR|CONTACT_EMAIL|REPORT_EMAIL|PRIVACY_EMAIL|SITE_URL|FECHA_LEGAL)\s*\}\}/g;
 
-  // Textos editados desde /admin/textos (tabla `textos`), en memoria. Cada cambio sube `ver` y eso
+  // Textos editados desde el editor de textos del admin (tabla `textos`), en memoria. Cada cambio sube `ver` y eso
   // invalida las páginas en caché. Sin base o sin valores, las páginas salen con el texto del archivo.
   const textos = { valores: new Map(), ver: 0 };
   const cargarTextos = async () => {
@@ -361,9 +384,10 @@ export function createApp(config) {
   app.use((req, res, next) => {
     const p = req.path;
     const isDemo = p === '/demo' || p.startsWith('/demo/');
-    const isAdmin = p === '/admin' || p.startsWith('/admin/');
+    const isAdmin = isAdminPath(p);
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // En el admin, el Referer (que lleva la dirección secreta) no sale hacia otros sitios.
+    res.setHeader('Referrer-Policy', isAdmin ? 'same-origin' : 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Permissions-Policy', isDemo ? PERMISSIONS_DEMO : PERMISSIONS_SITE);
@@ -386,7 +410,7 @@ export function createApp(config) {
 
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain; charset=utf-8').set('Cache-Control', 'public, max-age=3600')
-      .send(`User-agent: *\nDisallow: /admin\nDisallow: /demo\nAllow: /\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`);
+      .send(`User-agent: *\nDisallow: /demo\nAllow: /\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`);
   });
 
   const SITEMAP_PAGES = [['', 'index.html'], ['terminos', 'terminos.html'], ['privacidad', 'privacidad.html'],
@@ -452,7 +476,7 @@ export function createApp(config) {
     const { id, creado } = rows[0];
     res.status(201).json({ ok: true, id });
     if (CATEGORIAS_URGENTES.has(d.categoria)) {
-      notify(`Denuncia urgente\nCategoría: ${CATEGORIA_LABEL[d.categoria]}\nID: ${id}\nHora: ${fmtDate(creado)} (hora Argentina)\nRevisar en ${config.siteUrl}/admin`);
+      notify(`Denuncia urgente\nCategoría: ${CATEGORIA_LABEL[d.categoria]}\nID: ${id}\nHora: ${fmtDate(creado)} (hora Argentina)\nRevisar en el panel de admin.`);
     }
   }));
 
@@ -508,7 +532,7 @@ export function createApp(config) {
   const ADMIN_LIMIT = 500;
 
   admin.get('/', ah(async (req, res) => {
-    if (req.originalUrl.split('?')[0] === '/admin/') return res.redirect(301, '/admin');
+    if (req.originalUrl.split('?')[0] === A + '/') return res.redirect(301, A);
     const [pre, den, preN, denN] = await Promise.all([
       pool.query(`SELECT ${PRE_COLS} FROM preregistros ORDER BY creado DESC LIMIT ${ADMIN_LIMIT}`),
       pool.query(`SELECT ${DEN_COLS} FROM denuncias ORDER BY (resuelto IS NOT NULL), creado DESC LIMIT ${ADMIN_LIMIT}`),
@@ -523,7 +547,7 @@ export function createApp(config) {
     const denRows = den.rows.map((r) => {
       const action = r.resuelto
         ? `<td class="nw">Resuelta ${e(fmtDate(r.resuelto))}</td>`
-        : `<td><form method="post" action="/admin/denuncias/${e(r.id)}/resolver"><input type="hidden" name="csrf" value="${e(csrfToken)}"><button type="submit">Marcar resuelta</button></form></td>`;
+        : `<td><form method="post" action="${A}/denuncias/${e(r.id)}/resolver"><input type="hidden" name="csrf" value="${e(csrfToken)}"><button type="submit">Marcar resuelta</button></form></td>`;
       const urgent = CATEGORIAS_URGENTES.has(r.categoria) && !r.resuelto;
       return `<tr${urgent ? ' class="urg"' : ''}>${td(fmtDate(r.creado), 'nw')}${td(CATEGORIA_LABEL[r.categoria] || r.categoria)}${td(r.url || '', 'url')}${td(r.descripcion, 'desc')}${td(r.email || '')}${td(r.estado)}${action}${td(r.id, 'id')}</tr>`;
     }).join('\n');
@@ -540,17 +564,17 @@ th,td{padding:7px 9px;border-bottom:1px solid #2d2934;text-align:left;vertical-a
 tr.urg td{background:#3a1424}button{background:#FF5C8A;color:#15131A;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer}
 </style></head><body>
 <h1>SexyRose — Admin</h1>
-<p><a href="/admin/textos">Editar los textos del sitio</a></p>
+<p><a href="${A}/textos">Editar los textos del sitio</a></p>
 <p class="muted">Pre-registros: ${preN.rows[0].n} · Denuncias: ${denN.rows[0].n} (abiertas: ${denN.rows[0].abiertas}) · Hora Argentina</p>
 <h2 id="denuncias">Denuncias</h2>
-<p><a href="/admin/denuncias.csv">Descargar CSV de denuncias</a></p>
+<p><a href="${A}/denuncias.csv">Descargar CSV de denuncias</a></p>
 ${more(den.rows.length, denN.rows[0].n)}
 <div class="wrap"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Enlace</th><th>Descripción</th><th>Email</th><th>Estado</th><th>Acción</th><th>ID</th></tr></thead>
 <tbody>
 ${denRows || '<tr><td colspan="8" class="muted">Sin denuncias.</td></tr>'}
 </tbody></table></div>
 <h2 id="preregistros">Pre-registros</h2>
-<p><a href="/admin/preregistros.csv">Descargar CSV de pre-registros</a></p>
+<p><a href="${A}/preregistros.csv">Descargar CSV de pre-registros</a></p>
 ${more(pre.rows.length, preN.rows[0].n)}
 <div class="wrap"><table><thead><tr><th>Fecha</th><th>Nombre artístico</th><th>Género</th><th>Provincia</th><th>Ciudad</th><th>Contacto por</th><th>Contacto</th><th>Plan</th><th>Estado</th></tr></thead>
 <tbody>
@@ -594,7 +618,7 @@ ${preRows || '<tr><td colspan="9" class="muted">Sin pre-registros.</td></tr>'}
       if (!ex.rowCount) return res.status(404).type('text/plain; charset=utf-8').send('Denuncia no encontrada.');
     }
     log('admin: denuncia marcada como resuelta', req.params.id);
-    res.redirect(303, '/admin#denuncias');
+    res.redirect(303, `${A}#denuncias`);
   }));
 
   // --- Admin: textos del sitio -------------------------------------------------
@@ -705,9 +729,9 @@ ${body}
       const mod = p.bloques.filter((b) => textos.valores.has(b.clave)).length;
       return `<li><div class="name">${escapeHtml(p.nombre)}</div>
 <div class="muted small">${p.bloques.length} textos${mod ? ` · ${mod} modificados` : ''}</div>
-<div class="links"><a href="/admin/textos/${escapeHtml(p.id)}">Editar textos</a><a href="${escapeHtml(p.ruta)}" target="_blank" rel="noopener">Vista previa</a></div></li>`;
+<div class="links"><a href="${A}/textos/${escapeHtml(p.id)}">Editar textos</a><a href="${escapeHtml(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></div></li>`;
     }).join('\n');
-    adminTextPage(res, 'Textos del sitio', `<p class="small"><a href="/admin">Volver al admin</a></p>
+    adminTextPage(res, 'Textos del sitio', `<p class="small"><a href="${A}">Volver al admin</a></p>
 <h1>Textos del sitio</h1>
 <p class="muted">Cambiá cualquier texto de las páginas públicas. Los cambios se ven al instante y cada cambio guarda la versión anterior, que se puede restaurar.</p>
 ${FORMATO_AYUDA}
@@ -728,8 +752,8 @@ ${items || '<li class="muted">No se encontraron páginas con textos editables.</
     const e = escapeHtml;
     const versiones = rows.map((r) => `<div class="ver"><div class="muted small">Guardada el ${e(fmtDate(r.guardado))}${r.valor === actual ? ' · igual al texto actual' : ''}</div>
 <div class="txt">${e(r.valor)}</div>
-<form method="post" action="/admin/textos/historial"><input type="hidden" name="csrf" value="${e(csrfToken)}"><input type="hidden" name="id" value="${e(r.id)}"><button type="submit">Restaurar esta versión</button></form></div>`).join('\n');
-    adminTextPage(res, 'Versiones anteriores', `<p class="small"><a href="/admin/textos/${e(b.pagina)}#b-${e(clave)}">Volver a los textos</a></p>
+<form method="post" action="${A}/textos/historial"><input type="hidden" name="csrf" value="${e(csrfToken)}"><input type="hidden" name="id" value="${e(r.id)}"><button type="submit">Restaurar esta versión</button></form></div>`).join('\n');
+    adminTextPage(res, 'Versiones anteriores', `<p class="small"><a href="${A}/textos/${e(b.pagina)}#b-${e(clave)}">Volver a los textos</a></p>
 <h1>Versiones anteriores</h1>
 <p><span class="ctx">${e(b.contexto)}</span> <code>${e(clave)}</code></p>
 <div class="box"><p class="muted small">Texto actual${textos.valores.has(clave) ? '' : ' (es el texto por defecto)'}</p><div class="def">${e(actual)}</div>
@@ -747,7 +771,7 @@ ${versiones || '<p class="muted">Todavía no hay versiones anteriores de este te
     const valor = rows[0].valor === b.defValor ? null : rows[0].valor;
     const actual = textos.valores.has(b.clave) ? textos.valores.get(b.clave) : null;
     if (valor !== actual) await guardarTextos([{ clave: b.clave, valor }]);
-    res.redirect(303, `/admin/textos/${encodeURIComponent(b.pagina)}?ok=version#b-${b.clave}`);
+    res.redirect(303, `${A}/textos/${encodeURIComponent(b.pagina)}?ok=version#b-${b.clave}`);
   }));
 
   admin.get('/textos/:pagina', ah(async (req, res) => {
@@ -776,7 +800,7 @@ ${versiones || '<p class="muted">Todavía no hay versiones anteriores de este te
 <textarea id="t-${e(b.clave)}" name="v.${e(b.clave)}" rows="${rows}" maxlength="${MAX_VALOR}">
 ${e(valor)}</textarea>
 ${mod ? `<p class="def"><strong>Por defecto:</strong> ${e(b.defValor)}</p>` : ''}
-<div class="acts"><button type="submit" name="accion" value="guardar:${e(b.clave)}">Guardar</button>${mod ? `<button type="submit" class="sec" name="accion" value="defecto:${e(b.clave)}">Restaurar valor por defecto</button>` : ''}${n ? `<a href="/admin/textos/historial?clave=${encodeURIComponent(b.clave)}">Versiones anteriores (${n})</a>` : ''}</div>
+<div class="acts"><button type="submit" name="accion" value="guardar:${e(b.clave)}">Guardar</button>${mod ? `<button type="submit" class="sec" name="accion" value="defecto:${e(b.clave)}">Restaurar valor por defecto</button>` : ''}${n ? `<a href="${A}/textos/historial?clave=${encodeURIComponent(b.clave)}">Versiones anteriores (${n})</a>` : ''}</div>
 </div>`);
     }
     const ok = typeof req.query.ok === 'string' ? req.query.ok : '';
@@ -784,17 +808,17 @@ ${mod ? `<p class="def"><strong>Por defecto:</strong> ${e(b.defValor)}</p>` : ''
       : ok === 'defecto' ? 'Se restauró el texto por defecto.'
         : /^\d+$/.test(ok) ? (ok === '0' ? 'No había cambios para guardar.' : `Cambios guardados: ${ok}.`) : '';
     const nMod = p.bloques.filter((b) => textos.valores.has(b.clave)).length;
-    adminTextPage(res, `Textos: ${p.nombre}`, `<p class="small"><a href="/admin/textos">Textos del sitio</a> · <a href="/admin">Admin</a></p>
+    adminTextPage(res, `Textos: ${p.nombre}`, `<p class="small"><a href="${A}/textos">Textos del sitio</a> · <a href="${A}">Admin</a></p>
 <h1>${e(p.nombre)}</h1>
 ${p.id === 'comun' ? '<p class="muted small">Estos textos aparecen en todas las páginas: se editan una sola vez acá.</p>' : ''}
 ${flash ? `<div class="box ok" role="status"><p>${e(flash)}</p></div>` : ''}
-<p class="filters small">${soloMod ? `<a href="/admin/textos/${e(p.id)}">Ver todos (${p.bloques.length})</a>` : `<a href="/admin/textos/${e(p.id)}?filtro=modificados">Ver solo modificados (${nMod})</a>`}<a href="${e(p.ruta)}" target="_blank" rel="noopener">Vista previa</a></p>
+<p class="filters small">${soloMod ? `<a href="${A}/textos/${e(p.id)}">Ver todos (${p.bloques.length})</a>` : `<a href="${A}/textos/${e(p.id)}?filtro=modificados">Ver solo modificados (${nMod})</a>`}<a href="${e(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></p>
 ${FORMATO_AYUDA}
 <p class="muted small">Cualquier botón «Guardar» guarda todos los cambios de esta página.</p>
-<form method="post" action="/admin/textos/${e(p.id)}">
+<form method="post" action="${A}/textos/${e(p.id)}">
 <input type="hidden" name="csrf" value="${e(csrfToken)}">
 ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta página.</p>'}
-<div class="bar"><div class="in"><button type="submit" name="accion" value="guardar">Guardar todos los cambios</button><a href="${e(p.ruta)}" target="_blank" rel="noopener">Vista previa</a></div></div>
+<div class="bar"><div class="in"><button type="submit" name="accion" value="guardar">Guardar todos los cambios</button><a href="${e(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></div></div>
 </form>`);
   }));
 
@@ -825,11 +849,17 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     await guardarTextos(cambios);
     const foco = restaurar || (accion.startsWith('guardar:') ? accion.slice(8) : '');
     const ancla = foco && p.bloques.some((b) => b.clave === foco) ? `#b-${foco}` : '';
-    res.redirect(303, `/admin/textos/${encodeURIComponent(p.id)}?ok=${okMsg}${ancla}`);
+    res.redirect(303, `${A}/textos/${encodeURIComponent(p.id)}?ok=${okMsg}${ancla}`);
   }));
 
   admin.use((req, res) => res.status(404).type('text/plain; charset=utf-8').send('No encontrado.'));
-  app.use('/admin', admin);
+  if (A) {
+    // Coincidencia exacta de mayúsculas/minúsculas (Express por defecto las ignora).
+    const adminMount = express.Router({ caseSensitive: true });
+    adminMount.use(A, admin);
+    app.use(adminMount);
+  }
+  // /admin y /admin/* no tienen nada especial: caen en la 404 pública como cualquier otra ruta.
 
   // --- Páginas HTML (rutas limpias + placeholders) ---------------------------
   const PAGE = /^\/([a-z0-9][a-z0-9-]{0,63})(\.html|\/)?$/;
@@ -893,7 +923,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     const isApi = req.path.startsWith('/api/');
     if (err.type === 'entity.too.large') return isApi ? fail(res, 413, 'Los datos enviados son demasiado grandes.') : res.status(413).end();
     if (err.type === 'entity.parse.failed') return isApi ? fail(res, 400, 'Formato de datos inválido.') : res.status(400).end();
-    log('error:', req.method, req.path, err.code || '', err.message);
+    log('error:', req.method, logPath(req.path), err.code || '', err.message);
     if (res.headersSent) return res.end();
     if (isApi) return fail(res, 500, 'Ocurrió un error. Probá de nuevo en unos minutos.');
     res.status(500).type('text/plain; charset=utf-8').send('Ocurrió un error. Probá de nuevo en unos minutos.');

@@ -16,8 +16,9 @@ El servidor expone solamente SSH. El tráfico web entra por Cloudflare y llega a
 - `.dockerignore` — en la raíz (es la del contexto de build).
 - `.env.example` — todas las variables, comentadas. El `.env` real nunca va al repo.
 - `infra/docker-compose.yml` — producción. `infra/docker-compose.dev.yml` — override para la Mac.
-- `infra/gen-env.sh` — crea `.env` con claves aleatorias.
+- `infra/gen-env.sh` — crea `.env` con claves aleatorias (incluida la dirección secreta del admin, `ADMIN_PATH`).
 - `infra/server/setup.sh` — prepara y endurece el VPS. `infra/server/deploy.sh` — despliega/actualiza. `infra/server/install-timers.sh` — instala los timers de copias y monitoreo.
+- `infra/server/admin-path.sh` — muestra la dirección completa del panel de admin (y la genera si falta en `.env`).
 - `infra/backup/backup.sh` + `infra/backup/restore.md` — copias de la base.
 - `infra/monitor/check.sh` — chequeo cada 5 minutos con aviso por Telegram.
 - `infra/systemd/` — plantillas de los timers.
@@ -33,7 +34,8 @@ bash infra/gen-env.sh --dev        # crea .env con SITE_URL=http://localhost:300
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up --build
 ```
 
-- Sitio: http://localhost:3000 — demo: http://localhost:3000/demo/ — admin: http://localhost:3000/admin
+- Sitio: http://localhost:3000 — demo: http://localhost:3000/demo/
+- Admin: en la dirección secreta que imprime `bash infra/server/admin-path.sh` (algo como `http://localhost:3000/p-…`). `gen-env.sh --dev` ya la genera; `/admin` da la página 404 normal.
 - Usuario del admin: `admin`. Clave: `grep ^ADMIN_PASSWORD= .env`
 - No necesita token del túnel: cloudflared no se levanta con el override.
 - Frenar: `Ctrl+C` o `docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml down`
@@ -125,6 +127,7 @@ nano .env
 - `TUNNEL_TOKEN=` pegar el token del paso anterior.
 - Opcionales: `OPERATOR_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AGE_RECIPIENT` (ver Copias y Monitoreo).
 - Guardá la clave del admin en tu gestor: `grep ^ADMIN_PASSWORD= .env`
+- Guardá también la dirección del admin: `bash infra/server/admin-path.sh` (ver "Panel de admin").
 
 `gen-env.sh` no muestra las claves (salvo con `--show`), deja el archivo con permisos 600 y se niega a pisar un `.env` existente.
 
@@ -180,6 +183,38 @@ alias dc='docker compose -f ~/SexyRose/infra/docker-compose.yml'
 
 ---
 
+### Panel de admin (dirección secreta)
+
+El panel (tablas, CSV, marcar denuncias resueltas y el editor de textos) no está en `/admin`: vive solo en una dirección secreta, `SITE_URL` + `ADMIN_PATH` (por ejemplo `https://sexyrose.net/p-` seguido de 24 caracteres). `/admin` y todo lo que cuelga de ahí devuelve la página 404 normal del sitio, igual que cualquier dirección que no existe, y `robots.txt` no lo menciona. En la dirección secreta sigue pidiendo usuario y clave (Basic Auth).
+
+La dirección no aparece en ninguna página pública, ni en los logs, ni en los avisos de Telegram. Para verla (en el servidor, desde la raíz del repo):
+
+```bash
+cd ~/SexyRose
+bash infra/server/admin-path.sh
+```
+
+Imprime la dirección completa para guardarla en el gestor de contraseñas. Si `.env` no tiene una `ADMIN_PATH` válida, primero agrega una nueva al final del archivo (sin tocar las demás líneas); en ese caso hay que redesplegar para que el app la tome:
+
+```bash
+bash infra/server/deploy.sh
+```
+
+Si ya tenías el sitio andando antes de este cambio (tu `.env` no tiene `ADMIN_PATH`):
+
+```bash
+cd ~/SexyRose
+git pull --ff-only
+bash infra/server/admin-path.sh      # agrega ADMIN_PATH y muestra la dirección: guardala
+bash infra/server/deploy.sh
+```
+
+Hasta que `ADMIN_PATH` esté en `.env` y se redespliegue, el admin queda deshabilitado (todas sus rutas dan 404) y el log del app lo avisa: `docker compose -f infra/docker-compose.yml logs app | grep admin`.
+
+Cambiar la dirección (por ejemplo, si se filtró): `nano .env`, borrá la línea `ADMIN_PATH=...`, guardá, corré `bash infra/server/admin-path.sh` (genera otra y la muestra) y después `bash infra/server/deploy.sh`. También podés escribirla a mano: empieza con `/`, solo letras minúsculas, números y `-`, y al menos 16 caracteres después de la barra; si no cumple, el admin queda deshabilitado.
+
+---
+
 ### Copias de seguridad
 
 - Todos los días a las 03:15 UTC: `pg_dump` de la base, gzip y cifrado con `age`, en `~/backups/`. Se conservan 14.
@@ -223,4 +258,4 @@ Los logs de los contenedores rotan solos (10 MB x 3 por contenedor) y el journal
 - Estar en el grupo `docker` equivale a ser root en el servidor. Solo tu usuario debe estarlo.
 - Docker se saltea ufw para los puertos que publica. En producción no se publica ninguno; no agregues `ports:` al compose de producción.
 - El reinicio automático de las 04:30 UTC puede cortar el sitio uno o dos minutos; todo vuelve solo (`restart: unless-stopped`).
-- Opcional: proteger `/admin` además con Cloudflare Access (Zero Trust > Access > Applications) para que ni siquiera llegue la pantalla de clave a terceros.
+- Opcional: proteger la dirección del admin además con Cloudflare Access (Zero Trust > Access > Applications) para que ni siquiera llegue la pantalla de clave a terceros.

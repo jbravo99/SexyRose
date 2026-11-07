@@ -1,4 +1,4 @@
-// Textos editables desde /admin/textos.
+// Textos editables desde el editor de textos del admin (ADMIN_PATH + /textos).
 //
 // En el HTML de app/public cada texto editable va entre marcadores de comentario:
 //   <!--e:pagina.seccion.nombre-->texto por defecto<!--/e-->   texto con formato mínimo
