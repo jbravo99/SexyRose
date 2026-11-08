@@ -71,6 +71,9 @@ def main() -> int:
     else:
         print('aviso: no encontré el pie del MVP para agregar "Denunciar"', file=sys.stderr)
 
+    # Única casilla del sitio desde el 08/11/2026: el MVP menciona ayuda@ en un aviso.
+    html = html.replace('ayuda@sexyrose.net', 'contacto@sexyrose.net')
+
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(html, encoding='utf-8')
     print(f'ok demo: {OUT} ({OUT.stat().st_size} bytes)')

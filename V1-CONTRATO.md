@@ -22,7 +22,7 @@ Marca: "SexyRose", paleta oscura con rosa frutilla (ver mvp/src/app.css: --bg #1
 ## Variables de entorno (archivo .env, nunca al repo; `.env.example` sí)
 DATABASE_URL, PORT=3000, ADMIN_USER, ADMIN_PASSWORD, ADMIN_PATH (dirección secreta del admin), IP_HASH_SALT, SITE_URL=https://sexyrose.net,
 OPERATOR_NAME (opcional; si falta, las páginas legales muestran solo la marca "SexyRose"),
-CONTACT_EMAIL=ayuda@sexyrose.net, REPORT_EMAIL=denuncias@sexyrose.net, PRIVACY_EMAIL=privacidad@sexyrose.net,
+CONTACT_EMAIL, REPORT_EMAIL y PRIVACY_EMAIL (por defecto las tres = contacto@sexyrose.net, única casilla desde el 08/11/2026),
 TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID (opcionales: aviso al llegar una denuncia o un pre-registro),
 TUNNEL_TOKEN (cloudflared), POSTGRES_PASSWORD.
 

@@ -219,7 +219,7 @@ describe('páginas estáticas', { skip: EXTERNAL && 'usa la carpeta public/ de p
     assert.match(r.headers.get('content-type'), /text\/html/);
     const t = await r.text();
     assert.ok(t.includes('Operado por Operadora &amp; &lt;Prueba&gt;'), t);
-    assert.ok(t.includes('ayuda@sexyrose.net'));
+    assert.ok(t.includes('contacto@sexyrose.net'));
     assert.ok(t.includes('4 de noviembre de 2026'));
     assert.ok(t.includes('{{DESCONOCIDO}}'), 'los marcadores desconocidos no se tocan');
   });
@@ -228,7 +228,7 @@ describe('páginas estáticas', { skip: EXTERNAL && 'usa la carpeta public/ de p
     const r = await fetch(BASE + '/terminos');
     assert.equal(r.status, 200);
     const t = await r.text();
-    assert.ok(t.includes('https://sexyrose.net denuncias@sexyrose.net privacidad@sexyrose.net'));
+    assert.ok(t.includes('https://sexyrose.net contacto@sexyrose.net contacto@sexyrose.net'));
     const r2 = await fetch(BASE + '/terminos.html?x=1', { redirect: 'manual' });
     assert.equal(r2.status, 301);
     assert.equal(r2.headers.get('location'), '/terminos?x=1');
@@ -414,7 +414,7 @@ describe('POST /api/denuncia', () => {
     }
     const r = await post('/api/denuncia', validDen(), { ip });
     assert.equal(r.status, 429);
-    assert.match((await r.json()).error, /denuncias@sexyrose\.net|demasiadas/);
+    assert.match((await r.json()).error, /contacto@sexyrose\.net|demasiadas/);
   });
 });
 
@@ -650,7 +650,7 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
   test('sin valores guardados, la página sale idéntica al archivo sin marcadores', async () => {
     const t = await pagina('/');
     const esperado = INDEX_PRUEBA.replace(/<!--\/?[et](:[^>]*)?-->/g, '')
-      .replace('{{OPERADOR}}', 'Operadora &amp; &lt;Prueba&gt;').replace('{{ CONTACT_EMAIL }}', 'ayuda@sexyrose.net')
+      .replace('{{OPERADOR}}', 'Operadora &amp; &lt;Prueba&gt;').replace('{{ CONTACT_EMAIL }}', 'contacto@sexyrose.net')
       .replace('{{FECHA_LEGAL}}', '4 de noviembre de 2026');
     assert.equal(t, esperado);
     assert.ok(!t.includes('<!--'));
@@ -760,7 +760,7 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     const r = await guardar('index', { 'v.index.zztest.p1': 'Escribí a [{{CONTACT_EMAIL}}](mailto:{{CONTACT_EMAIL}}) · {{OPERADOR}} · [inicio]({{SITE_URL}}/) · {{DESCONOCIDO}}' });
     assert.equal(r.status, 303);
     const t = await pagina('/');
-    assert.ok(t.includes('<p>Escribí a <a href="mailto:ayuda@sexyrose.net">ayuda@sexyrose.net</a> · Operadora &amp; &lt;Prueba&gt; · <a href="https://sexyrose.net/">inicio</a> · {{DESCONOCIDO}}</p>'), t);
+    assert.ok(t.includes('<p>Escribí a <a href="mailto:contacto@sexyrose.net">contacto@sexyrose.net</a> · Operadora &amp; &lt;Prueba&gt; · <a href="https://sexyrose.net/">inicio</a> · {{DESCONOCIDO}}</p>'), t);
   });
 
   test('los textos comunes se editan una vez para todas las páginas', async () => {
