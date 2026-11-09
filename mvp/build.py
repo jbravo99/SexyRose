@@ -12,6 +12,10 @@ if ONLY:
 TARGET = os.environ.get('HH_TARGET')
 if TARGET == 'admin':
     JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-admin.js', 'boot.js']
+elif TARGET == 'sitio':
+    # HH_TARGET=sitio → build/sitio.html: el sitio público real (datos de /api/sitio/estado, panel de la acompañante
+    # contra /api/cuenta), con direcciones reales (data-routing="path"). Lo sirve app/routes/spa-sitio.js.
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-sitio.js', 'boot.js']
 elif TARGET:
     sys.exit('HH_TARGET desconocido: ' + TARGET)
 parts = []
@@ -35,6 +39,17 @@ if TARGET == 'admin':
                      + head + '\n<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>\n'
                      + parts[1] + '\n</head><body>\n' + parts[2] + '\n<script>window.HH_PROD = \'admin\';</script>\n' + parts[3] + '\n</body></html>')
     print('ok', ADMIN, ADMIN.stat().st_size, 'bytes')
+    sys.exit(0)
+if TARGET == 'sitio':
+    import re
+    head = re.sub(r'<title>[^<]*</title>\s*', '', parts[0])
+    head = re.sub(r'<meta name="claude:[^>]*>\s*', '', head)
+    SITIO = pathlib.Path(__file__).parent / 'build' / 'sitio.html'
+    SITIO.parent.mkdir(exist_ok=True)
+    SITIO.write_text('<!doctype html><html lang="es-AR" data-prod="sitio" data-routing="path"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="strict-origin-when-cross-origin"><title>SexyRose — Acompañantes en Argentina</title><meta name="description" content="Perfiles verificados de acompañantes para salidas en toda la Argentina. Contacto directo por WhatsApp o Telegram."><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">\n'
+                     + head + '\n<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>\n'
+                     + parts[1] + '\n</head><body>\n' + parts[2] + '\n<script>window.HH_PROD = \'sitio\';</script>\n' + parts[3] + '\n</body></html>')
+    print('ok', SITIO, SITIO.stat().st_size, 'bytes')
     sys.exit(0)
 OUT.parent.mkdir(exist_ok=True)
 OUT.write_text('\n'.join(parts))

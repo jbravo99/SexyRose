@@ -23,3 +23,4 @@ passphrase.md
 
 # Panel de administración generado (app/scripts/build-admin.py)
 app/admin-spa/
+app/sitio-spa/

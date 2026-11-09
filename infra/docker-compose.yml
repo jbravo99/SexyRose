@@ -31,10 +31,13 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
+    # Fotos e historias (si STORAGE=local) y archivos privados de verificación. Única carpeta escribible del app.
+    volumes:
+      - srdata:/data
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    mem_limit: 512m
+    mem_limit: 768m
     pids_limit: 256
     init: true
     logging: *logging
@@ -85,3 +88,4 @@ networks:
 
 volumes:
   pgdata:
+  srdata:

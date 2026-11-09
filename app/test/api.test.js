@@ -19,6 +19,8 @@ import path from 'node:path';
 import pg from 'pg';
 
 const EXTERNAL = Boolean(process.env.TEST_BASE_URL);
+// Estas pruebas cubren la portada vieja y las páginas estáticas: sin el SPA del sitio (routes/spa-sitio.js deja pasar si falta el build).
+process.env.SITIO_SPA_PATH = process.env.SITIO_SPA_PATH || '/nonexistent/sitio-spa/index.html';
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
   console.error('Falta DATABASE_URL para correr las pruebas.');

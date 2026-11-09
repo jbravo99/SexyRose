@@ -57,6 +57,29 @@ mv "$TMP" "$OUT"
 trap - EXIT
 echo "Copia OK: $OUT ($(du -h "$OUT" | cut -f1))"
 
+# Archivos subidos (volumen srdata del app: fotos, historias y privado/ con selfies, documentos y comprobantes).
+ACID="$(docker compose -f "$COMPOSE_FILE" ps -q app 2>/dev/null || true)"
+if [[ -n "$ACID" ]]; then
+  FBASE="$BACKUP_DIR/sexyrose-files-$TS.tar.gz"
+  if [[ -n "$AGE_RECIPIENT" ]]; then FOUT="$FBASE.age"; else FOUT="$FBASE"; fi
+  FTMP="$FOUT.partial"
+  trap 'rm -f "$FTMP"' EXIT
+  if [[ -n "$AGE_RECIPIENT" ]]; then
+    docker exec "$ACID" tar -C /data -cf - . | gzip -6 | age -r "$AGE_RECIPIENT" > "$FTMP"
+  else
+    docker exec "$ACID" tar -C /data -cf - . | gzip -6 > "$FTMP"
+  fi
+  [[ -s "$FTMP" ]] || die "la copia de archivos salió vacía"
+  mv "$FTMP" "$FOUT"
+  trap - EXIT
+  echo "Copia de archivos OK: $FOUT ($(du -h "$FOUT" | cut -f1))"
+  mapfile -t FOLD < <(find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'sexyrose-files-*.tar.gz' -o -name 'sexyrose-files-*.tar.gz.age' \) -printf '%T@ %p\n' \
+    | sort -rn | tail -n +"$((KEEP + 1))" | cut -d' ' -f2-)
+  [[ ${#FOLD[@]} -gt 0 ]] && rm -f -- "${FOLD[@]}"
+else
+  warn "el contenedor app no está corriendo: no se copiaron los archivos subidos"
+fi
+
 # Retención: conservar las últimas $KEEP (cifradas o no).
 mapfile -t OLD < <(find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'sexyrose-db-*.sql.gz' -o -name 'sexyrose-db-*.sql.gz.age' \) -printf '%T@ %p\n' \
   | sort -rn | tail -n +"$((KEEP + 1))" | cut -d' ' -f2-)

@@ -8,7 +8,20 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import pg from 'pg';
 import { COMUN_PAGE, MAX_VALOR, TEXT_PAGES, aplicarTextos, escapeHtml, extraerBloques, limpiarValor } from './textos.js';
+import { createAuth, sameOrigin as mismoOrigen } from './lib/auth.js';
+import { configurarMail, emailBasico, sendMail as enviarMail } from './lib/mail.js';
+import { invalidarCatalogos } from './lib/catalogos.js';
+import * as storage from './lib/storage.js';
+import { createCuentaRouter } from './routes/cuenta.js';
+import { createSitioRouter, invalidarSitio } from './routes/sitio.js';
 
+// ---- Fase 1 (agente B): imports ----
+import { createPlanes } from './lib/planes.js';
+import { createPrivado } from './lib/privado.js';
+import { createAdminFase1Router } from './routes/admin-fase1.js';
+import { createCuentaPlanesRouter } from './routes/cuenta-planes.js';
+import { createSpaSitioRouter } from './routes/spa-sitio.js';
+// ---- fin Fase 1 (agente B): imports ----
 export { escapeHtml };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +51,21 @@ export function loadConfig(env = process.env) {
     telegramChatId: str(env.TELEGRAM_CHAT_ID),
     publicDir: path.resolve(str(env.PUBLIC_DIR) || path.join(HERE, 'public')),
     schemaPath: path.join(HERE, 'db', 'schema.sql'),
+    // Todos los .sql de esta carpeta se aplican en orden alfabético en cada arranque (son idempotentes).
+    dbDir: path.join(HERE, 'db'),
+    // Fase 1: archivos subidos (DATA_DIR/media público si STORAGE=local; DATA_DIR/privado siempre privado).
+    dataDir: path.resolve(str(env.DATA_DIR) || path.join(HERE, '..', 'data')),
+    storage: str(env.STORAGE) === 'bunny' ? 'bunny' : 'local',
+    bunnyStorageZone: str(env.BUNNY_STORAGE_ZONE),
+    bunnyStorageKey: str(env.BUNNY_STORAGE_KEY),
+    bunnyStorageHost: str(env.BUNNY_STORAGE_HOST) || 'storage.bunnycdn.com',
+    bunnyCdnUrl: str(env.BUNNY_CDN_URL).replace(/\/+$/, ''),
+    mailgunApiKey: str(env.MAILGUN_API_KEY),
+    mailgunDomain: str(env.MAILGUN_DOMAIN) || 'mg.sexyrose.net',
+    mailgunApiBase: str(env.MAILGUN_API_BASE) || 'https://api.eu.mailgun.net',
+    mailFrom: str(env.MAIL_FROM) || 'SexyRose <no-responder@sexyrose.net>',
+    // Cookie de sesión con Secure: por defecto si SITE_URL es https. COOKIE_SECURE=0/1 para forzarlo.
+    cookieSecure: str(env.COOKIE_SECURE) === '' ? undefined : str(env.COOKIE_SECURE) === '1',
     // Panel de administración (SPA del MVP) generado por app/scripts/build-admin.py.
     adminSpaPath: path.resolve(str(env.ADMIN_SPA_PATH) || path.join(HERE, 'admin-spa', 'index.html')),
     fechaLegal: '4 de noviembre de 2026',
@@ -285,6 +313,9 @@ const PERMISSIONS_DEMO = 'camera=(), microphone=(), geolocation=(self), payment=
 // ---------------------------------------------------------------------------
 // Aplicación
 // ---------------------------------------------------------------------------
+// Agrega el origen de las imágenes (CDN de bunny.net) a img-src y media-src de una CSP.
+const conMedia = (csp, origin) => (origin ? csp.replace(/(img-src [^;]*)/, `$1 ${origin}`).replace(/(media-src [^;]*)/, `$1 ${origin}`) : csp);
+
 export function createApp(config) {
   const log = config.log;
   const state = { dbReady: false, stopping: false };
@@ -393,6 +424,28 @@ export function createApp(config) {
   const sendHtml = (res, html, status = 200, cache = 'no-cache') => res.status(status).type('text/html; charset=utf-8').set('Cache-Control', cache).send(html);
   const queryString = (req) => { const i = req.url.indexOf('?'); return i >= 0 ? req.url.slice(i) : ''; };
 
+  // --- Fase 1: almacenamiento, emails y sesiones ------------------------------
+  storage.configurarStorage(config);
+  configurarMail(config);
+  const MEDIA = storage.mediaOrigin();
+  const CSP_SITE_X = conMedia(CSP_SITE, MEDIA);
+  const CSP_DEMO_X = conMedia(CSP_DEMO, MEDIA);
+  const auth = createAuth({ pool, config });
+  // Planes y cobros (lib/planes.js): UNA instancia por app, compartida por cuenta, sitio y admin.
+  // Los emails de planes y del admin salen con el mismo formato que los de la cuenta (emailBasico).
+  const sendMailBase = config.sendMail || enviarMail;
+  const sendMailPlanes = (m) => {
+    const parrafos = String(m.text || '').split(/\n{2,}/).map((x) => x.trim()).filter((x) => x && !/^(SexyRose|Hola:?)$/.test(x));
+    return sendMailBase({ ...m, html: emailBasico({ titulo: m.subject || 'SexyRose', parrafos }).html });
+  };
+  const planes = createPlanes({ pool, sendMail: sendMailPlanes, log, siteUrl: config.siteUrl });
+  // Cualquier cambio de planes, perfiles o catálogos desde el admin invalida el estado público y los catálogos.
+  planes.setInvalidarSitio(() => { invalidarCatalogos(); invalidarSitio(); });
+  // Archivos privados: misma raíz DATA_DIR/privado para verificaciones (lib/storage.js) y comprobantes (lib/privado.js).
+  const privado = createPrivado({ dataDir: storage.dataDir() });
+  // Contexto compartido por los módulos de rutas (routes/*.js).
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, privado };
+
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', false);
@@ -408,7 +461,7 @@ export function createApp(config) {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Permissions-Policy', isDemo ? PERMISSIONS_DEMO : PERMISSIONS_SITE);
-    res.setHeader('Content-Security-Policy', isAdmin ? cspAdmin() : isDemo ? CSP_DEMO : CSP_SITE);
+    res.setHeader('Content-Security-Policy', isAdmin ? cspAdmin() : isDemo ? CSP_DEMO_X : CSP_SITE_X);
     if (isDemo || isAdmin) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     next();
   });
@@ -498,7 +551,25 @@ export function createApp(config) {
   }));
 
   api.use((req, res) => fail(res, 404, 'No encontrado.'));
+  // Fase 1: cuentas de acompañantes y API pública del sitio (antes del router general de /api, que termina en 404).
+  // Planes y pedidos de la acompañante (/api/cuenta/planes, /api/cuenta/pedidos…): mismo requireCuenta y mismas
+  // reglas de mutación (mismo origen + X-SR: 1). Va antes del router de cuenta, que no tiene esas rutas.
+  app.use('/api/cuenta', createCuentaPlanesRouter({
+    planes, privado, sameOrigin: mismoOrigen, pool, log,
+    // config.requireCuenta solo existe en pruebas (se pasa por código, nunca por variables de entorno).
+    requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
+  }));
+  app.use('/api/cuenta', createCuentaRouter(ctx));
+  app.use('/api/sitio', createSitioRouter(ctx));
   app.use('/api', api);
+
+  // Archivos públicos subidos (STORAGE=local). Nombres aleatorios e inmutables: caché larga. Sin listado de carpetas.
+  if (storage.driverActual() === 'local') {
+    app.use('/media', express.static(storage.mediaDir(), {
+      index: false, redirect: false, dotfiles: 'deny', fallthrough: true, immutable: true, maxAge: '365d',
+      setHeaders: (res) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Cross-Origin-Resource-Policy', 'same-site'); },
+    }));
+  }
 
   // --- Admin ---------------------------------------------------------------
   const csrfToken = adminEnabled
@@ -890,7 +961,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
       return res.status(503).type('text/plain; charset=utf-8').send('Falta generar el panel: python3 app/scripts/build-admin.py');
     }
     const nonce = crypto.randomBytes(16).toString('base64');
-    res.setHeader('Content-Security-Policy', cspAdminSpa(nonce));
+    res.setHeader('Content-Security-Policy', conMedia(cspAdminSpa(nonce), MEDIA));
     sendHtml(res, html.replace(/<script\b/gi, `<script nonce="${nonce}"`), 200, 'no-store');
   }));
 
@@ -919,6 +990,14 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     + '{{CONTACT_EMAIL}}, {{REPORT_EMAIL}}, {{PRIVACY_EMAIL}}, {{OPERADOR}}, {{SITE_URL}} y {{FECHA_LEGAL}} se reemplazan por sus valores. '
     + 'Dejar un texto vacío vuelve al texto por defecto.';
 
+  // ---- Fase 1 (agente B) ----
+  // API del admin de Fase 1 (acompañantes, verificaciones, pedidos, suscripciones, Stars, ajustes, catálogos) y
+  // tarea de vencimientos de planes. La instancia `planes` y `privado` se crean arriba, junto a ctx.
+  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
+  admin.use('/api', fase1Admin.router);
+  if (config.tareaPlanes !== false) planes.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
+  // ---- fin Fase 1 (agente B) ----
+
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
   admin.get('/api/resumen', ah(async (req, res) => {
@@ -933,6 +1012,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
       denuncias: den.rows[0],
       textos: { modificados: bloques.filter((b) => textos.valores.has(b.clave)).length, total: bloques.length },
       generado: new Date().toISOString(),
+      ...(await fase1Admin.contadores().catch(() => ({}))), // Fase 1 (agente B)
     });
   }));
 
@@ -1072,6 +1152,9 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   }
   // /admin y /admin/* no tienen nada especial: caen en la 404 pública como cualquier otra ruta.
 
+  // --- Sitio público real (SPA del MVP, HH_PROD='sitio'). Sin build, sigue la portada vieja. ---
+  app.use(createSpaSitioRouter({ config, log, pool }));
+
   // --- Páginas HTML (rutas limpias + placeholders) ---------------------------
   const PAGE = /^\/([a-z0-9][a-z0-9-]{0,63})(\.html|\/)?$/;
   app.use(ah(async (req, res, next) => {
@@ -1152,11 +1235,17 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
       log('purga de ip_hash falló:', e.code || e.message);
     }
   };
+  const leerEsquema = async () => {
+    let files = [];
+    try { files = (await fs.readdir(config.dbDir)).filter((f) => f.endsWith('.sql')).sort(); } catch { files = []; }
+    if (!files.length) return [await fs.readFile(config.schemaPath, 'utf8')];
+    return Promise.all(files.map((f) => fs.readFile(path.join(config.dbDir, f), 'utf8')));
+  };
   const initDb = async () => {
-    const sql = await fs.readFile(config.schemaPath, 'utf8');
+    const sqls = await leerEsquema();
     for (let attempt = 1; !state.stopping; attempt++) {
       try {
-        await pool.query(sql);
+        for (const sql of sqls) await pool.query(sql);
         state.dbReady = true;
         log('base de datos lista (esquema aplicado)');
         try {
@@ -1175,19 +1264,29 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     }
   };
 
+  // Sesiones vencidas y tokens de email viejos.
+  const limpiarSesiones = async () => {
+    if (!state.dbReady) return;
+    try {
+      await pool.query('DELETE FROM sesiones WHERE expira < now()');
+      await pool.query("DELETE FROM tokens_email WHERE expira < now() - interval '7 days'");
+    } catch (e) { log('limpieza de sesiones falló:', e.code || e.message); }
+  };
   const timers = [
     setInterval(purgeIpHashes, DAY),
+    setInterval(limpiarSesiones, 6 * HOUR),
     setInterval(() => rl.sweep(HOUR), 10 * 60 * 1000),
   ];
   timers.forEach((t) => t.unref());
 
   const shutdown = async () => {
+    planes.detenerTarea();
     state.stopping = true;
     timers.forEach(clearInterval);
     await pool.end().catch(() => {});
   };
 
-  return { app, initDb, shutdown, state };
+  return { app, initDb, shutdown, state, ctx };
 }
 
 // ---------------------------------------------------------------------------

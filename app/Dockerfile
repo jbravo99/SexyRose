@@ -58,6 +58,10 @@ RUN set -e; \
     python3 "${ADMIN_BUILD_SCRIPT}"; \
     test -s "${ADMIN_OUTPUT_DIR}/index.html" || { echo "ERROR: falta ${ADMIN_OUTPUT_DIR}/index.html" >&2; exit 1; }; \
     mkdir -p /out-admin && cp -a "${ADMIN_OUTPUT_DIR}/." /out-admin/
+# Sitio público real (SPA del MVP en modo producción): app/scripts/build-sitio.py deja app/sitio-spa/index.html.
+RUN python3 app/scripts/build-sitio.py \
+    && test -s app/sitio-spa/index.html \
+    && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
 # ---------- Etapa 2: runtime ----------
 FROM node:22-bookworm-slim AS runtime
@@ -68,6 +72,12 @@ ENV NODE_ENV=production \
     NPM_CONFIG_AUDIT=false
 WORKDIR /app
 
+# Fuente para la marca de agua de las fotos (sharp dibuja el texto "SexyRose" con fontconfig).
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
 # Dependencias primero (cache). Si no hay package-lock.json se usa npm install.
 COPY app/package.json app/package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
@@ -77,8 +87,14 @@ COPY app/ ./
 COPY --from=demo /out/ ./public/demo/
 # server.js lee el panel de ./admin-spa/index.html (ADMIN_SPA_PATH para cambiarlo).
 COPY --from=demo /out-admin/ ./admin-spa/
+COPY --from=demo /out-sitio/ ./sitio-spa/
 
-# Todo es del root y solo lectura para el proceso; corre como el usuario "node" (uid 1000).
+# Archivos subidos (fotos, historias y, en privado/, verificaciones): volumen srdata montado en /data.
+# El directorio es del usuario "node" para que el volumen nuevo herede el dueño.
+ENV DATA_DIR=/data
+RUN mkdir -p /data/media /data/privado && chown -R node:node /data && chmod 750 /data/privado
+
+# El resto es del root y solo lectura para el proceso; corre como el usuario "node" (uid 1000).
 # hadolint ignore=DL3066
 USER node
 EXPOSE 3000
