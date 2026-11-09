@@ -217,6 +217,7 @@
       { ok: true, t: lv === 'S' ? 'Lugar fijo arriba del inicio · 10 por estado/provincia' : 'Sección ' + L.label + ' en el inicio (' + (7 - L.rank) + '.ª)'  },
       { ok: true, t: `Galería: ${L.photos} fotos y ${L.videos} videos` },
       { ok: true, t: L.stories_per_day === null ? 'Historias ilimitadas' : L.stories_per_day + ' ' + HH.plural(L.stories_per_day, 'historia', 'historias') + ' por día' },
+      { ok: true, t: HH.highlightLimitText ? HH.highlightLimitText(L.highlights) : '' },
       { ok: L.shorts, t: 'Shorts' },
       { ok: L.premium_content, t: 'Venta de fotos y videos individuales' },
       { ok: L.packs, t: 'Packs y pedidos a medida' },
@@ -513,6 +514,7 @@
       + (() => { const sts = HH.storiesOf(me().id); return `<div class="card stack" style="gap:12px">
         <div class="row between"><div><div class="card-title">Historias</div><div class="small muted">Duran 24 h y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.</div></div><button class="btn secondary sm" data-action="dashStoryOpen">${HH.icon('plus')} Nueva historia</button></div>
         ${sts.length ? `<div class="row" style="gap:10px">${sts.map(st => `<div class="card pad-sm" style="width:150px;display:grid;gap:6px"><div class="media tall" style="border-radius:10px">${HH.storyMedia(st)}</div><div class="tiny ellipsis">${HH.esc(st.caption || 'Sin texto')}</div><div class="row between tiny muted"><span>${HH.icon('eye')} ${st.views || 0}</span><span>vence en ${Math.max(1, Math.round((new Date(st.expiresAt) - Date.now()) / 3600e3))} h</span></div><button class="btn danger sm" data-action="dashStoryDelete" data-id="${st.id}">Borrar</button></div>`).join('')}</div>` : `<div class="small muted">No tenés historias activas. Subí una foto de tu día: café, paseo, lo que estés haciendo.</div>`}
+        ${HH.highlightsPanel ? HH.highlightsPanel(me().id) : ''}
       </div>`; })()
       + `<div class="grid-3">
         ${stat('Publicados', n(items.length), `${counts.free} gratis · ${counts.premium} premium`)}
@@ -866,7 +868,7 @@
     else if (b.status === 'confirmada' && past) acts = `<button class="btn secondary sm" data-action="dashBkDone" data-id="${b.id}">${HH.icon('check')} Marcar realizada</button>`;
     return `<article class="card stack bk-row" style="gap:8px" data-bk-row="${b.id}">
       <div class="row between" style="align-items:flex-start;gap:8px"><div class="row nowrap" style="gap:10px;min-width:0">${HH.userAvatar(c, 38)}<div style="min-width:0"><div style="font-weight:800" class="ellipsis">${HH.esc(c.name)}</div><div class="small muted">${HH.esc(HH.activity(b.activity).label)} · ${HH.esc(HH.fmtBooking(b))}</div></div></div><span class="badge ${stt.cls}">${stt.label}</span></div>
-      <div class="small">${HH.icon('pin')} <span data-noi18n>${HH.esc(b.place)}</span></div>
+      ${b.place ? `<div class="small">${HH.icon('pin')} <span data-noi18n>${HH.esc(b.place)}</span></div>` : ''}
       ${b.note ? `<div class="small muted">"<span data-noi18n>${HH.esc(b.note)}</span>"</div>` : ''}
       <div class="small">Seña: <strong>${HH.money(b.depositUsd)}</strong> <span class="muted">· por tu link de pago</span></div>
       ${acts ? `<div class="row" style="gap:8px">${acts}</div>` : ''}

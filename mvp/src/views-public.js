@@ -87,7 +87,9 @@
 @media(min-width:900px){.pub-swipe{grid-template-columns:460px 1fr;gap:40px;align-items:start}.pub-swipe-main{grid-column:1;grid-row:1}.pub-swipe-side{grid-column:2;grid-row:1;position:sticky;top:84px}}
 .pub-swipe .swipe-stage{height:clamp(240px,calc(100dvh - 415px),640px)}
 @media(min-width:900px){.pub-swipe .swipe-stage{height:clamp(480px,calc(100dvh - 230px),680px);max-width:460px}.pub-swipe-side .chips.scroll{flex-wrap:wrap;overflow:visible}}
-.pub-swipe .swipe-actions{margin-top:24px}@media(min-width:900px){.pub-swipe .swipe-actions{margin-top:24px}}
+.pub-swipe .swipe-actions{margin-top:24px}
+@media(max-width:899px){.pub-swipe{display:flex;flex-direction:column;height:calc(100dvh - var(--header-h) - var(--bottomnav-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--sr-demo-h,0px) - 32px);min-height:430px}.pub-swipe-side{flex:none}.pub-swipe-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}.pub-swipe .swipe-stage{flex:1 1 auto;width:100%;height:auto;min-height:200px;max-height:640px}.pub-swipe .swipe-actions{flex:none;margin-top:28px}}
+@media(max-width:899px) and (max-height:700px){.pub-swipe .swipe-actions{margin-top:22px}.pub-swipe .swipe-actions .btn.round{--sr-act:54px}}
 .swipe-card{transition:transform .25s ease,opacity .25s ease}
 .swipe-card.dragging{transition:none;cursor:grabbing}
 .swipe-card.top{z-index:3;cursor:grab;animation:pubPromote .25s ease}
@@ -141,22 +143,34 @@
 .short .overlay .who{display:flex;gap:10px;align-items:center;font-weight:700;line-height:1.25}.short .overlay .who .small{font-weight:500;opacity:.85}
 .pf2{max-width:860px;display:grid;gap:16px}
 .pf-crumbs{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;font-size:13px;color:var(--muted);overflow-x:auto;white-space:nowrap;scrollbar-width:none}.pf-crumbs::-webkit-scrollbar{display:none}.pf-crumbs svg{width:13px;height:13px;flex:none}.pf-crumbs a{color:var(--fg-2)}.pf-crumbs [aria-current]{color:var(--fg);font-weight:700}
-.pf-card{display:grid;grid-template-columns:minmax(110px,38%) 1fr;grid-template-areas:"thumb head" "thumb contact";grid-template-rows:auto 1fr;gap:10px 14px;padding:12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
-@media(min-width:720px){.pf-card{grid-template-columns:230px 1fr;gap:12px 22px;padding:16px}}
+.pf-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"thumb head" "contact contact";gap:14px 16px;align-items:center;padding:4px 0}
+@media(min-width:720px){.pf-card{grid-template-areas:"thumb head" "thumb contact";gap:10px 28px;align-items:start}}
 .pf-thumb{grid-area:thumb}.pf-head{grid-area:head}.pf-contact{grid-area:contact;align-self:start}
-.pf-thumb{position:relative;padding:0;border:0;background:none;cursor:pointer;border-radius:14px;overflow:hidden;align-self:start}.pf-thumb .media{aspect-ratio:3/4;border-radius:14px}
-.pf-thumb.has-st{outline:2px solid var(--berry);outline-offset:2px}.pf-st{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px;z-index:2}.pf-st svg{width:12px;height:12px}
-.pf-head{display:flex;flex-direction:column;gap:6px;min-width:0}
-.pf-head h1{font-size:clamp(22px,5vw,34px);line-height:1.1;margin:2px 0 0;overflow-wrap:anywhere}
-.pf-age{font-size:15px;color:var(--fg-2)}
+.pf-thumb{position:relative;width:104px;height:104px;padding:4px;border:0;border-radius:50%;cursor:pointer;background:var(--line-2);display:grid;place-items:center;align-self:start}
+.pf-thumb::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--bg)}
+.pf-thumb .media{position:relative;z-index:1;width:100%;height:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;border:3px solid var(--bg)}.pf-thumb .media img{object-fit:cover}
+.pf-thumb.has-st{background:conic-gradient(from 200deg,var(--berry),var(--pink),var(--gold),var(--berry))}.pf-thumb.has-st.seen{background:var(--line-2)}
+@media(min-width:720px){.pf-thumb{width:168px;height:168px;padding:5px}}
+.pf-head{display:flex;flex-direction:column;gap:5px;min-width:0}
+.pf-head h1{font-size:clamp(22px,5.4vw,32px);line-height:1.1;margin:0;overflow-wrap:anywhere;text-transform:uppercase;letter-spacing:.01em}
+.pf-age{font-size:15px;color:var(--fg-2);font-weight:600}
 .pf-loc{display:flex;gap:5px;align-items:flex-start;font-size:14px;color:var(--muted)}.pf-loc svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--berry)}
-.pf-row{display:flex;gap:8px;align-items:stretch;padding-top:6px}
-.pf-rate{flex:1;display:flex;align-items:baseline;gap:4px 6px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line-2);border-radius:12px;font-size:13px;color:var(--muted);min-width:0}.pf-rate strong{color:var(--ok);font-size:18px}
-.pf-fav{width:46px;flex:none;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);color:var(--fg);display:grid;place-items:center;cursor:pointer}.pf-fav svg{width:20px;height:20px}.pf-fav.on{color:var(--berry);border-color:var(--berry)}.pf-fav.on svg{fill:currentColor}
-.pf-contact{display:grid;gap:8px;margin-top:4px}.pf-c2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pf-c2 .btn{white-space:normal;line-height:1.2;min-height:44px;font-size:14px;padding-inline:10px}.pf-c2 .btn:only-child{grid-column:1/-1}.pf-c3{display:flex;flex-wrap:wrap;gap:4px 6px}.pf-c3 .btn{padding-inline:8px}.pf-cnote{margin:0}
-@media(max-width:560px){.pf-card{grid-template-columns:118px 1fr;grid-template-areas:"thumb head" "contact contact";grid-template-rows:auto auto}}
-.pf-head .btn.wa{flex:none;align-self:stretch;margin-top:4px;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:center;gap:8px;white-space:nowrap}.pf-rv{white-space:nowrap;color:var(--fg-2)}
-@media(max-width:420px){.pf-head .btn.lg{font-size:14px;padding-inline:10px;min-height:44px}.pf-rate strong{font-size:16px}}
+.pf-rate{display:flex;align-items:baseline;gap:4px 6px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.pf-rate strong{color:var(--ok);font-size:16px}.pf-rv{white-space:nowrap;color:var(--fg-2)}
+.pf-contact{display:grid;gap:12px}
+.pf-acts{display:flex;gap:6px;justify-content:flex-start}
+.pf-act{display:flex;flex-direction:column;align-items:center;gap:5px;padding:0;border:0;background:none;color:var(--fg-2);cursor:pointer;min-width:64px;font:inherit}
+.pf-act .pf-ab{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2,var(--surface));border:1px solid var(--line-2);color:var(--fg);transition:transform .15s}.pf-act .pf-ab svg{width:22px;height:22px}
+.pf-act .pf-al{font-size:12px;font-weight:600;line-height:1.15;text-align:center;max-width:76px}
+.pf-act:hover .pf-ab{transform:scale(1.06)}.pf-act:disabled{opacity:.45;cursor:not-allowed}.pf-act:disabled .pf-ab{transform:none}
+.pf-act.wa .pf-ab{background:#25D366;border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(37,211,102,.28)}
+.pf-act.pf-fav.on{color:var(--berry)}.pf-act.pf-fav.on .pf-ab{color:var(--berry);border-color:var(--berry)}.pf-act.pf-fav.on svg{fill:currentColor}
+.pf-c3{display:flex;flex-wrap:wrap;gap:6px 14px}
+.pf-lnk{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}.pf-lnk svg{width:14px;height:14px}.pf-lnk:hover{color:var(--fg)}
+@media(max-width:380px){.pf-act{min-width:0;flex:1}.pf-act .pf-ab{width:48px;height:48px}}
+.pf-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.pf-tabs button{border:0;background:none;color:var(--fg-2);font:inherit;font-weight:700;font-size:15px;padding:10px 6px;border-radius:99px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.pf-tabs button.on{background:var(--bg);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+@media(max-width:380px){.pf-tabs button{font-size:14px}}@media(min-width:720px){.pf-tabs{max-width:640px}}
+.pf-panel[hidden]{display:none!important}
 .pf-ic{display:inline-grid;place-items:center;margin-left:8px;vertical-align:middle}.pf-ic svg{width:.62em;height:.62em}.pf-ic.star{color:var(--gold)}.pf-ic.star svg{fill:currentColor}.pf-ic.ok{color:var(--info)}.pf-trip{color:var(--info)}.pf-trip svg{color:var(--info)}
 .pf-about{display:grid;gap:8px}.pf-about h2{font-size:22px;margin:4px 0 0}.pf-about dl{margin:0;display:grid;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}.pf-about dl>div{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:11px 14px;border-top:1px solid var(--line)}.pf-about dl>div:first-child{border-top:0}.pf-about dt{color:var(--muted);font-size:14px}.pf-about dd{margin:0;font-weight:600;font-size:15px}
 @media(min-width:720px){.pf-about dl{grid-template-columns:1fr 1fr}.pf-about dl>div:nth-child(2){border-top:0}.pf-about dl>div:nth-child(even){border-left:1px solid var(--line)}.pf-about dl>div:last-child:nth-child(odd){grid-column:1/-1}}
@@ -188,6 +202,7 @@
 .pub-thumbs .media{position:relative}.pub-more{flex:0 0 calc((100% - 24px)/4.4);aspect-ratio:1;display:grid;place-content:center;gap:2px;border-radius:9px!important;border:1px dashed var(--line-2)!important;background:var(--surface)!important;color:var(--fg)}.pub-all{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}.pub-all button{padding:0;border:0;background:none;cursor:pointer;border-radius:10px;overflow:hidden}.pub-all .pub-vbadge{bottom:4px;left:4px}.pub-all .media{position:relative}.pub-vbadge{position:absolute;left:6px;bottom:6px;display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:99px}.pub-vbadge svg{width:11px;height:11px}
 .pub-item{cursor:pointer;display:grid;gap:4px;min-width:0;padding:0;border:0;background:none;text-align:left;color:inherit;font:inherit}
 .pub-item .media{aspect-ratio:4/5;width:100%}
+.pub-bought{color:var(--ok,#2ecc71);font-weight:700;display:inline-flex;align-items:center;gap:3px}.pub-bought svg{width:12px;height:12px}
 .pub-pack-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.pub-pack-thumbs .media{aspect-ratio:1;border-radius:6px}
 .pub-stars-big{display:grid;gap:16px}@media(min-width:720px){.pub-stars-big{grid-template-columns:repeat(3,1fr)}}
 .radio-card:has(input:focus-visible){outline:3px solid var(--pink);outline-offset:2px}
@@ -745,6 +760,7 @@
         <ul>
           ${li(`Galería de ${L.photos} fotos y ${L.videos} videos`, true)}
           ${li(L.stories_per_day === null ? "Historias ilimitadas" : L.stories_per_day + " " + HH.plural(L.stories_per_day, "historia", "historias") + " por día", true)}
+          ${HH.highlightLimitText ? li(HH.highlightLimitText(L.highlights), true) : ""}
           ${li("Venta de fotos y videos", L.premium_content)}
           ${li("Packs, pedidos a medida y agenda", L.packs)}
           ${li("Chat en vivo por sesiones", L.chat)}
@@ -1131,15 +1147,17 @@
      ============================================================ */
   function contentBody(p, tab) {
     const viewer = HH.viewerId();
-    const items = HH.contentOf(p.userId);
+    // Contenido exclusivo = solo lo pago (premium) y los packs; lo gratis no se muestra acá
+    const items = HH.contentOf(p.userId).filter((c) => c.isPremium);
     const packs = HH.packsOf(p.userId);
     const list = tab === "all" ? items : items.filter((c) => c.type === tab);
     const itemHtml = (c) => {
-      const locked = c.isPremium && !HH.canView(c, viewer);
+      const locked = !HH.canView(c, viewer);
+      const bought = !locked && viewer !== c.workerId;
       return `<div class="pub-item" role="button" tabindex="0" data-action="pubOpenItem" data-id="${c.id}" aria-label="${locked ? "Desbloquear " + esc(c.title) + " por " + HH.money(c.priceUsd) : "Ver " + esc(c.title)}">
-        ${HH.contentThumb(c, { cls: "pub-grid" })}
+        ${HH.contentThumb(c, { cls: "pub-grid", premiumTag: true })}
         <div class="tiny ellipsis" style="font-weight:600"><span data-noi18n>${esc(c.title)}</span></div>
-        <div class="tiny muted">${locked && Number(c.accessDays) ? HH.accessShort(c.accessDays) : typeLabel(c.type) + " · " + HH.fmtDate(c.createdAt)}</div></div>`;
+        <div class="tiny muted">${locked ? typeLabel(c.type) + (Number(c.accessDays) ? " · " + HH.accessShort(c.accessDays).toLowerCase() : "") : bought ? `<span class="pub-bought">${HH.icon("check")} Comprado</span>` : typeLabel(c.type) + " · " + HH.fmtDate(c.createdAt)}</div></div>`;
     };
     const packHtml = (pk) => {
       const its = pk.itemIds
@@ -1151,7 +1169,7 @@
         <div class="pub-pack-thumbs">${its
           .slice(0, 4)
           .map((c) =>
-            HH.contentThumb(c, { noLock: true, noTag: true, cls: "square" }),
+            HH.contentThumb(c, { noTag: true, cls: "square", lockIcon: true }),
           )
           .join("")}</div>
         <div class="row between"><div><strong class="num" style="font-size:18px">${HH.money(pk.priceUsd)}</strong> <span class="small muted">· ${its.length} ${HH.plural(its.length, "ítem", "ítems")}${Number(pk.accessDays) ? " · " + HH.accessShort(pk.accessDays).toLowerCase() : ""}</span></div>
@@ -1176,23 +1194,21 @@
     const chatOn = HH.chatAvailable(p);
     const chatEnabled = HH.chatEnabledFor(p.userId);
     const book = HH.canTakeBookings(p);
+    // Contacto minimalista: fila de botones redondos con su nombre debajo + acciones secundarias chicas
+    const act = (cls, action, icon, label, extra = "") => `<button type="button" class="pf-act ${cls}" data-action="${action}" data-id="${p.userId}"${extra}><span class="pf-ab">${HH.icon(icon)}</span><span class="pf-al">${label}</span></button>`;
     return `
-      <div class="pf-row">
-        ${p.rateFrom ? `<div class="pf-rate"><span>Tarifa</span><span class="pf-rv"><strong>${HH.money(p.rateFrom)}</strong>/h</span></div>` : `<div class="pf-rate"><span>Tarifa a convenir</span></div>`}
-        <button type="button" class="pf-fav${liked ? " on" : ""}" data-action="pubInterest" data-id="${p.userId}" aria-pressed="${liked}" aria-label="Me interesa" title="Me interesa">${HH.icon("heart")}</button>
+      <div class="pf-acts">
+        ${act("wa", liked ? "pubOpenWa" : "pubInterest", "whatsapp", "WhatsApp")}
+        ${chatEnabled ? act("chat", "pubChat", "chat", "Chat", ` title="${chatOk ? "Abrir chat en vivo" : chatOn ? "Chat en vivo · desde " + HH.money(HH.chatFrom(p)) : "Chat · no disponible ahora"}"${chatOn || chatOk ? "" : " disabled"}`) : ""}
+        ${book ? act("book", "pubBook", "calendar", "Reservar") : ""}
+        ${act("pf-fav" + (liked ? " on" : ""), "pubInterest", "heart", "Me interesa", ` aria-pressed="${liked}"`)}
       </div>
-      <button type="button" class="btn wa lg block pf-wa" data-action="${liked ? "pubOpenWa" : "pubInterest"}" data-id="${p.userId}">${HH.icon("whatsapp")} ${liked ? "Abrir WhatsApp" : "Ver WhatsApp"}</button>
-      ${chatEnabled || book ? `<div class="pf-c2">
-        ${chatEnabled ? `<button type="button" class="btn secondary block" data-action="pubChat" data-id="${p.userId}"${chatOn || chatOk ? "" : " disabled"}>${HH.icon("chat")} ${chatOk ? "Abrir chat en vivo" : chatOn ? "Chat en vivo · desde " + HH.money(HH.chatFrom(p)) : "Chat · no disponible ahora"}</button>` : ""}
-        ${book ? `<button type="button" class="btn soft block" data-action="pubBook" data-id="${p.userId}">${HH.icon("calendar")} Reservar salida</button>` : ""}
-      </div>` : ""}
       <div class="pf-c3">
-        ${HH.planFeat(p.userId, "requests") ? `<button type="button" class="btn ghost sm" data-action="pubRequest" data-id="${p.userId}">${HH.icon("gift")} Pedir contenido a medida</button>` : ""}
-        ${(p.links || []).some((l) => l && l.url) ? `<a class="btn ghost sm" href="#links.${p.slug}" data-go="#links.${p.slug}">${HH.icon("external")} Links</a>` : ""}
-        <button type="button" class="btn ghost sm" data-action="pubShare" data-slug="${p.slug}">${HH.icon("share")} Compartir</button>
-        <button type="button" class="btn ghost sm" data-action="pubReport" data-slug="${p.slug}">${HH.icon("flag")} Reportar</button>
-      </div>
-      <p class="tiny muted pf-cnote">${liked ? `Te interesa ${esc(p.displayName)}: ya podés escribirle.` : "El WhatsApp se ve después de tocar Me interesa."}${book ? ` La seña de la reserva se paga directo a ${esc(p.displayName)}.` : ""}</p>`;
+        ${HH.planFeat(p.userId, "requests") ? `<button type="button" class="pf-lnk" data-action="pubRequest" data-id="${p.userId}">${HH.icon("gift")} Pedir a medida</button>` : ""}
+        ${(p.links || []).some((l) => l && l.url) ? `<a class="pf-lnk" href="#links.${p.slug}" data-go="#links.${p.slug}">${HH.icon("external")} Links</a>` : ""}
+        <button type="button" class="pf-lnk" data-action="pubShare" data-slug="${p.slug}">${HH.icon("share")} Compartir</button>
+        <button type="button" class="pf-lnk" data-action="pubReport" data-slug="${p.slug}">${HH.icon("flag")} Reportar</button>
+      </div>`;
   }
 
   // Página de links (tipo "link en bio"): botones de SexyRose + hasta 4 links propios
@@ -1242,6 +1258,7 @@
       S.profileSlug = slug;
       S.profileTab = "all";
       S.galTab = "all";
+      S.pfTab = "gal";
     }
     if (!mine) HH.view(p.userId);
     const lvl = HH.levelOf(p.userId);
@@ -1258,6 +1275,7 @@
       .filter(Boolean)
       .join("");
     const items = HH.contentOf(p.userId);
+    const premiumItems = items.filter((c) => c.isPremium);
     const packs = HH.packsOf(p.userId);
     const tabs = [
       ["all", "Todo"],
@@ -1277,7 +1295,6 @@
     const actLabels = (p.activities || []).map((a) => HH.activity(a).label);
     const about = [
       (p.languages || []).length ? ["Idiomas", p.languages.join(", "), false] : null,
-      p.nationality ? ["Nacionalidad", p.nationality, false] : null,
       p.heightCm ? ["Altura", (p.heightCm / 100).toFixed(2).replace(".", ",") + " m", false] : null,
       p.build && BUILD[p.build] ? ["Contextura", BUILD[p.build], true] : null,
       HH.interestsOf && HH.interestsOf(p).length ? ["Intereses", HH.interestsOf(p).map((id) => HH.interestLabel(id)).join(" · "), false] : null,
@@ -1299,28 +1316,33 @@
       ${!published ? `<div class="notice warn" style="margin-bottom:12px">${HH.icon("alert")}<span>Este perfil no es visible para el público: ${p.hidden ? "ocultaste tu cuenta" : p.status !== "active" ? "está suspendido o pendiente de activación" : !HH.levelOf(p.userId) ? "no tiene un plan activo" : "faltan requisitos por completar"}.</span></div>` : ""}
       <nav class="pf-crumbs" aria-label="Ubicación">${crumbs.join(HH.icon("chevronRight"))}</nav>
       <section class="pf-card" aria-label="Perfil">
-        <button type="button" class="pf-thumb${stories ? " has-st" : ""}" data-action="${stories ? "openStories" : "pubLightbox"}" data-id="${p.userId}" data-idx="0" aria-label="${stories ? "Ver historias" : "Ver foto"}">${HH.photo(p, 0)}${stories ? `<span class="pf-st">${HH.icon("play")} ${stories}</span>` : ""}</button>
+        <button type="button" class="pf-thumb${stories ? " has-st" + (HH.storiesOf(p.userId).every((x) => HH.seenStories()[x.id]) ? " seen" : "") : ""}" data-action="${stories ? "openStories" : "pubLightbox"}" data-id="${p.userId}" data-idx="0" aria-label="${stories ? "Ver historias" : "Ver foto"}">${HH.photo(p, 0)}</button>
         <div class="pf-head">
           <h1>${esc(p.displayName)}${HH.isStar(p.userId) ? `<span class="pf-ic star" title="Star" aria-label="Star">${HH.icon("star")}</span>` : ""}${p.verified === "verified" ? `<span class="pf-ic ok" title="Verificada" aria-label="Verificada">${HH.icon("verified")}</span>` : ""}</h1>
-          ${p.age ? `<div class="pf-age">${p.age} años${p.verified === "pending" ? ` · <span class="muted">verificación en curso</span>` : ""}</div>` : ""}
+          ${p.age || p.nationality ? `<div class="pf-age">${p.age ? `<span>${p.age} años</span>` : ""}${p.age && p.nationality ? " · " : ""}${p.nationality ? `<span data-noi18n>${esc(p.nationality)}</span>` : ""}${p.verified === "pending" ? ` · <span class="muted">verificación en curso</span>` : ""}</div>` : ""}
           <div class="pf-loc">${HH.icon("pin")} <span>${p.zone && !p.traveling ? `<span data-noi18n>${esc(p.zone)}</span>, ` : ""}${esc(p.city || "Ciudad a definir")}</span></div>
           ${curTrip ? `<div class="pf-loc pf-trip">${HH.icon("globe")} <span>De visita hasta el ${HH.fmtDay(curTrip.to)}${p.homeCity ? ` · vive en ${esc(p.homeCity)}` : ""}</span></div>` : ""}
+          ${mine ? "" : p.rateFrom ? `<div class="pf-rate"><span>Tarifa</span> <span class="pf-rv"><strong>${HH.money(p.rateFrom)}</strong>/h</span></div>` : `<div class="pf-rate"><span>Tarifa a convenir</span></div>`}
         </div>
         ${mine ? "" : `<div class="pf-contact" id="pubContact">${contactHtml(p)}</div>`}
       </section>
-      ${about.length ? `<section class="pf-about" aria-label="Sobre mí"><h2>Sobre mí</h2><dl>${about.map(([k, v, tr]) => `<div><dt>${k}</dt><dd${tr ? "" : " data-noi18n"}>${esc(v)}</dd></div>`).join("")}</dl></section>` : ""}
-      <section class="pf-desc" aria-label="Descripción">
-        <h2>Descripción</h2>
+      ${HH.highlightsRow ? HH.highlightsRow(p, mine) : ""}
+      ${(() => {
+        const ptab = S.pfTab === "about" && !about.length ? "gal" : S.pfTab || "gal";
+        const ptabs = [["gal", "Galería"], ["desc", "Descripción"]].concat(about.length ? [["about", "Sobre mí"]] : []);
+        return `<div class="pf-tabs" role="tablist" aria-label="Secciones del perfil">${ptabs.map(([k, l]) => `<button type="button" role="tab" id="pfTab_${k}" aria-controls="pfPanel_${k}" data-action="pubPfTab" data-tab="${k}" aria-selected="${ptab === k}" class="${ptab === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      <section class="pf-gal pf-panel" id="pfPanel_gal" role="tabpanel" aria-labelledby="pfTab_gal"${ptab === "gal" ? "" : " hidden"}>
+        ${totalGal ? `<div class="pf-gtabs" role="tablist">${galTabs.map(([k, l, n]) => `<button type="button" role="tab" data-action="pubGalTab" data-tab="${k}" aria-selected="${gtab === k}" class="${gtab === k ? "on" : ""}">${l} (${n})</button>`).join("")}</div>` : ""}
+        ${shownGal.length ? `<div class="pf-grid">${shownGal.map(tile).join("")}${moreN > 0 ? `<button type="button" class="pf-tile pf-all" data-action="pubGalleryAll"><strong>+${moreN}</strong><span class="tiny">Ver todo</span></button>` : ""}</div>` : `<p class="small muted">Sin ${gtab === "video" ? "videos" : "fotos"} todavía.</p>`}
+      </section>
+      <section class="pf-desc pf-panel" id="pfPanel_desc" role="tabpanel" aria-labelledby="pfTab_desc"${ptab === "desc" ? "" : " hidden"}>
         ${p.headline ? `<p class="lead" style="font-weight:600" data-noi18n>${esc(HH.pText(p, "headline"))}</p>` : ""}
         ${p.bio ? `<p class="pf-bio${S.bioOpen === p.userId ? " open" : ""}" id="pfBio" data-noi18n>${esc(HH.pText(p, "bio"))}</p>${String(HH.pText(p, "bio")).length > 180 ? `<button type="button" class="pf-more" data-action="pubBioMore">${S.bioOpen === p.userId ? "Ver menos" : "Ver más"}</button>` : ""}` : `<p class="muted">Todavía no escribió su presentación.</p>`}
         <p class="pf-meta">En el sitio desde ${monthYear(p.createdAt || HH.now())} · Actualizado el ${HH.fmtDate(updated, { day: "numeric", month: "long", year: "numeric" })} · ${((p.stats && p.stats.views) || 0).toLocaleString(HH.loc())} visitas</p>
         <div class="notice">${HH.icon("shield")}<span>Salidas en lugares públicos. Reportá cualquier conducta inapropiada.</span></div>
       </section>
-      <section class="pf-gal" aria-label="Galería">
-        <h2>Galería</h2>
-        <div class="pf-gtabs" role="tablist">${galTabs.map(([k, l, n]) => `<button type="button" role="tab" data-action="pubGalTab" data-tab="${k}" aria-selected="${gtab === k}" class="${gtab === k ? "on" : ""}">${l} (${n})</button>`).join("")}</div>
-        ${shownGal.length ? `<div class="pf-grid">${shownGal.map(tile).join("")}${moreN > 0 ? `<button type="button" class="pf-tile pf-all" data-action="pubGalleryAll"><strong>+${moreN}</strong><span class="tiny">Ver todo</span></button>` : ""}</div>` : `<p class="small muted">Sin ${gtab === "video" ? "videos" : "fotos"} todavía.</p>`}
-      </section>
+      ${about.length ? `<section class="pf-about pf-panel" id="pfPanel_about" role="tabpanel" aria-labelledby="pfTab_about"${ptab === "about" ? "" : " hidden"}><dl>${about.map(([k, v, tr]) => `<div><dt>${k}</dt><dd${tr ? "" : " data-noi18n"}>${esc(v)}</dd></div>`).join("")}</dl></section>` : ""}`;
+      })()}
       ${(() => {
         const t = HH.localDay();
         const next = HH.tripsOf(p).filter((tr) => tr.to >= t);
@@ -1328,11 +1350,11 @@
           ? `<section class="card stack" style="gap:8px" aria-label="Próximos destinos"><div class="card-title">${HH.icon("globe")} Próximos destinos</div><div class="list">${next.map((tr) => `<div class="list-item">${HH.icon(tr.from <= t ? "pin" : "calendar")}<div class="grow"><div class="title">${esc(tr.city)}${tr.country ? ", " + esc(tr.country) : ""}</div><div class="sub">${tr.from <= t ? "Ahora, hasta el " + HH.fmtDay(tr.to) : "Del " + HH.fmtDay(tr.from) + " al " + HH.fmtDay(tr.to)}</div></div></div>`).join("")}</div></section>`
           : "";
       })()}
-      <section class="stack" id="pubContent" aria-label="Contenido">
-        <div class="row between"><h2 class="pf-h2">Contenido exclusivo</h2><span class="small muted">${items.length} ${HH.plural(items.length, "pieza")}${packs.length ? " · " + packs.length + " " + HH.plural(packs.length, "pack") : ""}</span></div>
+      ${premiumItems.length || packs.length ? `<section class="stack" id="pubContent" aria-label="Contenido">
+        <div class="row between"><h2 class="pf-h2">Contenido exclusivo</h2><span class="small muted">${premiumItems.length} ${HH.plural(premiumItems.length, "pieza")}${packs.length ? " · " + packs.length + " " + HH.plural(packs.length, "pack") : ""}</span></div>
         <div class="chips scroll" role="tablist" aria-label="Tipo de contenido">${tabs.map(([k, l]) => `<button type="button" class="chip" role="tab" data-action="pubContentTab" data-tab="${k}" aria-pressed="${S.profileTab === k}" aria-selected="${S.profileTab === k}">${l}</button>`).join("")}</div>
         <div id="pubContentBody">${contentBody(p, S.profileTab)}</div>
-      </section>
+      </section>` : ""}
     </div>`;
   });
 
@@ -1821,6 +1843,12 @@
         body: `<div class="pub-all">${photos.map((_, i) => `<button type="button" data-action="pubLightbox" data-idx="${i}">${HH.photo(p, i, { cls: "square" })}</button>`).join("")}${vids.map((v) => `<button type="button" data-action="pubLightbox" data-vid="${esc(v.id)}"><div class="media square">${HH.videoMedia(v)}<span class="pub-vbadge">${HH.icon("play")}</span></div></button>`).join("")}</div>`,
         actions: [{ label: "Cerrar", cls: "ghost", action: "closeModal" }],
       });
+    },
+    // Barra Galería / Descripción / Sobre mí: muestra una sección por vez, sin volver a dibujar la página
+    pubPfTab(el) {
+      S.pfTab = el.dataset.tab;
+      document.querySelectorAll(".pf-tabs [role=tab]").forEach((b) => { const on = b.dataset.tab === S.pfTab; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+      document.querySelectorAll(".pf-panel").forEach((x) => { x.hidden = x.id !== "pfPanel_" + S.pfTab; });
     },
     pubGalTab(el) {
       S.galTab = el.dataset.tab;

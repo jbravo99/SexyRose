@@ -221,7 +221,7 @@
         : b.status === 'cancelada' ? `<div class="small muted">Cancelada${b.cancelledBy === 'client' ? ' por vos' : b.cancelledBy === 'worker' ? ' por la acompañante: corresponde que te devuelva la seña' : ''}.</div>` : '';
       return `<article class="card stack" style="gap:10px">
         <div class="row between" style="align-items:flex-start;gap:8px"><div class="row nowrap" style="gap:10px;min-width:0">${avatarOf(b.workerId, 40)}<div style="min-width:0"><div style="font-weight:800">${p ? `<a href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">${esc(p.displayName)}</a>` : esc(nameOf(b.workerId))}</div><div class="small muted">${esc(HH.activity(b.activity).label)} · ${esc(HH.fmtBooking(b))}</div></div></div><span class="badge ${stt.cls}">${stt.label}</span></div>
-        <div class="small">${icon('pin')} <span data-noi18n>${esc(b.place)}</span> · seña ${HH.money(b.depositUsd)}</div>
+        <div class="small">${b.place ? `${icon('pin')} <span data-noi18n>${esc(b.place)}</span> · ` : ''}seña ${HH.money(b.depositUsd)}</div>
         ${HH.bookingProposalHtml ? HH.bookingProposalHtml(b) : ''}${info}${acts ? `<div class="row" style="gap:8px">${acts}</div>` : ''}
       </article>`;
     };

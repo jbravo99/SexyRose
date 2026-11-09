@@ -2,7 +2,7 @@
 """Busca textos de interfaz en el código (fuera de admin) que no estén en i18n/dict.json → i18n/source_missing.json."""
 import json, re, itertools
 D = json.load(open('i18n/dict.json'))
-FILES = ['core.js', 'bookings.js', 'chat.js', 'activity.js', 'geo.js', 'views-public.js', 'views-dashboard.js', 'views-client.js', 'ops.js', 'interests.js']
+FILES = ['core.js', 'bookings.js', 'chat.js', 'activity.js', 'geo.js', 'views-public.js', 'views-dashboard.js', 'views-client.js', 'ops.js', 'interests.js', 'highlights.js']
 lit_re = re.compile(r"'((?:[^'\\\n]|\\.)*)'|\"((?:[^\"\\\n]|\\.)*)\"")
 def alts(expr):
     if '?' in expr:

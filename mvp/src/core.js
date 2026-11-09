@@ -12,14 +12,15 @@ window.HH = (function () {
   /* ---------- Constantes de negocio (CLAUDE.md) ---------- */
   // Planes mensuales (de mayor a menor). Star = plan con cupo de 10 por estado/provincia e incluye todo lo de A.
   // photos/videos: límite de la galería del perfil (videos de hasta 30 s). stories_per_day: null = ilimitadas.
+  // highlights: historias destacadas que se muestran en el perfil (null = ilimitadas).
   // chat_limit_per_day: null = chat por sesiones habilitado, 0 = sin chat. premium_content = venta de fotos y videos individuales.
   HH.LEVELS = {
-    S: { price_usd: 255, label: 'Star', rank: 6, photos: 1000, videos: 500, stories_per_day: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Lugar fijo arriba del inicio en tu provincia o estado. Solo 10 por estado/provincia. Incluye todo lo de Diamante.' },
-    A: { price_usd: 102, label: 'Diamante', rank: 5, photos: 500, videos: 200, stories_per_day: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Sección Diamante, la primera debajo de Stars, con tarjetas grandes. Todas las herramientas y estadísticas detalladas.' },
-    B: { price_usd: 60, label: 'Platino', rank: 4, photos: 50, videos: 15, stories_per_day: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: false, chat_limit_per_day: null, priority_ranking: false, desc: 'Chat en vivo por sesiones, viajes y novedades por zona.' },
-    C: { price_usd: 38, label: 'Oro', rank: 3, photos: 30, videos: 10, stories_per_day: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Packs, pedidos a medida y agenda de reservas.' },
-    D: { price_usd: 21, label: 'Plata', rank: 2, photos: 15, videos: 5, stories_per_day: 3, shorts: true, premium_content: true, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Vendé fotos y videos individuales y publicá shorts.' },
-    E: { price_usd: 10, label: 'Bronce', rank: 1, photos: 8, videos: 2, stories_per_day: 1, shorts: false, premium_content: false, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Tu perfil publicado y verificado, para empezar.' },
+    S: { price_usd: 255, label: 'Star', rank: 6, photos: 1000, videos: 500, stories_per_day: null, highlights: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Lugar fijo arriba del inicio en tu provincia o estado. Solo 10 por estado/provincia. Incluye todo lo de Diamante.' },
+    A: { price_usd: 102, label: 'Diamante', rank: 5, photos: 500, videos: 200, stories_per_day: null, highlights: 10, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Sección Diamante, la primera debajo de Stars, con tarjetas grandes. Todas las herramientas y estadísticas detalladas.' },
+    B: { price_usd: 60, label: 'Platino', rank: 4, photos: 50, videos: 15, stories_per_day: null, highlights: 6, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: false, chat_limit_per_day: null, priority_ranking: false, desc: 'Chat en vivo por sesiones, viajes y novedades por zona.' },
+    C: { price_usd: 38, label: 'Oro', rank: 3, photos: 30, videos: 10, stories_per_day: null, highlights: 4, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Packs, pedidos a medida y agenda de reservas.' },
+    D: { price_usd: 21, label: 'Plata', rank: 2, photos: 15, videos: 5, stories_per_day: 3, highlights: 2, shorts: true, premium_content: true, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Vendé fotos y videos individuales y publicá shorts.' },
+    E: { price_usd: 10, label: 'Bronce', rank: 1, photos: 8, videos: 2, stories_per_day: 1, highlights: 1, shorts: false, premium_content: false, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Tu perfil publicado y verificado, para empezar.' },
   };
   HH.PLAN_ORDER = ['S', 'A', 'B', 'C', 'D', 'E'];
   HH.planName = (lv) => (HH.LEVELS[lv] || {}).label || 'Sin plan';
@@ -895,28 +896,32 @@ window.HH = (function () {
     return ws.map((p, i) => ({ p, i })).sort((a, b) => rank(b.p) - rank(a.p) || a.i - b.i).map(x => x.p);
   };
   HH.storyQueue = () => HH.storyOrder().map(p => p.userId);
-  HH.openStories = function (workerId, startIndex = 0, queue) {
-    const q = (queue || HH.storyQueue()).filter(id => HH.storiesOf(id).length);
+  // Sin cola: solo las historias de esa acompañante. La fila "Historias" del inicio pasa la cola completa.
+  HH.storyQueueFor = (el) => (el && el.closest && el.closest('.stories-row') ? HH.storyQueue() : null);
+  // opts.items: lista fija de historias (destacadas: no vencen y no pasan a otra acompañante); opts.title, opts.highlightId.
+  HH.openStories = function (workerId, startIndex = 0, queue, opts = {}) {
+    const hl = !!opts.items;
+    const q = hl ? [workerId] : (queue || [workerId]).filter(id => HH.storiesOf(id).length);
     if (!q.includes(workerId)) q.unshift(workerId);
     let w = q.indexOf(workerId);
-    let p = HH.profileOf(workerId); let list = HH.storiesOf(workerId);
+    let p = HH.profileOf(workerId); let list = hl ? opts.items.slice() : HH.storiesOf(workerId);
     if (p && p.hidden && !(HH.me() && HH.me().id === workerId)) return;
-    if (!p || !list.length) { if (p) HH.go('#perfil.' + p.slug); return; }
+    if (!p || !list.length) { if (p && !hl) HH.go('#perfil.' + p.slug); return; }
     // Si ya vio todas las de esta acompañante, arranca desde la primera; si no, desde la primera sin ver
-    const firstUnseen = list.findIndex(s => !HH.seenStories()[s.id]);
+    const firstUnseen = hl ? 0 : list.findIndex(s => !HH.seenStories()[s.id]);
     let i = startIndex || (firstUnseen > 0 ? firstUnseen : 0);
     let timer = null;
     const root = document.getElementById('storyRoot') || (() => { const d = document.createElement('div'); d.id = 'storyRoot'; d.className = 'story-root'; document.body.appendChild(d); return d; })();
     const load = (k, fromEnd) => { w = k; p = HH.profileOf(q[w]); list = HH.storiesOf(q[w]); i = fromEnd ? list.length - 1 : 0; };
     const render = () => {
-      const st = list[i]; HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
+      const st = list[i]; if (!hl) HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
       const next = q[w + 1] ? HH.profileOf(q[w + 1]) : null;
       root.innerHTML = `<div class="story-view" style="--dur:5s">
         <div class="story-bars">${list.map((x, k) => `<span class="${k < i ? 'done' : k === i ? 'cur' : ''}"><i></i></span>`).join('')}</div>
-        <div class="story-head">${HH.avatar(p, 36)}<div class="grow"><div style="font-weight:800">${HH.esc(p.displayName)}</div><div class="tiny" style="opacity:.8">${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}</div></div>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
+        <div class="story-head">${HH.avatar(p, 36)}<div class="grow"><div style="font-weight:800">${HH.esc(p.displayName)}</div><div class="tiny" style="opacity:.8">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</div></div>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
         <div class="story-media wm">${HH.storyMedia(st, p)}</div>
         ${st.caption ? `<div class="story-caption"><span data-noi18n>${HH.esc(st.caption)}</span></div>` : ''}
-        <div class="story-foot"><button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}${HH.me() && HH.me().id === q[w] ? '' : `<button type="button" class="btn sm" data-story="chat">${HH.icon('chat')} Chat en vivo</button>`}</div>
+        <div class="story-foot">${hl && opts.highlightId && HH.me() && HH.me().id === q[w] ? `<button type="button" class="btn secondary sm" data-story="hledit">${HH.icon('edit')} Editar destacada</button>` : `<button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>`}${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}${HH.me() && HH.me().id === q[w] ? '' : `<button type="button" class="btn sm" data-story="chat">${HH.icon('chat')} Chat en vivo</button>`}</div>
         ${next && i === list.length - 1 ? `<div class="story-next tiny">Sigue: ${HH.esc(next.displayName)}</div>` : ''}
         <button type="button" class="story-tap prev" data-story="prev" aria-label="Anterior"></button><button type="button" class="story-tap next" data-story="next" aria-label="Siguiente"></button>
       </div>`;
@@ -934,6 +939,7 @@ window.HH = (function () {
     root.onclick = (ev) => { const b = ev.target.closest('[data-story]'); if (!b) return; const a = b.dataset.story; const id = q[w];
       if (a === 'close') close(); else if (a === 'prev') step(-1); else if (a === 'next') step(1);
       else if (a === 'profile') { close(); HH.go('#perfil.' + p.slug); }
+      else if (a === 'hledit') { close(); HH.openHighlightEditor && HH.openHighlightEditor(opts.highlightId); }
       else if (a === 'book') { close(); HH.actions.pubBook({ dataset: { id } }); }
       else if (a === 'chat') { const prof = p; close(); if (HH.hasChatAccess(HH.viewerId(), id)) HH.go('#chat.' + id); else HH.buyChat(prof, () => HH.go('#chat.' + id)); } };
     document.body.style.overflow = 'hidden'; render();
@@ -976,9 +982,9 @@ window.HH = (function () {
          ${HH.icon(item.type === 'photo' ? 'image' : item.type === 'video' ? 'video' : 'film')}
        </div>`;
     const dur = item.type !== 'photo' && item.duration ? `<span class="dur">${item.duration}</span>` : '';
-    const lock = locked ? `<div class="lock"><div>${HH.icon('lock')}<div class="small" style="font-weight:800">${HH.money(item.priceUsd)}</div></div></div>` : '';
+    const lock = locked ? `<div class="lock"><div>${HH.icon('lock')}${opts.lockIcon ? '' : `<div class="small" style="font-weight:800">${HH.money(item.priceUsd)}</div>`}</div></div>` : '';
     const tag = item.isPremium && !locked && !opts.noTag ? `<span class="badge tag">${HH.icon('sparkles')} Premium</span>` : (!item.isPremium && opts.freeTag ? `<span class="badge ok tag">Gratis</span>` : '');
-    return `<div class="${cls}${opts.noWm ? '' : ' wm'}" style="${opts.style || ''}">${inner}${dur}${tag}${lock}${opts.children || ''}</div>`;
+    return `<div class="${cls}${opts.noWm ? '' : ' wm'}${locked ? ' is-locked' : ''}" style="${opts.style || ''}">${inner}${dur}${tag}${lock}${locked && opts.premiumTag ? `<span class="badge tag">${HH.icon('sparkles')} Premium</span>` : ''}${opts.children || ''}</div>`;
   };
   HH.levelBadge = (level, short) => level ? `<span class="badge level-${level}">${short ? HH.planName(level) : 'Plan ' + HH.planName(level)}</span>` : '<span class="badge neutral">Sin plan</span>';
   HH.starBadge = () => `<span class="badge gold">${HH.icon('star')} Star</span>`;
@@ -1108,7 +1114,7 @@ window.HH = (function () {
   /* ---------- Delegación de eventos ---------- */
   HH.actions = {
     closeModal: () => HH.closeModal(),
-    openStories: (el) => HH.openStories(el.dataset.id),
+    openStories: (el) => HH.openStories(el.dataset.id, 0, HH.storyQueueFor(el)),
     verifyContact: (el) => HH.verifyContact(el.dataset.kind),
     clientSignup: () => HH.clientAuth({ onDone: () => HH.go('#cuenta') }),
     clientLogin: () => HH.clientAuth({ mode: 'login', onDone: () => HH.go('#cuenta') }),
@@ -1145,7 +1151,7 @@ window.HH = (function () {
   document.addEventListener('click', (ev) => {
     const go = ev.target.closest('[data-go]');
     if (go && go.tagName === 'A' && (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button === 1) && !go.getAttribute('data-action')) return;
-    if (go) { ev.preventDefault(); const act = go.getAttribute('data-action'); if (act === 'openStories') { if (HH.storiesOf(go.dataset.id).length) { HH.openStories(go.dataset.id); return; } } else if (act && HH.actions[act]) HH.actions[act](go, ev); HH.go(go.getAttribute('data-go')); return; }
+    if (go) { ev.preventDefault(); const act = go.getAttribute('data-action'); if (act === 'openStories') { if (HH.storiesOf(go.dataset.id).length) { HH.openStories(go.dataset.id, 0, HH.storyQueueFor(go)); return; } } else if (act && HH.actions[act]) HH.actions[act](go, ev); HH.go(go.getAttribute('data-go')); return; }
     const ma = ev.target.closest('[data-modal-action]');
     if (ma) { const box = document.getElementById('modalBox'); const a = box._actions && box._actions[Number(ma.getAttribute('data-modal-action'))]; if (a && a.onClick) { a.onClick(ma, ev); return; } }
     const el = ev.target.closest('[data-action]');

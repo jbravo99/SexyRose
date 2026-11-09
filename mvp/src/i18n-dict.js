@@ -561,6 +561,10 @@ HH.I18N = {
 "Delete content",
 "Excluir conteúdo"
 ],
+"Borrar destacada": [
+"Delete highlight",
+"Apagar destaque"
+],
 "Borrar historia": [
 "Delete story",
 "Excluir story"
@@ -1293,6 +1297,10 @@ HH.I18N = {
 "Create account and continue",
 "Criar conta e continuar"
 ],
+"Crear destacada": [
+"Create highlight",
+"Criar destaque"
+],
 "Crear mi perfil y reservar": [
 "Create my profile and book",
 "Criar meu perfil e reservar"
@@ -1585,9 +1593,25 @@ HH.I18N = {
 "You can add more later from your profile.",
 "Depois você pode adicionar mais pelo seu perfil."
 ],
+"Destacada borrada": [
+"Highlight deleted",
+"Destaque apagado"
+],
+"Destacada creada": [
+"Highlight created",
+"Destaque criado"
+],
 "Destacada en todo el sitio por": [
 "Featured across the site for",
 "Destaque em todo o site por"
+],
+"Destacada guardada": [
+"Highlight saved",
+"Destaque salvo"
+],
+"Destacadas": [
+"Highlights",
+"Destaques"
 ],
 "Destacadas en": [
 "Featured in",
@@ -1596,6 +1620,10 @@ HH.I18N = {
 "Destacadas en {x}": [
 "Featured in {x}",
 "Destaques em {x}"
+],
+"Destacadas ilimitadas": [
+"Unlimited highlights",
+"Destaques ilimitados"
 ],
 "Destino": [
 "Destination",
@@ -1705,6 +1733,10 @@ HH.I18N = {
 "Edit article",
 "Editar artigo"
 ],
+"Editar destacada": [
+"Edit highlight",
+"Editar destaque"
+],
 "Editar mi perfil": [
 "Edit my profile",
 "Editar meu perfil"
@@ -1724,6 +1756,10 @@ HH.I18N = {
 "Ej.: Viajero BA": [
 "E.g.: BA Traveler",
 "Ex.: Viajante BA"
+],
+"Ej.: Viajes": [
+"E.g.: Trips",
+"Ex.: Viagens"
 ],
 "Ej.: propuso algo fuera de las reglas de la plataforma.": [
 "E.g.: they suggested something against the platform rules.",
@@ -1829,6 +1865,10 @@ HH.I18N = {
 "Choose 2 or more pieces.",
 "Escolha 2 ou mais peças."
 ],
+"Elegí al menos una historia": [
+"Choose at least one story",
+"Escolha pelo menos um story"
+],
 "Elegí al menos {n} piezas premium": [
 "Choose at least {n} premium pieces",
 "Escolha pelo menos {n} peças premium"
@@ -1884,6 +1924,10 @@ HH.I18N = {
 "Elegí hasta {n} intereses": [
 "Choose up to {n} interests",
 "Escolha até {n} interesses"
+],
+"Elegí historias": [
+"Choose stories",
+"Escolha os stories"
 ],
 "Elegí la ciudad": [
 "Choose the city",
@@ -2637,6 +2681,10 @@ HH.I18N = {
 "Up to {n} links to your social media or pages. They're shown on your links page, next to your SexyRose buttons.",
 "Até {n} links para suas redes ou páginas. Eles aparecem na sua página de links, junto aos seus botões da SexyRose."
 ],
+"Hasta {x} caracteres. Podés usar emojis.": [
+"Up to {x} characters. You can use emojis.",
+"Até {x} caracteres. Você pode usar emojis."
+],
 "Helado": [
 "Ice cream",
 "Sorvete"
@@ -2648,6 +2696,10 @@ HH.I18N = {
 "Historia borrada": [
 "Story deleted",
 "Story excluído"
+],
+"Historia del {x}": [
+"Story from {x}",
+"Story de {x}"
 ],
 "Historia publicada por {n} h": [
 "Story posted for {n} h",
@@ -2668,6 +2720,10 @@ HH.I18N = {
 "Historias de hoy": [
 "Today's stories",
 "Stories de hoje"
+],
+"Historias destacadas": [
+"Story highlights",
+"Destaques dos stories"
 ],
 "Historias ilimitadas": [
 "Unlimited stories",
@@ -2837,6 +2893,10 @@ HH.I18N = {
 "Go to my section",
 "Ir para minha seção"
 ],
+"Ir a mis historias": [
+"Go to my stories",
+"Ir para meus stories"
+],
 "Ir al inicio": [
 "Go to Home",
 "Ir para o Início"
@@ -2972,6 +3032,10 @@ HH.I18N = {
 "Las contraseñas no coinciden": [
 "Passwords don't match",
 "As senhas não coincidem"
+],
+"Las destacadas se arman con tus historias. Publicá una desde tu panel y después sumala acá.": [
+"Highlights are made from your stories. Post one from your dashboard and then add it here.",
+"Os destaques são feitos com seus stories. Publique um no seu painel e depois adicione aqui."
 ],
 "Las distancias son orientativas: las acompañantes figuran con precisión de barrio y tu ubicación nunca sale de este dispositivo.": [
 "Distances are approximate: companions are listed at neighborhood level and your location never leaves this device.",
@@ -3116,6 +3180,10 @@ HH.I18N = {
 "Listo: verificamos tu identidad": [
 "Done: we verified your identity",
 "Pronto: verificamos sua identidade"
+],
+"Llegaste al límite de destacadas de tu plan": [
+"You reached your plan's highlight limit",
+"Você atingiu o limite de destaques do seu plano"
 ],
 "Llegaste al límite de historias de hoy de tu plan": [
 "You've reached your plan's story limit for today",
@@ -3933,6 +4001,10 @@ HH.I18N = {
 "New password",
 "Nova senha"
 ],
+"Nueva destacada": [
+"New highlight",
+"Novo destaque"
+],
 "Nueva historia": [
 "New story",
 "Novo story"
@@ -4369,6 +4441,10 @@ HH.I18N = {
 "Request \"{x}\"",
 "Pedir \"{x}\""
 ],
+"Pedir a medida": [
+"Custom request",
+"Pedido personalizado"
+],
 "Pedir contenido a": [
 "Request content from",
 "Pedir conteúdo para"
@@ -4509,6 +4585,10 @@ HH.I18N = {
 "You can start over and see them again.",
 "Você pode recomeçar e vê-los de novo."
 ],
+"Ponele un nombre a la destacada": [
+"Give the highlight a name",
+"Dê um nome ao destaque"
+],
 "Poné tu nombre": [
 "Enter your name",
 "Digite seu nome"
@@ -4532,6 +4612,10 @@ HH.I18N = {
 "Por seguridad no se pueden compartir teléfonos, links, mails ni usuarios de otras redes en el chat.": [
 "For safety, phone numbers, links, emails and usernames from other networks can't be shared in the chat.",
 "Por segurança, não é possível compartilhar telefones, links, emails nem usuários de outras redes no chat."
+],
+"Portada": [
+"Cover",
+"Capa"
 ],
 "Portugués": [
 "Portuguese",
@@ -4776,6 +4860,10 @@ HH.I18N = {
 "Quedan": [
 "Remaining:",
 "Restam"
+],
+"Quedan fijas en tu perfil.": [
+"They stay pinned on your profile.",
+"Ficam fixos no seu perfil."
 ],
 "Quedan {n} en {x}": [
 "{n} left in {x}",
@@ -5165,6 +5253,10 @@ HH.I18N = {
 "Santa Fe",
 "Santa Fe"
 ],
+"Se borra la destacada de tu perfil. Las historias siguen en tu archivo.": [
+"The highlight is removed from your profile. The stories stay in your archive.",
+"O destaque sai do seu perfil. Os stories continuam no seu arquivo."
+],
 "Se canceló el ingreso con passkey.": [
 "Passkey sign-in was canceled.",
 "O acesso com passkey foi cancelado."
@@ -5200,6 +5292,10 @@ HH.I18N = {
 "Secciones del panel": [
 "Dashboard sections",
 "Seções do painel"
+],
+"Secciones del perfil": [
+"Profile sections",
+"Seções do perfil"
 ],
 "Sección": [
 "Section",
@@ -5853,6 +5949,10 @@ HH.I18N = {
 "Tap to take or upload the photo",
 "Toque para tirar ou enviar a foto"
 ],
+"Tocá para sumar o sacar. Con la estrella elegís la portada.": [
+"Tap to add or remove. Use the star to choose the cover.",
+"Toque para adicionar ou remover. Com a estrela você escolhe a capa."
+],
 "Toda la actividad": [
 "All activity",
 "Toda a atividade"
@@ -5864,6 +5964,10 @@ HH.I18N = {
 "Todas las ubicaciones": [
 "All locations",
 "Todas as localizações"
+],
+"Todavía no armaste destacadas. Juntá tus mejores historias (viajes, salidas, cafés) para que se vean siempre en tu perfil.": [
+"You haven't made any highlights yet. Gather your best stories (trips, outings, coffees) so they always show on your profile.",
+"Você ainda não criou destaques. Junte seus melhores stories (viagens, passeios, cafés) para que apareçam sempre no seu perfil."
 ],
 "Todavía no armaste ningún pack": [
 "You haven't created any packs yet",
@@ -5944,6 +6048,10 @@ HH.I18N = {
 "Todavía no tenés cuenta": [
 "You don't have an account yet",
 "Você ainda não tem conta"
+],
+"Todavía no tenés historias": [
+"You don't have any stories yet",
+"Você ainda não tem stories"
 ],
 "Todavía no tenés mensajes": [
 "You don't have any messages yet",
@@ -6185,6 +6293,14 @@ HH.I18N = {
 "Your plan allows up to {x}",
 "Seu plano permite até {x}"
 ],
+"Tu plan permite {n} destacada. Subí de plan para sumar más.": [
+"Your plan allows {n} highlight. Upgrade your plan to add more.",
+"Seu plano permite {n} destaque. Mude de plano para adicionar mais."
+],
+"Tu plan permite {n} destacadas. Subí de plan para sumar más.": [
+"Your plan allows {n} highlights. Upgrade your plan to add more.",
+"Seu plano permite {n} destaques. Mude de plano para adicionar mais."
+],
 "Tu plan permite {x}": [
 "Your plan allows {x}",
 "Seu plano permite {x}"
@@ -6337,6 +6453,10 @@ HH.I18N = {
 "A short video: greeting, recommendation, tour",
 "Um vídeo curto: saudação, recomendação, passeio"
 ],
+"Una destacada puede tener hasta {n} historias.": [
+"A highlight can have up to {n} stories.",
+"Um destaque pode ter até {n} stories."
+],
 "Una foto pensada para vos": [
 "A photo made for you",
 "Uma foto pensada para você"
@@ -6364,6 +6484,10 @@ HH.I18N = {
 "Usar como principal": [
 "Set as main",
 "Usar como principal"
+],
+"Usar de portada": [
+"Use as cover",
+"Usar como capa"
 ],
 "Usar esta localidad": [
 "Use this location",
@@ -6476,6 +6600,10 @@ HH.I18N = {
 "Ver dentro de {x}": [
 "View in {x}",
 "Ver em {x}"
+],
+"Ver destacada {x}": [
+"View highlight {x}",
+"Ver destaque {x}"
 ],
 "Ver foto": [
 "View photo",
@@ -7205,6 +7333,10 @@ HH.I18N = {
 "didn't reply to your chat request · we refunded you",
 "não respondeu à sua solicitação de chat · reembolsamos você"
 ],
+"no se ve: supera el límite de tu plan": [
+"not shown: over your plan's limit",
+"não aparece: passa do limite do seu plano"
+],
 "no tiene el chat habilitado en su plan por ahora. Podés pedirle contenido a medida desde tus pedidos.": [
 "doesn't have chat enabled on their plan right now. You can ask for custom content from your requests.",
 "não tem o chat habilitado no plano por enquanto. Você pode pedir conteúdo personalizado pelos seus pedidos."
@@ -7393,6 +7525,10 @@ HH.I18N = {
 "a companion",
 "uma acompanhante"
 ],
+"usás {n}": [
+"you use {n}",
+"você usa {n}"
+],
 "vence en {n} h": [
 "expires in {n} h",
 "vence em {n} h"
@@ -7493,6 +7629,14 @@ HH.I18N = {
 "{n} of {n} available in {x}",
 "{n} de {n} livres em {x}"
 ],
+"{n} destacada": [
+"{n} highlight",
+"{n} destaque"
+],
+"{n} destacadas": [
+"{n} highlights",
+"{n} destaques"
+],
 "{n} días": [
 "{n} days",
 "{n} dias"
@@ -7500,6 +7644,14 @@ HH.I18N = {
 "{n} días antes de que venza tu plan": [
 "{n} days before your plan expires",
 "{n} dias antes de o seu plano vencer"
+],
+"{n} elegida": [
+"{n} selected",
+"{n} selecionado"
+],
+"{n} elegidas": [
+"{n} selected",
+"{n} selecionados"
 ],
 "{n} gratis · {n} premium": [
 "{n} free · {n} premium",
@@ -7513,9 +7665,17 @@ HH.I18N = {
 "{n} h → USD {n} · {n} h → USD {n}",
 "{n} h → USD {n} · {n} h → USD {n}"
 ],
+"{n} historia": [
+"{n} story",
+"{n} story"
+],
 "{n} historia por día": [
 "{n} story per day",
 "{n} story por dia"
+],
+"{n} historias": [
+"{n} stories",
+"{n} stories"
 ],
 "{n} historias por día": [
 "{n} stories per day",
@@ -7624,6 +7784,18 @@ HH.I18N = {
 "{x}": [
 "{x}",
 "{x}"
+],
+"{x} Editar": [
+"{x} Edit",
+"{x} Editar"
+],
+"{x} Editar destacada": [
+"{x} Edit highlight",
+"{x} Editar destaque"
+],
+"{x} Nueva destacada": [
+"{x} New highlight",
+"{x} Novo destaque"
 ],
 "{x} al {x}. Tocá un horario para marcarlo como ocupado o bloqueado.": [
 "{x} to {x}. Tap a time slot to mark it as busy or blocked.",

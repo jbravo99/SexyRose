@@ -243,9 +243,11 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .media .ph .silhouette { position: absolute; left: 50%; bottom: -24%; width: 92%; height: auto; transform: translateX(-50%); fill: rgba(255,255,255,.16); }
 .media .ph .initial { position: relative; margin-top: -22%; font-family: var(--font-display); font-size: 64px; font-weight: 700; opacity: .9; text-shadow: 0 4px 20px rgba(0,0,0,.15); }
 .media .deco { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .55; }
-.media .lock { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(58,28,42,.35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #fff; text-align: center; gap: 6px; }
+.media .lock { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(21,19,26,.55); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); color: #fff; text-align: center; gap: 6px; }
+.media.is-locked > img, .media.is-locked > .ph { filter: blur(24px) saturate(.8); transform: scale(1.15); }
+.media.is-locked > .ph > svg, .media.is-locked > .ph > .initial { visibility: hidden; }
 .media .lock svg { width: 26px; height: 26px; }
-.media .tag { position: absolute; left: 10px; top: 10px; }
+.media .tag { position: absolute; left: 10px; top: 10px; z-index: 1; }
 .media .tag-br { position: absolute; right: 10px; bottom: 10px; }
 .media .dur { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
 .media .play { position: absolute; inset: 0; display: grid; place-items: center; }
@@ -276,10 +278,10 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .swipe-card .stamp.nope { right: 20px; color: var(--berry); border-color: var(--berry); transform: rotate(12deg); }
 .swipe-card.leaving { transition: transform .35s ease, opacity .35s ease; }
 .swipe-actions { display: flex; justify-content: center; gap: 18px; margin-top: 16px; }
-.swipe-actions .btn.round { width: 60px; height: 60px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--fg-2); }
+.swipe-actions .btn.round { --sr-act: 60px; width: var(--sr-act); height: var(--sr-act); flex: none; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); color: var(--fg-2); }
 .swipe-actions .btn.round svg { width: 26px; height: 26px; }
 .swipe-actions .btn.round.nope { color: var(--berry); }
-.swipe-actions .btn.round.like { color: #fff; background: #25D366; border-color: transparent; width: 68px; height: 68px; box-shadow: 0 8px 20px rgba(37,211,102,.35); }
+.swipe-actions .btn.round.like { color: #fff; background: #25D366; border-color: transparent; box-shadow: 0 8px 20px rgba(37,211,102,.35); }
 .swipe-actions .btn.round.info { color: var(--info); }
 
 /* Shorts feed */

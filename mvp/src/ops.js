@@ -173,7 +173,7 @@
     t.messages.push(m); t.updatedAt = m.at; t.unread = true; HH.save(); return m;
   };
   const BK_BTNS = () => [{ id: 'bk_ok', label: 'Seña recibida · confirmar' }, { id: 'bk_alt', label: 'Proponer otro horario' }, { id: 'bk_no', label: 'Rechazar' }];
-  const fmtB = (b) => `${HH.activity(b.activity).label} · ${HH.fmtBooking(b)} · ${b.place}`;
+  const fmtB = (b) => `${HH.activity(b.activity).label} · ${HH.fmtBooking(b)}${b.place ? ' · ' + b.place : ''}`;
   // Botones vigentes de un mensaje (los de una reserva caducan cuando cambia su estado)
   function liveButtons(m) {
     if (!m.buttons) return null;

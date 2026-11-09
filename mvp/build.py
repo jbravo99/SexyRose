@@ -4,9 +4,9 @@ import pathlib, sys, os
 SRC = pathlib.Path(__file__).parent / 'src'
 ONLY = os.environ.get('HH_ONLY')  # p. ej. HH_ONLY=views-public.js → build aislado de ese módulo
 OUT = pathlib.Path(__file__).parent / 'build' / ('index.html' if not ONLY else 'only-' + ONLY.replace('.js', '') + '.html')
-JS_ORDER = ['core.js', 'i18n-dict.js', 'i18n.js', 'urls.js', 'geo.js', 'bookings.js', 'chat.js', 'activity.js', 'data.js', 'views-public.js', 'views-dashboard.js', 'views-client.js', 'views-admin.js', 'stats.js', 'ops.js', 'seo.js', 'interests.js', 'billing.js', 'agegate.js', 'boot.js']
+JS_ORDER = ['core.js', 'i18n-dict.js', 'i18n.js', 'urls.js', 'geo.js', 'bookings.js', 'chat.js', 'activity.js', 'data.js', 'views-public.js', 'views-dashboard.js', 'views-client.js', 'views-admin.js', 'stats.js', 'ops.js', 'seo.js', 'interests.js', 'billing.js', 'agegate.js', 'highlights.js', 'boot.js']
 if ONLY:
-    JS_ORDER = ['core.js', 'i18n-dict.js', 'i18n.js', 'urls.js', 'geo.js', 'bookings.js', 'chat.js', 'activity.js', 'data.js', ONLY, 'stats.js', 'ops.js', 'seo.js', 'interests.js', 'billing.js', 'agegate.js', 'boot.js']
+    JS_ORDER = ['core.js', 'i18n-dict.js', 'i18n.js', 'urls.js', 'geo.js', 'bookings.js', 'chat.js', 'activity.js', 'data.js', ONLY, 'stats.js', 'ops.js', 'seo.js', 'interests.js', 'billing.js', 'agegate.js', 'highlights.js', 'boot.js']
 parts = []
 parts.append((SRC / 'head.html').read_text())
 parts.append('<style>\n' + (SRC / 'app.css').read_text() + '\n</style>')

@@ -91,16 +91,15 @@
     const p = HH.profileOf(workerId);
     if (!p || !HH.canTakeBookings(p)) return { error: 'Esta acompañante no está tomando reservas' };
     if (!HH.bookingSlots(p, date, hours).includes(start)) return { error: 'Ese horario ya no está disponible' };
-    if (String(place || '').trim().length < 4) return { error: 'Indicá el punto de encuentro' };
     if (!HH.db.bookings) HH.db.bookings = [];
-    const b = { id: HH.uid('bk'), workerId, clientId, activity, place: String(place).trim().slice(0, 120), note: String(note || '').trim().slice(0, 400), date, start, hours, depositUsd: HH.depositFor(p, hours), depositPct: HH.bookingSettings().depositPct, payLink: HH.bookingCfg(p).payLink, status: 'solicitada', createdAt: HH.now(), updatedAt: HH.now() };
+    const b = { id: HH.uid('bk'), workerId, clientId, activity, place: String(place || '').trim().slice(0, 120), note: String(note || '').trim().slice(0, 400), date, start, hours, depositUsd: HH.depositFor(p, hours), depositPct: HH.bookingSettings().depositPct, payLink: HH.bookingCfg(p).payLink, status: 'solicitada', createdAt: HH.now(), updatedAt: HH.now() };
     HH.db.bookings.push(b); HH.save();
     return { ok: true, booking: b };
   };
   HH.updateBooking = function (id, patch) { const b = (HH.db.bookings || []).find(x => x.id === id); if (!b) return null; Object.assign(b, patch, { updatedAt: HH.now() }); HH.save(); return b; };
 
   /* ---------- Modal de reserva (cliente) ---------- */
-  const BK = { p: null, hours: 1, date: null, start: null, activity: null, place: '', note: '', terms: false };
+  const BK = { p: null, hours: 1, date: null, start: null, activity: null, note: '' };
   function bookingBody() {
     const p = BK.p; const st = HH.bookingSettings();
     const days = HH.bookingDays(p, BK.hours);
@@ -117,17 +116,15 @@
       <div class="field"><span class="label">Duración</span><div class="chips">${Array.from({ length: st.maxHours }, (_, i) => i + 1).map(h => `<button type="button" class="chip${h === BK.hours ? ' active' : ''}" data-action="bkHours" data-v="${h}">${h} h</button>`).join('')}</div></div>
       <div class="field"><span class="label">Día</span>${days.length ? `<div class="bk-days">${days.map(dayChip).join('')}</div>` : '<div class="small muted">No tiene horarios libres para esa duración en las próximas semanas. Probá con menos horas.</div>'}</div>
       ${BK.date ? `<div class="field"><span class="label">Horario de inicio</span><div class="chips">${slots.map(s => `<button type="button" class="chip${s === BK.start ? ' active' : ''}" data-action="bkTime" data-v="${s}">${s}</button>`).join('')}</div></div>` : ''}
-      <div class="field"><label for="bkPlace">Punto de encuentro</label><input class="input" id="bkPlace" maxlength="120" value="${esc(BK.place)}" data-input="bkField" data-k="place" placeholder="Un lugar público. Ej.: entrada del Malba"><span class="hint">Siempre en un lugar público. Nunca domicilios ni hoteles.</span></div>
       <div class="field"><label for="bkNote">Mensaje (opcional)</label><textarea class="textarea" id="bkNote" rows="2" maxlength="400" data-input="bkField" data-k="note" placeholder="Contale qué te gustaría hacer.">${esc(BK.note)}</textarea></div>
       <div class="bk-dep"><div class="grow"><div class="small muted">Seña (${st.depositPct}% de ${HH.money(p.rateFrom)} × ${BK.hours} h)</div><div style="font-weight:800;font-size:20px">${HH.money(dep)}</div></div><div class="tiny muted" style="max-width:220px">Se paga con el link de pago de ${esc(p.displayName)}. SexyRose no la cobra.</div></div>
-      <label class="row nowrap small" style="gap:8px;align-items:flex-start"><input type="checkbox" id="bkTerms" data-change="bkField" data-k="terms"${BK.terms ? ' checked' : ''} style="margin-top:3px"><span>${esc(HH.BOOKING_TERMS)}</span></label>
     </div>`;
   }
   function renderBooking() {
     HH.modal({ title: 'Reservar salida', body: bookingBody(), actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: HH.icon('calendar') + ' Solicitar reserva', id: 'bkSend', onClick: () => HH.actions.bkSend() }] });
   }
   HH.openBookingModal = function (p) {
-    Object.assign(BK, { p, hours: 1, date: null, start: null, activity: null, place: '', note: '', terms: false });
+    Object.assign(BK, { p, hours: 1, date: null, start: null, activity: null, note: '' });
     renderBooking();
   };
   const keepScroll = (fn) => { const box = document.getElementById('modalBox'); const y = box ? box.scrollTop : 0; fn(); const b2 = document.getElementById('modalBox'); if (b2) b2.scrollTop = y; };
@@ -140,9 +137,7 @@
     bkSend() {
       const me = HH.me(); if (!me || me.role !== 'client') { HH.toast('Las reservas son para cuentas de cliente', { type: 'warn' }); return; }
       if (!BK.date || !BK.start) { HH.toast('Elegí día y horario', { type: 'warn' }); return; }
-      if (BK.place.trim().length < 4) { HH.toast('Indicá el punto de encuentro (un lugar público)', { type: 'warn' }); const i = document.getElementById('bkPlace'); if (i) i.focus(); return; }
-      if (!BK.terms) { HH.toast('Tenés que aceptar las condiciones de la salida', { type: 'warn' }); return; }
-      const r = HH.createBooking({ workerId: BK.p.userId, clientId: me.id, activity: BK.activity, place: BK.place, date: BK.date, start: BK.start, hours: BK.hours, note: BK.note });
+      const r = HH.createBooking({ workerId: BK.p.userId, clientId: me.id, activity: BK.activity, date: BK.date, start: BK.start, hours: BK.hours, note: BK.note });
       if (r.error) { HH.toast(r.error, { type: 'danger' }); keepScroll(renderBooking); return; }
       const b = r.booking; const p = BK.p;
       HH.modal({ title: 'Reserva solicitada', body: `<div class="stack" style="gap:12px">

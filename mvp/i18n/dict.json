@@ -7874,5 +7874,177 @@
  "hasta el {x}": [
   "until {x}",
   "até {x}"
+ ],
+ "Pedir a medida": [
+  "Custom request",
+  "Pedido personalizado"
+ ],
+ "Secciones del perfil": [
+  "Profile sections",
+  "Seções do perfil"
+ ],
+ "Borrar destacada": [
+  "Delete highlight",
+  "Apagar destaque"
+ ],
+ "Crear destacada": [
+  "Create highlight",
+  "Criar destaque"
+ ],
+ "Destacada borrada": [
+  "Highlight deleted",
+  "Destaque apagado"
+ ],
+ "Destacada creada": [
+  "Highlight created",
+  "Destaque criado"
+ ],
+ "Destacada guardada": [
+  "Highlight saved",
+  "Destaque salvo"
+ ],
+ "Destacadas": [
+  "Highlights",
+  "Destaques"
+ ],
+ "Destacadas ilimitadas": [
+  "Unlimited highlights",
+  "Destaques ilimitados"
+ ],
+ "Editar destacada": [
+  "Edit highlight",
+  "Editar destaque"
+ ],
+ "Ej.: Viajes": [
+  "E.g.: Trips",
+  "Ex.: Viagens"
+ ],
+ "Elegí al menos una historia": [
+  "Choose at least one story",
+  "Escolha pelo menos um story"
+ ],
+ "Elegí historias": [
+  "Choose stories",
+  "Escolha os stories"
+ ],
+ "Hasta {x} caracteres. Podés usar emojis.": [
+  "Up to {x} characters. You can use emojis.",
+  "Até {x} caracteres. Você pode usar emojis."
+ ],
+ "Historias destacadas": [
+  "Story highlights",
+  "Destaques dos stories"
+ ],
+ "Ir a mis historias": [
+  "Go to my stories",
+  "Ir para meus stories"
+ ],
+ "Las destacadas se arman con tus historias. Publicá una desde tu panel y después sumala acá.": [
+  "Highlights are made from your stories. Post one from your dashboard and then add it here.",
+  "Os destaques são feitos com seus stories. Publique um no seu painel e depois adicione aqui."
+ ],
+ "Llegaste al límite de destacadas de tu plan": [
+  "You reached your plan's highlight limit",
+  "Você atingiu o limite de destaques do seu plano"
+ ],
+ "Nueva destacada": [
+  "New highlight",
+  "Novo destaque"
+ ],
+ "Ponele un nombre a la destacada": [
+  "Give the highlight a name",
+  "Dê um nome ao destaque"
+ ],
+ "Portada": [
+  "Cover",
+  "Capa"
+ ],
+ "Se borra la destacada de tu perfil. Las historias siguen en tu archivo.": [
+  "The highlight is removed from your profile. The stories stay in your archive.",
+  "O destaque sai do seu perfil. Os stories continuam no seu arquivo."
+ ],
+ "Tocá para sumar o sacar. Con la estrella elegís la portada.": [
+  "Tap to add or remove. Use the star to choose the cover.",
+  "Toque para adicionar ou remover. Com a estrela você escolhe a capa."
+ ],
+ "Todavía no armaste destacadas. Juntá tus mejores historias (viajes, salidas, cafés) para que se vean siempre en tu perfil.": [
+  "You haven't made any highlights yet. Gather your best stories (trips, outings, coffees) so they always show on your profile.",
+  "Você ainda não criou destaques. Junte seus melhores stories (viagens, passeios, cafés) para que apareçam sempre no seu perfil."
+ ],
+ "Todavía no tenés historias": [
+  "You don't have any stories yet",
+  "Você ainda não tem stories"
+ ],
+ "Usar de portada": [
+  "Use as cover",
+  "Usar como capa"
+ ],
+ "no se ve: supera el límite de tu plan": [
+  "not shown: over your plan's limit",
+  "não aparece: passa do limite do seu plano"
+ ],
+ "{x} Editar": [
+  "{x} Edit",
+  "{x} Editar"
+ ],
+ "{x} Nueva destacada": [
+  "{x} New highlight",
+  "{x} Novo destaque"
+ ],
+ "{x} Editar destacada": [
+  "{x} Edit highlight",
+  "{x} Editar destaque"
+ ],
+ "{n} destacada": [
+  "{n} highlight",
+  "{n} destaque"
+ ],
+ "{n} destacadas": [
+  "{n} highlights",
+  "{n} destaques"
+ ],
+ "{n} elegida": [
+  "{n} selected",
+  "{n} selecionado"
+ ],
+ "{n} elegidas": [
+  "{n} selected",
+  "{n} selecionados"
+ ],
+ "Tu plan permite {n} destacada. Subí de plan para sumar más.": [
+  "Your plan allows {n} highlight. Upgrade your plan to add more.",
+  "Seu plano permite {n} destaque. Mude de plano para adicionar mais."
+ ],
+ "Tu plan permite {n} destacadas. Subí de plan para sumar más.": [
+  "Your plan allows {n} highlights. Upgrade your plan to add more.",
+  "Seu plano permite {n} destaques. Mude de plano para adicionar mais."
+ ],
+ "Una destacada puede tener hasta {n} historias.": [
+  "A highlight can have up to {n} stories.",
+  "Um destaque pode ter até {n} stories."
+ ],
+ "Ver destacada {x}": [
+  "View highlight {x}",
+  "Ver destaque {x}"
+ ],
+ "Historia del {x}": [
+  "Story from {x}",
+  "Story de {x}"
+ ],
+ "{n} historia": [
+  "{n} story",
+  "{n} story"
+ ],
+ "{n} historias": [
+  "{n} stories",
+  "{n} stories"
+ ],
+ "Quedan fijas en tu perfil.": [
+  "They stay pinned on your profile.",
+  "Ficam fixos no seu perfil."
+ ],
+ "usás {n}": [
+  "you use {n}",
+  "você usa {n}"
  ]
 }

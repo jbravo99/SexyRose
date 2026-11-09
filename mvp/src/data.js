@@ -2,7 +2,7 @@
    SexyRose MVP — data.js
    Datos semilla de demostración. HH.seed() devuelve la base completa.
    ============================================================ */
-HH.SEED_VERSION = 31;
+HH.SEED_VERSION = 32;
 HH.seed = function () {
   const d = HH.daysAgo, f = HH.daysFromNow, now = HH.now();
   const users = [];
@@ -211,6 +211,14 @@ HH.seed = function () {
   story('u_lu', 'Café de olla en Coyoacán', 12, 45);
   story('u_emi', 'Beco do Batman, grafitis nuevos', 9, 10);
   story('u_cata', 'Café de origen en Chapinero', 14, 120);
+  // Historias vencidas (archivo) y destacadas de ejemplo
+  const old = (w, caption, daysAgo, hue) => { story(w, caption, daysAgo * 24, hue); return stories[stories.length - 1].id; };
+  const highlights = [];
+  const hl = (w, title, ids, daysAgo) => highlights.push({ id: HH.uid('hl'), workerId: w, title, storyIds: ids, coverId: ids[0], createdAt: d(daysAgo), updatedAt: d(daysAgo) });
+  hl('u_vale', 'Viajes ✈️', [old('u_vale', 'Rambla de Montevideo', 40, 200), old('u_vale', 'Mercado del Puerto', 39, 25), old('u_vale', 'Colonia del Sacramento', 38, 45)], 37);
+  hl('u_vale', 'Cafés ☕', [old('u_vale', 'Flat white en Palermo Soho', 12, 30), old('u_vale', 'Medialunas en San Telmo', 6, 15)], 5);
+  hl('u_vale', 'Museos', [old('u_vale', 'Malba, muestra nueva', 20, 280), old('u_vale', 'Bellas Artes un domingo', 18, 260)], 17);
+  hl('u_flor', 'Barcelona', [old('u_flor', 'Park Güell temprano', 15, 150), old('u_flor', 'Bunkers del Carmel', 14, 210)], 13);
 
   // --- Swipes históricos (para stats) ---
   const swipes = [];
@@ -269,5 +277,5 @@ HH.seed = function () {
   ];
   const likes = [];
   content.filter(c => c.workerId === 'u_vale' && c.type === 'short').forEach((c, i) => [['u_cliente', 0.02 + i * 0.3], ['u_c3', 0.6 + i], ['u_c4', 2 + i]].forEach(([u, t]) => likes.push({ id: HH.uid('lk'), contentId: c.id, workerId: 'u_vale', userId: u, createdAt: d(t) })));
-  return { likes, version: HH.SEED_VERSION, locations, activities, settings, stories, users, profiles, subscriptions, stars, content, packs, requests, messages, payments, purchases, swipes, reports, bookings };
+  return { likes, version: HH.SEED_VERSION, locations, activities, settings, stories, highlights, users, profiles, subscriptions, stars, content, packs, requests, messages, payments, purchases, swipes, reports, bookings };
 };
