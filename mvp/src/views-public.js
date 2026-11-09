@@ -90,6 +90,22 @@
 .pub-swipe .swipe-actions{margin-top:24px}
 @media(max-width:899px){.pub-swipe{display:flex;flex-direction:column;height:calc(100dvh - var(--header-h) - var(--bottomnav-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--sr-demo-h,0px) - 32px);min-height:430px}.pub-swipe-side{flex:none}.pub-swipe-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}.pub-swipe .swipe-stage{flex:1 1 auto;width:100%;height:auto;min-height:200px;max-height:640px}.pub-swipe .swipe-actions{flex:none;margin-top:28px}}
 @media(max-width:899px) and (max-height:700px){.pub-swipe .swipe-actions{margin-top:22px}.pub-swipe .swipe-actions .btn.round{--sr-act:54px}}
+/* Mobile estilo Tinder (v57): una fila compacta arriba, tarjeta vertical que ocupa el resto y botones flotando sobre la foto */
+@media(max-width:899px){
+.pub-swipe-wrap{padding-block:10px!important}
+.pub-swipe{height:calc(100dvh - var(--header-h) - var(--bottomnav-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--sr-demo-h,0px) - 20px);min-height:360px;gap:10px}
+.pub-swipe-side{gap:8px!important}
+.sw-top{gap:8px}.sw-ib{width:46px;height:46px;border-radius:999px;position:relative}.sw-ib svg{width:20px;height:20px}
+.sw-ib.on{border-color:var(--berry);color:var(--berry)}.sw-dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--berry)}
+.sw-chips{display:none!important}.sw-chips.open{display:flex!important}
+.pub-swipe-main{position:relative}
+.pub-swipe .swipe-stage{max-height:none;margin-bottom:10px}
+.pub-swipe .swipe-actions{position:absolute;left:0;right:0;bottom:24px;margin:0!important;z-index:5;pointer-events:none}
+.pub-swipe .swipe-actions .btn.round{pointer-events:auto}
+.pub-swipe .swipe-actions .btn.round.nope,.pub-swipe .swipe-actions .btn.round.info{background:rgba(21,19,26,.72);border-color:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.pub-swipe .swipe-card .info{padding-bottom:96px}
+.pub-swipe .swipe-card.back1{transform:scale(.97) translateY(7px)}.pub-swipe .swipe-card.back2{transform:scale(.94) translateY(14px)}
+}
 .swipe-card{transition:transform .25s ease,opacity .25s ease}
 .swipe-card.dragging{transition:none;cursor:grabbing}
 .swipe-card.top{z-index:3;cursor:grab;animation:pubPromote .25s ease}
@@ -1091,15 +1107,17 @@
     ].sort((a, b) => a.localeCompare(b));
     S.queue = buildQueue();
     HH.afterRender = renderStack;
-    return `<div class="container section" style="padding-block:16px">
+    return `<div class="container section pub-swipe-wrap" style="padding-block:16px">
       <div class="pub-swipe">
         <div class="pub-swipe-side stack" style="gap:10px">
-          <div class="row between nowrap">
+          <div class="row between nowrap sw-top">
             <div class="grow" style="min-width:0">${HH.placePill(f.city || "", "pubSwipeCity", { block: true })}</div>
-            <span class="small muted num" id="pubSwipeCount" style="white-space:nowrap;flex:none"></span>
+            <span class="small muted num hide-mobile" id="pubSwipeCount" style="white-space:nowrap;flex:none"></span>
+            <button type="button" class="icon-btn sw-ib hide-desktop" data-action="pubGridMode" aria-label="Modo grilla" title="Modo grilla">${HH.icon("grid")}</button>
+            <button type="button" class="icon-btn sw-ib hide-desktop${f.activity ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>
           </div>
-          <button type="button" class="btn lg block pub-swipe-cta" data-action="pubGridMode">${HH.icon("grid")} Modo grilla</button>
-          <div class="chips scroll" role="group" aria-label="Tipo de salida">
+          <button type="button" class="btn lg block pub-swipe-cta hide-mobile" data-action="pubGridMode">${HH.icon("grid")} Modo grilla</button>
+          <div class="chips scroll sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips" role="group" aria-label="Tipo de salida">
             <button type="button" class="chip" data-action="pubSwipeActivity" data-id="" aria-pressed="${!f.activity}">Todas</button>
             ${HH.ACTIVITIES.map((a) => `<button type="button" class="chip" data-action="pubSwipeActivity" data-id="${a.id}" aria-pressed="${f.activity === a.id}">${HH.icon(a.icon)} ${a.label}</button>`).join("")}
           </div>
@@ -1807,8 +1825,15 @@
     pubSwipeActivity(el) {
       const f = swipeFilters();
       f.activity = el.dataset.id || "";
+      S.swipeFiltOpen = false;
       HH.save();
       HH.refresh();
+    },
+    // Mobile: las categorías se abren con el botón de filtros (la tarjeta se achica mientras están abiertas)
+    pubSwipeFilters(el) {
+      S.swipeFiltOpen = !S.swipeFiltOpen;
+      const c = document.getElementById("pubSwipeChips"); if (c) c.classList.toggle("open", S.swipeFiltOpen);
+      if (el && el.setAttribute) el.setAttribute("aria-expanded", String(S.swipeFiltOpen));
     },
     pubSwipeClearFilters() {
       HH.ui.swipeFilters = {};
