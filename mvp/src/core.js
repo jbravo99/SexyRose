@@ -9,6 +9,29 @@ window.HH = (function () {
   // true cuando la página la arma el servidor (ssr/): no cuenta visitas, no pide ubicación ni mueve el scroll
   HH.SSR = !!window.HH_SSR;
 
+  /* ---------- Capas a pantalla completa y el botón "atrás" del celular ----------
+     Al abrir el visor de fotos o de historias se agrega una entrada al historial con la misma dirección:
+     "atrás" cierra la capa en vez de cambiar de página. Si la capa se cierra con la X, se consume esa entrada.
+     El listener va en captura y se registra antes que el del router, así el router no vuelve a dibujar la página. */
+  HH._ov = []; HH._ovIgnore = 0;
+  HH.overlayOpen = function (closeFn) {
+    const id = 'ov' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    try { history.pushState({ hhOv: id }, '', location.href); } catch (e) { /* */ }
+    HH._ov.push({ id, closeFn }); return id;
+  };
+  // nav: el que cierra va a navegar enseguida con HH.go(..., { replace: true }), que reemplaza la entrada de la capa
+  HH.overlayClosed = function (id, opts = {}) {
+    const k = HH._ov.findIndex(o => o.id === id); if (k < 0) return;
+    HH._ov.splice(k, 1);
+    if (opts.nav) return;
+    if (history.state && history.state.hhOv === id) { HH._ovIgnore++; history.back(); }
+  };
+  window.addEventListener('popstate', (ev) => {
+    if (HH._ovIgnore > 0) { HH._ovIgnore--; ev.stopImmediatePropagation(); return; }
+    const top = HH._ov[HH._ov.length - 1];
+    if (top && !(ev.state && ev.state.hhOv === top.id)) { HH._ov.pop(); ev.stopImmediatePropagation(); try { top.closeFn(); } catch (e) { /* */ } }
+  }, true);
+
   /* ---------- Constantes de negocio (CLAUDE.md) ---------- */
   // Planes mensuales (de mayor a menor). Star = plan con cupo de 10 por estado/provincia e incluye todo lo de A.
   // photos/videos: límite de la galería del perfil (videos de hasta 30 s). stories_per_day: null = ilimitadas.
@@ -918,7 +941,7 @@ window.HH = (function () {
       const next = q[w + 1] ? HH.profileOf(q[w + 1]) : null;
       root.innerHTML = `<div class="story-view" style="--dur:5s">
         <div class="story-bars">${list.map((x, k) => `<span class="${k < i ? 'done' : k === i ? 'cur' : ''}"><i></i></span>`).join('')}</div>
-        <div class="story-head">${HH.avatar(p, 36)}<div class="grow"><div style="font-weight:800">${HH.esc(p.displayName)}</div><div class="tiny" style="opacity:.8">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</div></div>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
+        <div class="story-head"><button type="button" class="story-who" data-story="profile" aria-label="Ver perfil de ${HH.esc(p.displayName)}">${HH.avatar(p, 36)}<span class="grow"><span class="story-name">${HH.esc(p.displayName)}</span><span class="tiny story-sub">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</span></span></button>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
         <div class="story-media wm">${HH.storyMedia(st, p)}</div>
         ${st.caption ? `<div class="story-caption"><span data-noi18n>${HH.esc(st.caption)}</span></div>` : ''}
         <div class="story-foot">${hl && opts.highlightId && HH.me() && HH.me().id === q[w] ? `<button type="button" class="btn secondary sm" data-story="hledit">${HH.icon('edit')} Editar destacada</button>` : `<button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>`}${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}${HH.me() && HH.me().id === q[w] ? '' : `<button type="button" class="btn sm" data-story="chat">${HH.icon('chat')} Chat en vivo</button>`}</div>
@@ -927,7 +950,9 @@ window.HH = (function () {
       </div>`;
       clearTimeout(timer); timer = setTimeout(() => step(1), 5000);
     };
-    const close = () => { clearTimeout(timer); root.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); HH.renderStoryRings && HH.renderStoryRings(); };
+    let ovId = null;
+    // fromHistory: la cerró el botón "atrás"; nav: después se navega con replace
+    const close = (o = {}) => { clearTimeout(timer); root.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); HH.renderStoryRings && HH.renderStoryRings(); if (!o.fromHistory) HH.overlayClosed(ovId, o); };
     const step = (d) => {
       i += d;
       if (i >= list.length) { if (w + 1 < q.length) load(w + 1, false); else { close(); return; } }
@@ -938,11 +963,11 @@ window.HH = (function () {
     document.addEventListener('keydown', onKey);
     root.onclick = (ev) => { const b = ev.target.closest('[data-story]'); if (!b) return; const a = b.dataset.story; const id = q[w];
       if (a === 'close') close(); else if (a === 'prev') step(-1); else if (a === 'next') step(1);
-      else if (a === 'profile') { close(); HH.go('#perfil.' + p.slug); }
+      else if (a === 'profile') { close({ nav: true }); HH.go('#perfil.' + p.slug, { replace: true }); }
       else if (a === 'hledit') { close(); HH.openHighlightEditor && HH.openHighlightEditor(opts.highlightId); }
       else if (a === 'book') { close(); HH.actions.pubBook({ dataset: { id } }); }
-      else if (a === 'chat') { const prof = p; close(); if (HH.hasChatAccess(HH.viewerId(), id)) HH.go('#chat.' + id); else HH.buyChat(prof, () => HH.go('#chat.' + id)); } };
-    document.body.style.overflow = 'hidden'; render();
+      else if (a === 'chat') { const prof = p; if (HH.hasChatAccess(HH.viewerId(), id)) { close({ nav: true }); HH.go('#chat.' + id, { replace: true }); } else { close(); HH.buyChat(prof, () => HH.go('#chat.' + id)); } } };
+    document.body.style.overflow = 'hidden'; ovId = HH.overlayOpen(() => close({ fromHistory: true })); render();
   };
   HH.renderStoryRings = function () { document.querySelectorAll('.story-ring[data-id]').forEach(el => { const id = el.dataset.id; const list = HH.storiesOf(id); const seen = list.length && list.every(s => HH.seenStories()[s.id]); el.classList.toggle('live', !!list.length && !seen); el.classList.toggle('seen', !!list.length && !!seen); el.classList.toggle('none', !list.length); }); };
 

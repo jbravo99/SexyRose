@@ -1889,7 +1889,8 @@
       const btn = document.querySelector(".pf-more");
       if (btn) btn.textContent = HH.t ? HH.t(S.bioOpen ? "Ver menos" : "Ver más") : S.bioOpen ? "Ver menos" : "Ver más";
     },
-    // Visor de fotos y videos del perfil, con anterior / siguiente
+    // Visor de fotos y videos del perfil: casi pantalla completa, fondo desenfocado, anterior / siguiente,
+    // deslizar con el dedo, teclado y botón "atrás" del celular (cierra el visor, no cambia de página)
     pubLightbox(el) {
       const p = HH.profileBySlug(S.profileSlug);
       if (!p) return;
@@ -1898,18 +1899,54 @@
       if (!list.length) list.push({ i: 0 });
       let k = el.dataset.vid ? list.findIndex((x) => x.v && x.v.id === el.dataset.vid) : list.findIndex((x) => x.i === Number(el.dataset.idx || 0));
       if (k < 0) k = 0;
+      const old = document.getElementById("lbRoot"); if (old) old.remove();
+      const root = document.createElement("div");
+      root.id = "lbRoot"; root.className = "lb-root"; root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "true");
+      root.setAttribute("aria-label", "Fotos de " + p.displayName);
+      document.body.appendChild(root);
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const media = (x) => {
+        if (x.v) return `<div class="media">${HH.videoMedia(x.v, { controls: true })}</div>`;
+        const real = HH.isImgSrc((p.photos || [])[x.i]);
+        return HH.photo(p, x.i, { cls: real ? "lb-full" : "lb-ph" });
+      };
       const show = () => {
         const x = list[k];
-        HH.modal({
-          title: `${p.displayName} · ${k + 1} / ${list.length}`,
-          wide: true,
-          body: `<div class="pf-lb">${x.v ? `<div class="media">${HH.videoMedia(x.v, { controls: true })}</div>` : HH.photo(p, x.i)}</div>`,
-          actions: [
-            { label: HH.icon("chevronLeft") + " Anterior", cls: "ghost", onClick: () => { k = (k - 1 + list.length) % list.length; show(); } },
-            { label: "Siguiente " + HH.icon("chevronRight"), cls: "ghost", onClick: () => { k = (k + 1) % list.length; show(); } },
-          ],
-        });
+        root.innerHTML = `<div class="lb-top"><div class="grow"><span class="lb-name">${esc(p.displayName)}</span><span class="lb-count">${k + 1} / ${list.length}</span></div><button type="button" class="icon-btn" data-lb="close" aria-label="Cerrar">${HH.icon("x")}</button></div>
+          <div class="lb-stage" data-lb="bg">${media(x)}${list.length > 1 ? `<button type="button" class="lb-nav prev" data-lb="prev" aria-label="Anterior">${HH.icon("chevronLeft")}</button><button type="button" class="lb-nav next" data-lb="next" aria-label="Siguiente">${HH.icon("chevronRight")}</button>` : ""}</div>`;
       };
+      const step = (d) => { if (list.length < 2) return; k = (k + d + list.length) % list.length; show(); };
+      let ovId = null;
+      const close = (o = {}) => {
+        root.remove(); document.removeEventListener("keydown", onKey);
+        const modalOpen = document.getElementById("modalRoot") && document.getElementById("modalRoot").classList.contains("open");
+        document.body.style.overflow = modalOpen ? "hidden" : prevOverflow === "hidden" ? "" : prevOverflow;
+        if (!o.fromHistory) HH.overlayClosed(ovId);
+      };
+      const onKey = (ev) => {
+        if (ev.key === "Escape") { ev.stopPropagation(); close(); }
+        else if (ev.key === "ArrowRight") step(1);
+        else if (ev.key === "ArrowLeft") step(-1);
+      };
+      document.addEventListener("keydown", onKey, true);
+      root.addEventListener("click", (ev) => {
+        const b = ev.target.closest("[data-lb]");
+        if (!b) return;
+        const a = b.dataset.lb;
+        if (a === "close") close();
+        else if (a === "prev") step(-1);
+        else if (a === "next") step(1);
+        else if (a === "bg" && ev.target === b) close(); // tocar fuera de la foto cierra
+      });
+      let tx = null, ty = null;
+      root.addEventListener("touchstart", (ev) => { if (ev.touches.length !== 1) { tx = null; return; } tx = ev.touches[0].clientX; ty = ev.touches[0].clientY; }, { passive: true });
+      root.addEventListener("touchend", (ev) => {
+        if (tx === null) return;
+        const t = ev.changedTouches[0]; const dx = t.clientX - tx, dy = t.clientY - ty; tx = null;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+      }, { passive: true });
+      ovId = HH.overlayOpen(() => close({ fromHistory: true }));
       show();
     },
     pubGalleryPickAll(el) {

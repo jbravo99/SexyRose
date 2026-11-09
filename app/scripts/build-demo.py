@@ -33,7 +33,7 @@ html body{padding-top:var(--sr-demo-h)!important}
 html body .app-header{top:var(--sr-demo-h)!important}
 html body .dash-side{top:calc(var(--header-h) + 16px + var(--sr-demo-h))!important}
 html body .dash-tabs{top:calc(var(--header-h) + var(--sr-demo-h))!important}
-html body .modal-root,html body .story-root{top:var(--sr-demo-h)!important}
+html body .modal-root,html body .story-root,html body .lb-root{top:var(--sr-demo-h)!important}
 </style>
 <div id="sr-demo-banner" role="note" aria-label="Aviso de demostración"><span>''' + BANNER_TEXT + '''</span><a href="/">Volver a sexyrose.net</a></div>
 '''

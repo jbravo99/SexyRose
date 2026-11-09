@@ -2561,6 +2561,10 @@ HH.I18N = {
 "Photos ({n})",
 "Fotos ({n})"
 ],
+"Fotos de {x}": [
+"Photos of {x}",
+"Fotos de {x}"
+],
 "Fotos reales, de cara visible y en lugares públicos.": [
 "Real photos, with your face visible, in public places.",
 "Fotos reais, com o rosto visível e em lugares públicos."

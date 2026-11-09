@@ -462,6 +462,10 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 @keyframes storyBar { to { width: 100%; } }
 .story-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; z-index: 2; }
 .story-head .icon-btn { background: rgba(255,255,255,.15); border-color: transparent; color: #fff; }
+.story-who { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.story-who .grow { display: grid; min-width: 0; }
+.story-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story-sub { opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .story-media { position: relative; min-height: 0; }
 .story-media img, .story-media .ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .story-media .ph { display: block; overflow: hidden; }
@@ -567,3 +571,24 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .media.wm::after, .story-media.wm::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20320%20120%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20transform%3D%22translate%28126%206%29%20scale%282.8%29%22%3E%3Cpath%20d%3D%22M19%2014c1.49-1.46%203-3.21%203-5.5A5.5%205.5%200%200%200%2016.5%203c-1.76%200-3%20.5-4.5%202-1.5-1.5-2.74-2-4.5-2A5.5%205.5%200%200%200%202%208.5c0%202.3%201.5%204.05%203%205.5l7%207Z%22%2F%3E%3C%2Fg%3E%3Ctext%20x%3D%22160%22%20y%3D%22112%22%20text-anchor%3D%22middle%22%20font-family%3D%22Poppins%2CManrope%2CArial%2Csans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2242%22%20fill%3D%22%23fff%22%3ESexyRose%3C%2Ftext%3E%3C%2Fsvg%3E") center / 62% auto no-repeat; opacity: .38; filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
 .media.wm.square::after, .media.wm.sm::after { background-size: 70% auto; }
+
+/* Sin zoom con doble toque (v57). touch-action: manipulation deja desplazar y pellizcar para ampliar, pero no el doble toque.
+   No se hereda: va en todos los elementos con especificidad 0, así las reglas propias (p. ej. .swipe-card pan-y) siguen mandando. */
+:where(*) { touch-action: manipulation; }
+
+/* Visor de fotos y videos del perfil (v57): casi toda la pantalla, lo de abajo desenfocado */
+.lb-root { position: fixed; inset: 0; z-index: 180; display: grid; grid-template-rows: auto 1fr; background: rgba(10,8,14,.62); -webkit-backdrop-filter: blur(18px) saturate(1.1); backdrop-filter: blur(18px) saturate(1.1); padding: env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px); animation: lbIn .16s ease; touch-action: pan-y pinch-zoom; }
+@keyframes lbIn { from { opacity: 0; } to { opacity: 1; } }
+.lb-top { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: #fff; }
+.lb-top .grow { min-width: 0; }
+.lb-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.lb-count { font-size: 12.5px; opacity: .8; }
+.lb-top .icon-btn { background: rgba(255,255,255,.14); border-color: transparent; color: #fff; }
+.lb-stage { position: relative; min-height: 0; display: grid; place-items: center; padding: 4px 10px 16px; }
+.lb-stage .media { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 14px; background: transparent; }
+.lb-stage .media img, .lb-stage .media video { object-fit: contain; }
+.lb-stage .media.lb-ph { width: auto; height: auto; max-width: 100%; max-height: 100%; aspect-ratio: 4/5; height: min(100%, calc((100vw - 20px) * 1.25)); }
+.lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(21,19,26,.6); color: #fff; display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.lb-nav svg { width: 22px; height: 22px; }
+.lb-nav.prev { left: 12px; } .lb-nav.next { right: 12px; }
+@media (min-width: 900px) { .lb-stage { padding: 4px 72px 24px; } .lb-nav { width: 52px; height: 52px; } .lb-nav.prev { left: 16px; } .lb-nav.next { right: 16px; } }
