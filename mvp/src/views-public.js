@@ -959,7 +959,7 @@
       .filter(Boolean)
       .join("");
     return `<article class="swipe-card ${cls}" data-id="${p.userId}" data-slug="${p.slug}" data-imp="${p.userId}" aria-label="${esc(p.displayName)}">
-      ${HH.photo(p, 0)}
+      ${HH.photo(p, 0, { fit: true })}
       <div class="stamp like" aria-hidden="true">Me gusta</div><div class="stamp nope" aria-hidden="true">Paso</div>
       <div class="info">
         ${badges ? `<div class="row" style="gap:6px">${badges}</div>` : ""}

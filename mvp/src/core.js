@@ -959,8 +959,9 @@ window.HH = (function () {
   HH.photo = function (profile, index = 0, opts = {}) {
     const raw = (profile.photos || [])[index]; const src = HH.isImgSrc(raw) ? (opts.noWm ? raw : HH.cdnWatermark(raw)) : null;
     const hue = ((profile.hue || 330) + index * 25) % 360;
-    const cls = 'media ' + (opts.cls || '');
-    const inner = src ? `<img src="${src}" alt="${HH.esc(profile.displayName)}">` :
+    const cls = 'media ' + (opts.cls || '') + (opts.fit && src ? ' fit' : '');
+    // opts.fit: foto entera sin recorte (cualquier formato) sobre la misma foto desenfocada de fondo
+    const inner = src ? `${opts.fit ? `<img class="ph-bg" src="${src}" alt="" aria-hidden="true">` : ''}<img src="${src}" alt="${HH.esc(profile.displayName)}">` :
       `<div class="ph" style="background:${HH.hueGradient(hue, index % 2)}">
          <span class="deco" style="width:55%;height:55%;left:-10%;top:-10%;background:hsl(${(hue + 60) % 360} 90% 85%)"></span>
          <span class="deco" style="width:40%;height:40%;right:-8%;bottom:10%;background:hsl(${(hue + 320) % 360} 80% 70%)"></span>

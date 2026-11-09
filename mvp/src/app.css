@@ -238,6 +238,8 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .media.square { aspect-ratio: 1; }
 .media.tall { aspect-ratio: 9/16; }
 .media img, .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.media.fit img:not(.ph-bg) { object-fit: contain; }
+.media.fit img.ph-bg { filter: blur(28px) brightness(.55) saturate(1.15); transform: scale(1.2); }
 .media .ph { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.9); }
 .media .ph svg { width: 34px; height: 34px; opacity: .85; }
 .media .ph .silhouette { position: absolute; left: 50%; bottom: -24%; width: 92%; height: auto; transform: translateX(-50%); fill: rgba(255,255,255,.16); }
