@@ -71,6 +71,40 @@ def main() -> int:
     else:
         print('aviso: no encontré el pie del MVP para agregar "Denunciar"', file=sys.stderr)
 
+    # Sin panel de administración en la demo (09/11/2026): se bloquea el ingreso con la cuenta admin,
+    # la ruta #admin y se oculta el botón de esa cuenta en las listas de cuentas demo.
+    sin_admin = r"""/* ===== demo-sin-admin (build-demo.py) ===== */
+(function () {
+  var aviso = 'El panel de administración no está disponible en la demostración.';
+  var esAdmin = function (u) { return !!u && u.role === 'admin'; };
+  var loginOrig = HH.login;
+  HH.login = function (userId) {
+    if (esAdmin(HH.userById(userId))) { HH.toast(aviso, { type: 'warn' }); return false; }
+    return loginOrig.apply(this, arguments);
+  };
+  var reqOrig = HH.requireRole;
+  HH.requireRole = function (role) {
+    if (role === 'admin') { HH.toast(aviso, { type: 'warn' }); HH.go('#inicio'); return false; }
+    return reqOrig.apply(this, arguments);
+  };
+  var limpiar = function () {
+    try {
+      if (HH.session && (HH.session.role === 'admin' || esAdmin(HH.me()))) {
+        HH.session = null; HH.save(); HH.renderShell(); HH.go('#inicio');
+      }
+    } catch (e) {}
+  };
+  window.addEventListener('DOMContentLoaded', limpiar);
+  window.addEventListener('load', limpiar);
+})();
+"""
+    marca_boot = '/* ===== boot.js ===== */'
+    if marca_boot not in html:
+        print('error: no encontré boot.js en el MVP; no puedo bloquear el admin de la demo', file=sys.stderr)
+        sys.exit(1)
+    html = html.replace(marca_boot, sin_admin + marca_boot, 1)
+    html = html.replace('</head>', '<style>[data-id="u_admin"]{display:none!important}</style></head>', 1)
+
     # Única casilla del sitio desde el 08/11/2026: el MVP menciona ayuda@ en un aviso.
     html = html.replace('ayuda@sexyrose.net', 'contacto@sexyrose.net')
 
