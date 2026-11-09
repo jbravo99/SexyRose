@@ -20,3 +20,6 @@ app/public/demo/
 passphrase.md
 *passphrase*
 *recovery*
+
+# Panel de administración generado (app/scripts/build-admin.py)
+app/admin-spa/

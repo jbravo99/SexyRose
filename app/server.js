@@ -38,6 +38,8 @@ export function loadConfig(env = process.env) {
     telegramChatId: str(env.TELEGRAM_CHAT_ID),
     publicDir: path.resolve(str(env.PUBLIC_DIR) || path.join(HERE, 'public')),
     schemaPath: path.join(HERE, 'db', 'schema.sql'),
+    // Panel de administración (SPA del MVP) generado por app/scripts/build-admin.py.
+    adminSpaPath: path.resolve(str(env.ADMIN_SPA_PATH) || path.join(HERE, 'admin-spa', 'index.html')),
     fechaLegal: '4 de noviembre de 2026',
     log: (...a) => console.log(new Date().toISOString(), ...a),
   };
@@ -259,6 +261,21 @@ const cspAdmin = (nonce) => [
   "img-src 'self'",
   "form-action 'self'",
   "base-uri 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
+
+// Panel de administración (SPA): scripts solo con nonce; estilos inline permitidos (el panel usa style="").
+const cspAdminSpa = (nonce) => [
+  "default-src 'none'",
+  `script-src 'nonce-${nonce}'`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self'",
+  "media-src 'self' data: blob:",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "object-src 'none'",
   "frame-ancestors 'none'",
 ].join('; ');
 
@@ -531,8 +548,10 @@ export function createApp(config) {
   const DEN_COLS = 'id, creado, categoria, url, descripcion, email, estado, resuelto';
   const ADMIN_LIMIT = 500;
 
-  admin.get('/', ah(async (req, res) => {
-    if (req.originalUrl.split('?')[0] === A + '/') return res.redirect(301, A);
+  // Admin clásico (HTML sin JavaScript) en A/clasico, mientras dura la transición al panel nuevo.
+  const C = A + '/clasico';
+
+  admin.get('/clasico', ah(async (req, res) => {
     const [pre, den, preN, denN] = await Promise.all([
       pool.query(`SELECT ${PRE_COLS} FROM preregistros ORDER BY creado DESC LIMIT ${ADMIN_LIMIT}`),
       pool.query(`SELECT ${DEN_COLS} FROM denuncias ORDER BY (resuelto IS NOT NULL), creado DESC LIMIT ${ADMIN_LIMIT}`),
@@ -547,7 +566,7 @@ export function createApp(config) {
     const denRows = den.rows.map((r) => {
       const action = r.resuelto
         ? `<td class="nw">Resuelta ${e(fmtDate(r.resuelto))}</td>`
-        : `<td><form method="post" action="${A}/denuncias/${e(r.id)}/resolver"><input type="hidden" name="csrf" value="${e(csrfToken)}"><button type="submit">Marcar resuelta</button></form></td>`;
+        : `<td><form method="post" action="${C}/denuncias/${e(r.id)}/resolver"><input type="hidden" name="csrf" value="${e(csrfToken)}"><button type="submit">Marcar resuelta</button></form></td>`;
       const urgent = CATEGORIAS_URGENTES.has(r.categoria) && !r.resuelto;
       return `<tr${urgent ? ' class="urg"' : ''}>${td(fmtDate(r.creado), 'nw')}${td(CATEGORIA_LABEL[r.categoria] || r.categoria)}${td(r.url || '', 'url')}${td(r.descripcion, 'desc')}${td(r.email || '')}${td(r.estado)}${action}${td(r.id, 'id')}</tr>`;
     }).join('\n');
@@ -564,7 +583,7 @@ th,td{padding:7px 9px;border-bottom:1px solid #2d2934;text-align:left;vertical-a
 tr.urg td{background:#3a1424}button{background:#FF5C8A;color:#15131A;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer}
 </style></head><body>
 <h1>SexyRose — Admin</h1>
-<p><a href="${A}/textos">Editar los textos del sitio</a></p>
+<p><a href="${A}">Ir al panel nuevo</a> · <a href="${C}/textos">Editar los textos del sitio</a></p>
 <p class="muted">Pre-registros: ${preN.rows[0].n} · Denuncias: ${denN.rows[0].n} (abiertas: ${denN.rows[0].abiertas}) · Hora Argentina</p>
 <h2 id="denuncias">Denuncias</h2>
 <p><a href="${A}/denuncias.csv">Descargar CSV de denuncias</a></p>
@@ -604,7 +623,7 @@ ${preRows || '<tr><td colspan="9" class="muted">Sin pre-registros.</td></tr>'}
     ));
   }));
 
-  admin.post('/denuncias/:id/resolver', express.urlencoded({ extended: false, limit: '2kb' }), ah(async (req, res) => {
+  admin.post('/clasico/denuncias/:id/resolver', express.urlencoded({ extended: false, limit: '2kb' }), ah(async (req, res) => {
     if (!sameOrigin(req)) return res.status(403).type('text/plain; charset=utf-8').send('Solicitud rechazada: origen no válido.');
     const token = typeof req.body?.csrf === 'string' ? req.body.csrf : '';
     if (!safeEqual(token, csrfToken)) return res.status(403).type('text/plain; charset=utf-8').send('Solicitud rechazada: token inválido.');
@@ -618,7 +637,7 @@ ${preRows || '<tr><td colspan="9" class="muted">Sin pre-registros.</td></tr>'}
       if (!ex.rowCount) return res.status(404).type('text/plain; charset=utf-8').send('Denuncia no encontrada.');
     }
     log('admin: denuncia marcada como resuelta', req.params.id);
-    res.redirect(303, `${A}#denuncias`);
+    res.redirect(303, `${C}#denuncias`);
   }));
 
   // --- Admin: textos del sitio -------------------------------------------------
@@ -723,15 +742,15 @@ ${body}
 <p>Los textos marcados «solo texto» no admiten negrita, enlaces ni saltos de línea. <code>{{CONTACT_EMAIL}}</code>, <code>{{REPORT_EMAIL}}</code>, <code>{{PRIVACY_EMAIL}}</code>, <code>{{OPERADOR}}</code>, <code>{{SITE_URL}}</code> y <code>{{FECHA_LEGAL}}</code> se reemplazan solos.</p>
 </div>`;
 
-  admin.get('/textos', ah(async (req, res) => {
+  admin.get('/clasico/textos', ah(async (req, res) => {
     const { paginas } = await registroTextos();
     const items = paginas.map((p) => {
       const mod = p.bloques.filter((b) => textos.valores.has(b.clave)).length;
       return `<li><div class="name">${escapeHtml(p.nombre)}</div>
 <div class="muted small">${p.bloques.length} textos${mod ? ` · ${mod} modificados` : ''}</div>
-<div class="links"><a href="${A}/textos/${escapeHtml(p.id)}">Editar textos</a><a href="${escapeHtml(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></div></li>`;
+<div class="links"><a href="${C}/textos/${escapeHtml(p.id)}">Editar textos</a><a href="${escapeHtml(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></div></li>`;
     }).join('\n');
-    adminTextPage(res, 'Textos del sitio', `<p class="small"><a href="${A}">Volver al admin</a></p>
+    adminTextPage(res, 'Textos del sitio', `<p class="small"><a href="${C}">Volver al admin</a></p>
 <h1>Textos del sitio</h1>
 <p class="muted">Cambiá cualquier texto de las páginas públicas. Los cambios se ven al instante y cada cambio guarda la versión anterior, que se puede restaurar.</p>
 ${FORMATO_AYUDA}
@@ -742,7 +761,7 @@ ${items || '<li class="muted">No se encontraron páginas con textos editables.</
 <p class="muted small">Los mensajes de error que arma el servidor al validar un envío (por ejemplo, «El email no es válido») tampoco se editan acá.</p>`);
   }));
 
-  admin.get('/textos/historial', ah(async (req, res) => {
+  admin.get('/clasico/textos/historial', ah(async (req, res) => {
     const { porClave } = await registroTextos();
     const clave = typeof req.query.clave === 'string' ? req.query.clave : '';
     const b = porClave.get(clave);
@@ -752,8 +771,8 @@ ${items || '<li class="muted">No se encontraron páginas con textos editables.</
     const e = escapeHtml;
     const versiones = rows.map((r) => `<div class="ver"><div class="muted small">Guardada el ${e(fmtDate(r.guardado))}${r.valor === actual ? ' · igual al texto actual' : ''}</div>
 <div class="txt">${e(r.valor)}</div>
-<form method="post" action="${A}/textos/historial"><input type="hidden" name="csrf" value="${e(csrfToken)}"><input type="hidden" name="id" value="${e(r.id)}"><button type="submit">Restaurar esta versión</button></form></div>`).join('\n');
-    adminTextPage(res, 'Versiones anteriores', `<p class="small"><a href="${A}/textos/${e(b.pagina)}#b-${e(clave)}">Volver a los textos</a></p>
+<form method="post" action="${C}/textos/historial"><input type="hidden" name="csrf" value="${e(csrfToken)}"><input type="hidden" name="id" value="${e(r.id)}"><button type="submit">Restaurar esta versión</button></form></div>`).join('\n');
+    adminTextPage(res, 'Versiones anteriores', `<p class="small"><a href="${C}/textos/${e(b.pagina)}#b-${e(clave)}">Volver a los textos</a></p>
 <h1>Versiones anteriores</h1>
 <p><span class="ctx">${e(b.contexto)}</span> <code>${e(clave)}</code></p>
 <div class="box"><p class="muted small">Texto actual${textos.valores.has(clave) ? '' : ' (es el texto por defecto)'}</p><div class="def">${e(actual)}</div>
@@ -761,7 +780,7 @@ ${items || '<li class="muted">No se encontraron páginas con textos editables.</
 ${versiones || '<p class="muted">Todavía no hay versiones anteriores de este texto.</p>'}`);
   }));
 
-  admin.post('/textos/historial', express.urlencoded({ extended: false, limit: '4kb' }), ah(async (req, res) => {
+  admin.post('/clasico/textos/historial', express.urlencoded({ extended: false, limit: '4kb' }), ah(async (req, res) => {
     if (rejectPost(req, res)) return;
     const id = typeof req.body.id === 'string' && /^\d{1,18}$/.test(req.body.id) ? req.body.id : null;
     const { rows } = id ? await pool.query('SELECT clave, valor FROM textos_historial WHERE id = $1', [id]) : { rows: [] };
@@ -771,10 +790,10 @@ ${versiones || '<p class="muted">Todavía no hay versiones anteriores de este te
     const valor = rows[0].valor === b.defValor ? null : rows[0].valor;
     const actual = textos.valores.has(b.clave) ? textos.valores.get(b.clave) : null;
     if (valor !== actual) await guardarTextos([{ clave: b.clave, valor }]);
-    res.redirect(303, `${A}/textos/${encodeURIComponent(b.pagina)}?ok=version#b-${b.clave}`);
+    res.redirect(303, `${C}/textos/${encodeURIComponent(b.pagina)}?ok=version#b-${b.clave}`);
   }));
 
-  admin.get('/textos/:pagina', ah(async (req, res) => {
+  admin.get('/clasico/textos/:pagina', ah(async (req, res) => {
     const { paginas } = await registroTextos();
     const p = paginas.find((x) => x.id === req.params.pagina);
     if (!p) return res.status(404).type('text/plain; charset=utf-8').send('Página no encontrada.');
@@ -800,7 +819,7 @@ ${versiones || '<p class="muted">Todavía no hay versiones anteriores de este te
 <textarea id="t-${e(b.clave)}" name="v.${e(b.clave)}" rows="${rows}" maxlength="${MAX_VALOR}">
 ${e(valor)}</textarea>
 ${mod ? `<p class="def"><strong>Por defecto:</strong> ${e(b.defValor)}</p>` : ''}
-<div class="acts"><button type="submit" name="accion" value="guardar:${e(b.clave)}">Guardar</button>${mod ? `<button type="submit" class="sec" name="accion" value="defecto:${e(b.clave)}">Restaurar valor por defecto</button>` : ''}${n ? `<a href="${A}/textos/historial?clave=${encodeURIComponent(b.clave)}">Versiones anteriores (${n})</a>` : ''}</div>
+<div class="acts"><button type="submit" name="accion" value="guardar:${e(b.clave)}">Guardar</button>${mod ? `<button type="submit" class="sec" name="accion" value="defecto:${e(b.clave)}">Restaurar valor por defecto</button>` : ''}${n ? `<a href="${C}/textos/historial?clave=${encodeURIComponent(b.clave)}">Versiones anteriores (${n})</a>` : ''}</div>
 </div>`);
     }
     const ok = typeof req.query.ok === 'string' ? req.query.ok : '';
@@ -808,21 +827,21 @@ ${mod ? `<p class="def"><strong>Por defecto:</strong> ${e(b.defValor)}</p>` : ''
       : ok === 'defecto' ? 'Se restauró el texto por defecto.'
         : /^\d+$/.test(ok) ? (ok === '0' ? 'No había cambios para guardar.' : `Cambios guardados: ${ok}.`) : '';
     const nMod = p.bloques.filter((b) => textos.valores.has(b.clave)).length;
-    adminTextPage(res, `Textos: ${p.nombre}`, `<p class="small"><a href="${A}/textos">Textos del sitio</a> · <a href="${A}">Admin</a></p>
+    adminTextPage(res, `Textos: ${p.nombre}`, `<p class="small"><a href="${C}/textos">Textos del sitio</a> · <a href="${C}">Admin</a></p>
 <h1>${e(p.nombre)}</h1>
 ${p.id === 'comun' ? '<p class="muted small">Estos textos aparecen en todas las páginas: se editan una sola vez acá.</p>' : ''}
 ${flash ? `<div class="box ok" role="status"><p>${e(flash)}</p></div>` : ''}
-<p class="filters small">${soloMod ? `<a href="${A}/textos/${e(p.id)}">Ver todos (${p.bloques.length})</a>` : `<a href="${A}/textos/${e(p.id)}?filtro=modificados">Ver solo modificados (${nMod})</a>`}<a href="${e(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></p>
+<p class="filters small">${soloMod ? `<a href="${C}/textos/${e(p.id)}">Ver todos (${p.bloques.length})</a>` : `<a href="${C}/textos/${e(p.id)}?filtro=modificados">Ver solo modificados (${nMod})</a>`}<a href="${e(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></p>
 ${FORMATO_AYUDA}
 <p class="muted small">Cualquier botón «Guardar» guarda todos los cambios de esta página.</p>
-<form method="post" action="${A}/textos/${e(p.id)}">
+<form method="post" action="${C}/textos/${e(p.id)}">
 <input type="hidden" name="csrf" value="${e(csrfToken)}">
 ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta página.</p>'}
 <div class="bar"><div class="in"><button type="submit" name="accion" value="guardar">Guardar todos los cambios</button><a href="${e(p.ruta)}" target="_blank" rel="noopener noreferrer">Vista previa</a></div></div>
 </form>`);
   }));
 
-  admin.post('/textos/:pagina', express.urlencoded({ extended: false, limit: '1mb', parameterLimit: 2000 }), ah(async (req, res) => {
+  admin.post('/clasico/textos/:pagina', express.urlencoded({ extended: false, limit: '1mb', parameterLimit: 2000 }), ah(async (req, res) => {
     if (rejectPost(req, res)) return;
     const { paginas } = await registroTextos();
     const p = paginas.find((x) => x.id === req.params.pagina);
@@ -849,8 +868,200 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     await guardarTextos(cambios);
     const foco = restaurar || (accion.startsWith('guardar:') ? accion.slice(8) : '');
     const ancla = foco && p.bloques.some((b) => b.clave === foco) ? `#b-${foco}` : '';
-    res.redirect(303, `${A}/textos/${encodeURIComponent(p.id)}?ok=${okMsg}${ancla}`);
+    res.redirect(303, `${C}/textos/${encodeURIComponent(p.id)}?ok=${okMsg}${ancla}`);
   }));
+
+  // --- Admin: panel nuevo (SPA del MVP) ----------------------------------------
+  // app/admin-spa/index.html lo genera app/scripts/build-admin.py (en Docker, dentro del build). Se lee una vez y se
+  // vuelve a leer si cambia el archivo. Cada respuesta lleva un nonce nuevo en los <script>.
+  const spa = { mtimeMs: -1, size: -1, html: null };
+  const loadSpa = async () => {
+    let st;
+    try { st = await fs.stat(config.adminSpaPath); } catch { spa.html = null; spa.mtimeMs = -1; return null; }
+    if (spa.html !== null && st.mtimeMs === spa.mtimeMs && st.size === spa.size) return spa.html;
+    spa.html = await fs.readFile(config.adminSpaPath, 'utf8');
+    spa.mtimeMs = st.mtimeMs; spa.size = st.size;
+    return spa.html;
+  };
+  admin.get('/', ah(async (req, res) => {
+    if (req.originalUrl.split('?')[0] === A + '/') return res.redirect(301, A);
+    const html = await loadSpa();
+    if (html === null) {
+      return res.status(503).type('text/plain; charset=utf-8').send('Falta generar el panel: python3 app/scripts/build-admin.py');
+    }
+    const nonce = crypto.randomBytes(16).toString('base64');
+    res.setHeader('Content-Security-Policy', cspAdminSpa(nonce));
+    sendHtml(res, html.replace(/<script\b/gi, `<script nonce="${nonce}"`), 200, 'no-store');
+  }));
+
+  // Direcciones viejas del editor de textos → admin clásico.
+  admin.get(['/textos', '/textos/*'], (req, res) => res.redirect(301, C + req.url));
+
+  // --- Admin: API JSON del panel ---------------------------------------------------
+  // Mismo Basic Auth. Los POST exigen JSON, la cabecera X-SR-Admin: 1 y el mismo origen (una página de otro
+  // sitio no puede mandar esa cabecera sin preflight CORS, y el servidor no responde CORS).
+  const ESTADOS_PRE = ['nuevo', 'contactado', 'invitado', 'descartado'];
+  const URGENTES = [...CATEGORIAS_URGENTES];
+  const apiErr = (res, status, error) => res.status(status).json({ error });
+  const apiPost = [
+    (req, res, next) => {
+      if (!req.is('application/json')) return apiErr(res, 403, 'Solicitud rechazada: tiene que ser JSON.');
+      if (req.get('x-sr-admin') !== '1') return apiErr(res, 403, 'Solicitud rechazada: falta la cabecera del panel.');
+      if (!sameOrigin(req)) return apiErr(res, 403, 'Solicitud rechazada: origen no válido.');
+      next();
+    },
+    express.json({ limit: '1mb' }),
+  ];
+  const preItem = (r) => ({ ...r, plan_label: PLAN_LABEL[r.plan_interes] || r.plan_interes });
+  const denItem = (r) => ({ ...r, categoria_label: CATEGORIA_LABEL[r.categoria] || r.categoria, urgente: CATEGORIAS_URGENTES.has(r.categoria) });
+  const AYUDA_TEXTOS = 'Escribí texto normal; Enter hace un salto de línea. **así** queda en negrita. [texto del enlace](/terminos) crea un enlace '
+    + '(la dirección puede empezar con /, #, https:// o mailto:). Los textos «solo texto» no admiten negrita, enlaces ni saltos de línea. '
+    + '{{CONTACT_EMAIL}}, {{REPORT_EMAIL}}, {{PRIVACY_EMAIL}}, {{OPERADOR}}, {{SITE_URL}} y {{FECHA_LEGAL}} se reemplazan por sus valores. '
+    + 'Dejar un texto vacío vuelve al texto por defecto.';
+
+  admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
+  admin.get('/api/resumen', ah(async (req, res) => {
+    const [pre, den, { paginas }] = await Promise.all([
+      pool.query("SELECT count(*)::int AS total, count(*) FILTER (WHERE estado = 'nuevo')::int AS nuevos, count(*) FILTER (WHERE creado > now() - interval '7 days')::int AS ultimos7 FROM preregistros"),
+      pool.query('SELECT count(*)::int AS total, count(*) FILTER (WHERE resuelto IS NULL)::int AS abiertas, count(*) FILTER (WHERE resuelto IS NULL AND categoria = ANY($1))::int AS urgentes FROM denuncias', [URGENTES]),
+      registroTextos(),
+    ]);
+    const bloques = paginas.flatMap((p) => p.bloques);
+    res.json({
+      preregistros: pre.rows[0],
+      denuncias: den.rows[0],
+      textos: { modificados: bloques.filter((b) => textos.valores.has(b.clave)).length, total: bloques.length },
+      generado: new Date().toISOString(),
+    });
+  }));
+
+  admin.get('/api/preregistros', ah(async (req, res) => {
+    const [{ rows }, n] = await Promise.all([
+      pool.query(`SELECT ${PRE_COLS} FROM preregistros ORDER BY creado DESC LIMIT ${ADMIN_LIMIT}`),
+      pool.query('SELECT count(*)::int AS n FROM preregistros'),
+    ]);
+    res.json({ items: rows.map(preItem), total: n.rows[0].n, estados: ESTADOS_PRE });
+  }));
+
+  admin.post('/api/preregistros/:id/estado', apiPost, ah(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) return apiErr(res, 404, 'Pre-registro no encontrado.');
+    const estado = typeof req.body?.estado === 'string' ? req.body.estado : '';
+    if (!ESTADOS_PRE.includes(estado)) return apiErr(res, 400, `Estado no válido. Usá: ${ESTADOS_PRE.join(', ')}.`);
+    const { rows } = await pool.query(`UPDATE preregistros SET estado = $2 WHERE id = $1 RETURNING ${PRE_COLS}`, [req.params.id, estado]);
+    if (!rows.length) return apiErr(res, 404, 'Pre-registro no encontrado.');
+    log('admin: pre-registro', req.params.id, '→', estado);
+    res.json({ ok: true, item: preItem(rows[0]) });
+  }));
+
+  admin.get('/api/denuncias', ah(async (req, res) => {
+    const [{ rows }, n] = await Promise.all([
+      pool.query(`SELECT ${DEN_COLS} FROM denuncias ORDER BY (resuelto IS NOT NULL), (categoria = ANY($1)) DESC, creado DESC LIMIT ${ADMIN_LIMIT}`, [URGENTES]),
+      pool.query('SELECT count(*)::int AS n, count(*) FILTER (WHERE resuelto IS NULL)::int AS abiertas FROM denuncias'),
+    ]);
+    res.json({ items: rows.map(denItem), total: n.rows[0].n, abiertas: n.rows[0].abiertas });
+  }));
+
+  admin.post('/api/denuncias/:id/resolver', apiPost, ah(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) return apiErr(res, 404, 'Denuncia no encontrada.');
+    const r = await pool.query(
+      "UPDATE denuncias SET estado = 'resuelta', resuelto = now() WHERE id = $1 AND resuelto IS NULL RETURNING id",
+      [req.params.id],
+    );
+    const { rows } = await pool.query(`SELECT ${DEN_COLS} FROM denuncias WHERE id = $1`, [req.params.id]);
+    if (!rows.length) return apiErr(res, 404, 'Denuncia no encontrada.');
+    if (r.rowCount) log('admin: denuncia marcada como resuelta', req.params.id);
+    res.json({ ok: true, item: denItem(rows[0]) });
+  }));
+
+  admin.get('/api/textos', ah(async (req, res) => {
+    const { paginas } = await registroTextos();
+    res.json({
+      paginas: paginas.map((p) => ({
+        id: p.id, nombre: p.nombre, ruta: p.ruta, total: p.bloques.length,
+        modificados: p.bloques.filter((b) => textos.valores.has(b.clave)).length,
+      })),
+      ayuda: AYUDA_TEXTOS,
+      maxValor: MAX_VALOR,
+    });
+  }));
+
+  admin.get('/api/textos/historial', ah(async (req, res) => {
+    const { porClave } = await registroTextos();
+    const clave = typeof req.query.clave === 'string' ? req.query.clave : '';
+    const b = porClave.get(clave);
+    if (!b) return apiErr(res, 404, 'Texto no encontrado.');
+    const { rows } = await pool.query('SELECT id::text AS id, valor, guardado FROM textos_historial WHERE clave = $1 ORDER BY id DESC LIMIT 50', [clave]);
+    res.json({
+      clave, contexto: b.contexto, pagina: b.pagina, tipo: b.tipo, defValor: b.defValor,
+      actual: textos.valores.has(clave) ? textos.valores.get(clave) : b.defValor,
+      modificado: textos.valores.has(clave),
+      versiones: rows,
+    });
+  }));
+
+  admin.post('/api/textos/historial/:id/restaurar', apiPost, ah(async (req, res) => {
+    const id = /^\d{1,18}$/.test(req.params.id) ? req.params.id : null;
+    const { rows } = id ? await pool.query('SELECT clave, valor FROM textos_historial WHERE id = $1', [id]) : { rows: [] };
+    const { porClave } = await registroTextos();
+    const b = rows[0] && porClave.get(rows[0].clave);
+    if (!b) return apiErr(res, 404, 'Versión no encontrada.');
+    const valor = rows[0].valor === b.defValor ? null : rows[0].valor;
+    const actual = textos.valores.has(b.clave) ? textos.valores.get(b.clave) : null;
+    if (valor !== actual) await guardarTextos([{ clave: b.clave, valor }]);
+    res.json({ ok: true, pagina: b.pagina, clave: b.clave });
+  }));
+
+  admin.get('/api/textos/:pagina', ah(async (req, res) => {
+    const { paginas } = await registroTextos();
+    const p = paginas.find((x) => x.id === req.params.pagina);
+    if (!p) return apiErr(res, 404, 'Página no encontrada.');
+    const claves = p.bloques.map((b) => b.clave);
+    const hist = new Map((await pool.query(
+      'SELECT clave, count(*)::int AS n FROM textos_historial WHERE clave = ANY($1) GROUP BY clave', [claves],
+    )).rows.map((r) => [r.clave, r.n]));
+    res.json({
+      pagina: { id: p.id, nombre: p.nombre, ruta: p.ruta },
+      bloques: p.bloques.map((b) => ({
+        clave: b.clave, contexto: b.contexto, tipo: b.tipo, defValor: b.defValor,
+        valor: textos.valores.has(b.clave) ? textos.valores.get(b.clave) : null,
+        modificado: textos.valores.has(b.clave),
+        versiones: hist.get(b.clave) || 0,
+      })),
+    });
+  }));
+
+  admin.post('/api/textos/:pagina', apiPost, ah(async (req, res) => {
+    const { paginas } = await registroTextos();
+    const p = paginas.find((x) => x.id === req.params.pagina);
+    if (!p) return apiErr(res, 404, 'Página no encontrada.');
+    const entrada = req.body?.cambios;
+    if (!isPlainObject(entrada)) return apiErr(res, 400, 'Faltan los cambios: {"cambios": {"clave": "texto"}}.');
+    const cambios = [];
+    for (const b of p.bloques) {
+      if (!Object.hasOwn(entrada, b.clave)) continue;
+      const raw = entrada[b.clave];
+      if (raw !== null && typeof raw !== 'string') return apiErr(res, 400, `El texto ${b.clave} no es válido.`);
+      const v = raw === null ? '' : limpiarValor(raw);
+      if ([...v].length > MAX_VALOR) return apiErr(res, 400, `El texto ${b.clave} es demasiado largo (máximo ${MAX_VALOR} caracteres).`);
+      const valor = v === '' || v === b.defValor ? null : v;
+      const actual = textos.valores.has(b.clave) ? textos.valores.get(b.clave) : null;
+      if (valor === actual) continue;
+      cambios.push({ clave: b.clave, valor });
+    }
+    await guardarTextos(cambios);
+    res.json({ ok: true, guardados: cambios.length });
+  }));
+
+  admin.use('/api', (req, res) => apiErr(res, 404, 'No encontrado.'));
+  // eslint-disable-next-line no-unused-vars
+  admin.use('/api', (err, req, res, next) => {
+    if (err.type === 'entity.too.large') return apiErr(res, 413, 'Los datos enviados son demasiado grandes.');
+    if (err.type === 'entity.parse.failed') return apiErr(res, 400, 'Formato de datos inválido.');
+    log('error:', req.method, logPath(req.originalUrl.split('?')[0]), err.code || '', err.message);
+    if (res.headersSent) return res.end();
+    apiErr(res, 500, 'Ocurrió un error. Probá de nuevo en unos minutos.');
+  });
 
   admin.use((req, res) => res.status(404).type('text/plain; charset=utf-8').send('No encontrado.'));
   if (A) {

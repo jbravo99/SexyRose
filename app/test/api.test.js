@@ -34,6 +34,10 @@ let A = process.env.ADMIN_PATH || '';
 const logs = [];
 let instance;
 let tmpPublic;
+let tmpSpa;
+// Panel (SPA) de prueba: lo real lo genera app/scripts/build-admin.py.
+const SPA_PRUEBA = '<!doctype html><html><head><meta charset="utf-8"><title>Admin</title><style>body{color:#fff}</style></head>'
+  + '<body><div id="app">panel-spa-prueba</div><script>window.SR_TEST = 1;</script><SCRIPT src="/x.js"></SCRIPT></body></html>';
 const db = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 const createdNames = [];
 const createdDenuncias = [];
@@ -100,6 +104,8 @@ before(async () => {
   await fs.writeFile(path.join(tmpPublic, '404.html'), '<!doctype html><title>404</title><p>pagina-404-propia {{OPERADOR}}</p>');
   await fs.writeFile(path.join(tmpPublic, 'demo', 'index.html'), '<!doctype html><title>Demo</title><p>demo</p>');
   await fs.writeFile(path.join(tmpPublic, 'css', 'site.css'), 'body{color:#fff}');
+  tmpSpa = path.join(tmpPublic, '..', path.basename(tmpPublic) + '-admin-spa.html');
+  await fs.writeFile(tmpSpa, SPA_PRUEBA);
   ADMIN_USER = 'admin-pruebas';
   ADMIN_PASSWORD = 'clave-de-pruebas-123';
   A = '/p-' + crypto.randomBytes(12).toString('hex');
@@ -112,6 +118,7 @@ before(async () => {
     adminUser: ADMIN_USER,
     adminPassword: ADMIN_PASSWORD,
     adminPath: A,
+    adminSpaPath: tmpSpa,
     ipHashSalt: 'sal-de-pruebas',
     operatorName: OPERATOR,
     siteUrl: 'https://sexyrose.net',
@@ -137,6 +144,7 @@ after(async () => {
   await db.end();
   if (instance) await instance.close();
   if (tmpPublic) await fs.rm(tmpPublic, { recursive: true, force: true });
+  if (tmpSpa) await fs.rm(tmpSpa, { force: true });
 });
 
 describe('salud y SEO', () => {
@@ -434,10 +442,10 @@ describe('admin', () => {
     assert.equal(r.status, 401);
   });
 
-  test('con credenciales → 200, HTML escapado y sin caché', async () => {
+  test('admin clásico con credenciales → 200, HTML escapado y sin caché', async () => {
     const evil = validPre({ nombre_artistico: '<img src=x>zz' + rand().slice(0, 4) });
     assert.equal((await post('/api/preregistro', evil)).status, 201);
-    const r = await fetch(BASE + A, { headers: { authorization: adminAuth() } });
+    const r = await fetch(BASE + A + '/clasico', { headers: { authorization: adminAuth() } });
     assert.equal(r.status, 200);
     assert.match(r.headers.get('content-type'), /text\/html/);
     assert.equal(r.headers.get('cache-control'), 'no-store');
@@ -473,10 +481,10 @@ describe('admin', () => {
     const r0 = await post('/api/denuncia', validDen({ categoria: 'imagen_sin_consentimiento' }));
     const { id } = await r0.json();
     createdDenuncias.push(id);
-    const page = await (await fetch(BASE + A, { headers: { authorization: adminAuth() } })).text();
+    const page = await (await fetch(BASE + A + '/clasico', { headers: { authorization: adminAuth() } })).text();
     const token = /name="csrf" value="([0-9a-f]+)"/.exec(page)?.[1];
     assert.ok(token, 'el admin incluye el token');
-    const url = `${BASE}${A}/denuncias/${id}/resolver`;
+    const url = `${BASE}${A}/clasico/denuncias/${id}/resolver`;
     const form = (csrf) => new URLSearchParams({ csrf }).toString();
     const host = new URL(BASE).host;
     const base = { authorization: adminAuth(), 'content-type': 'application/x-www-form-urlencoded' };
@@ -492,12 +500,12 @@ describe('admin', () => {
 
     r = await fetch(url, { method: 'POST', headers: { ...base, origin: `http://${host}` }, body: form(token), redirect: 'manual' });
     assert.equal(r.status, 303);
-    assert.equal(r.headers.get('location'), `${A}#denuncias`);
+    assert.equal(r.headers.get('location'), `${A}/clasico#denuncias`);
     const { rows } = await db.query('SELECT estado, resuelto FROM denuncias WHERE id = $1', [id]);
     assert.equal(rows[0].estado, 'resuelta');
     assert.ok(rows[0].resuelto instanceof Date);
 
-    r = await fetch(`${BASE}${A}/denuncias/00000000-0000-0000-0000-000000000000/resolver`, { method: 'POST', headers: { ...base, origin: `http://${host}` }, body: form(token), redirect: 'manual' });
+    r = await fetch(`${BASE}${A}/clasico/denuncias/00000000-0000-0000-0000-000000000000/resolver`, { method: 'POST', headers: { ...base, origin: `http://${host}` }, body: form(token), redirect: 'manual' });
     assert.equal(r.status, 404);
   });
 });
@@ -637,13 +645,13 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
   });
   const adminGet = (url) => fetch(BASE + url, { headers: { authorization: adminAuth() } });
   let csrf;
-  const guardar = (pagina, campos, accion = 'guardar') => formPost(A + '/textos/' + pagina, { csrf, accion, ...campos });
+  const guardar = (pagina, campos, accion = 'guardar') => formPost(A + '/clasico/textos/' + pagina, { csrf, accion, ...campos });
   const pagina = async (p) => (await fetch(BASE + p)).text();
   const fila = async (clave) => (await db.query('SELECT valor FROM textos WHERE clave = $1', [clave])).rows[0]?.valor;
 
   before(async () => {
     await limpiarTextosPrueba();
-    const t = await (await adminGet(A + '/textos/index')).text();
+    const t = await (await adminGet(A + '/clasico/textos/index')).text();
     csrf = /name="csrf" value="([0-9a-f]+)"/.exec(t)?.[1];
   });
 
@@ -657,18 +665,18 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
   });
 
   test('el editor de textos exige credenciales (GET y POST)', async () => {
-    for (const p of [A + '/textos', A + '/textos/index', A + '/textos/historial?clave=index.zztest.titulo']) {
+    for (const p of [A + '/clasico/textos', A + '/clasico/textos/index', A + '/clasico/textos/historial?clave=index.zztest.titulo']) {
       assert.equal((await fetch(BASE + p, { headers: { 'cf-connecting-ip': randomIp() } })).status, 401, p);
     }
-    const r = await formPost(A + '/textos/index', { csrf, 'v.index.zztest.titulo': 'sin auth' }, { auth: false });
+    const r = await formPost(A + '/clasico/textos/index', { csrf, 'v.index.zztest.titulo': 'sin auth' }, { auth: false });
     assert.equal(r.status, 401);
     assert.equal(await fila('index.zztest.titulo'), undefined);
   });
 
   test('lista de páginas, editor y enlace desde el panel', async () => {
-    const adm = await (await adminGet(A)).text();
-    assert.ok(adm.includes(`href="${A}/textos"`));
-    const r = await adminGet(A + '/textos');
+    const adm = await (await adminGet(A + '/clasico')).text();
+    assert.ok(adm.includes(`href="${A}/clasico/textos"`));
+    const r = await adminGet(A + '/clasico/textos');
     assert.equal(r.status, 200);
     const csp = r.headers.get('content-security-policy') || '';
     assert.match(csp, /default-src 'none'/);
@@ -676,31 +684,31 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     assert.doesNotMatch(csp, /script-src|unsafe-inline/);
     assert.equal(r.headers.get('cache-control'), 'no-store');
     const t = await r.text();
-    assert.ok(t.includes(`href="${A}/textos/index"`) && t.includes(`href="${A}/textos/terminos"`) && t.includes(`href="${A}/textos/comun"`));
+    assert.ok(t.includes(`href="${A}/clasico/textos/index"`) && t.includes(`href="${A}/clasico/textos/terminos"`) && t.includes(`href="${A}/clasico/textos/comun"`));
     assert.ok(!t.includes('"/admin'), 'ningún enlace apunta a /admin');
     assert.ok(t.includes('/demo/'), 'aclara que la demo no se edita');
     assert.ok(!/<script/i.test(t));
 
-    const e = await (await adminGet(A + '/textos/index')).text();
+    const e = await (await adminGet(A + '/clasico/textos/index')).text();
     assert.ok(csrf, 'el editor incluye el token');
     assert.match(e, /<textarea[^>]*name="v\.index\.zztest\.titulo"[^>]*>\nTítulo \*\*original\*\*<\/textarea>/);
     assert.match(e, /name="v\.index\.zztest\.p1"[^>]*>\nTexto con \[enlace\]\(\/terminos\) &amp; más<\/textarea>/);
     assert.match(e, /name="v\.index\.zztest\.desc"[^>]*>\nDescripción &quot;por defecto&quot;<\/textarea>/);
     assert.ok(!e.includes('comun.zztest.pie'), 'los textos comunes van en su propia página');
     assert.ok(e.includes('href="/" target="_blank"'), 'vista previa');
-    assert.ok((await (await adminGet(A + '/textos/comun')).text()).includes('name="v.comun.zztest.pie"'));
-    assert.equal((await adminGet(A + '/textos/no-existe')).status, 404);
+    assert.ok((await (await adminGet(A + '/clasico/textos/comun')).text()).includes('name="v.comun.zztest.pie"'));
+    assert.equal((await adminGet(A + '/clasico/textos/no-existe')).status, 404);
   });
 
   test('guardar exige mismo origen y token CSRF', async () => {
     const campos = { 'v.index.zztest.titulo': 'Hackeado' };
-    let r = await formPost(A + '/textos/index', { csrf, ...campos }, { headers: { origin: '' } });
+    let r = await formPost(A + '/clasico/textos/index', { csrf, ...campos }, { headers: { origin: '' } });
     assert.equal(r.status, 403, 'sin Origin');
-    r = await formPost(A + '/textos/index', { csrf, ...campos }, { headers: { origin: 'https://evil.example' } });
+    r = await formPost(A + '/clasico/textos/index', { csrf, ...campos }, { headers: { origin: 'https://evil.example' } });
     assert.equal(r.status, 403, 'otro origen');
-    r = await formPost(A + '/textos/index', { csrf: 'mal', ...campos });
+    r = await formPost(A + '/clasico/textos/index', { csrf: 'mal', ...campos });
     assert.equal(r.status, 403, 'token incorrecto');
-    r = await formPost(A + '/textos/historial', { csrf: 'mal', id: '1' });
+    r = await formPost(A + '/clasico/textos/historial', { csrf: 'mal', id: '1' });
     assert.equal(r.status, 403, 'restaurar versión también exige token');
     assert.equal(await fila('index.zztest.titulo'), undefined);
     assert.ok(!(await pagina('/')).includes('Hackeado'));
@@ -713,13 +721,13 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
       'v.index.zztest.p1': 'Texto con [enlace](/terminos) & más', // igual al texto por defecto: no se guarda
     }, 'guardar:index.zztest.titulo');
     assert.equal(r.status, 303);
-    assert.equal(r.headers.get('location'), `${A}/textos/index?ok=1#b-index.zztest.titulo`);
+    assert.equal(r.headers.get('location'), `${A}/clasico/textos/index?ok=1#b-index.zztest.titulo`);
     const t = await pagina('/');
     assert.ok(t.includes('<h1>Nuevo <strong>título</strong><br>en dos líneas</h1>'), t);
     assert.ok(t.includes('<p>Texto con <a href="/terminos">enlace</a> &amp; más</p>'));
     assert.equal(await fila('index.zztest.titulo'), 'Nuevo **título**\nen dos líneas');
     assert.equal(await fila('index.zztest.p1'), undefined);
-    const e = await (await adminGet(A + '/textos/index?ok=1')).text();
+    const e = await (await adminGet(A + '/clasico/textos/index?ok=1')).text();
     assert.ok(e.includes('Cambios guardados: 1.'));
     assert.ok(e.includes('Modificado') && e.includes('Por defecto:</strong> Título **original**'));
   });
@@ -751,7 +759,7 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     assert.ok(t.includes('content="Desc &quot;con comillas&quot; &lt;x&gt; &#39; fin"'), 'atributo escapado');
     assert.ok(t.includes('<title>&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;</title>'));
     // El admin muestra el valor escapado dentro del textarea
-    const e = await (await adminGet(A + '/textos/index')).text();
+    const e = await (await adminGet(A + '/clasico/textos/index')).text();
     assert.ok(e.includes('&lt;/title&gt;&lt;script&gt;'));
     assert.ok(!/<script/i.test(e));
   });
@@ -781,13 +789,13 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     assert.deepEqual(h.map((x) => x.valor), ['versión 1'], 'el texto por defecto no va al historial; la versión reemplazada sí');
     assert.ok((await pagina('/terminos')).includes('<p>versión 2</p>'));
 
-    const hp = await (await adminGet(A + '/textos/historial?clave=' + clave)).text();
+    const hp = await (await adminGet(A + '/clasico/textos/historial?clave=' + clave)).text();
     assert.ok(hp.includes('versión 1') && hp.includes('Restaurar esta versión'));
-    assert.ok((await (await adminGet(A + '/textos/terminos')).text()).includes('Versiones anteriores (1)'));
+    assert.ok((await (await adminGet(A + '/clasico/textos/terminos')).text()).includes('Versiones anteriores (1)'));
 
-    let r = await formPost(A + '/textos/historial', { csrf, id: String(h[0].id) });
+    let r = await formPost(A + '/clasico/textos/historial', { csrf, id: String(h[0].id) });
     assert.equal(r.status, 303);
-    assert.equal(r.headers.get('location'), `${A}/textos/terminos?ok=version#b-${clave}`);
+    assert.equal(r.headers.get('location'), `${A}/clasico/textos/terminos?ok=version#b-${clave}`);
     assert.ok((await pagina('/terminos')).includes('<p>versión 1</p>'));
     h = (await db.query('SELECT valor FROM textos_historial WHERE clave = $1 ORDER BY id', [clave])).rows;
     assert.deepEqual(h.map((x) => x.valor), ['versión 1', 'versión 2']);
@@ -795,13 +803,13 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     // Restaurar por defecto: aunque el textarea traiga otra cosa, gana el botón; los demás cambios se guardan.
     r = await guardar('terminos', { [`v.${clave}`]: 'ignorado' }, `defecto:${clave}`);
     assert.equal(r.status, 303);
-    assert.equal(r.headers.get('location'), `${A}/textos/terminos?ok=defecto#b-${clave}`);
+    assert.equal(r.headers.get('location'), `${A}/clasico/textos/terminos?ok=defecto#b-${clave}`);
     assert.ok((await pagina('/terminos')).includes('<p>Términos por defecto</p>'));
     assert.equal(await fila(clave), undefined);
     h = (await db.query('SELECT valor FROM textos_historial WHERE clave = $1 ORDER BY id', [clave])).rows;
     assert.deepEqual(h.map((x) => x.valor), ['versión 1', 'versión 2', 'versión 1']);
 
-    r = await formPost(A + '/textos/historial', { csrf, id: '999999999999' });
+    r = await formPost(A + '/clasico/textos/historial', { csrf, id: '999999999999' });
     assert.equal(r.status, 404);
   });
 
@@ -880,14 +888,262 @@ describe('textos editables: páginas reales de app/public', () => {
   });
 });
 
+describe('panel nuevo (SPA) y API JSON del admin', () => {
+  const host = () => new URL(BASE).host;
+  const aget = (p, { auth = true } = {}) => fetch(BASE + A + p, { headers: { ...(auth ? { authorization: adminAuth() } : {}), 'cf-connecting-ip': randomIp() } });
+  const apost = (p, body, { headers = {}, auth = true } = {}) => fetch(BASE + A + p, {
+    method: 'POST',
+    headers: {
+      ...(auth ? { authorization: adminAuth() } : {}),
+      'content-type': 'application/json',
+      'x-sr-admin': '1',
+      origin: `http://${host()}`,
+      'cf-connecting-ip': randomIp(),
+      ...headers,
+    },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+    redirect: 'manual',
+  });
+
+  test('ADMIN_PATH sirve el panel con nonce nuevo en cada <script> y CSP propia', { skip: EXTERNAL && 'usa el panel de prueba' }, async () => {
+    const r = await aget('');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('cache-control'), 'no-store');
+    assert.match(r.headers.get('x-robots-tag') || '', /noindex/);
+    const csp = r.headers.get('content-security-policy') || '';
+    const nonce = /script-src 'nonce-([A-Za-z0-9+/=]+)'/.exec(csp)?.[1];
+    assert.ok(nonce, csp);
+    assert.doesNotMatch(csp.split(';').find((d) => d.includes('script-src')), /unsafe-inline|unsafe-eval|'self'/);
+    assert.match(csp, /default-src 'none'/);
+    assert.match(csp, /connect-src 'self'/);
+    assert.match(csp, /frame-ancestors 'none'/);
+    const t = await r.text();
+    assert.ok(t.includes('panel-spa-prueba'));
+    const tags = t.match(/<script\b[^>]*>/gi);
+    assert.equal(tags.length, 2);
+    for (const tag of tags) assert.ok(tag.includes(`nonce="${nonce}"`), tag);
+    const r2 = await aget('');
+    assert.notEqual(/'nonce-([^']+)'/.exec(r2.headers.get('content-security-policy'))[1], nonce, 'nonce distinto por respuesta');
+  });
+
+  test('sin el panel generado → 503 con instrucciones y el admin clásico sigue andando', { skip: EXTERNAL && 'usa el panel de prueba' }, async () => {
+    await fs.rename(tmpSpa, tmpSpa + '.bak');
+    try {
+      const r = await aget('');
+      assert.equal(r.status, 503);
+      assert.match(await r.text(), /build-admin\.py/);
+      assert.equal((await aget('/clasico')).status, 200);
+    } finally {
+      await fs.rename(tmpSpa + '.bak', tmpSpa);
+    }
+    assert.equal((await aget('')).status, 200);
+  });
+
+  test('la API exige credenciales y responde JSON sin caché', async () => {
+    for (const p of ['/api/resumen', '/api/preregistros', '/api/denuncias', '/api/textos']) {
+      assert.equal((await aget(p, { auth: false })).status, 401, p);
+      const r = await aget(p);
+      assert.equal(r.status, 200, p);
+      assert.match(r.headers.get('content-type'), /application\/json/);
+      assert.equal(r.headers.get('cache-control'), 'no-store');
+    }
+    const r = await apost('/api/denuncias/00000000-0000-0000-0000-000000000000/resolver', {}, { auth: false });
+    assert.equal(r.status, 401);
+    const nf = await aget('/api/no-existe');
+    assert.equal(nf.status, 404);
+    assert.ok((await nf.json()).error);
+  });
+
+  test('POST: exige JSON, cabecera X-SR-Admin y mismo origen', async () => {
+    const r0 = await post('/api/denuncia', validDen());
+    const { id } = await r0.json();
+    createdDenuncias.push(id);
+    const url = `/api/denuncias/${id}/resolver`;
+    const casos = [
+      [{ 'x-sr-admin': '' }, 'sin cabecera'],
+      [{ 'content-type': 'application/x-www-form-urlencoded' }, 'no JSON'],
+      [{ 'content-type': 'text/plain' }, 'text/plain'],
+      [{ origin: 'https://evil.example' }, 'otro origen'],
+      [{ origin: '' }, 'sin origen'],
+      [{ 'sec-fetch-site': 'cross-site' }, 'sec-fetch-site cross-site'],
+    ];
+    for (const [headers, nombre] of casos) {
+      const r = await apost(url, {}, { headers });
+      assert.equal(r.status, 403, nombre);
+      assert.ok((await r.json()).error, nombre);
+    }
+    const { rows } = await db.query('SELECT resuelto FROM denuncias WHERE id = $1', [id]);
+    assert.equal(rows[0].resuelto, null, 'nada cambió');
+    const bad = await apost(url, '{"x":');
+    assert.equal(bad.status, 400);
+    assert.ok((await bad.json()).error);
+  });
+
+  test('resumen: conteos reales', async () => {
+    const j = await (await aget('/api/resumen')).json();
+    for (const k of ['total', 'nuevos', 'ultimos7']) assert.equal(typeof j.preregistros[k], 'number', k);
+    for (const k of ['total', 'abiertas', 'urgentes']) assert.equal(typeof j.denuncias[k], 'number', k);
+    assert.equal(typeof j.textos.modificados, 'number');
+    assert.equal(typeof j.textos.total, 'number');
+    assert.ok(!Number.isNaN(Date.parse(j.generado)));
+    const { rows } = await db.query('SELECT count(*)::int AS n FROM preregistros');
+    assert.equal(j.preregistros.total, rows[0].n);
+  });
+
+  test('pre-registros: lista y cambio de estado validado', async () => {
+    const v = validPre({ plan_interes: 'platino' });
+    assert.equal((await post('/api/preregistro', v)).status, 201);
+    const j = await (await aget('/api/preregistros')).json();
+    assert.equal(typeof j.total, 'number');
+    assert.deepEqual(j.estados, ['nuevo', 'contactado', 'invitado', 'descartado']);
+    const it = j.items.find((x) => x.nombre_artistico === v.nombre_artistico);
+    assert.ok(it);
+    assert.equal(it.plan_label, 'Platino');
+    assert.equal(it.estado, 'nuevo');
+    assert.ok(!('ip_hash' in it));
+    for (const k of ['id', 'creado', 'genero', 'provincia', 'ciudad', 'contacto_tipo', 'contacto', 'plan_interes']) assert.ok(k in it, k);
+    let r = await apost(`/api/preregistros/${it.id}/estado`, { estado: 'borrado' });
+    assert.equal(r.status, 400);
+    r = await apost('/api/preregistros/no-es-uuid/estado', { estado: 'contactado' });
+    assert.equal(r.status, 404);
+    r = await apost('/api/preregistros/00000000-0000-0000-0000-000000000000/estado', { estado: 'contactado' });
+    assert.equal(r.status, 404);
+    r = await apost(`/api/preregistros/${it.id}/estado`, { estado: 'invitado' });
+    assert.equal(r.status, 200);
+    const out = await r.json();
+    assert.equal(out.ok, true);
+    assert.equal(out.item.estado, 'invitado');
+    assert.equal(out.item.plan_label, 'Platino');
+    const { rows } = await db.query('SELECT estado FROM preregistros WHERE id = $1', [it.id]);
+    assert.equal(rows[0].estado, 'invitado');
+  });
+
+  test('denuncias: abiertas y urgentes primero; resolver', async () => {
+    const ids = {};
+    for (const categoria of ['otro', 'trata']) {
+      const r = await post('/api/denuncia', validDen({ categoria }));
+      ids[categoria] = (await r.json()).id;
+      createdDenuncias.push(ids[categoria]);
+    }
+    let j = await (await aget('/api/denuncias')).json();
+    assert.equal(typeof j.abiertas, 'number');
+    const pos = (id) => j.items.findIndex((x) => x.id === id);
+    assert.ok(pos(ids.trata) >= 0 && pos(ids.otro) >= 0);
+    assert.ok(pos(ids.trata) < pos(ids.otro), 'urgente antes');
+    const t = j.items[pos(ids.trata)];
+    assert.equal(t.urgente, true);
+    assert.equal(t.categoria_label, 'Trata de personas');
+    assert.equal(t.resuelto, null);
+    assert.ok(!('ip_hash' in t));
+    // Las abiertas van antes que cualquier resuelta.
+    const firstResolved = j.items.findIndex((x) => x.resuelto);
+    if (firstResolved >= 0) assert.ok(j.items.slice(firstResolved).every((x) => x.resuelto));
+    let r = await apost(`/api/denuncias/${ids.trata}/resolver`, {});
+    assert.equal(r.status, 200);
+    const out = await r.json();
+    assert.equal(out.item.estado, 'resuelta');
+    assert.ok(out.item.resuelto);
+    r = await apost(`/api/denuncias/${ids.trata}/resolver`, {});
+    assert.equal(r.status, 200, 'resolver de nuevo no falla');
+    j = await (await aget('/api/denuncias')).json();
+    assert.ok(j.items.findIndex((x) => x.id === ids.trata) > j.items.findIndex((x) => x.id === ids.otro), 'la resuelta baja');
+    assert.equal((await apost('/api/denuncias/00000000-0000-0000-0000-000000000000/resolver', {})).status, 404);
+  });
+
+  test('textos: lista, editar, historial y restaurar', { skip: EXTERNAL && 'usa la carpeta public/ de prueba' }, async () => {
+    const clave = 'index.zztest.titulo';
+    // Arranca del texto por defecto (también en la memoria del servidor) y sin historial.
+    await apost('/api/textos/index', { cambios: { [clave]: null } });
+    await limpiarTextosPrueba();
+    const lista = await (await aget('/api/textos')).json();
+    assert.ok(typeof lista.ayuda === 'string' && lista.ayuda.includes('**'));
+    const idx = lista.paginas.find((p) => p.id === 'index');
+    assert.ok(idx && idx.total >= 4 && typeof idx.modificados === 'number' && idx.ruta === '/' && idx.nombre);
+    const modAntes = idx.modificados;
+    assert.ok(lista.paginas.some((p) => p.id === 'comun'));
+
+    let pag = await (await aget('/api/textos/index')).json();
+    assert.deepEqual(pag.pagina, { id: 'index', nombre: 'Inicio', ruta: '/' });
+    let b = pag.bloques.find((x) => x.clave === clave);
+    assert.deepEqual({ ...b, contexto: undefined }, { clave, contexto: undefined, tipo: 'e', defValor: 'Título **original**', valor: null, modificado: false, versiones: 0 });
+    assert.ok(b.contexto);
+    assert.ok(!pag.bloques.some((x) => x.clave.startsWith('comun.')), 'comun va en su página');
+    assert.equal((await aget('/api/textos/no-existe')).status, 404);
+
+    let r = await apost('/api/textos/index', { cambios: { [clave]: 'Nuevo **título**', 'terminos.zztest.p': 'ajena', 'otra.clave': 'x' } });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true, guardados: 1 });
+    assert.ok((await (await fetch(BASE + '/')).text()).includes('Nuevo <strong>título</strong>'), 'la página pública cambia al instante');
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM textos WHERE clave = 'terminos.zztest.p'")).rows[0].n, 0, 'claves de otra página se ignoran');
+
+    r = await apost('/api/textos/index', { cambios: { [clave]: 'Nuevo **título**' } });
+    assert.deepEqual(await r.json(), { ok: true, guardados: 0 }, 'sin cambios');
+    r = await apost('/api/textos/index', { cambios: { [clave]: 'Segunda versión' } });
+    assert.deepEqual(await r.json(), { ok: true, guardados: 1 });
+
+    pag = await (await aget('/api/textos/index')).json();
+    b = pag.bloques.find((x) => x.clave === clave);
+    assert.equal(b.valor, 'Segunda versión');
+    assert.equal(b.modificado, true);
+    assert.equal(b.versiones, 1);
+    assert.equal((await (await aget('/api/textos')).json()).paginas.find((p) => p.id === 'index').modificados, modAntes + 1);
+
+    const h = await (await aget('/api/textos/historial?clave=' + clave)).json();
+    assert.equal(h.clave, clave);
+    assert.equal(h.pagina, 'index');
+    assert.equal(h.defValor, 'Título **original**');
+    assert.equal(h.actual, 'Segunda versión');
+    assert.equal(h.versiones.length, 1);
+    assert.equal(h.versiones[0].valor, 'Nuevo **título**');
+    assert.equal(typeof h.versiones[0].id, 'string');
+    assert.equal((await aget('/api/textos/historial?clave=no.existe')).status, 404);
+
+    r = await apost(`/api/textos/historial/${h.versiones[0].id}/restaurar`, {});
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { ok: true, pagina: 'index', clave });
+    assert.equal((await db.query('SELECT valor FROM textos WHERE clave = $1', [clave])).rows[0].valor, 'Nuevo **título**');
+    assert.equal((await apost('/api/textos/historial/999999999999/restaurar', {})).status, 404);
+    assert.equal((await apost('/api/textos/historial/abc/restaurar', {})).status, 404);
+
+    // null o vacío = volver al texto por defecto
+    r = await apost('/api/textos/index', { cambios: { [clave]: null } });
+    assert.deepEqual(await r.json(), { ok: true, guardados: 1 });
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM textos WHERE clave = $1', [clave])).rows[0].n, 0);
+    assert.ok((await (await fetch(BASE + '/')).text()).includes('Título <strong>original</strong>'));
+
+    // XSS: se guarda tal cual y la página lo escapa
+    r = await apost('/api/textos/index', { cambios: { [clave]: '<img src=x onerror=alert(1)>' } });
+    assert.equal(r.status, 200);
+    const pub = await (await fetch(BASE + '/')).text();
+    assert.ok(pub.includes('&lt;img src=x onerror=alert(1)&gt;') && !pub.includes('<img src=x'));
+
+    assert.equal((await apost('/api/textos/index', { cambios: { [clave]: 'x'.repeat(5001) } })).status, 400);
+    assert.equal((await apost('/api/textos/index', { cambios: { [clave]: 5 } })).status, 400);
+    assert.equal((await apost('/api/textos/index', { cambios: 'texto' })).status, 400);
+    assert.equal((await apost('/api/textos/index', {})).status, 400);
+    assert.equal((await apost('/api/textos/no-existe', { cambios: {} })).status, 404);
+    await limpiarTextosPrueba();
+  });
+
+  test('direcciones viejas del editor de textos redirigen al admin clásico', async () => {
+    const r = await fetch(BASE + A + '/textos/index?filtro=modificados', { headers: { authorization: adminAuth() }, redirect: 'manual' });
+    assert.equal(r.status, 301);
+    assert.equal(r.headers.get('location'), A + '/clasico/textos/index?filtro=modificados');
+    const r2 = await fetch(BASE + A + '/textos', { headers: { authorization: adminAuth() }, redirect: 'manual' });
+    assert.equal(r2.headers.get('location'), A + '/clasico/textos');
+    const c = await (await aget('/clasico')).text();
+    assert.ok(c.includes(`href="${A}"`) && c.includes(`href="${A}/clasico/textos"`), 'el clásico enlaza al panel nuevo y al editor');
+  });
+});
+
 describe('logs', { skip: EXTERNAL && 'lee los logs del servidor en este proceso' }, () => {
   test('ningún log incluye la dirección del admin (tampoco los errores dentro del admin)', async () => {
     // Un parámetro mal codificado hace fallar la ruta del editor dentro del admin: el error se loguea.
-    const r = await fetch(BASE + A + '/textos/%E0%A4%A', { headers: { authorization: adminAuth() } });
+    const r = await fetch(BASE + A + '/clasico/textos/%E0%A4%A', { headers: { authorization: adminAuth() } });
     assert.ok(r.status >= 400);
     assert.ok(!(await r.text()).includes(A.slice(1)));
     assert.ok(logs.some((l) => l.includes('admin habilitado')), 'avisa que el admin está habilitado');
-    assert.ok(logs.some((l) => l.startsWith('error:') && l.includes('[admin]/textos/')), logs.join('\n'));
+    assert.ok(logs.some((l) => l.startsWith('error:') && l.includes('[admin]/clasico/textos/')), logs.join('\n'));
     const conRuta = logs.filter((l) => l.toLowerCase().includes(A.slice(1)));
     assert.deepEqual(conRuta, []);
   });

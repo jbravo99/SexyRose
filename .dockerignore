@@ -19,6 +19,7 @@
 **/*.pyc
 mvp/build
 app/public/demo
+app/admin-spa
 app/test
 
 # No hace falta en la imagen

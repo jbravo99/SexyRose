@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Imagen única del sitio SexyRose (app Node 22 + demo generada desde mvp/).
+# Imagen única del sitio SexyRose (app Node 22 + demo y panel de administración generados desde mvp/).
 #
 # Contexto de build: la RAIZ del repo (necesita mvp/ y app/).
 #   docker build -f app/Dockerfile .
@@ -12,12 +12,17 @@
 #   Se ejecuta desde la raíz del repo y debe dejar $DEMO_OUTPUT_DIR/index.html.
 ARG DEMO_BUILD_SCRIPT=""
 ARG DEMO_OUTPUT_DIR=app/public/demo
+# Panel de administración (SPA del MVP): app/scripts/build-admin.py deja app/admin-spa/index.html.
+ARG ADMIN_BUILD_SCRIPT=app/scripts/build-admin.py
+ARG ADMIN_OUTPUT_DIR=app/admin-spa
 
-# ---------- Etapa 1: demo (HTML de un solo archivo, independiente de la arquitectura) ----------
+# ---------- Etapa 1: demo y panel (HTML de un solo archivo, independientes de la arquitectura) ----------
 # Corre en la plataforma del que construye (más rápido en builds cruzados amd64/arm64).
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS demo
 ARG DEMO_BUILD_SCRIPT
 ARG DEMO_OUTPUT_DIR
+ARG ADMIN_BUILD_SCRIPT
+ARG ADMIN_OUTPUT_DIR
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3008
 RUN apt-get update \
@@ -45,6 +50,14 @@ RUN set -e; \
     esac; \
     test -s "${DEMO_OUTPUT_DIR}/index.html" || { echo "ERROR: falta ${DEMO_OUTPUT_DIR}/index.html" >&2; exit 1; }; \
     mkdir -p /out && cp -a "${DEMO_OUTPUT_DIR}/." /out/
+# El panel va después de la demo (los dos usan mvp/build/ como carpeta de trabajo).
+RUN set -e; \
+    test -f "${ADMIN_BUILD_SCRIPT}" || { echo "ERROR: no encuentro ${ADMIN_BUILD_SCRIPT}" >&2; exit 1; }; \
+    echo "Generando panel con: ${ADMIN_BUILD_SCRIPT}"; \
+    mkdir -p "${ADMIN_OUTPUT_DIR}"; \
+    python3 "${ADMIN_BUILD_SCRIPT}"; \
+    test -s "${ADMIN_OUTPUT_DIR}/index.html" || { echo "ERROR: falta ${ADMIN_OUTPUT_DIR}/index.html" >&2; exit 1; }; \
+    mkdir -p /out-admin && cp -a "${ADMIN_OUTPUT_DIR}/." /out-admin/
 
 # ---------- Etapa 2: runtime ----------
 FROM node:22-bookworm-slim AS runtime
@@ -62,6 +75,8 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
 
 COPY app/ ./
 COPY --from=demo /out/ ./public/demo/
+# server.js lee el panel de ./admin-spa/index.html (ADMIN_SPA_PATH para cambiarlo).
+COPY --from=demo /out-admin/ ./admin-spa/
 
 # Todo es del root y solo lectura para el proceso; corre como el usuario "node" (uid 1000).
 # hadolint ignore=DL3066
