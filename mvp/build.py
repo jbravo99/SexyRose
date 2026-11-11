@@ -15,7 +15,10 @@ if TARGET == 'admin':
 elif TARGET == 'sitio':
     # HH_TARGET=sitio → build/sitio.html: el sitio público real (datos de /api/sitio/estado, panel de la acompañante
     # contra /api/cuenta), con direcciones reales (data-routing="path"). Lo sirve app/routes/spa-sitio.js.
-    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-sitio.js', 'boot.js']
+    # Sin las vistas que el sitio real no usa (panel y admin de la demo, cuenta de clientes, asistente simulado):
+    # prod-sitio.js trae su propio panel. Todos sus usos desde otros módulos están protegidos (if (HH.adminTabs) …).
+    SIN_SITIO = {'views-dashboard.js', 'views-admin.js', 'views-client.js', 'ops.js'}
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio.js', 'boot.js']
 elif TARGET:
     sys.exit('HH_TARGET desconocido: ' + TARGET)
 parts = []
@@ -48,7 +51,7 @@ if TARGET == 'sitio':
     SITIO.parent.mkdir(exist_ok=True)
     SITIO.write_text('<!doctype html><html lang="es-AR" data-prod="sitio" data-routing="path"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="strict-origin-when-cross-origin"><title>SexyRose — Acompañantes en Argentina</title><meta name="description" content="Perfiles verificados de acompañantes para salidas en toda la Argentina. Contacto directo por WhatsApp o Telegram."><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png">\n'
                      + head + '\n<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>\n'
-                     + parts[1] + '\n</head><body>\n' + parts[2] + '\n<script>window.HH_PROD = \'sitio\';</script>\n' + parts[3] + '\n</body></html>')
+                     + parts[1] + '\n<style>\n' + (SRC / 'sitio.css').read_text() + '\n</style>\n</head><body>\n' + parts[2] + '\n<script>window.HH_PROD = \'sitio\';</script>\n' + parts[3] + '\n</body></html>')
     print('ok', SITIO, SITIO.stat().st_size, 'bytes')
     sys.exit(0)
 OUT.parent.mkdir(exist_ok=True)

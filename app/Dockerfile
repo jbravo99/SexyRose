@@ -58,9 +58,14 @@ RUN set -e; \
     python3 "${ADMIN_BUILD_SCRIPT}"; \
     test -s "${ADMIN_OUTPUT_DIR}/index.html" || { echo "ERROR: falta ${ADMIN_OUTPUT_DIR}/index.html" >&2; exit 1; }; \
     mkdir -p /out-admin && cp -a "${ADMIN_OUTPUT_DIR}/." /out-admin/
-# Sitio público real (SPA del MVP en modo producción): app/scripts/build-sitio.py deja app/sitio-spa/index.html.
+# Sitio público real (SPA del MVP en modo producción): app/scripts/build-sitio.py deja app/sitio-spa/index.html
+# (cáscara chica) y app/sitio-spa/assets/ (JS, CSS y diccionario con hash en el nombre).
+# esbuild minimiza el JS y el CSS (versión fija; solo en esta etapa, no queda en la imagen final).
+ARG ESBUILD_VERSION=0.24.2
+RUN npm install -g --no-audit --no-fund "esbuild@${ESBUILD_VERSION}" && esbuild --version
 RUN python3 app/scripts/build-sitio.py \
     && test -s app/sitio-spa/index.html \
+    && ls app/sitio-spa/assets/app.*.js app/sitio-spa/assets/app.*.css app/sitio-spa/assets/i18n.*.js \
     && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
 # ---------- Etapa 2: runtime ----------

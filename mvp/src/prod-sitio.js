@@ -59,7 +59,155 @@
   // Descripciones de los planes sin funciones que todavía no existen (chat, estadísticas, venta de contenido)
   const DESC = { E: 'Tu perfil publicado y verificado, para empezar.', D: 'Más fotos y hasta 3 historias por día.', C: 'Más arriba en el inicio, más fotos e historias ilimitadas.', B: 'Sección Platino en el inicio y hasta 50 fotos.', A: 'Sección Diamante, la primera debajo de Stars, con tarjetas grandes.', S: 'Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.' };
   Object.keys(DESC).forEach((k) => { if (HH.LEVELS[k]) HH.LEVELS[k].desc = DESC[k]; });
-  HH.publishedProfiles = () => ((HH.db && HH.db.profiles) || []).filter((p) => p.status === 'active' && !p.hidden && HH.levelOf(p.userId));
+  const publishedProfiles0 = () => ((HH.db && HH.db.profiles) || []).filter((p) => p.status === 'active' && !p.hidden && HH.levelOf(p.userId));
+
+  /* ---------- Rendimiento: diccionario inglés/portugués aparte ----------
+     El build del sitio saca i18n-dict.js del JS principal (un tercio del peso) y lo deja en /assets/i18n.<hash>.js.
+     Se baja solo si se navega en inglés o portugués. Mientras no llegó, HH.t devuelve el texto en español
+     (así el índice de traducciones de i18n.js no se arma vacío) y al llegar se traduce la página. */
+  const DICT_SRC = window.HH_I18N_SRC;
+  let dictListo = !DICT_SRC || !!HH.I18N_BASE, dictProm = null;
+  const cargarDict = () => {
+    if (dictListo) return Promise.resolve();
+    return (dictProm ||= new Promise((ok) => {
+      const s = document.createElement('script'); s.src = DICT_SRC; s.async = true;
+      s.onload = () => { dictListo = true; ok(); };
+      s.onerror = () => { dictProm = null; ok(); };  // sin diccionario queda en español; se reintenta al cambiar de idioma
+      document.head.appendChild(s);
+    }));
+  };
+  HH.cargarDict = cargarDict;
+  // Mismo traductor que i18n.js, pero con su índice armado recién cuando llegó el diccionario (el de i18n.js ya se
+  // armó al arrancar, con el diccionario todavía sin bajar).
+  const traducir = (function () {
+    const IDX = { en: 0, pt: 1 };
+    let exact = null, patterns = null;
+    const clean = (t) => t.replace(/\s+/g, ' ').trim();
+    function build() {
+      const D = HH.I18N || {}; exact = new Map(); patterns = [];
+      Object.keys(D).forEach(k => {
+        const v = D[k];
+        if (/\{[a-z]\}/.test(k)) {
+          // {n} = número, {x} = cualquier texto (un nombre, una ciudad)
+          const names = []; const re = new RegExp('^' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\\{([a-z])\\\}/g, (m, c) => { names.push(c); return c === 'n' ? '([\\d.,]+)' : '(.+?)'; }) + '$');
+          // Un patrón tiene que tener texto propio suficiente; si no, se "comería" frases cualquiera ("{x} de {x}")
+          const own = k.replace(/\{[a-z]\}/g, '').replace(/[^a-záéíóúüñ]/gi, '');
+          if (own.length < 4 && !/^\{n\}/.test(k)) return;
+          if (/^\{x\}[^a-záéíóúñ]*$/i.test(k) || /^\{x\} \S{1,3} \{x\}$/.test(k)) return;
+          patterns.push({ re, names, v, k });
+        } else exact.set(k, v);
+      });
+      // los patrones más largos primero (más específicos)
+      patterns.sort((a, b) => b.k.length - a.k.length);
+    }
+    return function (text, lang) {
+      const l = lang || HH.lang; if (l === 'es' || text == null) return text;
+      if (!exact) build();
+      const src = clean(String(text)); if (!src || !/[a-záéíóúñ]/i.test(src)) return text;
+      const i = IDX[l]; const hit = exact.get(src);
+      if (hit && hit[i]) return hit[i];
+      for (const p of patterns) {
+        const m = src.match(p.re); if (!m || !p.v[i]) continue;
+        // {x} es un nombre, una fecha o una ciudad: corto y sin frases largas
+        if (p.names.some((c, j) => c === 'x' && (m[j + 1].length > 40 || m[j + 1].split(' ').length > 6))) continue;
+        let out = p.v[i]; p.names.forEach((c, j) => { out = out.replace('{' + c + '}', m[j + 1]); });
+        return out;
+      }
+      if (HH._i18nMiss) HH._i18nMiss.add(src);
+      return text;
+    };
+  })();
+  const t0 = HH.t;
+  HH.t = function (text, lang) {
+    if ((lang || HH.lang) === 'es' || text == null) return text;
+    if (!DICT_SRC) return t0.apply(this, arguments);
+    return dictListo ? traducir(text, lang) : text;
+  };
+  const setLang0 = HH.setLang;
+  HH.setLang = function () {
+    const r = setLang0.apply(this, arguments);
+    if (HH.lang !== 'es' && !dictListo) cargarDict().then(() => { if (dictListo && HH.lang !== 'es') { HH.renderShell(); HH.refresh ? HH.refresh() : HH.render(); } });
+    return r;
+  };
+
+  /* ---------- Rendimiento: consultas de negocio memorizadas ----------
+     Las vistas del MVP llaman miles de veces a levelOf/isStar/rankedProfiles (cada una recorre todas las
+     suscripciones y Stars): con 200 perfiles el inicio tardaba segundos. Los datos del sitio cambian solo al
+     recargar /api/sitio/estado (HH.db nuevo), así que se calculan una vez por HH.db y por minuto (vencimientos). */
+  let memo = null;
+  const M = () => {
+    const min = Math.floor(Date.now() / 60000);
+    if (memo && memo.db === HH.db && memo.min === min) return memo;
+    memo = { db: HH.db, min, subs: null, stars: null, starSet: null, levels: new Map(), pub: null, ranked: new Map(),
+      byId: null, byName: null, contains: new Map(), trips: new Map(), place: new Map() };
+    return memo;
+  };
+  // Ubicaciones por id y por nombre (las páginas de lugares y los enlaces del pie las consultan miles de veces)
+  const locIdx = (c) => {
+    if (!c.byId) { c.byId = new Map(); c.byName = new Map(); ((HH.db && HH.db.locations) || []).forEach((l) => { if (!c.byId.has(l.id)) c.byId.set(l.id, l); if (!c.byName.has(l.name)) c.byName.set(l.name, l); }); }
+    return c;
+  };
+  HH.locById = (id) => (HH.db ? locIdx(M()).byId.get(id) || null : null);
+  HH.locByName = (name) => (HH.db ? locIdx(M()).byName.get(name) || null : null);
+  const placeContains0 = HH.placeContains;
+  HH.placeContains = function (placeName, cityName) {
+    if (!placeName) return true; if (!cityName) return false; if (placeName === cityName) return true;
+    const c = M(); const k = placeName + '\u0000' + cityName;
+    let v = c.contains.get(k); if (v === undefined) { v = placeContains0(placeName, cityName); c.contains.set(k, v); }
+    return v;
+  };
+  const upcomingTrip0 = HH.upcomingTrip;
+  HH.upcomingTrip = (p) => {
+    if (!p || !p.trips || !p.trips.length) return null;
+    const c = M(); if (c.trips.has(p)) return c.trips.get(p);
+    const t = upcomingTrip0(p); c.trips.set(p, t); return t;
+  };
+  if (HH.placeProfiles) {
+    const placeProfiles0 = HH.placeProfiles;
+    HH.placeProfiles = (loc, actId, g) => {
+      if (!loc) return placeProfiles0(loc, actId, g);
+      const c = M(); const k = [loc.id || loc.name, actId || '', g || '', HH.genderSet ? [...HH.genderSet()].sort().join(',') : ''].join('|');
+      if (!c.place.has(k)) c.place.set(k, placeProfiles0(loc, actId, g));
+      return c.place.get(k).slice();
+    };
+  }
+  const activeSubscription0 = HH.activeSubscription, activeStars0 = HH.activeStars;
+  HH.activeSubscription = (id) => {
+    const c = M(); if (!HH.db) return activeSubscription0(id);
+    if (!c.subs) { c.subs = new Map(); const now = new Date(); (HH.db.subscriptions || []).forEach((x) => { if (x.status === 'active' && new Date(x.expiresAt) > now && !c.subs.has(x.userId)) c.subs.set(x.userId, x); }); }
+    return c.subs.get(id) || null;
+  };
+  HH.activeStars = () => { const c = M(); if (!HH.db) return activeStars0(); if (!c.stars) c.stars = activeStars0(); return c.stars; };
+  HH.isStar = (id) => { const c = M(); if (!c.starSet) c.starSet = new Set(HH.activeStars().map((x) => x.workerId)); return c.starSet.has(id); };
+  const levelOf0 = HH.levelOf;
+  HH.levelOf = (id) => { const c = M(); if (c.levels.has(id)) return c.levels.get(id); const l = levelOf0(id); c.levels.set(id, l); return l; };
+  HH.publishedProfiles = () => { const c = M(); if (!c.pub) c.pub = publishedProfiles0(); return c.pub.slice(); };
+  HH.rankList = function (list) {
+    const sc = new Map();
+    const score = (p) => { let v = sc.get(p); if (v === undefined) { v = ((HH.LEVELS[HH.levelOf(p.userId)] || { rank: 0 }).rank * 100) + (p.verified === 'verified' ? 10 : 0) + ((p.stats && p.stats.views) || 0) / 1000; sc.set(p, v); } return v; };
+    return list.slice().sort((a, b) => score(b) - score(a));
+  };
+  const rankedProfiles0 = HH.rankedProfiles;
+  HH.rankedProfiles = () => {
+    const c = M(); const k = HH.genderSet ? [...HH.genderSet()].sort().join(',') : '';
+    if (!c.ranked.has(k)) c.ranked.set(k, rankedProfiles0());
+    return c.ranked.get(k).slice();
+  };
+  // Fotos: las miniaturas (480 px) donde la imagen se ve chica y carga diferida fuera de la pantalla.
+  // La foto completa solo en el visor, el swipe y la cabecera del perfil.
+  const photo0 = HH.photo;
+  HH.photo = function (profile, index = 0, opts = {}) {
+    const raw = (profile && profile.photos || [])[index];
+    if (!HH.isImgSrc(raw)) return photo0.apply(this, arguments);
+    const cls = String(opts.cls || '');
+    const chica = /\b(square|sm)\b/.test(cls) || opts.mini;
+    const mini = (profile.photosMini || [])[index];
+    const src = chica && mini ? mini : raw;
+    // El swipe (fit) es lo primero que se ve: carga con prioridad; el resto, diferida.
+    const lazy = opts.eager || opts.fit ? ' fetchpriority="high"' : ' loading="lazy"';
+    const bg = opts.fit ? `<img class="ph-bg" src="${HH.esc(mini || raw)}" alt="" aria-hidden="true"${lazy} decoding="async">` : '';
+    return `<div class="media ${cls}${opts.fit ? ' fit' : ''}${opts.noWm ? '' : ' wm'}" style="${opts.style || ''}">${bg}<img src="${HH.esc(src)}" alt="${HH.esc(profile.displayName || '')}"${lazy} decoding="async">${opts.children || ''}</div>`;
+  };
 
   /* ---------- Videos (bunny.net): portada en las miniaturas, video solo en el visor ---------- */
   HH.videoMedia = function (v, opts = {}) {
@@ -71,8 +219,8 @@
 
   /* ---------- API ---------- */
   const err = (message, status, data) => Object.assign(new Error(message), { status, data });
-  async function api(method, path, body) {
-    const opt = { method, credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } };
+  async function api(method, path, body, cacheMode) {
+    const opt = { method, credentials: 'same-origin', cache: cacheMode || 'no-store', headers: { Accept: 'application/json' } };
     if (method !== 'GET') { opt.headers['Content-Type'] = 'application/json'; opt.headers['X-SR'] = '1'; opt.body = JSON.stringify(body || {}); }
     let res;
     try { res = await fetch('/api' + path, opt); } catch (e) { throw err('No hay conexión. Revisá internet y probá de nuevo.', 0); }
@@ -155,8 +303,11 @@
     if (!HH.db.users.some((u) => u.id === y.id)) HH.db.users.push({ id: y.id, name: d.displayName || 'Mi cuenta', shortName: d.displayName || 'Mi cuenta', email: y.email, role: 'worker', hue: hash(y.id) % 360, createdAt: y.creado });
     HH.session = { userId: y.id, role: 'worker', at: new Date().toISOString() };
   }
+  // La primera carga usa la caché normal del navegador: así aprovecha el <link rel="preload"> de la cáscara, que pide
+  // el estado en paralelo con el JS. Las siguientes (después de un cambio) revalidan con el servidor (ETag → 304).
+  let estadoCargas = 0;
   async function loadEstado() {
-    try { S.estado = await api('GET', '/sitio/estado'); S.estadoErr = null; } catch (e) { S.estadoErr = e.message; }
+    try { S.estado = await api('GET', '/sitio/estado', undefined, estadoCargas++ ? 'no-cache' : 'default'); S.estadoErr = null; } catch (e) { S.estadoErr = e.message; }
     const prevSession = HH.session;
     HH.db = buildDb(S.estado || {});
     HH.session = prevSession; addSelfToDb();
@@ -235,10 +386,21 @@
       if (['panel', 'cuenta', 'login', 'registro'].includes(top)) { const g = hi.querySelector('.hdr-genders'); if (g) g.replaceWith(Object.assign(document.createElement('span'), { className: 'hdr-spacer' })); }
     }
     if (bn) {
-      const act = (h) => (('#' + top) === h ? ' class="active"' : '');
-      const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#favoritos', l: 'Favoritos', i: 'star' },
-        logged ? { h: '#panel', l: 'Mi panel', i: 'dashboard' } : { h: '#registro', l: 'Publicar', i: 'user' }];
-      bn.innerHTML = items.map((n) => `<a href="${n.h}" data-go="${n.h}"${act(n.h)}>${icon(n.i)}<span>${n.l}</span></a>`).join('');
+      // Barra inferior estilo Instagram (móvil): cápsula flotante, solo íconos, burbuja suave en la sección activa.
+      // El texto queda para lectores de pantalla (aria-label/title). Con sesión, el último ícono es la foto de la acompañante.
+      const plusSq = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>';
+      let ultimo;
+      if (logged) {
+        const p = (S.yo && S.yo.perfil) || {}; const f = (p.fotos || [])[0];
+        const avatar = f ? `<span class="bn-av"><img src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
+        // Punto de aviso: el perfil necesita algo de ella (rechazado o verificación rechazada)
+        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' };
+      } else ultimo = { h: '#registro', l: 'Publicar', html: plusSq };
+      const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#favoritos', l: 'Favoritos', i: 'star' }, ultimo];
+      bn.innerHTML = items.map((n) => {
+        const on = ('#' + top) === n.h || (n.h === '#inicio' && !top);
+        return `<a href="${n.h}" data-go="${n.h}" aria-label="${n.l}" title="${n.l}"${on ? ' class="active" aria-current="page"' : ''}>${n.html || icon(n.i)}<span class="sr-only">${n.l}</span>${n.dot ? '<i class="bn-dot" aria-hidden="true"></i>' : ''}</a>`;
+      }).join('');
     }
     if (HH.linkify) { if (hi) HH.linkify(hi); if (bn) HH.linkify(bn); }
   };
@@ -891,9 +1053,10 @@
     HH.db = null; HH.session = null;
     HH.setTheme();
     HH.render();
-    Promise.all([loadEstado(), loadYo(true)]).then(() => {
+    Promise.all([loadEstado(), loadYo(true), HH.lang !== 'es' ? cargarDict() : null]).then(() => {
       addSelfToDb();
       HH.renderShell(); HH.render();
+      if (HH.lang !== 'es' && HH.translateNode) HH.translateNode(document.body);  // lo que se dibujó antes de tener el diccionario
       if (S.estadoErr) HH.toast(S.estadoErr, { type: 'danger' });
       HH.autoLocate();
     });
@@ -909,7 +1072,8 @@
   HH.spFavs = favs;
   const sinMovimiento = () => {
     try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true; } catch (e) { /* */ }
-    const c = navigator.connection; return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
+    // Clips de las tarjetas solo con conexión rápida: no con ahorro de datos ni en 2G/3G
+    const c = navigator.connection; return !!(c && (c.saveData || /(^|-)(2g|3g)$/.test(c.effectiveType || '')));
   };
   const tripCard = (p) => {
     const a = HH.activeTrip && HH.activeTrip(p); const u = !a && HH.upcomingTrip && HH.upcomingTrip(p); if (!a && !u) return '';
@@ -917,10 +1081,29 @@
     const l2 = a ? 'hasta el ' + HH.fmtDay(a.to) : 'desde el ' + HH.fmtDay(u.from);
     return `<div class="pc2-trip ${a ? 'info' : 'warn'}"><span>${l1}</span><span>${l2}</span></div>`;
   };
-  function card2(p) {
+  const imgIO = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      const im = en.target; imgIO.unobserve(im);
+      if (im.dataset.srcset) { im.srcset = im.dataset.srcset; im.removeAttribute('data-srcset'); }
+      if (im.dataset.src) { im.src = im.dataset.src; im.removeAttribute('data-src'); }
+    });
+  }, { rootMargin: '600px 400px' }) : null;
+  // En las filas con desplazamiento lateral el margen no alcanza (las recorta la fila): al primer movimiento se piden todas
+  const cargarFila = (ev) => {
+    const fila = ev.target; if (!fila || fila.nodeType !== 1 || fila === document.documentElement || fila === document.body || fila.dataset.lzAll) return;  // solo filas, no la página
+    const ims = fila.querySelectorAll('.pc2 img[data-src]'); if (!ims.length) return;
+    fila.dataset.lzAll = '1';
+    ims.forEach((im) => { if (imgIO) imgIO.unobserve(im); if (im.dataset.srcset) { im.srcset = im.dataset.srcset; im.removeAttribute('data-srcset'); } im.src = im.dataset.src; im.removeAttribute('data-src'); });
+  };
+  if (imgIO) { document.addEventListener('scroll', cargarFila, { capture: true, passive: true }); document.addEventListener('touchstart', (ev) => { const f = ev.target && ev.target.closest && ev.target.closest('.pub-hscroll'); if (f) cargarFila({ target: f }); }, { capture: true, passive: true }); }
+  function card2(p, eager) {
     const mini = (p.photosMini || [])[0]; const grande = (p.photos || [])[0];
     // La miniatura (480 px) alcanza para las tarjetas chicas; las grandes piden la foto completa en pantallas densas.
-    const img = HH.isImgSrc(grande) ? `<img src="${esc(mini || grande)}"${mini && mini !== grande ? ` srcset="${esc(mini)} 360w, ${esc(grande)} 1200w" sizes="(min-width:1100px) 22vw, (min-width:720px) 30vw, 48vw"` : ''} alt="" loading="lazy" decoding="async">` : HH.photo(p, 0, { noWm: true });
+    // Las que no van primero se piden cuando están por entrar en pantalla (IntersectionObserver, después del primer
+    // dibujo): así no le sacan ancho de banda al JS ni a las fotos de arriba en conexiones lentas.
+    const pre = !eager && imgIO ? 'data-' : '';
+    const img = HH.isImgSrc(grande) ? `<img ${pre}src="${esc(mini || grande)}"${mini && mini !== grande ? ` ${pre}srcset="${esc(mini)} 480w, ${esc(grande)} 1200w" sizes="(min-width:1100px) 22vw, (min-width:720px) 30vw, 48vw"` : ''} alt=""${eager ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">` : HH.photo(p, 0, { noWm: true });
     const vid = p.previewUrl && PREVIEW_PLANES.has(HH.levelOf(p.userId)) && !sinMovimiento()
       ? `<video class="pc2-vid" muted loop playsinline preload="none" disablepictureinpicture tabindex="-1" aria-hidden="true" data-src="${esc(p.previewUrl)}"></video>` : '';
     const lugar = p.zone || p.city || '';
@@ -937,15 +1120,18 @@
   }
   function upgradeCards(root) {
     if (!root || !root.querySelectorAll || !HH.db) return;
+    // Las primeras tarjetas de la página (arriba de todo) cargan con prioridad: suelen ser lo más grande que se ve.
+    let n = root.querySelectorAll('.pc2').length;
     root.querySelectorAll('a.pcard[data-imp]').forEach((a) => {
       if (a.closest('.hero-cards')) return;
       const p = HH.profileOf(a.dataset.imp); if (!p) return;
-      const t = document.createElement('template'); t.innerHTML = card2(p).trim();
+      const t = document.createElement('template'); t.innerHTML = card2(p, n++ < 2).trim();
       const el = t.content.firstElementChild;
       if (HH.linkify) HH.linkify(el);
       a.replaceWith(el);
     });
     root.querySelectorAll('video.pc2-vid:not([data-io])').forEach((v) => { v.dataset.io = '1'; if (io) io.observe(v); });
+    if (imgIO) root.querySelectorAll('.pc2 img[data-src]:not([data-lz])').forEach((im) => { im.dataset.lz = '1'; imgIO.observe(im); });
   }
   // Solo se reproducen los clips de las tarjetas visibles (máximo 4 a la vez); el resto muestra la foto.
   const MAX_PLAY = 4;

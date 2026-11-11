@@ -3,6 +3,7 @@
 //   GET  perfil/:slug   → un perfil publicado.
 //   POST reporte        → denuncia sobre un perfil (misma tabla que /api/denuncia).
 // El estado se arma una vez cada 30 s como máximo; invalidarSitio() fuerza recalcularlo (lo llaman cuenta y admin).
+import { paquete, enviar } from '../lib/compresion.js';
 import express from 'express';
 import { cargarCatalogos } from '../lib/catalogos.js';
 import { perfilPublico } from '../lib/perfiles.js';
@@ -84,10 +85,14 @@ export function createSitioRouter(ctx) {
     next();
   });
 
+  // El estado es lo único que el sitio pide al entrar: va comprimido (brotli/gzip), con ETag (304 si no cambió)
+  // y caché corta en el navegador y en Cloudflare (se rearma cada 30 s o al cambiar algo).
+  const paquetes = new WeakMap();
   r.get('/estado', ah(async (req, res) => {
     const e = await estadoSitio(pool, ctx.planes);
-    res.set('Cache-Control', 'public, max-age=15');
-    res.json(e);
+    let p = paquetes.get(e);
+    if (!p) { p = paquete(JSON.stringify(e), { calidadBr: 5 }); paquetes.set(e, p); }
+    return enviar(req, res, p, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=60' });
   }));
 
   r.get('/perfil/:slug', ah(async (req, res) => {
