@@ -23,6 +23,8 @@ import { createPrivado } from './lib/privado.js';
 import { createAdminFase1Router } from './routes/admin-fase1.js';
 import { createCuentaPlanesRouter } from './routes/cuenta-planes.js';
 import { createAdminCreditosRouter } from './routes/admin-creditos.js';
+import { createCotizacion } from './lib/cotizacion.js';
+import { createAdminCotizacionRouter } from './routes/admin-cotizacion.js';
 import { createSpaSitioRouter } from './routes/spa-sitio.js';
 // ---- fin Fase 1 (agente B): imports ----
 import { createAdminTextosSitioRouter } from './routes/admin-textos-sitio.js';
@@ -54,6 +56,9 @@ export function loadConfig(env = process.env) {
     privacyEmail: str(env.PRIVACY_EMAIL) || 'contacto@sexyrose.net',
     telegramToken: str(env.TELEGRAM_BOT_TOKEN),
     telegramChatId: str(env.TELEGRAM_CHAT_ID),
+    // Cotización del dólar blue (opcional, para pruebas): por defecto DolarApi y Bluelytics.
+    cotizacionUrl: str(env.COTIZACION_URL) || undefined,
+    cotizacionFallbackUrl: str(env.COTIZACION_FALLBACK_URL) || undefined,
     publicDir: path.resolve(str(env.PUBLIC_DIR) || path.join(HERE, 'public')),
     schemaPath: path.join(HERE, 'db', 'schema.sql'),
     // Todos los .sql de esta carpeta se aplican en orden alfabético en cada arranque (son idempotentes).
@@ -1015,6 +1020,16 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // ---- Fase 1 (agente B) ----
   // API del admin de Fase 1 (acompañantes, verificaciones, pedidos, suscripciones, Stars, ajustes, catálogos) y
   // tarea de vencimientos de planes. La instancia `planes` y `privado` se crean arriba, junto a ctx.
+  // Cotización del dólar blue (DolarApi, respaldo Bluelytics) para los pesos sugeridos de los pedidos. Va antes de
+  // fase1Admin porque reemplaza su PUT /ajustes/cotizacion. En los tests no consulta la red salvo que inyecten fetch.
+  const cotizacion = createCotizacion({
+    pool, log, notify,
+    fetchImpl: config.cotizacionFetch !== undefined ? config.cotizacionFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
+    url: config.cotizacionUrl, fallbackUrl: config.cotizacionFallbackUrl, now: config.cotizacionNow,
+  });
+  ctx.cotizacion = cotizacion;
+  admin.use('/api', createAdminCotizacionRouter({ cotizacion, apiPost, log }));
+  if (config.tareaCotizacion !== false) cotizacion.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
   const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
   admin.use('/api', fase1Admin.router);
   // Planes v2: créditos, pedidos de créditos, vencimientos, pausadas por saldo y Destacados.
@@ -1315,6 +1330,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
 
   const shutdown = async () => {
     planes.detenerTarea();
+    cotizacion.detenerTarea();
     videos.detener();
     state.stopping = true;
     timers.forEach(clearInterval);

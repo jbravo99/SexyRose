@@ -601,11 +601,54 @@
     return all.filter(f[2]);
   };
   const pcCot = () => (S.pc && S.pc.cotizacion) || {};
+  // Ajustes → Cotización. Borrador local (modo y compra/venta) en S.cotEdit hasta tocar «Guardar».
+  function cotHtml(co) {
+    co = co || {};
+    const e = S.cotEdit || (S.cotEdit = { modo: co.modo === 'manual' ? 'manual' : 'auto', valor: co.valor === 'compra' ? 'compra' : 'venta' });
+    const manual = e.modo === 'manual';
+    const auto = co.modo !== 'manual';
+    const hoy = co.arsPorUsd && hoyAR(cotFechaDato(co));
+    const fuenteTxt = (co.fuenteBlue || co.fuente) === 'Bluelytics' ? 'Bluelytics (bluelytics.com.ar)' : 'DolarApi (dolarapi.com)';
+    const bt = (act, v, cur, label) => `<button type="button" class="chip${cur === v ? ' active' : ''}" aria-pressed="${cur === v}" data-action="${act}" data-v="${v}">${label}</button>`;
+    const val = (n) => (n ? `<strong data-noi18n>${ars(n)}</strong>` : '<span class="muted">—</span>');
+    return `
+          <div class="row between"><div class="card-title">${icon('dollar')} Cotización del dólar</div>${co.fecha ? `<span class="tiny ${hoy ? 'muted' : ''}"${hoy ? '' : ' style="color:var(--warn)"'}>Actualizada el ${fecha(co.fecha)}</span>` : ''}</div>
+          <p class="small muted">Pesos por cada dólar. Se usa para sugerir el monto en pesos de cada pedido (redondeado hacia arriba a la centena) y en «Copiar mensaje».</p>
+          <div class="chips" role="group" aria-label="Modo">${bt('prodCotModo', 'auto', e.modo, icon('refresh') + ' Automática con dólar blue')}${bt('prodCotModo', 'manual', e.modo, icon('edit') + ' Manual')}</div>
+          ${co.alerta ? `<div class="notice warn">${icon('alert')}<span>${esc(co.alerta)}</span></div>` : ''}
+          ${!co.arsPorUsd ? `<div class="notice warn">${icon('alert')}<span>${auto ? 'Todavía no se pudo traer el dólar blue: los pedidos no muestran el monto en pesos ni el mensaje para copiar. Probá «Actualizar ahora».' : 'Sin cotización: los pedidos no muestran el monto en pesos ni el mensaje para copiar.'}</span></div>` : ''}
+          <div class="grid-2">
+            <div class="stack" style="gap:6px">
+              <div class="tiny muted">Dólar blue${co.fuenteBlue ? ` · ${esc(co.fuenteBlue)}` : ''}</div>
+              <div class="row" style="gap:16px;flex-wrap:wrap"><div><div class="tiny muted">Compra</div>${val(co.compra)}</div><div><div class="tiny muted">Venta</div>${val(co.venta)}</div></div>
+              ${co.compra || co.venta ? `<div class="tiny muted">Dato del ${fecha(co.fechaBlue || co.fechaFuente) || '—'}</div>` : '<div class="tiny muted">Sin datos del blue todavía.</div>'}
+            </div>
+            <div class="stack" style="gap:6px">
+              <div class="tiny muted">En uso para los pedidos</div>
+              <div>${val(co.arsPorUsd)} <span class="tiny muted">por USD</span> ${co.arsPorUsd ? `<span class="badge sm" data-noi18n>${cotEtq(co)}</span>` : ''}</div>
+              ${co.fecha ? `<div class="tiny muted">${co.modo === 'manual' ? 'Cargada a mano' : 'Aplicada'} el ${fecha(co.fecha)}</div>` : ''}
+            </div>
+          </div>
+          ${!manual ? `<div class="field"><span class="label">Valor que se usa</span><div class="chips" role="group" aria-label="Valor que se usa">${bt('prodCotValor', 'venta', e.valor, 'Venta (recomendado)')}${bt('prodCotValor', 'compra', e.valor, 'Compra')}</div><div class="tiny muted">Venta es lo que cuesta comprar un dólar: el que corresponde para pasar a pesos un precio en USD.</div></div>` : ''}
+          <div class="grid-2"><div class="field"><label for="ajCotArs">ARS por USD${manual ? '' : ' (solo en manual)'}</label><input class="input" id="ajCotArs" type="number" min="1" step="1" inputmode="decimal" value="${esc(e.ars != null ? e.ars : co.modo === 'manual' && co.arsPorUsd != null ? co.arsPorUsd : '')}" placeholder="${co.venta ? 'Blue venta: ' + esc(co.venta) : 'Ej.: 1300'}"${manual ? '' : ' disabled'}></div>
+          <div class="field"><label for="ajCotNota">Nota (opcional)</label><input class="input" id="ajCotNota" maxlength="200" value="${esc(e.nota != null ? e.nota : co.nota || '')}" placeholder="Ej.: dólar blue venta"></div></div>
+          <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" data-action="prodAjSave" data-k="cotizacion">${icon('check')} Guardar cotización</button><button type="button" class="btn ghost sm" data-action="prodCotAhora">${icon('refresh')} Actualizar ahora</button></div>
+          <div class="tiny muted">${manual ? 'En manual el valor no cambia solo; el blue se sigue consultando como referencia.' : 'Se actualiza sola cada 3 horas. Si el blue salta más de 25 % no se aplica y te avisamos.'} Fuente: ${fuenteTxt}.</div>`;
+  }
+  const cotRedraw = () => {
+    const box = document.getElementById('prodCot'); if (!box) return;
+    if (S.cotEdit) { const a = document.getElementById('ajCotArs'); const n = document.getElementById('ajCotNota'); if (a && !a.disabled) S.cotEdit.ars = a.value; if (n) S.cotEdit.nota = n.value; }
+    box.innerHTML = cotHtml((S.aj || {}).cotizacion);
+  };
+  // Fecha del dato (la que informa DolarApi/Bluelytics; en manual, cuando se cargó) y etiqueta corta del valor en uso.
+  const cotFechaDato = (c) => c.fechaFuente || c.fecha;
+  const cotAuto = (c) => c.modo !== 'manual' && c.fuente && c.fuente !== 'manual';
+  const cotEtq = (c) => (cotAuto(c) ? `blue ${c.valor === 'compra' ? 'compra' : 'venta'}` : 'manual');
   function pcArs(x) {
     const c = pcCot();
-    if (x.arsSugerido == null) return `<span class="tiny muted">Sin cotización: cargala en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</span>`;
-    const vieja = !hoyAR(c.fecha);
-    return `<strong data-noi18n>${ars(x.arsSugerido)}</strong><div class="tiny ${vieja ? '' : 'muted'}"${vieja ? ' style="color:var(--warn)"' : ''}>${vieja ? icon('alert') + ' ' : ''}a ${ars(c.arsPorUsd).replace('ARS ', '')} por USD · cotización del ${dia(c.fecha)}${vieja ? ' (no es de hoy)' : ''}</div>`;
+    if (x.arsSugerido == null) return `<span class="tiny muted">Sin cotización: revisala en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</span>`;
+    const vieja = !hoyAR(cotFechaDato(c));
+    return `<strong data-noi18n>${ars(x.arsSugerido)}</strong> <span class="badge sm" data-noi18n>${cotEtq(c)}</span><div class="tiny ${vieja ? '' : 'muted'}"${vieja ? ' style="color:var(--warn)"' : ''}>${vieja ? icon('alert') + ' ' : ''}a ${ars(c.arsPorUsd).replace('ARS ', '')} por USD · ${cotAuto(c) ? esc(c.fuente) + ' del' : 'cotización del'} ${dia(cotFechaDato(c))}${vieja ? ' (no es de hoy)' : ''}</div>`;
   }
   function pcVence(x) {
     if (x.estado === 'pendiente') { const ms = new Date(x.vence).getTime() - Date.now(); return `<span${ms < 6 * 36e5 ? ' style="color:var(--warn)"' : ''}>${quedaTxt(x.vence)}</span><div class="tiny muted">${fecha(x.vence)}</div>`; }
@@ -656,8 +699,12 @@
     else if (!S.pc) body = loadingCard(3);
     else {
       const all = S.pc.items || []; const c = pcCot();
-      const cotTxt = c.arsPorUsd ? `Cotización: <strong>${ars(c.arsPorUsd)}</strong> por USD, cargada el ${fecha(c.fecha)}.` : 'Todavía no cargaste la cotización del dólar.';
-      body = `${!c.arsPorUsd || !hoyAR(c.fecha) ? `<div class="notice warn">${icon('alert')}<span>${cotTxt} ${c.arsPorUsd ? 'No es de hoy: actualizala' : 'Cargala'} en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a> para que el monto en pesos y el mensaje salgan bien.</span></div>` : `<div class="tiny muted">${cotTxt}</div>`}
+      const cotTxt = c.arsPorUsd
+        ? (cotAuto(c) ? `Cotización: <strong>${ars(c.arsPorUsd)}</strong> por USD (dólar ${cotEtq(c)}, ${esc(c.fuente)} del ${fecha(cotFechaDato(c))}).` : `Cotización: <strong>${ars(c.arsPorUsd)}</strong> por USD (manual), cargada el ${fecha(c.fecha)}.`)
+        : (c.modo === 'manual' ? 'Todavía no cargaste la cotización del dólar.' : 'Todavía no se pudo traer el dólar blue.');
+      const cotVieja = !c.arsPorUsd || !hoyAR(cotFechaDato(c));
+      const cotPide = !c.arsPorUsd ? (c.modo === 'manual' ? 'Cargala' : 'Probá «Actualizar ahora»') : (c.modo === 'manual' ? 'No es de hoy: actualizala' : 'El dato no es de hoy: revisalo');
+      body = `${cotVieja ? `<div class="notice warn">${icon('alert')}<span>${cotTxt} ${cotPide} en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a> para que el monto en pesos y el mensaje salgan bien.</span></div>` : `<div class="tiny muted">${cotTxt}</div>`}
         <div class="adm-filters">
           <label class="sr-only" for="prodPcQ">Buscar pedido</label><input class="input" id="prodPcQ" type="search" placeholder="Código, nombre o email" value="${esc(S.pcq)}" data-input="prodPcSearch" autocomplete="off" inputmode="search">
           <div class="chips scroll" style="flex:1 1 auto;min-width:0">${PC_FILTROS.map(([k, l, fn]) => filtro('prodPcFilter', S.pcq.trim() ? '' : S.pcf, k, l, all.filter(fn).length)).join('')}</div>
@@ -977,7 +1024,6 @@
       const ds = a.destacado || {};
       const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="0.5" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'dia' ? '1 día' : '7 días'}">`;
       const ct = a.contacto || {}; const co = a.cotizacion || {}; const cm = a.comision || {}; const ms = a.mensajes || { whatsapp: {} };
-      const cotHoy = co.arsPorUsd && hoyAR(co.fecha);
       const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
       body = `<section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('dollar')} Precios de los planes (créditos = USD)</div>${upd('precios')}</div>
@@ -1000,14 +1046,7 @@
           </tbody></table></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="destacado">${icon('check')} Guardar precios del Destacado</button></div>
         </section>
-        <section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('dollar')} Cotización del dólar</div>${co.fecha ? `<span class="tiny ${cotHoy ? 'muted' : ''}"${cotHoy ? '' : ' style="color:var(--warn)"'}>Cargada el ${fecha(co.fecha)}</span>` : ''}</div>
-          <p class="small muted">Pesos por cada dólar. Se usa para sugerir el monto en pesos de cada pedido (redondeado hacia arriba a la centena). Actualizala cada día que cobres.</p>
-          ${!co.arsPorUsd ? `<div class="notice warn">${icon('alert')}<span>Sin cotización: los pedidos no muestran el monto en pesos ni el mensaje para copiar.</span></div>` : !cotHoy ? `<div class="notice warn">${icon('alert')}<span>La cotización no es de hoy.</span></div>` : ''}
-          <div class="grid-2"><div class="field"><label for="ajCotArs">ARS por USD</label><input class="input" id="ajCotArs" type="number" min="1" step="1" inputmode="decimal" value="${esc(co.arsPorUsd != null ? co.arsPorUsd : '')}" placeholder="Ej.: 1300"></div>
-          <div class="field"><label for="ajCotNota">Nota (opcional)</label><input class="input" id="ajCotNota" maxlength="200" value="${esc(co.nota || '')}" placeholder="Ej.: dólar blue venta"></div></div>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="cotizacion">${icon('check')} Guardar cotización</button></div>
-        </section>
+        <section class="card stack" style="gap:12px" id="prodCot">${cotHtml(co)}</section>
         <section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('whatsapp')} Contacto para comprar créditos</div>${upd('contacto')}</div>
           <p class="small muted">Las acompañantes te escriben a este WhatsApp con el código del pedido. Telegram es opcional.</p>
@@ -1077,7 +1116,7 @@
     prodPcMensaje(el) {
       const x = pcFind(el.dataset.id); if (!x || !x.mensajeSugerido) return;
       const v = x.mensajeSugerido;
-      const vieja = !hoyAR(pcCot().fecha);
+      const vieja = !hoyAR(cotFechaDato(pcCot()));
       const ok = () => HH.toast(vieja ? 'Mensaje copiado. Ojo: la cotización no es de hoy.' : 'Mensaje copiado. Agregá tus datos de pago antes de enviarlo.', { type: vieja ? 'warn' : 'ok', ms: 4000 });
       const show = () => HH.modal({ title: 'Mensaje para ' + ((x.cuenta || {}).displayName || x.codigo), body: `<textarea class="textarea" rows="5" readonly data-noi18n>${esc(v)}</textarea><p class="tiny muted">Copialo y agregá tus datos de pago a mano en WhatsApp.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] });
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(ok, show); else show();
@@ -1263,6 +1302,20 @@
       const base = mes / 4; const rec = Math.round((sem / base - 1) * 100);
       h.textContent = `cuarta parte ${money(Math.round(base * 100) / 100)} · recargo ${rec}% · 4 semanas = ${money(sem * 4)}${sem * 4 <= mes ? ' · ojo: 4 semanas salen igual o más barato que el mes' : ''}`;
     },
+    prodCotModo(el) { cotRedraw(); S.cotEdit.modo = el.dataset.v === 'manual' ? 'manual' : 'auto'; cotRedraw(); },
+    prodCotValor(el) { cotRedraw(); S.cotEdit.valor = el.dataset.v === 'compra' ? 'compra' : 'venta'; cotRedraw(); },
+    prodCotAhora(el) {
+      el.disabled = true;
+      HH.api('POST', '/cotizacion/actualizar', {})
+        .then((r) => {
+          if (S.aj && r && r.cotizacion) S.aj.cotizacion = r.cotizacion;
+          if (r && r.error) HH.toast(r.error, { type: 'warn', ms: 5000 });
+          else if (r && r.alerta) HH.toast('El blue saltó más de 25 %: no se aplicó. Revisalo.', { type: 'warn', ms: 5000 });
+          else HH.toast(r && r.actualizada ? 'Cotización actualizada' : 'Dólar blue consultado (modo manual: el valor en uso no cambia)', { type: 'ok' });
+          cotRedraw(); after(['pc']);
+        })
+        .catch((e) => { el.disabled = false; fail(e); });
+    },
     prodAjSave(el) {
       const k = el.dataset.k; let valor;
       const val = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
@@ -1291,10 +1344,13 @@
       } else if (k === 'contacto') {
         valor = { whatsapp: String(val('ajWa')).replace(/\D/g, ''), telegram: String(val('ajTg')).trim(), telegramActivo: document.getElementById('ajTgOn').checked };
       } else if (k === 'cotizacion') {
-        const raw = String(val('ajCotArs')).trim();
-        const n = num('ajCotArs');
-        if (raw && !(n > 0)) { warn('La cotización tiene que ser un número mayor a 0.'); return; }
-        valor = { arsPorUsd: raw ? n : null, nota: val('ajCotNota') };
+        const e = S.cotEdit || { modo: 'auto', valor: 'venta' };
+        if (e.modo === 'manual') {
+          const raw = String(val('ajCotArs')).trim();
+          const n = num('ajCotArs');
+          if (raw && !(n > 0)) { warn('La cotización tiene que ser un número mayor a 0.'); return; }
+          valor = { modo: 'manual', arsPorUsd: raw ? n : null, nota: val('ajCotNota') };
+        } else valor = { modo: 'auto', valor: e.valor, nota: val('ajCotNota') };
       } else if (k === 'comision') {
         valor = { porcentaje: num('ajComP'), saldoNegativoMax: num('ajComN') };
         if (!Number.isFinite(valor.porcentaje) || !Number.isFinite(valor.saldoNegativoMax)) { warn('Completá la comisión y el saldo negativo máximo.'); return; }
@@ -1311,6 +1367,7 @@
         .then((r) => {
           if (S.aj && r) S.aj[k] = r.valor;
           if (k === 'packs') { S.pkEdit = null; S.pkDirty = false; }
+          if (k === 'cotizacion') S.cotEdit = null;
           HH.toast({ precios: 'Precios guardados', packs: 'Packs guardados', destacado: 'Precios del Destacado guardados', contacto: 'Contacto guardado', cotizacion: 'Cotización guardada', comision: 'Comisión guardada', mensajes: 'Mensajes guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' });
           load('aj', '/ajustes', true); if (k === 'cotizacion' || k === 'mensajes') after(['pc']);
         })

@@ -5,6 +5,7 @@
 // Mismo Basic Auth (lo aplica el router admin). Los POST/PUT/DELETE usan apiPost de Fase 0
 // (JSON + X-SR-Admin: 1 + mismo origen). Errores: { error } en castellano.
 import express from 'express';
+import { normalizar as normalizarCotizacion } from '../lib/cotizacion.js';
 import { PLAN_NOMBRE, PLANES_PAGOS, CUPO_STAR, PlanError, validarPrecios, mezclarPrecios, validarDestacado, mezclarDestacado, pedidoJson, suscripcionJson } from '../lib/planes.js';
 import {
   validarPacks, validarContacto, validarCotizacion, validarComision, validarMensajes,
@@ -281,7 +282,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       packs: await planes.creditos.packs({ precios, crudo: true }),
       destacado: mezclarDestacado(v('destacado', null)),
       contacto: { ...CONTACTO_DEFAULT, ...obj(v('contacto', {})) },
-      cotizacion: { ...COTIZACION_DEFAULT, ...obj(v('cotizacion', {})) },
+      cotizacion: normalizarCotizacion(v('cotizacion', {})),
       comision: { ...COMISION_DEFAULT, ...obj(v('comision', {})) },
       mensajes: { whatsapp: { ...MENSAJES_DEFAULT.whatsapp, ...obj(msj.whatsapp) }, admin: msj.admin || MENSAJES_DEFAULT.admin },
       portada: { titulo: '', subtitulo: '', ...(v('portada', {}) || {}) },
