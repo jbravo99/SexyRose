@@ -9,6 +9,8 @@ import { perfilPublico } from '../lib/perfiles.js';
 import { limitesDe, planesEfectivos } from '../lib/planes-ref.js';
 import { sameOrigin } from '../lib/auth.js';
 
+const PLANES_PREVIEW = new Set(['C', 'B', 'A', 'S']);
+
 const TTL = 30 * 1000;
 let cache = null;
 let cacheAt = 0;
@@ -25,21 +27,32 @@ export async function armarEstado(pool, planesInst) {
       ORDER BY p.publicado_en DESC NULLS LAST, p.cuenta_id`,
   );
   const ids = perfiles.map((p) => p.cuenta_id);
-  const [fotos, historias, planes] = await Promise.all([
+  const [fotos, historias, planes, videos, previews] = await Promise.all([
     ids.length ? pool.query('SELECT cuenta_id, url, url_mini, ancho, alto FROM fotos WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, orden, creado', [ids]) : { rows: [] },
     ids.length ? pool.query(
       'SELECT id, cuenta_id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = ANY($1) AND expira > now() ORDER BY creado',
       [ids],
     ) : { rows: [] },
     planesEfectivos(ids, planesInst),
+    ids.length ? pool.query(
+      "SELECT id, cuenta_id, url, url_poster, segundos, ancho, alto FROM videos WHERE cuenta_id = ANY($1) AND estado = 'listo' ORDER BY cuenta_id, orden, creado",
+      [ids],
+    ) : { rows: [] },
+    ids.length ? pool.query("SELECT cuenta_id, url FROM previews WHERE cuenta_id = ANY($1) AND estado = 'listo' AND url IS NOT NULL", [ids]) : { rows: [] },
   ]);
+  const previewDe = new Map(previews.rows.map((x) => [x.cuenta_id, x.url]));
+  const videosDe = new Map();
+  for (const v of videos.rows) { if (!videosDe.has(v.cuenta_id)) videosDe.set(v.cuenta_id, []); videosDe.get(v.cuenta_id).push(v); }
   const fotosDe = new Map();
   for (const f of fotos.rows) { if (!fotosDe.has(f.cuenta_id)) fotosDe.set(f.cuenta_id, []); fotosDe.get(f.cuenta_id).push(f); }
   const lista = perfiles.map((p) => {
     const plan = planes.get(p.cuenta_id) || 'E';
     // Si bajó de plan, se muestran solo las primeras fotos que entran en el límite (el resto queda guardado).
     const fs = (fotosDe.get(p.cuenta_id) || []).slice(0, limitesDe(plan).fotos);
-    return perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, plan, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
+    const vs = (videosDe.get(p.cuenta_id) || []).slice(0, limitesDe(plan).videos);
+    // Clip de 5 s de la tarjeta: solo con plan Oro o más (si baja de plan deja de verse; queda guardado).
+    const preview = PLANES_PREVIEW.has(plan) && previewDe.get(p.cuenta_id) ? { url: previewDe.get(p.cuenta_id) } : null;
+    return perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, videos: vs, preview, plan, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
   });
   const aj = cat.ajustes;
   return {

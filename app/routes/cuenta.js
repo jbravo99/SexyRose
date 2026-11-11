@@ -2,6 +2,7 @@
 // Registro, login, email, contraseña, perfil, fotos, verificación de identidad e historias.
 // Todas las mutaciones exigen mismo origen + cabecera X-SR: 1 (ver lib/auth.js).
 import crypto from 'node:crypto';
+import fsp from 'node:fs/promises';
 import express from 'express';
 import multer from 'multer';
 import { hashPassword, sha256, tokenAleatorio, verifyDummy, verifyPassword } from '../lib/auth.js';
@@ -11,12 +12,15 @@ import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
 import { GENEROS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesDe, linea, slugify, validarDatos } from '../lib/perfiles.js';
 import { limitesDe, planEfectivo, resumenPlan } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
+import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
 import { invalidarSitio } from './sitio.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TZ = 'America/Argentina/Buenos_Aires';
+// Video de 5 s en la tarjeta: desde Oro (C) en adelante.
+export const PLANES_PREVIEW = new Set(['C', 'B', 'A', 'S']);
 
 const normEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 const validEmail = (s) => s.length <= 254 && EMAIL_RE.test(s);
@@ -96,6 +100,11 @@ export function createCuentaRouter(ctx) {
     return rows[0].n;
   };
 
+  const videoJson = (v) => ({
+    id: v.id, orden: v.orden, estado: v.estado, url: v.url || null, poster: v.url_poster || null,
+    segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto, error: v.error || null, creado: v.creado,
+  });
+
   const construirYo = async (cuentaId) => {
     const [{ rows: cs }, { rows: ps }, { rows: fs }, { rows: hs }, { rows: vs }] = await Promise.all([
       pool.query('SELECT id, email, email_verificado, estado, creado FROM cuentas WHERE id = $1', [cuentaId]),
@@ -104,6 +113,9 @@ export function createCuentaRouter(ctx) {
       pool.query('SELECT id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = $1 AND expira > now() ORDER BY creado DESC', [cuentaId]),
       pool.query('SELECT estado, motivo, creado, revisado FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
     ]);
+    const { rows: vids } = await pool.query(
+      'SELECT id, orden, estado, url, url_poster, segundos, ancho, alto, error, creado FROM videos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]);
+    const { rows: prv } = await pool.query('SELECT video_id, inicio, elegido, estado, url, error FROM previews WHERE cuenta_id = $1', [cuentaId]);
     const c = cs[0];
     if (!c) return null;
     const p = ps[0] || { slug: null, datos: {}, estado: 'borrador', verificacion: 'sin_enviar', oculto: false };
@@ -129,11 +141,15 @@ export function createCuentaRouter(ctx) {
         edad: edadDe(datos.fechaNacimiento),
         datos,
         fotos: fs.map((f) => ({ id: f.id, url: f.url, urlMini: f.url_mini || f.url, orden: f.orden, ancho: f.ancho, alto: f.alto })),
+        videos: vids.map(videoJson),
+        preview: prv[0] ? { videoId: prv[0].video_id, inicio: Number(prv[0].inicio), elegido: prv[0].elegido, estado: prv[0].estado, url: prv[0].url || null, error: prv[0].error || null } : null,
         completo: faltantes.length === 0,
         faltantes,
       },
       plan: plan || { efectivo: 'E', suscripciones: [], pedidos: [] },
-      limites: { fotos: lim.fotos, historiasDia: lim.historiasDia, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
+      limites: { fotos: lim.fotos, videos: lim.videos, historiasDia: lim.historiasDia, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
+      videosHabilitados: storage.videosHabilitados(),
+      previewHabilitado: storage.videosHabilitados() && PLANES_PREVIEW.has(efectivo),
       historias: hs.map((h) => ({ id: h.id, url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira })),
     };
   };
@@ -434,6 +450,112 @@ export function createCuentaRouter(ctx) {
     await storage.del(rows[0].clave); await storage.del(rows[0].clave_mini);
     invalidarSitio();
     res.json({ ok: true });
+  }));
+
+  // --- Videos de la galería (hasta 30 s; solo con almacenamiento externo) -------
+  // Se suben a un archivo temporal (DATA_DIR/tmp/videos), se responde 202 y lib/videos.js los procesa en cola.
+  const videos = () => ctx.videos;
+  const subidaVideo = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => cb(null, videos().tmpDir),
+      filename: (req, file, cb) => { req.videoId = crypto.randomUUID(); cb(null, `${req.videoId}.subida`); },
+    }),
+    limits: { fileSize: MAX_BYTES_SUBIDA, files: 1, fields: 2, fieldSize: 256, parts: 4, fieldNameSize: 30 },
+  });
+  const borrarTemp = (req) => (req.file && req.file.path ? fsp.rm(req.file.path, { force: true }).catch(() => {}) : Promise.resolve());
+
+  const videosActivos = (req, res, next) => {
+    if (!storage.videosHabilitados() || !videos()) return fail(res, 409, 'Los videos se activan cuando el almacenamiento externo está configurado.');
+    next();
+  };
+  const cupoVideos = ah(async (req, res, next) => {
+    const plan = await planEfectivo(req.cuenta.id, planes());
+    const max = limitesDe(plan).videos;
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM videos WHERE cuenta_id = $1 AND estado IN ('procesando', 'listo')", [req.cuenta.id]);
+    if (rows[0].n >= max) return fail(res, 400, `Tu plan permite hasta ${max} ${max === 1 ? 'video' : 'videos'}. Borrá alguno o subí de plan.`);
+    req.maxVideos = max;
+    next();
+  });
+
+  r.post('/videos', conCuentaActiva, videosActivos,
+    (req, res, next) => (limit(req, res, 'vid:' + req.cuenta.id, 20, HOUR, 'Subiste demasiados videos en la última hora. Probá más tarde.') ? next() : null),
+    cupoVideos,
+    (req, res, next) => {
+      if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('multipart/form-data')) return fail(res, 415, 'Enviá el video como multipart/form-data.');
+      subidaVideo.single('video')(req, res, (err) => {
+        if (!err) return next();
+        borrarTemp(req);
+        if (err.code === 'LIMIT_FILE_SIZE') return fail(res, 413, 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.');
+        if (err instanceof multer.MulterError) return fail(res, 400, 'No pudimos leer el archivo enviado.');
+        next(err);
+      });
+    },
+    ah(async (req, res) => {
+      rl.hit('vid:' + req.cuenta.id);
+      const f = req.file;
+      if (!f) return fail(res, 400, 'Elegí un video.');
+      const tipo = contenedorPorFirma(await leerFirma(f.path).catch(() => null));
+      if (!tipo) { await borrarTemp(req); return fail(res, 400, 'El archivo no es un video MP4, MOV o WebM.'); }
+      // Cupo de nuevo: dos subidas simultáneas no pueden pasar el límite.
+      const { rows } = await pool.query(
+        `INSERT INTO videos (id, cuenta_id, orden)
+         SELECT $1, $2, COALESCE((SELECT max(orden) + 1 FROM videos WHERE cuenta_id = $2), 0)
+          WHERE (SELECT count(*) FROM videos WHERE cuenta_id = $2 AND estado IN ('procesando', 'listo')) < $3
+         RETURNING id, orden, estado, url, url_poster, segundos, ancho, alto, error, creado`,
+        [req.videoId, req.cuenta.id, req.maxVideos],
+      );
+      if (!rows[0]) { await borrarTemp(req); return fail(res, 400, `Tu plan permite hasta ${req.maxVideos} videos. Borrá alguno o subí de plan.`); }
+      videos().encolar(rows[0].id);
+      res.status(202).json({ ok: true, video: videoJson(rows[0]) });
+    }));
+
+  r.delete('/videos/:id', conCuentaActiva, ah(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) return fail(res, 404, 'Video no encontrado.');
+    const { rows } = await pool.query('DELETE FROM videos WHERE id = $1 AND cuenta_id = $2 RETURNING clave_mp4, clave_poster', [req.params.id, req.cuenta.id]);
+    if (!rows[0]) return fail(res, 404, 'Video no encontrado.');
+    await storage.del(rows[0].clave_mp4); await storage.del(rows[0].clave_poster);
+    if (videos()) {
+      await fsp.rm(videos().rutaTemporal(req.params.id), { force: true }).catch(() => {});
+      await videos().alBorrarVideo(req.cuenta.id, req.params.id).catch((e) => log('preview: al borrar video', e.message));
+    }
+    invalidarSitio();
+    res.json({ ok: true });
+  }));
+
+  // --- Video de la tarjeta (5 s, sin audio; planes Oro en adelante) -----------
+  // PUT {videoId, inicio}: ella elige el video y el segundo desde donde arranca. DELETE: vuelve al automático.
+  const conPreview = ah(async (req, res, next) => {
+    const plan = await planEfectivo(req.cuenta.id, planes());
+    if (!PLANES_PREVIEW.has(plan)) return fail(res, 403, 'Disponible desde Oro.');
+    next();
+  });
+  r.put('/preview', conCuentaActiva, videosActivos, conPreview,
+    (req, res, next) => (limit(req, res, 'prev:' + req.cuenta.id, 30, HOUR, 'Cambiaste el clip demasiadas veces. Probá más tarde.') ? next() : null),
+    ah(async (req, res) => {
+      const b = body(req);
+      if (typeof b.videoId !== 'string' || !UUID_RE.test(b.videoId)) return fail(res, 400, 'Elegí uno de tus videos.');
+      const { rows } = await pool.query("SELECT id, segundos FROM videos WHERE id = $1 AND cuenta_id = $2 AND estado = 'listo'", [b.videoId, req.cuenta.id]);
+      if (!rows[0]) return fail(res, 404, 'Elegí uno de tus videos ya procesados.');
+      if (typeof b.inicio !== 'number' && typeof b.inicio !== 'string') return fail(res, 400, 'Indicá desde qué segundo arranca.');
+      const iv = inicioValido(b.inicio, Number(rows[0].segundos));
+      if (!iv.ok) return fail(res, 400, `El clip tiene que arrancar entre 0 y ${String(iv.max).replace('.', ',')} s.`);
+      await videos().pedirPreview(req.cuenta.id, { videoId: rows[0].id, inicio: iv.valor, elegido: true });
+      res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
+    }));
+  r.delete('/preview', conCuentaActiva, videosActivos, ah(async (req, res) => {
+    await videos().previewAutomatico(req.cuenta.id);
+    res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
+  }));
+
+  r.put('/videos/orden', conCuentaActiva, ah(async (req, res) => {
+    const ids = body(req).ids;
+    if (!Array.isArray(ids) || ids.length > 1000 || ids.some((x) => typeof x !== 'string' || !UUID_RE.test(x))) return fail(res, 400, 'Orden inválido.');
+    const { rows } = await pool.query('SELECT id FROM videos WHERE cuenta_id = $1', [req.cuenta.id]);
+    const mios = new Set(rows.map((x) => x.id));
+    if (ids.length !== mios.size || new Set(ids).size !== ids.length || ids.some((x) => !mios.has(x))) return fail(res, 400, 'La lista tiene que incluir todos tus videos, una vez cada uno.');
+    await pool.query('UPDATE videos v SET orden = o.ord - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(id, ord) WHERE v.id = o.id AND v.cuenta_id = $1', [req.cuenta.id, ids]);
+    invalidarSitio();
+    res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
   }));
 
   return r;

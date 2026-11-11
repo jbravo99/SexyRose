@@ -72,10 +72,11 @@ ENV NODE_ENV=production \
     NPM_CONFIG_AUDIT=false
 WORKDIR /app
 
-# Fuente para la marca de agua de las fotos (sharp dibuja el texto "SexyRose" con fontconfig).
+# Fuente para la marca de agua de las fotos y videos (sharp dibuja el texto "SexyRose" con fontconfig)
+# y ffmpeg/ffprobe para procesar los videos de la galería (lib/videos.js).
 # hadolint ignore=DL3008
 RUN apt-get update \
- && apt-get install -y --no-install-recommends fonts-dejavu-core \
+ && apt-get install -y --no-install-recommends fonts-dejavu-core ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 # Dependencias primero (cache). Si no hay package-lock.json se usa npm install.
@@ -92,7 +93,7 @@ COPY --from=demo /out-sitio/ ./sitio-spa/
 # Archivos subidos (fotos, historias y, en privado/, verificaciones): volumen srdata montado en /data.
 # El directorio es del usuario "node" para que el volumen nuevo herede el dueño.
 ENV DATA_DIR=/data
-RUN mkdir -p /data/media /data/privado && chown -R node:node /data && chmod 750 /data/privado
+RUN mkdir -p /data/media /data/privado /data/tmp/videos && chown -R node:node /data && chmod 750 /data/privado /data/tmp
 
 # El resto es del root y solo lectura para el proceso; corre como el usuario "node" (uid 1000).
 # hadolint ignore=DL3066

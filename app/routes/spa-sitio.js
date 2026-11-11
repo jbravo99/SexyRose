@@ -14,6 +14,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import * as storage from '../lib/storage.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
@@ -21,10 +22,10 @@ const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
 // Primera palabra de cada sección del SPA (es / en / pt). Shorts y chat no existen en el lanzamiento.
 const WORDS = new Set([
   'perfil', 'profile', 'cerca', 'near-me', 'perto-de-mim', 'registro', 'sign-up', 'cadastro', 'ingresar', 'login', 'entrar',
-  'swipe', 'stars', 'links', 'panel', 'cuenta',
+  'swipe', 'stars', 'links', 'panel', 'cuenta', 'favoritos', 'favorites',
 ]);
 // Secciones privadas: no se indexan
-const PRIVATE = new Set(['panel', 'cuenta', 'ingresar', 'login', 'entrar', 'registro', 'sign-up', 'cadastro']);
+const PRIVATE = new Set(['favoritos', 'favorites', 'panel', 'cuenta', 'ingresar', 'login', 'entrar', 'registro', 'sign-up', 'cadastro']);
 
 export const slugify = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -53,7 +54,8 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   const file = path.resolve(spaPath || config.sitioSpaPath || process.env.SITIO_SPA_PATH || DEFAULT_SPA);
   const publicDir = config.publicDir || path.join(HERE, '..', 'public');
   const adminPath = config.adminPath || '';
-  const mediaOrigin = config.storage === 'bunny' ? originOf(config.bunnyCdnUrl) : '';
+  // Mismo origen de medios que el resto del sitio (lib/storage.js ya validó la configuración de bunny.net).
+  const mediaOrigin = storage.mediaOrigin() || (config.storage === 'bunny' ? originOf(config.bunnyCdnUrl) : '');
   const spa = { html: null, mtimeMs: -1, size: -1 };
   let warned = false;
 

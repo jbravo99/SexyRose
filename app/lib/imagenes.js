@@ -50,6 +50,13 @@ function marcaSvg(ancho, alto) {
   return { input: Buffer.from(svg), top: Math.max(0, alto - h - Math.round(alto * 0.04)), left: 0 };
 }
 
+// Marca de agua como PNG transparente del ancho dado (la usa lib/videos.js para superponerla al video).
+export async function marcaPng(ancho, alto) {
+  const m = marcaSvg(ancho, alto);
+  const png = await sharp(m.input).png().toBuffer({ resolveWithObject: true });
+  return { buffer: png.data, alto: png.info.height, top: m.top };
+}
+
 async function variante(buffer, maxLado, calidad) {
   // rotate() sin argumentos aplica la orientación EXIF; sharp no copia metadatos salvo que se pida withMetadata().
   const base = sharp(buffer, { limitInputPixels: MAX_PIXELS, failOn: 'error' })

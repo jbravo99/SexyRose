@@ -10,12 +10,19 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const st = { driver: 'local', dataDir: path.resolve('data'), cdnUrl: '', bunny: null, log: console.log };
+const st = { driver: 'local', dataDir: path.resolve('data'), cdnUrl: '', bunny: null, custom: null, log: console.log };
 
 export function configurarStorage(config = {}) {
   st.dataDir = path.resolve(config.dataDir || st.dataDir);
   st.driver = config.storage === 'bunny' ? 'bunny' : 'local';
   st.log = config.log || st.log;
+  st.custom = null;
+  // Driver inyectado (solo pruebas): { put(clave, buffer, tipo) → url, del(clave), origin }. Cuenta como almacenamiento externo.
+  if (config.storageDriver && typeof config.storageDriver.put === 'function') {
+    st.driver = 'custom';
+    st.custom = config.storageDriver;
+    return { driver: st.driver };
+  }
   if (st.driver === 'bunny') {
     const zone = config.bunnyStorageZone; const key = config.bunnyStorageKey;
     const host = (config.bunnyStorageHost || 'storage.bunnycdn.com').replace(/^https?:\/\//, '').replace(/\/+$/, '');
@@ -36,22 +43,30 @@ export const mediaDir = () => path.join(st.dataDir, 'media');
 export const privadoDir = () => path.join(st.dataDir, 'privado');
 export const driverActual = () => st.driver;
 // Origen público de las imágenes (para la CSP). '' = el propio sitio.
-export const mediaOrigin = () => (st.driver === 'bunny' && st.cdnUrl ? new URL(st.cdnUrl).origin : '');
+export const mediaOrigin = () => {
+  if (st.driver === 'custom') return st.custom.origin || '';
+  return st.driver === 'bunny' && st.cdnUrl ? new URL(st.cdnUrl).origin : '';
+};
+// Los videos solo se habilitan con almacenamiento externo (bunny.net): nunca se sirven desde el propio servidor,
+// porque pasarían por el proxy de Cloudflare (el plan gratis no permite servir video).
+export const videosHabilitados = () => st.driver !== 'local';
 
-const CLAVE_RE = /^[a-z0-9][a-z0-9/_-]{0,180}\.(webp|jpg|jpeg|png)$/;
+const CLAVE_RE = /^[a-z0-9][a-z0-9/_-]{0,180}\.(webp|jpg|jpeg|png|mp4)$/;
 const validaClave = (clave) => {
   if (!CLAVE_RE.test(clave) || clave.includes('..') || clave.includes('//')) throw new Error('clave de archivo inválida');
 };
 
 export async function put(clave, buffer, contentType) {
   validaClave(clave);
+  if (st.driver === 'custom') return st.custom.put(clave, buffer, contentType);
   if (st.driver === 'bunny') {
     const { zone, key, host } = st.bunny;
     const r = await fetch(`https://${host}/${encodeURIComponent(zone)}/${clave}`, {
       method: 'PUT',
       headers: { AccessKey: key, 'Content-Type': contentType || 'application/octet-stream' },
       body: buffer,
-      signal: AbortSignal.timeout(30000),
+      // Los videos (hasta ~10 MB) pueden tardar más que una foto.
+      signal: AbortSignal.timeout(buffer.length > 4 * 1024 * 1024 ? 180000 : 30000),
     });
     if (!r.ok) throw new Error(`bunny.net respondió ${r.status} al subir`);
     return `${st.cdnUrl}/${clave}`;
@@ -62,9 +77,26 @@ export async function put(clave, buffer, contentType) {
   return `/media/${clave}`;
 }
 
+// Lee un archivo público ya guardado (lo usa la cola de videos para recortar el clip de la tarjeta).
+export async function get(clave) {
+  validaClave(clave);
+  if (st.driver === 'custom') {
+    if (typeof st.custom.get === 'function') return st.custom.get(clave);
+    throw new Error('el almacenamiento no permite leer archivos');
+  }
+  if (st.driver === 'bunny') {
+    const { zone, key, host } = st.bunny;
+    const r = await fetch(`https://${host}/${encodeURIComponent(zone)}/${clave}`, { headers: { AccessKey: key }, signal: AbortSignal.timeout(120000) });
+    if (!r.ok) throw new Error(`bunny.net respondió ${r.status} al leer`);
+    return Buffer.from(await r.arrayBuffer());
+  }
+  return fsp.readFile(path.join(mediaDir(), clave));
+}
+
 export async function del(clave) {
   if (!clave) return;
   try { validaClave(clave); } catch { return; }
+  if (st.driver === 'custom') { try { await st.custom.del(clave); } catch { /* */ } return; }
   if (st.driver === 'bunny') {
     const { zone, key, host } = st.bunny;
     try {

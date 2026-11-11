@@ -14,6 +14,7 @@ import { invalidarCatalogos } from './lib/catalogos.js';
 import * as storage from './lib/storage.js';
 import { createCuentaRouter } from './routes/cuenta.js';
 import { createSitioRouter, invalidarSitio } from './routes/sitio.js';
+import { createVideos } from './lib/videos.js';
 
 // ---- Fase 1 (agente B): imports ----
 import { createPlanes } from './lib/planes.js';
@@ -60,6 +61,9 @@ export function loadConfig(env = process.env) {
     bunnyStorageKey: str(env.BUNNY_STORAGE_KEY),
     bunnyStorageHost: str(env.BUNNY_STORAGE_HOST) || 'storage.bunnycdn.com',
     bunnyCdnUrl: str(env.BUNNY_CDN_URL).replace(/\/+$/, ''),
+    // Videos de la galería: ffmpeg/ffprobe (en Docker vienen del paquete ffmpeg de Debian).
+    ffmpegPath: str(env.FFMPEG_PATH) || 'ffmpeg',
+    ffprobePath: str(env.FFPROBE_PATH) || 'ffprobe',
     mailgunApiKey: str(env.MAILGUN_API_KEY),
     mailgunDomain: str(env.MAILGUN_DOMAIN) || 'mg.sexyrose.net',
     mailgunApiBase: str(env.MAILGUN_API_BASE) || 'https://api.eu.mailgun.net',
@@ -444,7 +448,12 @@ export function createApp(config) {
   // Archivos privados: misma raíz DATA_DIR/privado para verificaciones (lib/storage.js) y comprobantes (lib/privado.js).
   const privado = createPrivado({ dataDir: storage.dataDir() });
   // Contexto compartido por los módulos de rutas (routes/*.js).
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, privado };
+  // Videos: cola de procesamiento con ffmpeg (lib/videos.js). Solo se usan con almacenamiento externo (bunny.net).
+  const videos = createVideos({
+    pool, storage, log, invalidar: () => invalidarSitio(), tmpDir: path.join(storage.dataDir(), 'tmp', 'videos'),
+    ffmpeg: config.ffmpegPath || 'ffmpeg', ffprobe: config.ffprobePath || 'ffprobe', marca: config.marcaVideos !== false,
+  });
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, privado, videos };
 
   const app = express();
   app.disable('x-powered-by');
@@ -1255,6 +1264,10 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
           log('no se pudieron cargar los textos editados (se usan los del archivo):', e.code || e.message);
         }
         await purgeIpHashes();
+        try {
+          const n = await videos.recuperar();
+          if (n) log(`videos pendientes al arrancar: ${n}`);
+        } catch (e) { log('no se pudo revisar la cola de videos:', e.code || e.message); }
         return;
       } catch (e) {
         const delay = Math.min(30000, 1000 * 2 ** Math.min(attempt - 1, 5));
@@ -1281,6 +1294,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
 
   const shutdown = async () => {
     planes.detenerTarea();
+    videos.detener();
     state.stopping = true;
     timers.forEach(clearInterval);
     await pool.end().catch(() => {});
@@ -1294,7 +1308,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
 // ---------------------------------------------------------------------------
 export async function start(overrides = {}) {
   const config = { ...loadConfig(), ...overrides };
-  const { app, initDb, shutdown, state } = createApp(config);
+  const { app, initDb, shutdown, state, ctx } = createApp(config);
   const server = app.listen(config.port, config.host);
   server.requestTimeout = 30000;
   server.headersTimeout = 20000;
@@ -1306,7 +1320,7 @@ export async function start(overrides = {}) {
     await new Promise((r) => server.close(() => r()));
     await shutdown();
   };
-  return { server, port, ready, close, state };
+  return { server, port, ready, close, state, ctx };
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

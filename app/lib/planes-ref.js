@@ -1,14 +1,14 @@
 // Puente hacia la instancia de lib/planes.js (createPlanes) que arma server.js. Sin instancia, todas las cuentas
 // tienen el plan E (Bronce, gratis).
 //
-// Límites por plan (valores del MVP, HH.LEVELS): fotos de la galería e historias por día (null = ilimitadas).
+// Límites por plan (valores del MVP, HH.LEVELS): fotos y videos de la galería e historias por día (null = ilimitadas).
 export const LIMITES = {
-  S: { fotos: 1000, historiasDia: null },
-  A: { fotos: 500, historiasDia: null },
-  B: { fotos: 50, historiasDia: null },
-  C: { fotos: 30, historiasDia: null },
-  D: { fotos: 15, historiasDia: 3 },
-  E: { fotos: 8, historiasDia: 1 },
+  S: { fotos: 1000, historiasDia: null, videos: 500 },
+  A: { fotos: 500, historiasDia: null, videos: 200 },
+  B: { fotos: 50, historiasDia: null, videos: 15 },
+  C: { fotos: 30, historiasDia: null, videos: 10 },
+  D: { fotos: 15, historiasDia: 3, videos: 5 },
+  E: { fotos: 8, historiasDia: 1, videos: 2 },
 };
 export const PLANES = ['S', 'A', 'B', 'C', 'D', 'E'];
 export const limitesDe = (plan) => LIMITES[plan] || LIMITES.E;

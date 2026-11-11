@@ -211,7 +211,7 @@ export function faltantesDe({ datos = {}, fotosN = 0, emailVerificado = false, v
 }
 
 // Forma pública (lo que ve cualquiera en el sitio). ubic: Map(id → {nombre}).
-export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], plan = 'E', actualizado, publicadoEn }, ubic) {
+export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos = [], preview = null, plan = 'E', actualizado, publicadoEn }, ubic) {
   const nombre = (id) => (id && ubic.get(id) ? ubic.get(id).nombre : '');
   return {
     cuentaId,
@@ -236,6 +236,8 @@ export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], plan = '
     salidas: datos.salidas || [],
     tarifaDesde: datos.tarifaDesde ?? null,
     fotos: fotos.map((x) => ({ url: x.url, urlMini: x.url_mini || x.url, ancho: x.ancho, alto: x.alto })),
+    videos: videos.map((v) => ({ id: v.id, url: v.url, poster: v.url_poster || null, segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto })),
+    preview: preview && preview.url ? { url: preview.url } : null,
     plan,
     star: plan === 'S',
     verificada: true,
