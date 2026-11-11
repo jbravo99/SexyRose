@@ -7,10 +7,9 @@ import { paquete, enviar } from '../lib/compresion.js';
 import express from 'express';
 import { cargarCatalogos } from '../lib/catalogos.js';
 import { perfilPublico } from '../lib/perfiles.js';
-import { limitesDe, planesEfectivos } from '../lib/planes-ref.js';
+import { limitesDe, planesEfectivos, destacadosVigentes, PLANES_PREVIEW } from '../lib/planes-ref.js';
 import { sameOrigin } from '../lib/auth.js';
-
-const PLANES_PREVIEW = new Set(['C', 'B', 'A', 'S']);
+import { mezclarPrecios, mezclarDestacado } from '../lib/planes.js';
 
 const TTL = 30 * 1000;
 let cache = null;
@@ -28,7 +27,7 @@ export async function armarEstado(pool, planesInst) {
       ORDER BY p.publicado_en DESC NULLS LAST, p.cuenta_id`,
   );
   const ids = perfiles.map((p) => p.cuenta_id);
-  const [fotos, historias, planes, videos, previews] = await Promise.all([
+  const [fotos, historias, planes, videos, previews, destacados] = await Promise.all([
     ids.length ? pool.query('SELECT cuenta_id, url, url_mini, ancho, alto FROM fotos WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, orden, creado', [ids]) : { rows: [] },
     ids.length ? pool.query(
       'SELECT id, cuenta_id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = ANY($1) AND expira > now() ORDER BY creado',
@@ -40,6 +39,7 @@ export async function armarEstado(pool, planesInst) {
       [ids],
     ) : { rows: [] },
     ids.length ? pool.query("SELECT cuenta_id, url FROM previews WHERE cuenta_id = ANY($1) AND estado = 'listo' AND url IS NOT NULL", [ids]) : { rows: [] },
+    destacadosVigentes(ids, planesInst),
   ]);
   const previewDe = new Map(previews.rows.map((x) => [x.cuenta_id, x.url]));
   const videosDe = new Map();
@@ -51,14 +51,17 @@ export async function armarEstado(pool, planesInst) {
     // Si bajó de plan, se muestran solo las primeras fotos que entran en el límite (el resto queda guardado).
     const fs = (fotosDe.get(p.cuenta_id) || []).slice(0, limitesDe(plan).fotos);
     const vs = (videosDe.get(p.cuenta_id) || []).slice(0, limitesDe(plan).videos);
-    // Clip de 5 s de la tarjeta: solo con plan Oro o más (si baja de plan deja de verse; queda guardado).
+    // Clip de 5 s de la tarjeta: desde Plata (si baja a Bronce deja de verse; queda guardado).
     const preview = PLANES_PREVIEW.has(plan) && previewDe.get(p.cuenta_id) ? { url: previewDe.get(p.cuenta_id) } : null;
-    return perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, videos: vs, preview, plan, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
+    // Destacado: atado al plan con el que se compró y a la provincia actual del perfil.
+    const prov = String((p.datos && p.datos.provincia) || '').trim().toLowerCase();
+    const destacado = (destacados.get(p.cuenta_id) || []).some((d) => d.plan === plan && String(d.provincia).trim().toLowerCase() === prov);
+    return perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, videos: vs, preview, plan, destacado, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
   });
   const aj = cat.ajustes;
   return {
     ahora: new Date().toISOString(),
-    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: aj.precios ?? null },
+    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null },
     ubicaciones: cat.ubicaciones.filter((u) => u.activa).map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden })),
     categorias: cat.categoriasLista.filter((c) => c.activa).map((c) => ({ id: c.id, nombre: c.nombre, icono: c.icono, orden: c.orden })),
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),

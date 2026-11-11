@@ -6,7 +6,7 @@
 
   var GENEROS = ["mujer", "trans", "hombre"];
   var CONTACTO_TIPOS = ["whatsapp", "telegram", "email"];
-  var PLANES = ["bronce", "plata", "oro", "platino", "diamante", "star", "no_se"];
+  var PLANES = ["bronce", "plata", "oro", "star", "no_se"];
   var CATEGORIAS = ["abuso_infantil", "imagen_sin_consentimiento", "trata", "otro"];
   /* Igual que en el servidor (server.js EMAIL_RE). */
   var EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;

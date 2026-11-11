@@ -5,7 +5,11 @@
 // Mismo Basic Auth (lo aplica el router admin). Los POST/PUT/DELETE usan apiPost de Fase 0
 // (JSON + X-SR-Admin: 1 + mismo origen). Errores: { error } en castellano.
 import express from 'express';
-import { PLAN_NOMBRE, PLANES_PAGOS, CUPO_STAR, PlanError, validarPrecios, mezclarPrecios, pedidoJson, suscripcionJson } from '../lib/planes.js';
+import { PLAN_NOMBRE, PLANES_PAGOS, CUPO_STAR, PlanError, validarPrecios, mezclarPrecios, validarDestacado, mezclarDestacado, pedidoJson, suscripcionJson } from '../lib/planes.js';
+import {
+  validarPacks, validarContacto, validarCotizacion, validarComision, validarMensajes,
+  CONTACTO_DEFAULT, COTIZACION_DEFAULT, COMISION_DEFAULT, MENSAJES_DEFAULT, montoJson,
+} from '../lib/creditos.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
@@ -13,7 +17,8 @@ const ESTADOS_PERFIL = ['borrador', 'en_revision', 'publicado', 'rechazado', 'pa
 const ESTADOS_ADMIN = ['publicado', 'pausado', 'suspendido', 'rechazado'];
 const ESTADOS_PEDIDO = ['pendiente', 'informado', 'confirmado', 'rechazado', 'cancelado', 'vencido'];
 const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona'];
-const AJUSTES = ['precios', 'transferencia', 'portada', 'promo'];
+// Planes v2: 'transferencia' (datos bancarios) se quitó: no se muestran datos bancarios en ninguna parte de la web.
+const AJUSTES = ['precios', 'portada', 'promo', 'packs', 'destacado', 'contacto', 'cotizacion', 'comision', 'mensajes'];
 
 export function slugify(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -69,7 +74,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const id = uuid(req);
     const { rows } = await pool.query(
       `SELECT c.id, c.email, c.email_verificado, c.estado AS cuenta_estado, c.creado, c.ultimo_login, c.acepto_terminos, c.mayor_edad_declarada,
-              p.slug, p.datos, p.estado, p.motivo_rechazo, p.verificacion, p.oculto, p.creado AS p_creado, p.actualizado, p.publicado_en
+              p.slug, p.datos, p.estado, p.motivo_rechazo, p.verificacion, p.oculto, p.creado AS p_creado, p.actualizado, p.publicado_en, p.pausado_por
        FROM cuentas c JOIN perfiles p ON p.cuenta_id = c.id WHERE c.id = $1`, [id]);
     const x = rows[0];
     if (!x) throw he(404, 'Acompañante no encontrada.');
@@ -88,6 +93,9 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       plan: resumen.efectivo,
       suscripciones: resumen.suscripciones,
       pedidos: resumen.pedidos,
+      saldo: montoJson(await planes.creditos.saldo(id)),
+      base: await planes.baseJson(id),
+      pausadoPorSaldo: x.estado === 'pausado' && x.pausado_por === 'sin_saldo',
     });
   }));
 
@@ -165,6 +173,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (b.estado === 'publicado' && cur.rows[0].verificacion !== 'verificada') throw he(409, 'No se puede publicar: la identidad no está verificada.');
     const { rows } = await pool.query(
       `UPDATE perfiles SET estado = $2, motivo_rechazo = $3, actualizado = now(),
+         pausado_por = CASE WHEN $2 = 'pausado' THEN 'admin' ELSE NULL END,
          publicado_en = CASE WHEN $2 = 'publicado' THEN COALESCE(publicado_en, now()) ELSE publicado_en END
        WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
       [id, b.estado, b.estado === 'publicado' ? null : (motivo || null)]);
@@ -264,9 +273,17 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const { rows } = await pool.query('SELECT clave, valor, actualizado FROM ajustes WHERE clave = ANY($1)', [AJUSTES]);
     const m = new Map(rows.map((x) => [x.clave, x]));
     const v = (k, def) => (m.has(k) ? m.get(k).valor : def);
+    const precios = mezclarPrecios(v('precios', null));
+    const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+    const msj = obj(v('mensajes', {}));
     return {
-      precios: mezclarPrecios(v('precios', null)),
-      transferencia: typeof v('transferencia', '') === 'string' ? v('transferencia', '') : (v('transferencia', {}).texto || ''),
+      precios,
+      packs: await planes.creditos.packs({ precios, crudo: true }),
+      destacado: mezclarDestacado(v('destacado', null)),
+      contacto: { ...CONTACTO_DEFAULT, ...obj(v('contacto', {})) },
+      cotizacion: { ...COTIZACION_DEFAULT, ...obj(v('cotizacion', {})) },
+      comision: { ...COMISION_DEFAULT, ...obj(v('comision', {})) },
+      mensajes: { whatsapp: { ...MENSAJES_DEFAULT.whatsapp, ...obj(msj.whatsapp) }, admin: msj.admin || MENSAJES_DEFAULT.admin },
       portada: { titulo: '', subtitulo: '', ...(v('portada', {}) || {}) },
       promo: typeof v('promo', '') === 'string' ? v('promo', '') : (v('promo', {}).texto || ''),
       actualizado: Object.fromEntries(rows.map((x) => [x.clave, x.actualizado])),
@@ -280,8 +297,14 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
   }));
   const validarAjuste = (clave, v) => {
     if (clave === 'precios') return validarPrecios(v);
-    if (clave === 'transferencia' || clave === 'promo') {
-      const max = clave === 'promo' ? 500 : 2000;
+    if (clave === 'packs') return validarPacks(v);
+    if (clave === 'destacado') return validarDestacado(v);
+    if (clave === 'contacto') return validarContacto(v);
+    if (clave === 'cotizacion') return validarCotizacion(v);
+    if (clave === 'comision') return validarComision(v);
+    if (clave === 'mensajes') return validarMensajes(v);
+    if (clave === 'promo') {
+      const max = 500;
       if (typeof v !== 'string') return { error: 'Tiene que ser texto.' };
       if (v.length > max) return { error: `Máximo ${max} caracteres.` };
       return { valor: v.replace(/\r\n?/g, '\n').trim() };

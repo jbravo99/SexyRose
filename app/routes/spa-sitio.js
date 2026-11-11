@@ -3,12 +3,17 @@
 // /swipe, /cerca, /stars, /links/<slug>, /registro, /ingresar, /panel/…, /cuenta/… (y sus versiones en inglés y portugués).
 //
 // No tapa nada más: /api, /media, /demo, el admin (ADMIN_PATH), las páginas legales (/terminos, /privacidad,
-// /contenido, /trata, /denunciar), robots.txt, sitemap.xml, archivos estáticos y cualquier dirección desconocida
+// /contenido, /trata, /denunciar), robots.txt, archivos estáticos y cualquier dirección desconocida
 // (sigue de largo y termina en la 404 del servidor).
+//
+// SEO en el servidor (lib/seo-sitio.js): cada página sale con su título, descripción, canonical, hreflang, robots y
+// og:*; un perfil, lugar o tipo de salida que no existe responde 404 (con la misma cáscara: el SPA muestra su
+// página de "no encontrado"). También arma el mapa del sitio (router.sitemap(), lo usa /sitemap.xml de server.js)
+// y sirve las fuentes (/assets/fonts/).
 //
 // Uso en server.js (después del admin y antes de "Páginas HTML"):
 //   import { createSpaSitioRouter } from './routes/spa-sitio.js';
-//   app.use(createSpaSitioRouter({ config, log, pool }));
+//   app.use(createSpaSitioRouter({ config, log, pool, planes }));
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -16,6 +21,8 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import * as storage from '../lib/storage.js';
 import { paquete, enviar } from '../lib/compresion.js';
+import { createSeoSitio } from '../lib/seo-sitio.js';
+import { estadoSitio } from './sitio.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
@@ -37,8 +44,8 @@ export function cspSitio(nonce, mediaOrigin) {
   return [
     "default-src 'none'",
     nonce ? `script-src 'nonce-${nonce}'` : "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     `img-src 'self' data: blob:${media}`,
     `media-src 'self' data: blob:${media}`,
     "connect-src 'self'",
@@ -52,7 +59,7 @@ export function cspSitio(nonce, mediaOrigin) {
 
 const originOf = (u) => { try { return u ? new URL(u).origin : ''; } catch { return ''; } };
 
-export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null, spaPath } = {}) {
+export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null, planes = null, spaPath } = {}) {
   const file = path.resolve(spaPath || config.sitioSpaPath || process.env.SITIO_SPA_PATH || DEFAULT_SPA);
   const publicDir = config.publicDir || path.join(HERE, '..', 'public');
   const adminPath = config.adminPath || '';
@@ -63,14 +70,16 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   // JS y CSS del sitio (app/sitio-spa/assets/app.<hash>.js|css): el nombre cambia con el contenido, así que se
   // guardan en caché un año. Se leen una vez y se comprimen en segundo plano (brotli/gzip).
   const assetsDir = path.join(path.dirname(file), 'assets');
-  const ASSET_RE = /^(app|i18n)\.[0-9a-f]{8,64}\.(js|css)$/;
-  const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8' };
+  const ASSET_RE = /^(?:(app|i18n)\.[0-9a-f]{8,64}\.(js|css)|fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2)$/;
+  const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2' };
   const assets = new Map();
   async function leerAsset(name) {
     const hit = assets.get(name); if (hit) return hit;
     let buf; try { buf = await fs.readFile(path.join(assetsDir, name)); } catch { return null; }
-    const a = { p: paquete(buf), type: TIPOS[name.split('.').pop()] };
-    a.p.preparar().catch(() => {});
+    const ext = name.split('.').pop();
+    // woff2 ya viene comprimido: no se vuelve a comprimir
+    const a = { p: ext === 'woff2' ? Object.assign(paquete(buf), { cod: () => null }) : paquete(buf), type: TIPOS[ext] };
+    if (ext !== 'woff2') a.p.preparar().catch(() => {});
     assets.set(name, a);
     return a;
   }
@@ -94,6 +103,20 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
     spa.pqI18n = spa.inline ? null : paquete(conI18n);
     spa.mtimeMs = st.mtimeMs; spa.size = st.size;
     return spa.html;
+  }
+
+  // SEO en el servidor: con la base y app/sitio-spa/seo-datos.json (si falta alguno, la cáscara sale como siempre)
+  const seo = pool ? createSeoSitio({ datosPath: path.join(path.dirname(file), 'seo-datos.json'), siteUrl: config.siteUrl || '', estado: () => estadoSitio(pool, planes) }) : null;
+  // Cáscaras ya armadas por página (título y etiquetas propias), comprimidas; las últimas 300
+  const porPagina = new Map();
+  function paquetePagina(html) {
+    const k = crypto.createHash('sha1').update(html).digest('base64');
+    let pq = porPagina.get(k);
+    if (pq) { porPagina.delete(k); porPagina.set(k, pq); return pq; }
+    pq = paquete(html, { calidadBr: 5 });
+    porPagina.set(k, pq);
+    if (porPagina.size > 300) porPagina.delete(porPagina.keys().next().value);
+    return pq;
   }
 
   // Países activos (slug del nombre e id), con caché de 5 minutos. Sin base: solo "argentina".
@@ -153,8 +176,12 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(), usb=()');
       if (segs.length && PRIVATE.has(segs[0])) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       if (spa.pq) {
-        // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida
-        return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, { 'Content-Security-Policy': cspSitio(null, mediaOrigin), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' });
+        // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
+        const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
+        const m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
+        if (!m) return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, headers);
+        if (m.status === 404) headers['X-Robots-Tag'] = 'noindex';
+        return enviar(req, res, paquetePagina(seo.aplicar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'), m)), headers, m.status);
       }
       const nonce = crypto.randomBytes(16).toString('base64');
       res.setHeader('Content-Security-Policy', cspSitio(nonce, mediaOrigin));
@@ -165,5 +192,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       return res.status(200).send(out);
     } catch (e) { return next(e); }
   });
+  // Mapa del sitio con los datos reales (lo sirve server.js en /sitemap.xml; extras = páginas legales ya armadas)
+  r.sitemap = (extras) => (seo ? seo.sitemap(extras) : Promise.resolve(null));
   return r;
 }

@@ -1,16 +1,17 @@
 // Puente hacia la instancia de lib/planes.js (createPlanes) que arma server.js. Sin instancia, todas las cuentas
 // tienen el plan E (Bronce, gratis).
 //
-// Límites por plan (valores del MVP, HH.LEVELS): fotos y videos de la galería e historias por día (null = ilimitadas).
+// Límites por plan (Planes v2, 11/11/2026; null = ilimitado):
+//   fotos y videos de la galería, historias por día y destacadas (historias destacadas que quedan fijas en el perfil).
 export const LIMITES = {
-  S: { fotos: 1000, historiasDia: null, videos: 500 },
-  A: { fotos: 500, historiasDia: null, videos: 200 },
-  B: { fotos: 50, historiasDia: null, videos: 15 },
-  C: { fotos: 30, historiasDia: null, videos: 10 },
-  D: { fotos: 15, historiasDia: 3, videos: 5 },
-  E: { fotos: 8, historiasDia: 1, videos: 2 },
+  S: { fotos: 1000, videos: 500, historiasDia: null, destacadas: null },
+  C: { fotos: 500, videos: 200, historiasDia: null, destacadas: 10 },
+  D: { fotos: 30, videos: 10, historiasDia: 3, destacadas: 4 },
+  E: { fotos: 8, videos: 2, historiasDia: 1, destacadas: 1 },
 };
-export const PLANES = ['S', 'A', 'B', 'C', 'D', 'E'];
+export const PLANES = ['S', 'C', 'D', 'E'];
+// Clip de 5 s en la tarjeta: desde Plata.
+export const PLANES_PREVIEW = new Set(['D', 'C', 'S']);
 export const limitesDe = (plan) => LIMITES[plan] || LIMITES.E;
 
 // El servidor crea UNA instancia de lib/planes.js (createPlanes) y la pasa en ctx.planes.
@@ -37,4 +38,10 @@ export async function planesEfectivos(ids, planes) {
 export async function resumenPlan(cuentaId, planes) {
   if (planes && typeof planes.resumenPlan === 'function') return planes.resumenPlan(cuentaId);
   return { efectivo: await planEfectivo(cuentaId, planes), suscripciones: [], pedidos: [] };
+}
+
+// Destacados vigentes (Map cuentaId → { hasta }) para el listado público. Sin instancia: ninguno.
+export async function destacadosVigentes(ids, planes) {
+  if (planes && typeof planes.destacadosVigentes === 'function') return planes.destacadosVigentes(ids);
+  return new Map();
 }

@@ -1,5 +1,5 @@
 -- SexyRose Fase 2: planes pagos por transferencia (agente B). Idempotente; se aplica después de 010-cuentas.sql.
--- Códigos de plan del MVP: S Star, A Diamante, B Platino, C Oro, D Plata, E Bronce (gratis, nunca es un pedido).
+-- Códigos de plan del MVP (historial): S Star, A Diamante, B Platino, C Oro, D Plata, E Bronce. Planes v2 (050) deja solo E, D, C, S.
 
 -- Pedido de pago: la acompañante elige plan y período, transfiere con la referencia y lo informa; el admin confirma.
 CREATE TABLE IF NOT EXISTS pedidos (

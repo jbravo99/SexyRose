@@ -91,26 +91,35 @@
   if (!TABS.some((t) => t.id === 'preregistros')) TABS.splice(Math.max(0, TABS.findIndex((t) => t.id === 'resumen')) + 1, 0, { id: 'preregistros', label: 'Pre-registros', icon: 'inbox' });
   if (!TABS.some((t) => t.id === 'textos')) { const i = TABS.findIndex((t) => t.id === 'apariencia'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'textos', label: 'Textos', icon: 'edit' }); }
   { const i = TABS.findIndex((t) => t.id === 'apariencia'); if (i >= 0) TABS.splice(i, 1); } // la portada se edita en Ajustes
+  // Planes v2: «Pagos» (transferencia por plan) pasa a «Pedidos» de créditos; se suman Renovaciones y Destacados
+  { const t = TABS.find((x) => x.id === 'pagos'); if (t) Object.assign(t, { id: 'pedidos', label: 'Pedidos', icon: 'wallet' }); else if (!TABS.some((x) => x.id === 'pedidos')) TABS.push({ id: 'pedidos', label: 'Pedidos', icon: 'wallet' }); }
+  if (!TABS.some((t) => t.id === 'renovaciones')) { const i = TABS.findIndex((t) => t.id === 'suscripciones'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'renovaciones', label: 'Renovaciones', icon: 'refresh' }); }
+  if (!TABS.some((t) => t.id === 'destacados')) { const i = TABS.findIndex((t) => t.id === 'stars'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'destacados', label: 'Destacados', icon: 'trending' }); }
   const counts = {};
   TABS.forEach((t) => { counts[t.id] = () => 0; });
   counts.acompanantes = () => ((S.res && S.res.acompanantes ? S.res.acompanantes.enRevision : 0) || 0) + ((S.res && S.res.verificacionesPendientes) || 0);
-  counts.pagos = () => (S.res && S.res.pedidos ? S.res.pedidos.informados : 0) || 0;
+  counts.pedidos = () => (S.res && S.res.pedidosCreditos ? S.res.pedidosCreditos.pendientes : 0) || 0;
+  counts.renovaciones = () => (S.res ? (S.res.pausadasSinSaldo || 0) + ((S.res.vencen7 && S.res.vencen7.sinSaldo) || 0) : 0);
   counts.preregistros = () => (S.res && S.res.preregistros ? S.res.preregistros.nuevos : 0) || 0;
   counts.reportes = () => (S.res && S.res.denuncias ? S.res.denuncias.abiertas : 0) || 0;
   HH.adminCounts = counts;
 
   /* ---------- Resumen ---------- */
   function vResumen() {
-    load('res', '/resumen');
+    load('res', '/resumen'); load('dst', '/destacados');
     const r = S.res;
     let body;
     if (!r && S.err.res) body = errorCard(S.err.res, 'res');
     else if (!r) body = loadingCard(2);
     else {
       const p = r.preregistros || {}, d = r.denuncias || {}, t = r.textos || {};
-      const ac = r.acompanantes || {}, vp = r.verificacionesPendientes || 0, pe = r.pedidos || {};
+      const ac = r.acompanantes || {}, vp = r.verificacionesPendientes || 0, pc = r.pedidosCreditos || {};
+      const pa = r.pausadasSinSaldo || 0, v7 = r.vencen7 || {};
+      const dAct = S.dst ? (S.dst.items || []).filter((x) => x.estado === 'activo' && x.vigente).length : null;
       const pend = [];
-      if (pe.informados) pend.push({ ic: 'wallet', cls: 'warn', t: `${pe.informados} ${HH.plural(pe.informados, 'pago informado', 'pagos informados')} para confirmar`, s: 'Revisá que la transferencia esté en tu cuenta y confirmá para activar el plan.', go: '#admin.pagos' });
+      if (pc.pendientes) pend.push({ ic: 'wallet', cls: 'warn', t: `${pc.pendientes} ${HH.plural(pc.pendientes, 'pedido de créditos pendiente', 'pedidos de créditos pendientes')}`, s: `${pc.conComprobante || 0} con comprobante. Confirmá cuando el pago esté en tu cuenta.`, go: '#admin.pedidos' });
+      if (pa) pend.push({ ic: 'clock', cls: 'danger', t: `${pa} ${HH.plural(pa, 'perfil pausado', 'perfiles pausados')} por falta de saldo`, s: 'No les alcanzaron los créditos para renovar el plan.', go: '#admin.renovaciones' });
+      if (v7.sinSaldo) pend.push({ ic: 'alert', cls: 'warn', t: `${v7.sinSaldo} ${HH.plural(v7.sinSaldo, 'plan vence', 'planes vencen')} en 7 días sin saldo para renovar`, s: 'Avisales que carguen créditos antes del vencimiento.', go: '#admin.renovaciones' });
       if (vp) pend.push({ ic: 'shield', cls: 'warn', t: `${vp} ${HH.plural(vp, 'verificación pendiente', 'verificaciones pendientes')}`, s: 'Compará la selfie con el documento y aprobá o rechazá.', go: '#admin.acompanantes' });
       if (ac.enRevision) pend.push({ ic: 'users', cls: 'info', t: `${ac.enRevision} ${HH.plural(ac.enRevision, 'perfil en revisión', 'perfiles en revisión')}`, s: 'Se publican al aprobar la identidad.', go: '#admin.acompanantes' });
       if (d.urgentes) pend.push({ ic: 'alert', cls: 'danger', t: `${d.urgentes} ${HH.plural(d.urgentes, 'denuncia urgente', 'denuncias urgentes')} sin resolver`, s: 'Abuso infantil, imágenes sin consentimiento o trata: revisar ya.', go: '#admin.reportes' });
@@ -119,7 +128,10 @@
       body = `<div class="adm-stats">
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Acompañantes', (ac.total || 0).toLocaleString('es-AR'), `${ac.publicadas || 0} publicadas · ${ac.enRevision || 0} en revisión`, 'accent')}</a>
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Verificaciones', vp, vp ? 'pendientes de revisar' : 'todo al día', vp ? 'pa-warn' : '')}</a>
-          <a class="pa-statlink" href="#admin.pagos" data-go="#admin.pagos">${stat('Pagos para confirmar', pe.informados || 0, `${pe.pendientes || 0} ${HH.plural(pe.pendientes || 0, 'pedido esperando', 'pedidos esperando')} la transferencia`, pe.informados ? 'pa-warn' : '')}</a>
+          <a class="pa-statlink" href="#admin.pedidos" data-go="#admin.pedidos">${stat('Pedidos pendientes', pc.pendientes || 0, `${pc.conComprobante || 0} con comprobante`, pc.pendientes ? 'pa-warn' : '')}</a>
+          <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Pausadas por saldo', pa, pa ? 'no les alcanzó para renovar' : 'ninguna', pa ? 'pa-danger' : '')}</a>
+          <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Vencen en 7 días', v7.total || 0, `${v7.sinSaldo || 0} sin saldo para renovar`, v7.sinSaldo ? 'pa-warn' : '')}</a>
+          <a class="pa-statlink" href="#admin.destacados" data-go="#admin.destacados">${stat('Destacados activos', dAct == null ? '…' : dAct, 'ahora en el sitio')}</a>
           ${stat('Pre-registros', (p.total || 0).toLocaleString('es-AR'), `${p.ultimos7 || 0} en los últimos 7 días`)}
           ${stat('Por contactar', p.nuevos || 0, p.nuevos ? 'en estado nuevo' : 'todo al día')}
           ${stat('Denuncias abiertas', d.abiertas || 0, `de ${d.total || 0} recibidas`)}
@@ -128,7 +140,7 @@
         </div>
         <div class="card stack" style="gap:10px">
           <div class="card-title">Pendientes</div>
-          ${pend.length ? `<div class="list">${pend.map((x) => `<a class="list-item" href="${x.go}" data-go="${x.go}"><span class="badge ${x.cls}" style="padding:6px">${icon(x.ic)}</span><div class="grow" style="min-width:0"><div class="title">${esc(x.t)}</div><div class="sub">${esc(x.s)}</div></div>${icon('chevronRight')}</a>`).join('')}</div>` : `<p class="small muted">Nada pendiente. Los pagos informados, las verificaciones, las denuncias y los pre-registros nuevos aparecen acá.</p>`}
+          ${pend.length ? `<div class="list">${pend.map((x) => `<a class="list-item" href="${x.go}" data-go="${x.go}"><span class="badge ${x.cls}" style="padding:6px">${icon(x.ic)}</span><div class="grow" style="min-width:0"><div class="title">${esc(x.t)}</div><div class="sub">${esc(x.s)}</div></div>${icon('chevronRight')}</a>`).join('')}</div>` : `<p class="small muted">Nada pendiente. Los pedidos de créditos, los perfiles pausados por saldo, las verificaciones, las denuncias y los pre-registros nuevos aparecen acá.</p>`}
         </div>
         <div class="card stack" style="gap:10px">
           <div class="card-title">Migración a producción</div>
@@ -136,7 +148,7 @@
           <div class="list">
             <div class="list-item">${icon('checkCircle')}<div class="grow"><div class="title">Fase 0 · En línea</div><div class="sub">Resumen, Pre-registros, Reportes (denuncias) y Textos del sitio.</div></div><span class="badge ok">Activo</span></div>
             <div class="list-item">${icon('users')}<div class="grow"><div class="title">Fase 1 · Cuentas y perfiles</div><div class="sub">Acompañantes, verificación manual, ubicaciones, categorías e intereses, portada.</div></div><span class="badge ok">Activo</span></div>
-            <div class="list-item">${icon('wallet')}<div class="grow"><div class="title">Fase 2 · Planes y cobro por transferencia</div><div class="sub">Pagos, suscripciones por mes y por semana, vencimientos, Stars y precios.</div></div><span class="badge ok">Activo</span></div>
+            <div class="list-item">${icon('wallet')}<div class="grow"><div class="title">Fase 2 · Planes y créditos</div><div class="sub">4 planes (Bronce, Plata, Oro y Star), créditos por WhatsApp, renovación automática, Destacado, Stars y precios.</div></div><span class="badge ok">Activo</span></div>
             <div class="list-item">${icon('film')}<div class="grow"><div class="title">Fase 3 · Historias y videos</div><div class="sub">Historias, destacadas, shorts, videos, estadísticas y soporte.</div></div><span class="badge neutral">Próximamente</span></div>
             <div class="list-item">${icon('bag')}<div class="grow"><div class="title">Fase 4 · Venta de contenido</div><div class="sub">Fotos y videos premium, packs y pedidos a medida, cuando apruebe un procesador de pagos.</div></div><span class="badge neutral">Próximamente</span></div>
           </div>
@@ -301,13 +313,26 @@
      Fase 1+2: acompañantes, verificación, pagos, suscripciones, Stars, catálogos y ajustes
      (API del servidor: routes/admin-fase1.js)
      ============================================================ */
-  const PLAN_NOMBRE = { S: 'Star', A: 'Diamante', B: 'Platino', C: 'Oro', D: 'Plata', E: 'Bronce' };
-  const PLANES_PAGOS = ['D', 'C', 'B', 'A', 'S'];
-  const PLANES_SEMANA = ['B', 'A', 'S'];
+  // Planes v2: 4 planes. Bronce gratis; semana solo Oro y Star; Destacado solo Bronce, Plata y Oro.
+  const PLAN_NOMBRE = { S: 'Star', C: 'Oro', D: 'Plata', E: 'Bronce' };
+  const PLANES = ['E', 'D', 'C', 'S'];
+  const PLANES_PAGOS = ['D', 'C', 'S'];
+  const PLANES_SEMANA = ['C', 'S'];
+  const PLANES_DEST = ['E', 'D', 'C'];
   const PERIODO = { mes: 'Mes', semana: 'Semana', manual: 'Manual' };
+  const ORIGEN = { creditos: 'con créditos', manual: 'a mano', pedido: 'transferencia (anterior)' };
+  const ESTADO_PC = { pendiente: ['Pendiente', 'warn'], confirmado: ['Confirmado', 'ok'], vencido: ['Vencido', 'neutral'], cancelado: ['Cancelado', 'neutral'], rechazado: ['Rechazado', 'danger'] };
+  const TIPO_MOV = { compra: 'Compra de créditos', pack_bonus: 'Regalo del pack', renovacion_plan: 'Plan (mes)', semana: 'Semana', subida_temporal: 'Subida de plan', destacado: 'Destacado', ajuste_admin: 'Ajuste manual', comision_venta: 'Comisión de venta' };
+  const ESTADO_DEST = { activo: ['Activo', 'ok'], programado: ['Programado', 'info'], vencido: ['Terminado', 'neutral'], cancelado: ['Cancelado', 'danger'] };
+  // Créditos: la API manda { centavos, creditos: "35.00" }; 1 crédito = 1 USD
+  const cnum = (m) => (m && m.centavos != null ? Number(m.centavos) / 100 : Number(m || 0));
+  const cred = (m, unit = true) => { const n = cnum(m); return n.toLocaleString('es-AR', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }) + (unit ? ' ' + HH.plural(Math.abs(n) === 1 ? 1 : 2, 'crédito', 'créditos') : ''); };
+  const credSig = (m) => (cnum(m) > 0 ? '+' : '') + cred(m, false);
+  const ars = (n) => 'ARS ' + Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+  const hoyAR = (iso) => { const f = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(d); return iso ? f(new Date(iso)) === f(new Date()) : false; };
+  const quedaTxt = (iso) => { const ms = new Date(iso).getTime() - Date.now(); if (!(ms > 0)) return 'vencido'; const h = Math.floor(ms / 36e5); const m = Math.floor((ms % 36e5) / 6e4); return h >= 1 ? `quedan ${h} h ${String(m).padStart(2, '0')} min` : `quedan ${m} min`; };
   const ESTADO_PERFIL = { borrador: ['Borrador', 'neutral'], en_revision: ['En revisión', 'warn'], publicado: ['Publicado', 'ok'], rechazado: ['Rechazado', 'danger'], pausado: ['Pausado', 'info'], suspendido: ['Suspendido', 'danger'] };
   const VERIF = { sin_enviar: ['Sin enviar', 'neutral'], pendiente: ['Verificación pendiente', 'warn'], verificada: ['Verificada', 'ok'], rechazada: ['Verificación rechazada', 'danger'] };
-  const ESTADO_PEDIDO = { pendiente: ['Pendiente de pago', 'neutral'], informado: ['Pago informado', 'warn'], confirmado: ['Confirmado', 'ok'], rechazado: ['Rechazado', 'danger'], cancelado: ['Cancelado', 'neutral'], vencido: ['Vencido', 'neutral'] };
   const ESTADO_SUS = { activa: ['Activa', 'ok'], vencida: ['Vencida', 'neutral'], cancelada: ['Cancelada', 'danger'] };
   const TIPO_UBIC = { pais: 'País', provincia: 'Provincia', ciudad: 'Ciudad', zona: 'Zona' };
   const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona'];
@@ -330,7 +355,9 @@
   const nombreDe = (list, v) => { const x = list.find((y) => y.id === v); return x ? x.nombre : String(v); };
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
-  const after = (keys) => { keys.forEach((k) => { const p = { ac: '/acompanantes', ped: '/pedidos', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses' }[k]; if (p) load(k, p, true); else if (k.startsWith('acd:')) load(k, '/acompanantes/' + encodeURIComponent(k.slice(4)), true); }); refreshResumen(); };
+  const PATHS = { ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
+  const pathDe = (k) => (k === 'pc' ? pcPath() : k.startsWith('acd:') ? '/acompanantes/' + encodeURIComponent(k.slice(4)) : k.startsWith('cr:') ? '/creditos/' + encodeURIComponent(k.slice(3)) : PATHS[k]);
+  const after = (keys) => { keys.forEach((k) => { const p = pathDe(k); if (p && (S[k] != null || S.err[k] || !/^(acd|cr):/.test(k))) load(k, k.startsWith('cr:') ? p + '?limite=20' : p, true); }); refreshResumen(); };
 
   // Archivos privados (selfie, documento, comprobante): fetch con la sesión del panel → blob, sin caché
   const blobs = new Map();
@@ -483,12 +510,47 @@
           ${fotos.length ? `<div class="pa-fotos">${fotos.map((f, i) => `<button type="button" class="pa-foto" data-action="prodFoto" data-url="${esc(f.url)}" aria-label="Ver foto ${i + 1}"><img src="${esc(f.urlMini || f.url)}" alt="" loading="lazy">${i === 0 ? '<span class="badge berry pa-foto-tag">Principal</span>' : ''}</button>`).join('')}</div>` : '<p class="small muted">Todavía no subió fotos.</p>'}
           ${(d.historias || []).length ? `<div class="small muted">Historias: ${(d.historias || []).length} (la última el ${fecha(d.historias[0].creado)})</div><div class="pa-fotos">${d.historias.slice(0, 8).map((h) => `<button type="button" class="pa-foto" data-action="prodFoto" data-url="${esc(h.url)}" aria-label="Ver historia"><img src="${esc(h.urlMini || h.url)}" alt="" loading="lazy">${new Date(h.expira) > new Date() ? '<span class="badge ok pa-foto-tag">Activa</span>' : ''}</button>`).join('')}</div>` : ''}
         </section>`;
-      const subs = d.suscripciones || []; const peds = d.pedidos || [];
+      // Videos y clip de 5 s de la tarjeta (solo lectura; API: routes/admin-videos.js)
+      const kv = 'acv:' + id; load(kv, '/acompanantes/' + encodeURIComponent(id) + '/videos'); const dv = S[kv];
+      const VID_EST = { procesando: ['Procesando', 'warn'], listo: ['Listo', 'ok'], error: ['Error', 'danger'] };
+      const seg = (n) => (n == null ? '—' : (Math.round(Number(n) * 10) / 10).toLocaleString('es-AR') + ' s');
+      const mb = (n) => (n == null ? '' : ' · ' + (Number(n) / 1048576).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' MB');
+      const vids = (dv && dv.videos) || []; const pv = dv && dv.preview;
+      const videosCard = `<section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('film')} Videos</div><span class="small muted">${dv ? vids.length : ''}</span></div>
+          ${!dv ? (S.err[kv] ? `<div class="notice warn">${icon('alert')}<span>${esc(S.err[kv])}</span></div>` : loadingCard(1)) : vids.length ? `<div class="pa-fotos">${vids.map((v, i) => `<figure class="pa-vid" style="margin:0">${v.urlPoster ? `<img src="${esc(v.urlPoster)}" alt="Portada del video ${i + 1}" loading="lazy" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:var(--surface-2)">` : `<div class="pa-av-ph" style="aspect-ratio:9/16;border-radius:10px;display:grid;place-items:center">${icon('film')}</div>`}<figcaption class="tiny" style="margin-top:4px">${badge(VID_EST[v.estado], v.estado)} <span class="muted">${seg(v.segundos)}${v.ancho && v.alto ? ' · ' + v.ancho + '×' + v.alto : ''}${mb(v.bytes)}</span>${v.error ? `<div class="tiny" style="color:var(--danger)">${esc(v.error)}</div>` : ''}${v.estado === 'listo' && v.url ? `<div><a class="tiny" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">Ver video</a></div>` : ''}</figcaption></figure>`).join('')}</div>` : '<p class="small muted">No subió videos.</p>'}
+          ${dv ? `<div class="stack" style="gap:6px"><div class="small"><strong>Clip de la tarjeta (5 s)</strong> ${pv ? badge(VID_EST[pv.estado], pv.estado) : ''}</div>
+            ${pv ? `${pv.estado === 'listo' && pv.url ? `<video src="${esc(pv.url)}" muted loop playsinline controls preload="metadata" style="width:140px;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#000"></video>` : ''}
+              <div class="tiny muted">${pv.elegido ? 'Elegido por ella' : 'Automático (comienzo del primer video)'} · desde el segundo ${seg(pv.inicio)}${pv.actualizado ? ' · ' + fecha(pv.actualizado) : ''}</div>${pv.error ? `<div class="tiny" style="color:var(--danger)">${esc(pv.error)}</div>` : ''}<p class="tiny muted">Se muestra en la tarjeta desde el plan Plata.</p>` : '<p class="tiny muted">Sin clip todavía.</p>'}</div>` : ''}
+        </section>`;
+      const subs = d.suscripciones || []; const b = d.base;
+      load('dst', '/destacados');
+      const misDest = S.dst ? (S.dst.items || []).filter((x) => x.cuentaId === id) : null;
+      const pr = b && b.proximaRenovacion;
       const planCard = `<section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('wallet')} Plan</div>${planBadge(d.plan)}</div>
-          ${subs.length ? `<div class="list">${subs.map((s) => `<div class="list-item small">${planBadge(s.plan)}<div class="grow"><div>${esc(PERIODO[s.periodo] || s.periodo)} · ${dia(s.desde)} → ${dia(s.hasta)}${s.vigente ? ` · <strong>quedan ${diasRestantes(s.hasta)} días</strong>` : ''}</div>${s.nota ? `<div class="tiny muted">${esc(s.nota)}</div>` : ''}</div>${badge(ESTADO_SUS[s.estado], s.estado)}</div>`).join('')}</div>` : '<p class="small muted">Sin suscripciones: está en Bronce (gratis).</p>'}
-          ${peds.length ? `<div class="small muted" style="margin-top:4px">Pedidos</div><div class="list">${peds.map((x) => `<a class="list-item small" href="#admin.pagos" data-go="#admin.pagos">${planBadge(x.plan)}<div class="grow">${esc(PERIODO[x.periodo] || x.periodo)} · ${money(x.montoUsd)} · <code>${esc(x.referencia)}</code><div class="tiny muted">${fecha(x.creado)}</div></div>${badge(ESTADO_PEDIDO[x.estado], x.estado)}</a>`).join('')}</div>` : ''}
+          <div class="row between"><div class="card-title">${icon('card')} Plan</div>${planBadge(d.plan)}</div>
+          ${d.pausadoPorSaldo ? `<div class="notice danger">${icon('alert')}<span><strong>Pausado por falta de saldo.</strong> Se reactiva solo cuando cargue créditos suficientes para renovar.</span></div>` : ''}
+          ${b ? `<dl class="pa-dl">
+              <div><dt>Plan base</dt><dd>${planBadge(b.plan)} hasta el ${dia(b.hasta)}${new Date(b.hasta) > new Date() ? ` · <strong>quedan ${diasRestantes(b.hasta)} días</strong>` : ''}</dd></div>
+              <div><dt>Renovación automática</dt><dd>${b.renovacionAuto ? '<span class="badge ok">Activada</span>' : '<span class="badge neutral">Desactivada</span>'}</dd></div>
+              ${b.cambioProgramado ? `<div><dt>Cambio programado</dt><dd>Al renovar pasa a ${planBadge(b.cambioProgramado)}</dd></div>` : ''}
+              ${pr ? `<div><dt>Próxima renovación</dt><dd>${dia(pr.fecha)} · ${esc(PLAN_NOMBRE[pr.plan] || pr.plan)} · ${cred(pr.costo)} ${pr.alcanza ? '<span class="badge ok">Le alcanza el saldo</span>' : `<span class="badge danger">Le faltan ${cred(pr.faltan)}</span>`}</dd></div>` : ''}
+            </dl>` : '<p class="small muted">Sin plan pago: está en Bronce (gratis).</p>'}
+          ${subs.length ? `<div class="small muted">Suscripciones</div><div class="list">${subs.map((s) => `<div class="list-item small">${planBadge(s.plan)}<div class="grow"><div>${esc(PERIODO[s.periodo] || s.periodo)} · ${dia(s.desde)} → ${dia(s.hasta)}${s.vigente ? ` · <strong>quedan ${diasRestantes(s.hasta)} días</strong>` : ''}</div><div class="tiny muted">${esc(ORIGEN[s.origen] || s.origen || '')}${s.costo && s.costo.centavos ? ' · ' + cred(s.costo) : ''}${s.renovacionAuto ? ' · renueva sola' : ''}${s.nota ? ' · ' + esc(s.nota) : ''}</div></div>${badge(ESTADO_SUS[s.estado], s.estado)}</div>`).join('')}</div>` : ''}
+          <div class="small muted">Destacados</div>
+          ${!misDest ? (S.err.dst ? `<div class="tiny muted">${esc(S.err.dst)}</div>` : '<div class="tiny muted">Cargando…</div>') : misDest.length ? `<div class="list">${misDest.map((x) => `<div class="list-item small">${icon('trending')}<div class="grow"><div>${esc(x.planNombre || PLAN_NOMBRE[x.plan] || x.plan)} · ${esc(ubNombre(x.provincia) || x.provincia || '')}</div><div class="tiny muted">${dia(x.desde)} → ${dia(x.hasta)} · ${x.dias} ${HH.plural(x.dias, 'día', 'días')} · ${cred(x.costo)}</div></div>${badge(ESTADO_DEST[x.estado], x.estado)}</div>`).join('')}</div>` : '<p class="tiny muted">Sin Destacados activos ni programados.</p>'}
           <div class="row"><button type="button" class="btn secondary sm" data-action="prodPlanManual" data-id="${esc(c.id)}" data-n="${esc(datos.displayName || '')}">${icon('plus')} Asignar plan manual</button></div>
+        </section>`;
+      const kc = 'cr:' + id; load(kc, '/creditos/' + encodeURIComponent(id) + '?limite=20'); const dc = S[kc];
+      const movs = (dc && dc.movimientos) || [];
+      const pcs = (dc && dc.pedidos) || [];
+      const credCard = `<section class="card stack" id="prodCred" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('dollar')} Créditos</div><strong class="pa-money" data-noi18n>${cred(dc ? dc.saldo : d.saldo)}</strong></div>
+          ${!dc ? (S.err[kc] ? `<div class="notice warn">${icon('alert')}<span>${esc(S.err[kc])}</span></div>` : loadingCard(1)) : `
+            ${movs.length ? `<div class="list pa-movs">${movs.map((m) => `<div class="list-item small"><div class="grow" style="min-width:0"><div><strong>${esc(TIPO_MOV[m.tipo] || m.tipo)}</strong>${m.motivo ? ` <span class="muted">· <span data-noi18n>${esc(m.motivo)}</span></span>` : ''}</div><div class="tiny muted">${fecha(m.creado)}${m.creadoPor ? ' · ' + esc(m.creadoPor) : ''} · saldo ${cred(m.saldoDespues, false)}</div></div><strong class="pa-mov ${cnum(m) < 0 ? 'neg' : 'pos'}">${credSig(m)}</strong></div>`).join('')}</div>
+              ${dc.siguiente ? `<div class="row"><button type="button" class="btn ghost sm" data-action="prodMovMas" data-id="${esc(id)}">${icon('chevronDown')} Ver movimientos anteriores</button></div>` : ''}` : '<p class="small muted">Todavía no tiene movimientos de créditos.</p>'}
+            ${pcs.length ? `<div class="small muted">Pedidos de créditos</div><div class="list">${pcs.slice(0, 8).map((x) => `<a class="list-item small" style="color:inherit" href="#admin.pedidos" data-action="prodPcVer" data-q="${esc(x.codigo)}"><code class="pa-ref">${esc(x.codigo)}</code><div class="grow">${esc(x.packNombre)} · ${cred(x.total)}<div class="tiny muted">${fecha(x.creado)}</div></div>${badge(ESTADO_PC[x.estado], x.estado)}</a>`).join('')}</div>` : ''}`}
+          <div class="row"><button type="button" class="btn secondary sm" data-action="prodAjuste" data-id="${esc(c.id)}" data-n="${esc(datos.displayName || '')}">${icon('edit')} Ajuste manual</button></div>
         </section>`;
       const cuentaCard = `<section class="card stack" style="gap:10px">
           <div class="card-title">${icon('user')} Cuenta</div>
@@ -502,8 +564,8 @@
           </dl>
         </section>`;
       body = `<div class="pa-detail">
-          <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}</div>
-          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos)}</section>${planCard}${cuentaCard}</div>
+          <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}</div>
+          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos)}</section>${credCard}${planCard}${cuentaCard}</div>
         </div>`;
     }
     const nombre = d && d.perfil && d.perfil.datos ? d.perfil.datos.displayName : '';
@@ -511,25 +573,102 @@
     return layout('acompanantes', `${head(esc(nombre || 'Acompañante'), right, d ? `${d.perfil && d.perfil.slug ? '/perfil/' + esc(d.perfil.slug) + ' · ' : ''}${esc((d.cuenta || {}).email || '')}` : 'Ficha completa')}${body}`);
   }
 
-  /* ---------- Pagos (pedidos por transferencia) ---------- */
-  S.pgf = S.pgf || 'conf';
-  const PG_FILTROS = [['conf', 'Para confirmar', (x) => x.estado === 'informado'], ['pend', 'Pendientes', (x) => x.estado === 'pendiente'], ['confirmado', 'Confirmados', (x) => x.estado === 'confirmado'], ['rechazado', 'Rechazados', (x) => x.estado === 'rechazado'], ['vencido', 'Vencidos', (x) => x.estado === 'vencido' || x.estado === 'cancelado'], ['all', 'Todos', () => true]];
-  function pedidoCard(x) {
-    const cu = x.cuenta || {}; const abierto = x.estado === 'pendiente' || x.estado === 'informado';
-    return `<article class="card stack${x.estado === 'informado' ? ' pa-hl' : ''}" style="gap:10px">
-      <div class="row between" style="align-items:flex-start;gap:8px">
-        <div class="stack" style="gap:2px;min-width:0">${linkCuenta(x.cuentaId, cu.displayName)}<span class="tiny muted ellipsis">${esc(cu.email || '')}</span></div>
-        ${badge(ESTADO_PEDIDO[x.estado], x.estado)}
-      </div>
-      <div class="row" style="gap:8px;align-items:center">${planBadge(x.plan)}<span class="small">${esc(PERIODO[x.periodo] || x.periodo)}</span><strong class="pa-money">${money(x.montoUsd)}</strong></div>
-      <div class="row small" style="gap:8px;align-items:center"><span class="muted">Referencia</span><code class="pa-ref">${esc(x.referencia)}</code><button type="button" class="btn ghost sm" data-action="prodCopy" data-v="${esc(x.referencia)}" aria-label="Copiar referencia">${icon('copy')}</button></div>
-      <div class="tiny muted">Pedido el ${fecha(x.creado)}${x.informado ? ` · pago informado el ${fecha(x.informado)}` : ''}${x.confirmado ? ` · ${x.estado === 'confirmado' ? 'confirmado' : 'cerrado'} el ${fecha(x.confirmado)}` : ''}</div>
-      ${x.plan === 'S' ? `<div class="small">${icon('star')} Star en <strong>${esc(ubNombre(x.provinciaStar || cu.provincia) || 'provincia sin cargar')}</strong>${abierto ? ` · ${starLibres(x.provinciaStar || cu.provincia)}` : ''}</div>` : ''}
-      ${x.nota ? `<div class="small"><span class="muted">Nota de ella:</span> <span class="pa-pre" data-noi18n>${esc(x.nota)}</span></div>` : ''}
-      ${x.motivo ? `<div class="small"><span class="muted">Motivo:</span> ${esc(x.motivo)}</div>` : ''}
-      ${x.tieneComprobante ? `<div><button type="button" class="btn ghost sm" data-action="prodComprobante" data-id="${esc(x.id)}" data-ref="${esc(x.referencia)}">${icon('image')} Ver comprobante</button></div>` : (x.estado === 'informado' ? '<div class="tiny muted">Informó el pago sin comprobante: buscalo por la referencia en tu cuenta.</div>' : '')}
-      ${abierto ? `<div class="row" style="gap:8px"><button type="button" class="btn sm" data-action="prodPedConfirmar" data-id="${esc(x.id)}">${icon('check')} Confirmar pago</button><button type="button" class="btn ghost sm" data-action="prodPedRechazar" data-id="${esc(x.id)}">${icon('x')} Rechazar</button></div>` : ''}
-    </article>`;
+  /* ---------- Pedidos de créditos (se pagan por WhatsApp; el admin confirma y se acreditan) ---------- */
+  S.pcf = S.pcf || 'pendiente'; S.pcq = S.pcq || '';
+  const PC_FILTROS = [
+    ['pendiente', 'Pendientes', (x) => x.estado === 'pendiente'],
+    ['comprobante', 'Con comprobante', (x) => x.estado === 'pendiente' && x.tieneComprobante],
+    ['vencido', 'Vencidos', (x) => x.estado === 'vencido'],
+    ['confirmado', 'Confirmados', (x) => x.estado === 'confirmado'],
+    ['cancelado', 'Cancelados', (x) => x.estado === 'cancelado' || x.estado === 'rechazado'],
+    ['todos', 'Todos', () => true],
+  ];
+  const pcPath = () => '/pedidos-creditos';
+  const pcFind = (id) => ((S.pc && S.pc.items) || []).find((x) => String(x.id) === String(id));
+  const pcNorm = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const pcMatchQ = (x) => {
+    const q = pcNorm(S.pcq).trim(); if (!q) return true;
+    const cod = pcNorm(x.codigo); const qc = q.replace(/^sr-?/, '');
+    if (/^\d{1,4}$/.test(qc) && cod.replace(/^sr-/, '').startsWith(qc)) return true;
+    const cu = x.cuenta || {};
+    return [cod, cu.displayName, cu.email, cu.slug, x.packNombre].some((v) => pcNorm(v).includes(q));
+  };
+  const pcItems = () => {
+    const all = (S.pc && S.pc.items) || [];
+    // Con búsqueda se busca en todos los estados (el código es único): así aparece aunque esté en otro filtro
+    if (S.pcq.trim()) return all.filter(pcMatchQ);
+    const f = PC_FILTROS.find((x) => x[0] === S.pcf) || PC_FILTROS[0];
+    return all.filter(f[2]);
+  };
+  const pcCot = () => (S.pc && S.pc.cotizacion) || {};
+  function pcArs(x) {
+    const c = pcCot();
+    if (x.arsSugerido == null) return `<span class="tiny muted">Sin cotización: cargala en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</span>`;
+    const vieja = !hoyAR(c.fecha);
+    return `<strong data-noi18n>${ars(x.arsSugerido)}</strong><div class="tiny ${vieja ? '' : 'muted'}"${vieja ? ' style="color:var(--warn)"' : ''}>${vieja ? icon('alert') + ' ' : ''}a ${ars(c.arsPorUsd).replace('ARS ', '')} por USD · cotización del ${dia(c.fecha)}${vieja ? ' (no es de hoy)' : ''}</div>`;
+  }
+  function pcVence(x) {
+    if (x.estado === 'pendiente') { const ms = new Date(x.vence).getTime() - Date.now(); return `<span${ms < 6 * 36e5 ? ' style="color:var(--warn)"' : ''}>${quedaTxt(x.vence)}</span><div class="tiny muted">${fecha(x.vence)}</div>`; }
+    if (x.estado === 'vencido') return `<span class="muted">venció el ${fecha(x.vence)}</span>`;
+    if (x.confirmado) return `<span class="muted">${x.estado === 'confirmado' ? 'confirmado' : 'cerrado'} el ${fecha(x.confirmado)}</span>`;
+    return '<span class="muted">—</span>';
+  }
+  const pcVenceCorto = (x) => (x.estado === 'pendiente' ? ` · <span${new Date(x.vence).getTime() - Date.now() < 6 * 36e5 ? ' style="color:var(--warn)"' : ''}>${quedaTxt(x.vence)}</span> (vence el ${fecha(x.vence)})` : x.estado === 'vencido' ? ` · venció el ${fecha(x.vence)}` : x.confirmado ? ` · ${x.estado === 'confirmado' ? 'confirmado' : 'cerrado'} el ${fecha(x.confirmado)}` : '');
+  const pcCreditos = (x) => `<strong data-noi18n>${cred(x.total)}</strong>${cnum(x.bonus) > 0 ? `<div class="tiny muted">${cred(x.base, false)} + ${cred(x.bonus, false)} de regalo</div>` : ''}`;
+  function pcBtns(x, compact) {
+    const abierto = x.estado === 'pendiente' || x.estado === 'vencido';
+    const b = [];
+    if (x.tieneComprobante) b.push(`<button type="button" class="btn ghost sm" data-action="prodPcComprobante" data-id="${esc(x.id)}" data-ref="${esc(x.codigo)}">${icon('image')} Comprobante</button>`);
+    if (abierto && x.mensajeSugerido) b.push(`<button type="button" class="btn secondary sm" data-action="prodPcMensaje" data-id="${esc(x.id)}">${icon('copy')} Copiar mensaje</button>`);
+    if (abierto) b.push(`<button type="button" class="btn sm" data-action="prodPcConfirmar" data-id="${esc(x.id)}">${icon('check')} Confirmar pago</button>`);
+    if (abierto) b.push(`<button type="button" class="btn ghost sm" data-action="prodPcRechazar" data-id="${esc(x.id)}">${icon('x')} Rechazar</button>`);
+    if (x.estado === 'vencido' || x.estado === 'cancelado') b.push(`<button type="button" class="btn ghost sm" data-action="prodPcReabrir" data-id="${esc(x.id)}">${icon('refresh')} Reabrir 48 h</button>`);
+    return b.length ? `<div class="row pa-acts${compact ? ' pa-acts-c' : ''}" style="gap:6px">${b.join('')}</div>` : '';
+  }
+  const pcCod = (x) => `<span class="row nowrap" style="gap:4px;align-items:center"><code class="pa-ref" data-noi18n>${esc(x.codigo)}</code><button type="button" class="btn ghost sm pa-icbtn" data-action="prodCopy" data-v="${esc(x.codigo)}" data-l="Código" aria-label="Copiar código ${esc(x.codigo)}">${icon('copy')}</button></span>`;
+  function pcRows() {
+    const all = (S.pc && S.pc.items) || [];
+    const items = pcItems();
+    if (!items.length) {
+      const q = S.pcq.trim();
+      return `<div class="card"><div class="empty">${icon('wallet')}<h4>${q ? 'No hay pedidos con «' + esc(q) + '»' : S.pcf === 'pendiente' ? 'No hay pedidos pendientes' : all.length ? 'No hay pedidos en esta lista' : 'Todavía no hay pedidos de créditos'}</h4><p class="small">${q ? 'Revisá el código (por ejemplo SR-4821) o buscá por nombre o email.' : 'Cuando una acompañante pida créditos desde su panel, aparece acá con su código para que la reconozcas por WhatsApp.'}</p></div></div>`;
+    }
+    const sub = (x) => { const bt = pcBtns(x); const extra = [x.nota ? `<span class="small"><span class="muted">Nota de ella:</span> <span class="pa-pre" data-noi18n>${esc(x.nota)}</span></span>` : '', x.motivo ? `<span class="small"><span class="muted">Motivo:</span> ${esc(x.motivo)}</span>` : ''].filter(Boolean).join(' · '); return bt || extra ? `<tr class="pa-subrow${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hlrow' : ''}"><td colspan="6"><div class="row between" style="gap:8px;align-items:center"><div class="grow" style="min-width:0">${extra}</div>${bt}</div></td></tr>` : ''; };
+    const table = `<div class="table-wrap pa-table"><table class="table pa-pctable"><thead><tr><th>Código</th><th>Acompañante</th><th>Pack</th><th>Vence</th><th>En pesos</th><th>Estado</th></tr></thead><tbody>
+      ${items.map((x) => `<tr class="pa-mainrow${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hlrow' : ''}${pcBtns(x) || x.nota || x.motivo ? ' has-sub' : ''}"><td>${pcCod(x)}<div class="tiny muted">${fecha(x.creado)}</div></td><td><div class="pa-pcw">${linkCuenta(x.cuentaId, (x.cuenta || {}).displayName)}<div class="tiny muted pa-contact">${esc((x.cuenta || {}).email || '')}</div></div></td><td class="small"><div class="pa-pcw">${esc(x.packNombre)} · ${money(x.pagaUsd)}<div>${pcCreditos(x)}</div></div></td><td class="small"><div class="pa-pcw">${pcVence(x)}</div></td><td class="small"><div class="pa-pcw">${x.estado === 'pendiente' || x.estado === 'vencido' ? pcArs(x) : '<span class="muted">—</span>'}</div></td><td>${badge(ESTADO_PC[x.estado], x.estado)}${x.reaperturas ? `<div class="tiny muted">reabierto ${x.reaperturas}×</div>` : ''}</td></tr>${sub(x)}`).join('')}
+      </tbody></table></div>`;
+    const cards = `<div class="pa-cards">${items.map((x) => `<article class="card stack${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hl' : ''}" style="gap:10px">
+        <div class="row between nowrap" style="gap:8px">${pcCod(x)}${badge(ESTADO_PC[x.estado], x.estado)}</div>
+        <div class="stack" style="gap:2px;min-width:0">${linkCuenta(x.cuentaId, (x.cuenta || {}).displayName)}<span class="tiny muted ellipsis">${esc((x.cuenta || {}).email || '')}</span></div>
+        <div class="row between" style="gap:8px;align-items:flex-start"><div class="small">${esc(x.packNombre)} · ${money(x.pagaUsd)}</div><div class="small" style="text-align:right">${pcCreditos(x)}</div></div>
+        ${x.estado === 'pendiente' || x.estado === 'vencido' ? `<div class="small pa-ars">${pcArs(x)}</div>` : ''}
+        <div class="tiny muted">Creado el ${fecha(x.creado)}${pcVenceCorto(x)}${x.reaperturas ? ` · reabierto ${x.reaperturas}×` : ''}</div>
+        ${x.nota ? `<div class="small"><span class="muted">Nota de ella:</span> <span class="pa-pre" data-noi18n>${esc(x.nota)}</span></div>` : ''}
+        ${x.motivo ? `<div class="small"><span class="muted">Motivo:</span> ${esc(x.motivo)}</div>` : ''}
+        ${pcBtns(x)}
+      </article>`).join('')}</div>`;
+    return table + cards;
+  }
+  function vPedidos() {
+    load('pc', pcPath());
+    let body;
+    if (!S.pc && S.err.pc) body = errorCard(S.err.pc, 'pc');
+    else if (!S.pc) body = loadingCard(3);
+    else {
+      const all = S.pc.items || []; const c = pcCot();
+      const cotTxt = c.arsPorUsd ? `Cotización: <strong>${ars(c.arsPorUsd)}</strong> por USD, cargada el ${fecha(c.fecha)}.` : 'Todavía no cargaste la cotización del dólar.';
+      body = `${!c.arsPorUsd || !hoyAR(c.fecha) ? `<div class="notice warn">${icon('alert')}<span>${cotTxt} ${c.arsPorUsd ? 'No es de hoy: actualizala' : 'Cargala'} en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a> para que el monto en pesos y el mensaje salgan bien.</span></div>` : `<div class="tiny muted">${cotTxt}</div>`}
+        <div class="adm-filters">
+          <label class="sr-only" for="prodPcQ">Buscar pedido</label><input class="input" id="prodPcQ" type="search" placeholder="Código, nombre o email" value="${esc(S.pcq)}" data-input="prodPcSearch" autocomplete="off" inputmode="search">
+          <div class="chips scroll" style="flex:1 1 auto;min-width:0">${PC_FILTROS.map(([k, l, fn]) => filtro('prodPcFilter', S.pcq.trim() ? '' : S.pcf, k, l, all.filter(fn).length)).join('')}</div>
+        </div>
+        <div id="prodPcRows">${pcRows()}</div>`;
+    }
+    const pend = S.pc ? S.pc.pendientes || 0 : 0;
+    const right = `<div class="row" style="gap:8px">${S.pc ? `<span class="badge ${pend ? 'warn' : 'ok'}">${pend} ${HH.plural(pend, 'pendiente', 'pendientes')}</span>` : ''}${actualizar('pc')}</div>`;
+    return layout('pedidos', `${head('Pedidos de créditos', right, 'Las acompañantes piden créditos y te escriben por WhatsApp con el código. Confirmá cuando el pago esté en tu cuenta.')}<div class="stack" style="gap:14px">
+      <div class="notice">${icon('info')}<span>«Copiar mensaje» copia el monto en pesos y el código, <strong>sin tus datos de pago</strong>: agregalos vos en WhatsApp. Al confirmar, los créditos (más el regalo del pack) se suman al saldo y, si estaba pausada por falta de saldo, se reintenta la renovación.</span></div>
+      ${body}</div>`);
   }
   // Cupo Star por provincia (la API puede agrupar por id o por nombre: se normaliza por nombre)
   function starsPorProvincia() {
@@ -542,34 +681,6 @@
     const cupo = (S.stars && S.stars.cupo) || 10;
     return [...m.values()].map((p) => ({ ...p, ocupadas: p.stars.length, libres: Math.max(0, cupo - p.stars.length) }));
   }
-  function starLibres(prov) {
-    if (!S.stars) { load('stars', '/stars'); return 'cupo: cargando…'; }
-    if (!prov) return '<span style="color:var(--danger)">sin provincia: no se puede activar Star</span>';
-    const nombre = String(ubNombre(prov) || prov).trim().toLowerCase();
-    const p = starsPorProvincia().find((x) => String(x.provincia).trim().toLowerCase() === nombre);
-    const libres = p ? p.libres : ((S.stars && S.stars.cupo) || 10);
-    return libres > 0 ? `${libres} ${HH.plural(libres, 'lugar libre', 'lugares libres')}` : '<span style="color:var(--danger)">sin lugar libre: rechazalo o esperá que se libere uno</span>';
-  }
-  function vPagos() {
-    load('ped', '/pedidos'); load('stars', '/stars'); loadCatalogos();
-    let body;
-    if (!S.ped && S.err.ped) body = errorCard(S.err.ped, 'ped');
-    else if (!S.ped) body = loadingCard(3);
-    else {
-      const all = S.ped.items || [];
-      const f = PG_FILTROS.find((x) => x[0] === S.pgf) || PG_FILTROS[0];
-      const items = all.filter(f[2]);
-      body = `<div class="adm-filters"><div class="chips scroll" style="flex:1 1 auto;min-width:0">${PG_FILTROS.map(([k, l, fn]) => filtro('prodPedFilter', S.pgf, k, l, all.filter(fn).length)).join('')}</div></div>
-        ${S.pgf === 'conf' && !items.length ? '' : ''}
-        ${items.length ? `<div class="pa-grid2">${items.map(pedidoCard).join('')}</div>` : `<div class="card"><div class="empty">${icon('wallet')}<h4>${S.pgf === 'conf' ? 'No hay pagos para confirmar' : 'No hay pedidos en esta lista'}</h4><p class="small">${S.pgf === 'conf' ? 'Cuando una acompañante informe una transferencia, aparece acá para que la confirmes.' : 'Probá con otro filtro.'}</p></div></div>`}`;
-    }
-    const info = S.ped ? S.ped.informados || 0 : 0;
-    const right = `<div class="row" style="gap:8px">${S.ped ? `<span class="badge ${info ? 'warn' : 'ok'}">${info} para confirmar</span>` : ''}${actualizar('ped')}</div>`;
-    return layout('pagos', `${head('Pagos', right, 'Transferencias de los planes: confirmá cuando la plata esté en tu cuenta')}<div class="stack" style="gap:14px">
-      <div class="notice">${icon('info')}<span>Cada pedido tiene una <strong>referencia</strong> que la acompañante pone en la transferencia. Al confirmar se activa el plan (30 días por mes, 7 por semana; si ya tenía ese plan, se suma al final).</span></div>
-      ${body}</div>`);
-  }
-
   /* ---------- Suscripciones ---------- */
   S.suf = S.suf || 'activa';
   function vSuscripciones() {
@@ -585,12 +696,76 @@
       const cancel = (s) => (s.estado === 'activa' ? `<button type="button" class="btn ghost sm" data-action="prodSusCancelar" data-id="${esc(s.id)}">${icon('x')} Cancelar</button>` : '');
       body = `<div class="adm-filters"><div class="chips scroll" style="flex:1 1 auto;min-width:0">${F.map(([k, l]) => filtro('prodSusFilter', S.suf, k, l, all.filter((s) => k === 'todas' || s.estado === k).length)).join('')}</div></div>
         ${items.length ? `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Acompañante</th><th>Plan</th><th>Período</th><th>Desde</th><th>Hasta</th><th>Quedan</th><th>Estado</th><th></th></tr></thead><tbody>
-          ${items.map((s) => `<tr><td>${linkCuenta(s.cuentaId, (s.cuenta || {}).displayName)}<div class="tiny muted">${esc((s.cuenta || {}).email || '')}</div></td><td>${planBadge(s.plan)}</td><td class="small">${esc(PERIODO[s.periodo] || s.periodo)}${s.pedidoId ? '' : ' <span class="tiny muted">(a mano)</span>'}</td><td class="small">${dia(s.desde)}</td><td class="small">${dia(s.hasta)}</td><td class="small"><strong>${rest(s)}</strong></td><td>${badge(ESTADO_SUS[s.estado], s.estado)}</td><td>${cancel(s)}</td></tr>`).join('')}
+          ${items.map((s) => `<tr><td>${linkCuenta(s.cuentaId, (s.cuenta || {}).displayName)}<div class="tiny muted">${esc((s.cuenta || {}).email || '')}</div></td><td>${planBadge(s.plan)}</td><td class="small">${esc(PERIODO[s.periodo] || s.periodo)}<div class="tiny muted">${esc(ORIGEN[s.origen] || s.origen || '')}${s.renovacionAuto ? ' · renueva sola' : ''}${s.cambioProgramado ? ' · pasa a ' + esc(PLAN_NOMBRE[s.cambioProgramado] || s.cambioProgramado) : ''}</div></td><td class="small">${dia(s.desde)}</td><td class="small">${dia(s.hasta)}</td><td class="small"><strong>${rest(s)}</strong></td><td>${badge(ESTADO_SUS[s.estado], s.estado)}</td><td>${cancel(s)}</td></tr>`).join('')}
           </tbody></table></div>
-          <div class="pa-cards">${items.map((s) => `<article class="card stack" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div style="min-width:0">${linkCuenta(s.cuentaId, (s.cuenta || {}).displayName)}<div class="tiny muted ellipsis">${esc((s.cuenta || {}).email || '')}</div></div>${badge(ESTADO_SUS[s.estado], s.estado)}</div><div class="row" style="gap:8px">${planBadge(s.plan)}<span class="small">${esc(PERIODO[s.periodo] || s.periodo)}</span><span class="small muted">${dia(s.desde)} → ${dia(s.hasta)}</span></div><div class="row between"><span class="small">Quedan: <strong>${rest(s)}</strong></span>${cancel(s)}</div></article>`).join('')}</div>`
-        : `<div class="card"><div class="empty">${icon('card')}<h4>No hay suscripciones en esta lista</h4><p class="small">Se crean al confirmar un pago o al asignar un plan a mano.</p></div></div>`}`;
+          <div class="pa-cards">${items.map((s) => `<article class="card stack" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div style="min-width:0">${linkCuenta(s.cuentaId, (s.cuenta || {}).displayName)}<div class="tiny muted ellipsis">${esc((s.cuenta || {}).email || '')}</div></div>${badge(ESTADO_SUS[s.estado], s.estado)}</div><div class="row" style="gap:8px">${planBadge(s.plan)}<span class="small">${esc(PERIODO[s.periodo] || s.periodo)}</span><span class="small muted">${dia(s.desde)} → ${dia(s.hasta)}</span></div><div class="tiny muted">${esc(ORIGEN[s.origen] || s.origen || '')}${s.renovacionAuto ? ' · renueva sola' : ''}${s.cambioProgramado ? ' · pasa a ' + esc(PLAN_NOMBRE[s.cambioProgramado] || s.cambioProgramado) : ''}</div><div class="row between"><span class="small">Quedan: <strong>${rest(s)}</strong></span>${cancel(s)}</div></article>`).join('')}</div>`
+        : `<div class="card"><div class="empty">${icon('card')}<h4>No hay suscripciones en esta lista</h4><p class="small">Se crean cuando una acompañante paga un plan con créditos o cuando asignás un plan a mano.</p></div></div>`}`;
     }
-    return layout('suscripciones', `${head('Suscripciones', actualizar('sus'), 'Planes vigentes y vencidos. Una semana de un plan superior sube el plan 7 días y después vuelve solo al que tenía.')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('suscripciones', `${head('Suscripciones', actualizar('sus'), 'Planes de Plata, Oro y Star. Se pagan con créditos y se renuevan solos cada 30 días si le alcanza el saldo. Una semana de Oro o Star sube el plan 7 días y después vuelve solo al que tenía.')}<div class="stack" style="gap:14px">${body}</div>`);
+  }
+
+  /* ---------- Renovaciones: vencen en 7 días y pausadas por falta de saldo ---------- */
+  const nombreCu = (x) => (x.cuenta || {}).displayName || (x.cuenta || {}).email;
+  const alcanzaBadge = (v) => (v == null ? '<span class="badge neutral">No renueva</span>' : v ? '<span class="badge ok">Sí</span>' : '<span class="badge danger">No</span>');
+  function vRenovaciones() {
+    load('ven', '/planes/vencen?dias=7'); load('pau', '/planes/pausadas');
+    const vs = S.ven && S.ven.items; const ps = S.pau && S.pau.items;
+    const renuevaTxt = (s) => (s.renueva ? `Sí${s.cambioProgramado ? ' · pasa a ' + esc(PLAN_NOMBRE[s.cambioProgramado] || s.cambioProgramado) : ''}` : s.periodo === 'semana' ? 'Semana: vuelve al plan base' : 'No (renovación desactivada)');
+    const pauBody = !ps ? (S.err.pau ? errorCard(S.err.pau, 'pau') : loadingCard(1)) : !ps.length ? `<p class="small muted">Ninguna. Si a una acompañante no le alcanza el saldo para renovar, su perfil se pausa y aparece acá hasta que cargue créditos.</p>` : `
+        <div class="table-wrap pa-table"><table class="table"><thead><tr><th>Acompañante</th><th>Plan a renovar</th><th>Pausada desde</th><th>Saldo</th><th>Cuesta</th><th>Le faltan</th><th>Perfil</th></tr></thead><tbody>
+          ${ps.map((x) => `<tr><td>${linkCuenta(x.cuentaId, nombreCu(x))}<div class="tiny muted">${esc((x.cuenta || {}).email || '')}</div></td><td>${planBadge(x.plan)}</td><td class="small">${fecha(x.desde)}</td><td class="small">${cred(x.saldo)}</td><td class="small">${cred(x.costo)}</td><td class="small"><strong style="color:var(--danger)">${cred(x.faltan)}</strong></td><td>${x.pausado ? '<span class="badge danger">Pausado por saldo</span>' : badge(ESTADO_PERFIL[x.perfilEstado], x.perfilEstado)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="pa-cards">${ps.map((x) => `<article class="card stack" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div style="min-width:0">${linkCuenta(x.cuentaId, nombreCu(x))}<div class="tiny muted ellipsis">${esc((x.cuenta || {}).email || '')}</div></div>${planBadge(x.plan)}</div>
+          <div class="small">Saldo ${cred(x.saldo)} · cuesta ${cred(x.costo)} · <strong style="color:var(--danger)">le faltan ${cred(x.faltan)}</strong></div>
+          <div class="row between"><span class="tiny muted">Desde el ${fecha(x.desde)}</span>${x.pausado ? '<span class="badge danger">Pausado por saldo</span>' : badge(ESTADO_PERFIL[x.perfilEstado], x.perfilEstado)}</div></article>`).join('')}</div>`;
+    const venBody = !vs ? (S.err.ven ? errorCard(S.err.ven, 'ven') : loadingCard(2)) : !vs.length ? '<p class="small muted">Ningún plan vence en los próximos 7 días.</p>' : `
+        <div class="table-wrap pa-table"><table class="table"><thead><tr><th>Acompañante</th><th>Plan</th><th>Vence</th><th>Renueva</th><th>Cuesta</th><th>Saldo</th><th>¿Le alcanza?</th></tr></thead><tbody>
+          ${vs.map((s) => `<tr><td>${linkCuenta(s.cuentaId, nombreCu(s))}<div class="tiny muted">${esc((s.cuenta || {}).email || '')}</div></td><td>${planBadge(s.plan)} <span class="tiny muted">${esc(PERIODO[s.periodo] || s.periodo)}</span></td><td class="small">${dia(s.hasta)}<div class="tiny muted">quedan ${diasRestantes(s.hasta)} días</div></td><td class="small">${renuevaTxt(s)}</td><td class="small">${s.costoRenovacion ? cred(s.costoRenovacion) : '—'}</td><td class="small">${cred(s.saldo)}</td><td>${alcanzaBadge(s.alcanza)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="pa-cards">${vs.map((s) => `<article class="card stack${s.renueva && !s.alcanza ? ' pa-hl' : ''}" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div style="min-width:0">${linkCuenta(s.cuentaId, nombreCu(s))}<div class="tiny muted ellipsis">${esc((s.cuenta || {}).email || '')}</div></div>${planBadge(s.plan)}</div>
+          <div class="small">Vence el ${dia(s.hasta)} · <strong>quedan ${diasRestantes(s.hasta)} días</strong></div>
+          <div class="small">Renueva: ${renuevaTxt(s)}${s.costoRenovacion ? ' · cuesta ' + cred(s.costoRenovacion) : ''}</div>
+          <div class="row between"><span class="small">Saldo ${cred(s.saldo)}</span><span class="small">¿Le alcanza? ${alcanzaBadge(s.alcanza)}</span></div></article>`).join('')}</div>`;
+    const right = `<div class="row" style="gap:8px"><button type="button" class="btn ghost sm" data-action="prodRetry" data-k="ren">${icon('refresh')} Actualizar</button></div>`;
+    return layout('renovaciones', `${head('Renovaciones', right, 'Los planes se renuevan solos cada 30 días con los créditos del saldo. Si no alcanza, el perfil se pausa hasta que cargue.')}<div class="stack" style="gap:14px">
+      <section class="card stack" style="gap:12px"><div class="row between"><div class="card-title">${icon('clock')} Pausadas por falta de saldo</div>${ps ? `<span class="badge ${ps.length ? 'danger' : 'ok'}">${ps.length}</span>` : ''}</div>${pauBody}</section>
+      <section class="card stack" style="gap:12px"><div class="row between"><div class="card-title">${icon('calendar')} Vencen en 7 días</div>${vs ? `<span class="badge ${S.ven.sinSaldo ? 'warn' : 'ok'}">${vs.length}${S.ven.sinSaldo ? ` · ${S.ven.sinSaldo} sin saldo` : ''}</span>` : ''}</div>${venBody}</section>
+    </div>`);
+  }
+
+  /* ---------- Destacados (Bronce, Plata y Oro, por provincia; cupo 20 % redondeado hacia arriba, mínimo 1) ---------- */
+  S.dsf = S.dsf || 'vig';
+  const dstEf = (x) => { const now = Date.now(); if (x.estado === 'cancelado') return 'cancelado'; if (new Date(x.hasta).getTime() <= now || x.estado === 'vencido') return 'vencido'; return new Date(x.desde).getTime() > now ? 'programado' : 'activo'; };
+  const DS_FILTROS = [['vig', 'Activos y programados', (x) => ['activo', 'programado'].includes(dstEf(x))], ['activo', 'Activos', (x) => dstEf(x) === 'activo'], ['programado', 'Programados', (x) => dstEf(x) === 'programado'], ['vencido', 'Terminados', (x) => dstEf(x) === 'vencido'], ['cancelado', 'Cancelados', (x) => dstEf(x) === 'cancelado'], ['todos', 'Todos', () => true]];
+  function vDestacados() {
+    load('dstT', '/destacados?estado=todos'); loadCatalogos();
+    let body;
+    const d = S.dstT;
+    if (!d && S.err.dstT) body = errorCard(S.err.dstT, 'dstT');
+    else if (!d) body = loadingCard(3);
+    else {
+      const all = d.items || [];
+      const f = DS_FILTROS.find((x) => x[0] === S.dsf) || DS_FILTROS[0];
+      const items = all.filter(f[2]);
+      const zonas = (d.zonas || []).slice().sort((a, b) => (PLANES.indexOf(b.plan) - PLANES.indexOf(a.plan)) || String(ubNombre(a.provincia) || a.provincia).localeCompare(String(ubNombre(b.provincia) || b.provincia), 'es'));
+      const act = all.filter((x) => dstEf(x) === 'activo').length; const prog = all.filter((x) => dstEf(x) === 'programado').length;
+      const cancelBtn = (x) => (['activo', 'programado'].includes(dstEf(x)) ? `<button type="button" class="btn ghost sm" data-action="prodDstCancelar" data-id="${esc(x.id)}">${icon('x')} Cancelar</button>` : '');
+      const zonaCard = (z) => `<article class="card stack" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div class="row nowrap" style="gap:8px;min-width:0">${planBadge(z.plan)}<strong class="ellipsis">${esc(ubNombre(z.provincia) || z.provincia)}</strong></div><span class="badge ${z.ocupadosAhora >= z.cupo ? 'danger' : 'ok'}">${z.ocupadosAhora}/${z.cupo}</span></div>
+          <div class="pa-bar" aria-hidden="true"><i style="width:${Math.min(100, (z.ocupadosAhora / Math.max(1, z.cupo)) * 100)}%"></i></div>
+          <div class="tiny muted">${z.ocupadosAhora} ahora de ${z.cupo} ${HH.plural(z.cupo, 'lugar', 'lugares')} · ${z.activos} ${HH.plural(z.activos, 'perfil publicado', 'perfiles publicados')} de ${esc(z.planNombre || PLAN_NOMBRE[z.plan])} · ${z.reservas} ${HH.plural(z.reservas, 'reserva vigente', 'reservas vigentes')}</div></article>`;
+      body = `<div class="adm-stats">${stat('Activos ahora', act, 'en el sitio', 'accent')}${stat('Programados', prog, 'empiezan más adelante')}${stat('Zonas con Destacados', zonas.length, 'plan y provincia')}</div>
+        <section class="stack" style="gap:10px"><div class="card-title">Cupo por plan y provincia</div>${zonas.length ? `<div class="pa-grid2">${zonas.map(zonaCard).join('')}</div>` : '<p class="small muted">No hay Destacados vigentes.</p>'}
+          <p class="tiny muted">Cupo: el ${d.porcentaje || 20} % de las acompañantes publicadas de ese plan en la provincia, redondeado hacia arriba (mínimo 1).</p></section>
+        <div class="adm-filters"><div class="chips scroll" style="flex:1 1 auto;min-width:0">${DS_FILTROS.map(([k, l, fn]) => filtro('prodDstFilter', S.dsf, k, l, all.filter(fn).length)).join('')}</div></div>
+        ${items.length ? `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Acompañante</th><th>Plan</th><th>Provincia</th><th>Desde</th><th>Hasta</th><th>Pagó</th><th>Estado</th><th></th></tr></thead><tbody>
+            ${items.map((x) => `<tr><td>${linkCuenta(x.cuentaId, nombreCu(x))}<div class="tiny muted">${esc((x.cuenta || {}).email || '')}</div></td><td>${planBadge(x.plan)}</td><td class="small">${esc(ubNombre(x.provincia) || x.provincia || '')}</td><td class="small">${fecha(x.desde)}</td><td class="small">${fecha(x.hasta)}<div class="tiny muted">${x.dias} ${HH.plural(x.dias, 'día', 'días')}</div></td><td class="small">${cred(x.costo)}</td><td>${badge(ESTADO_DEST[dstEf(x)], dstEf(x))}</td><td>${cancelBtn(x)}</td></tr>`).join('')}
+          </tbody></table></div>
+          <div class="pa-cards">${items.map((x) => `<article class="card stack" style="gap:8px"><div class="row between nowrap" style="gap:8px"><div style="min-width:0">${linkCuenta(x.cuentaId, nombreCu(x))}<div class="tiny muted ellipsis">${esc((x.cuenta || {}).email || '')}</div></div>${badge(ESTADO_DEST[dstEf(x)], dstEf(x))}</div>
+            <div class="row" style="gap:8px">${planBadge(x.plan)}<span class="small">${esc(ubNombre(x.provincia) || x.provincia || '')}</span><span class="small muted">${x.dias} ${HH.plural(x.dias, 'día', 'días')} · ${cred(x.costo)}</span></div>
+            <div class="row between"><span class="tiny muted">${fecha(x.desde)} → ${fecha(x.hasta)}</span>${cancelBtn(x)}</div></article>`).join('')}</div>`
+        : `<div class="card"><div class="empty">${icon('trending')}<h4>No hay Destacados en esta lista</h4><p class="small">Las acompañantes de Bronce, Plata y Oro compran Destacado con créditos (1 o 7 días) desde su panel.</p></div></div>`}`;
+    }
+    return layout('destacados', `${head('Destacados', actualizar('dstT'), 'Arriba de su plan en su provincia, por 1 o 7 días. Se pagan con créditos.')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Stars ---------- */
@@ -609,7 +784,7 @@
           ${p.stars.length ? `<div class="list">${p.stars.map((s) => `<a class="list-item small" href="#admin.acompanantes.${esc(s.cuentaId)}" data-go="#admin.acompanantes.${esc(s.cuentaId)}">${icon('star')}<div class="grow"><strong data-noi18n>${esc(s.displayName || s.slug || '')}</strong></div><span class="tiny muted">hasta ${dia(s.hasta)}</span></a>`).join('')}</div>` : ''}
           <div class="tiny muted">${p.libres} ${HH.plural(p.libres, 'lugar libre', 'lugares libres')}</div></article>`;
       body = `<div class="adm-stats">${stat('Stars activas', total, `cupo de ${cupo} por provincia`, 'accent')}${stat('Provincias con Stars', con.length, `de ${provs.length}`)}${stat('Provincias completas', provs.filter((p) => !p.libres).length, 'sin lugar libre')}</div>
-        ${con.length ? `<div class="pa-grid2">${con.map(card).join('')}</div>` : `<div class="card"><div class="empty">${icon('star')}<h4>Todavía no hay Stars</h4><p class="small">Cuando confirmes un pago de Star (mes o semana) o asignes Star a mano, aparece acá.</p></div></div>`}
+        ${con.length ? `<div class="pa-grid2">${con.map(card).join('')}</div>` : `<div class="card"><div class="empty">${icon('star')}<h4>Todavía no hay Stars</h4><p class="small">Cuando una acompañante pague Star con créditos (mes o semana) o asignes Star a mano, aparece acá.</p></div></div>`}
         ${sin.length ? `<details class="card pa-done"><summary><strong>Provincias sin Stars · ${sin.length}</strong> <span class="small muted">(10 lugares libres en cada una)</span></summary><div class="small muted" style="margin-top:10px">${sin.map((p) => esc(p.provincia)).join(' · ')}</div></details>` : ''}`;
     }
     return layout('stars', `${head('Stars', actualizar('stars'), 'Lugar fijo arriba del inicio: 10 por provincia, contando mes y semana')}<div class="stack" style="gap:14px">${body}</div>`);
@@ -681,7 +856,114 @@
   const CAT_KEY = { ubicaciones: 'ub', categorias: 'cat', intereses: 'int' };
   const CAT_TIT = { ubicaciones: ['Nuevo lugar', 'Editar lugar'], categorias: ['Nueva salida', 'Editar salida'], intereses: ['Nuevo interés', 'Editar interés'] };
 
+  /* ---------- Ajustes → Textos del inicio (API: routes/admin-textos-sitio.js; el sitio los aplica en prod-sitio.js) ----------
+     Reemplaza a la tarjeta «Portada» (su ajuste quedaba guardado pero el sitio no lo usaba): el título y el subtítulo se
+     editan acá, junto con el resto de los textos. */
+  const TS_LANGS = [['es', 'Español'], ['en', 'Inglés'], ['pt', 'Portugués']];
+  const TS_CAMPOS = [['heroEyebrow', 'Línea de arriba del título', 60, false], ['heroTitulo', 'Título', 120, false], ['heroSubtitulo', 'Subtítulo', 300, true], ['faqTitulo', 'Título de las preguntas frecuentes', 120, false]];
+  const tsVacio = () => ({ heroEyebrow: '', heroTitulo: '', heroSubtitulo: '', faqTitulo: '', faq: [] });
+  function tsCopia() {
+    if (S.tsEdit) return S.tsEdit;
+    if (!S.ts) return null;
+    // Sin textos guardados: los que muestra hoy el sitio (la vieja «Portada» de Ajustes nunca se aplicaba al sitio)
+    const v = S.ts.valor; const def = JSON.parse(JSON.stringify(S.ts.defaults.es));
+    const de = (l) => Object.assign(tsVacio(), (v && v[l]) || {}, { faq: ((v && v[l] && v[l].faq) || []).map((x) => ({ pregunta: x.pregunta, respuesta: x.respuesta })) });
+    S.tsEdit = { es: v ? Object.assign(tsVacio(), def, de('es'), { faq: v.es && Array.isArray(v.es.faq) ? de('es').faq : def.faq }) : Object.assign(tsVacio(), def), en: de('en'), pt: de('pt') };
+    return S.tsEdit;
+  }
+  function textosInicioCard() {
+    load('ts', '/textos-sitio');
+    const head0 = `<div class="row between"><div class="card-title">${icon('home')} Textos del inicio</div>${S.ts && S.ts.actualizado ? `<span class="tiny muted">Actualizado el ${fecha(S.ts.actualizado)}</span>` : ''}</div>`;
+    if (!S.ts) return `<section class="card stack" style="gap:10px">${head0}${S.err.ts ? `<div class="notice warn">${icon('alert')}<span>${esc(S.err.ts)}</span></div>` : loadingCard(2)}</section>`;
+    const c = tsCopia(); const lang = S.tsLang || 'es'; const t = c[lang]; const es = c.es;
+    const ph = (campo) => (lang === 'es' ? '' : ` placeholder="${esc(es[campo] || '')}"`);
+    const campos = TS_CAMPOS.map(([k, label, max, area]) => `<div class="field"><label for="ts_${k}">${label}${lang === 'es' && k !== 'heroEyebrow' ? '' : ' <span class="tiny muted">(opcional)</span>'}</label>${area ? `<textarea class="textarea" id="ts_${k}" rows="3" maxlength="${max}" data-input="prodTsCampo" data-k="${k}"${ph(k)}>${esc(t[k] || '')}</textarea>` : `<input class="input" id="ts_${k}" maxlength="${max}" data-input="prodTsCampo" data-k="${k}" value="${esc(t[k] || '')}"${ph(k)}>`}${k === 'heroTitulo' ? '<span class="hint">Entre asteriscos va en rosa: Compañía para tu próxima *salida*.</span>' : ''}</div>`).join('');
+    const faq = t.faq || [];
+    const filas = faq.map((x, i) => `<div class="card stack" style="gap:8px;padding:12px">
+        <div class="row between" style="gap:6px"><strong class="small">Pregunta ${i + 1}</strong><div class="row nowrap" style="gap:4px">
+          <button type="button" class="btn ghost sm" data-action="prodTsFaq" data-op="up" data-i="${i}"${i === 0 ? ' disabled' : ''} aria-label="Subir pregunta ${i + 1}"><span style="display:inline-flex;transform:rotate(180deg)">${icon('chevronDown')}</span></button>
+          <button type="button" class="btn ghost sm" data-action="prodTsFaq" data-op="down" data-i="${i}"${i === faq.length - 1 ? ' disabled' : ''} aria-label="Bajar pregunta ${i + 1}">${icon('chevronDown')}</button>
+          <button type="button" class="btn ghost sm" data-action="prodTsFaq" data-op="del" data-i="${i}" aria-label="Quitar pregunta ${i + 1}">${icon('trash')}</button></div></div>
+        <input class="input" maxlength="160" aria-label="Pregunta ${i + 1}" data-input="prodTsFaqCampo" data-i="${i}" data-k="pregunta" value="${esc(x.pregunta)}">
+        <textarea class="textarea" rows="3" maxlength="1200" aria-label="Respuesta ${i + 1}" data-input="prodTsFaqCampo" data-i="${i}" data-k="respuesta">${esc(x.respuesta)}</textarea>
+      </div>`).join('');
+    return `<section class="card stack" style="gap:12px">${head0}
+      <p class="small muted">Título, subtítulo y preguntas frecuentes de la página de inicio. El español es obligatorio; en inglés y portugués, lo que dejes vacío usa el texto en español (si es el texto de siempre, el sitio lo muestra traducido).</p>
+      <div class="chips" role="tablist" aria-label="Idioma">${TS_LANGS.map(([l, n]) => `<button type="button" class="chip${l === lang ? ' active' : ''}" role="tab" aria-selected="${l === lang}" data-action="prodTsLang" data-l="${l}">${n}</button>`).join('')}</div>
+      ${campos}
+      <div class="row between"><strong class="small">Preguntas frecuentes · ${faq.length}</strong><button type="button" class="btn secondary sm" data-action="prodTsFaq" data-op="add"${faq.length >= 12 ? ' disabled' : ''}>${icon('plus')} Agregar pregunta</button></div>
+      ${lang !== 'es' && !faq.length ? `<p class="tiny muted">Sin preguntas en ${lang === 'en' ? 'inglés' : 'portugués'}: se muestran las de español.</p>` : ''}
+      ${lang === 'es' && !faq.length ? '<p class="tiny muted">Sin preguntas: la sección no se muestra.</p>' : ''}
+      <div class="stack" style="gap:10px">${filas}</div>
+      <div class="row" style="gap:8px"><button type="button" class="btn sm" data-action="prodTsGuardar">${icon('check')} Guardar textos</button>${S.ts.valor ? `<button type="button" class="btn ghost sm" data-action="prodTsRestaurar">${icon('refresh')} Volver a los textos por defecto</button>` : ''}</div>
+    </section>`;
+  }
+  Object.assign(HH.actions, {
+    prodTsLang(el) { S.tsLang = el.dataset.l; HH.refresh(); },
+    prodTsCampo(el) { const c = tsCopia(); if (c) c[S.tsLang || 'es'][el.dataset.k] = el.value; },
+    prodTsFaqCampo(el) { const c = tsCopia(); const it = c && c[S.tsLang || 'es'].faq[Number(el.dataset.i)]; if (it) it[el.dataset.k] = el.value; },
+    prodTsFaq(el) {
+      const c = tsCopia(); if (!c) return; const f = c[S.tsLang || 'es'].faq; const i = Number(el.dataset.i); const op = el.dataset.op;
+      if (op === 'add') { if (f.length < 12) f.push({ pregunta: '', respuesta: '' }); }
+      else if (op === 'del') f.splice(i, 1);
+      else if (op === 'up' && i > 0) [f[i - 1], f[i]] = [f[i], f[i - 1]];
+      else if (op === 'down' && i < f.length - 1) [f[i + 1], f[i]] = [f[i], f[i + 1]];
+      HH.refresh();
+      if (op === 'add') setTimeout(() => { const ins = document.querySelectorAll('[data-input="prodTsFaqCampo"][data-k="pregunta"]'); const last = ins[ins.length - 1]; if (last) last.focus(); }, 0);
+    },
+    prodTsGuardar(el) {
+      const c = tsCopia(); if (!c) return;
+      const valor = { es: c.es };
+      ['en', 'pt'].forEach((l) => { const t = c[l]; if (TS_CAMPOS.some(([k]) => String(t[k] || '').trim()) || (t.faq || []).some((x) => (x.pregunta + x.respuesta).trim())) valor[l] = t; });
+      el.disabled = true;
+      HH.api('PUT', '/textos-sitio', { valor })
+        .then((r) => { S.ts = r; S.tsEdit = null; HH.toast('Textos del inicio guardados', { type: 'ok' }); HH.refresh(); })
+        .catch((e) => { el.disabled = false; fail(e); });
+    },
+    prodTsRestaurar() {
+      HH.confirm({ title: 'Volver a los textos por defecto', text: 'Se borran los textos del inicio que cargaste (en los tres idiomas) y el sitio vuelve a mostrar los de siempre.', okLabel: 'Volver a los de siempre', cls: 'danger', onOk: () => {
+        HH.api('DELETE', '/textos-sitio')
+          .then((r) => { S.ts = r; S.tsEdit = null; HH.toast('Se restauraron los textos por defecto', { type: 'ok' }); HH.refresh(); })
+          .catch(fail);
+      } });
+    },
+  });
+
   /* ---------- Ajustes ---------- */
+  // «Alcanza para…» sugerido (mismo cálculo que el servidor): el plan más alto que entra al menos un mes, más el resto
+  function alcanzaSug(recibe) {
+    const pr = (S.aj && S.aj.precios && S.aj.precios.mes) || {};
+    for (const p of ['S', 'C', 'D']) {
+      const precio = Number(pr[p]); if (!precio) continue;
+      const k = Math.floor(Number(recibe) / precio);
+      if (k >= 1) { const resto = Math.round((Number(recibe) - k * precio) * 100) / 100; return `${k} ${k === 1 ? 'mes' : 'meses'} de ${PLAN_NOMBRE[p]}${resto > 0 ? ` + ${resto}` : ''}`; }
+    }
+    return 'Destacados sueltos';
+  }
+  const pkEdit = () => { if (!S.pkEdit) S.pkEdit = ((S.aj && S.aj.packs) || []).map((p) => ({ id: p.id, nombre: p.nombre, pagaUsd: p.pagaUsd, recibe: p.recibe, alcanzaPara: p.alcanzaPara || '', masElegido: !!p.masElegido, activo: p.activo !== false })); return S.pkEdit; };
+  const pkBonus = (p) => { const b = Math.round((Number(p.recibe) - Number(p.pagaUsd)) * 100) / 100; return Number.isFinite(b) ? b : 0; };
+  function packsHtml() {
+    const list = pkEdit();
+    const row = (p, i) => `<div class="pa-pack${p.activo ? '' : ' off'}" data-pk="${i}">
+        <div class="row between nowrap" style="gap:8px"><strong class="ellipsis">${i + 1}. ${esc(p.nombre || 'Pack nuevo')}</strong><span class="row nowrap" style="gap:2px">
+          <button type="button" class="icon-btn sm" data-action="prodPkMove" data-i="${i}" data-d="-1" aria-label="Subir"${i === 0 ? ' disabled' : ''}>${icon('arrowLeft', 'pa-up')}</button>
+          <button type="button" class="icon-btn sm" data-action="prodPkMove" data-i="${i}" data-d="1" aria-label="Bajar"${i === list.length - 1 ? ' disabled' : ''}>${icon('arrowRight', 'pa-up')}</button>
+          <button type="button" class="icon-btn sm" data-action="prodPkDel" data-i="${i}" aria-label="Quitar ${esc(p.nombre || 'pack')}">${icon('trash')}</button></span></div>
+        <div class="pa-pkgrid">
+          <div class="field"><label for="pk_n_${i}">Nombre</label><input class="input" id="pk_n_${i}" maxlength="40" value="${esc(p.nombre)}" data-input="prodPkField" data-i="${i}" data-f="nombre"></div>
+          <div class="field"><label for="pk_p_${i}">Paga (USD)</label><input class="input" id="pk_p_${i}" type="number" min="10" step="1" value="${esc(p.pagaUsd)}" data-input="prodPkField" data-i="${i}" data-f="pagaUsd"></div>
+          <div class="field"><label for="pk_r_${i}">Recibe (créditos)</label><input class="input" id="pk_r_${i}" type="number" min="10" step="1" value="${esc(p.recibe)}" data-input="prodPkField" data-i="${i}" data-f="recibe"></div>
+          <div class="field pa-pkwide"><label for="pk_a_${i}">Alcanza para</label><input class="input" id="pk_a_${i}" maxlength="80" value="${esc(p.alcanzaPara)}" placeholder="Automático: ${esc(alcanzaSug(p.recibe))}" data-input="prodPkField" data-i="${i}" data-f="alcanzaPara"></div>
+        </div>
+        <div class="row" style="gap:14px;align-items:center">
+          <span class="small" id="pk_b_${i}">${pkBonus(p) > 0 ? `<span class="badge ok">+${pkBonus(p)} de regalo</span>` : '<span class="tiny muted">sin regalo</span>'}</span>
+          <label class="row nowrap small" style="gap:6px"><input type="checkbox" data-change="prodPkField" data-i="${i}" data-f="masElegido"${p.masElegido ? ' checked' : ''}> Más elegido</label>
+          <label class="row nowrap small" style="gap:6px"><input type="checkbox" data-change="prodPkField" data-i="${i}" data-f="activo"${p.activo ? ' checked' : ''}> Activo</label>
+        </div>
+      </div>`;
+    return `${list.length ? list.map(row).join('') : '<p class="small muted">No hay packs: las acompañantes solo pueden hacer cargas a medida.</p>'}
+      <div class="row" style="gap:8px">${list.length < 12 ? `<button type="button" class="btn ghost sm" data-action="prodPkAdd">${icon('plus')} Agregar pack</button>` : '<span class="tiny muted">Máximo 12 packs.</span>'}<span class="grow"></span>${S.pkDirty ? `<button type="button" class="btn ghost sm" data-action="prodPkReset">Descartar cambios</button>` : ''}<button type="button" class="btn sm" data-action="prodAjSave" data-k="packs">${icon('check')} Guardar packs</button></div>`;
+  }
   function vAjustes() {
     load('aj', '/ajustes');
     let body;
@@ -689,29 +971,67 @@
     else if (!S.aj) body = loadingCard(3);
     else {
       const a = S.aj; const pr = a.precios || { mes: {}, semana: {} };
+      const upd = (k) => (a.actualizado && a.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado[k])}</span>` : '');
       const pin = (per, k, dis) => `<input class="input pa-num" type="number" min="0" max="100000" step="1" id="pr_${per}_${k}" value="${esc(per === 'mes' && k === 'E' ? 0 : (pr[per] && pr[per][k] != null ? pr[per][k] : ''))}"${dis ? ' disabled' : ''} data-input="prodPrecioHint" aria-label="${PLAN_NOMBRE[k]} por ${per}">`;
       const hint = (k) => { const m = Number((pr.mes || {})[k]) || 0; const s = Number((pr.semana || {})[k]) || 0; if (!m || !s) return ''; const base = m / 4; const rec = Math.round((s / base - 1) * 100); return `cuarta parte ${money(Math.round(base * 100) / 100)} · recargo ${rec}% · 4 semanas = ${money(s * 4)}`; };
+      const ds = a.destacado || {};
+      const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="0.5" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'dia' ? '1 día' : '7 días'}">`;
+      const ct = a.contacto || {}; const co = a.cotizacion || {}; const cm = a.comision || {}; const ms = a.mensajes || { whatsapp: {} };
+      const cotHoy = co.arsPorUsd && hoyAR(co.fecha);
+      const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
       body = `<section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('dollar')} Precios de los planes (USD)</div>${a.actualizado && a.actualizado.precios ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado.precios)}</span>` : ''}</div>
-          <p class="small muted">Precio por mes de cada plan y precio por semana (solo Platino, Diamante y Star). Conviene que la semana sea la cuarta parte del mes más un recargo, así el mes sale más barato. Bronce es gratis.</p>
+          <div class="row between"><div class="card-title">${icon('dollar')} Precios de los planes (créditos = USD)</div>${upd('precios')}</div>
+          <p class="small muted">Precio por mes de Plata, Oro y Star, y por semana de Oro y Star. Bronce es gratis. Conviene que la semana sea <strong>la cuarta parte del mes + 20 %</strong>, así el mes sale más barato.</p>
           <div class="table-wrap"><table class="table pa-prices"><thead><tr><th>Plan</th><th>Por mes</th><th>Por semana</th><th></th></tr></thead><tbody>
-            ${['E', 'D', 'C', 'B', 'A', 'S'].map((k) => `<tr><td>${planBadge(k)}</td><td>${pin('mes', k, k === 'E')}</td><td>${PLANES_SEMANA.includes(k) ? pin('semana', k) : '<span class="tiny muted">—</span>'}</td><td class="tiny muted" id="prh_${k}">${PLANES_SEMANA.includes(k) ? hint(k) : ''}</td></tr>`).join('')}
+            ${PLANES.map((k) => `<tr><td>${planBadge(k)}</td><td>${pin('mes', k, k === 'E')}</td><td>${PLANES_SEMANA.includes(k) ? pin('semana', k) : '<span class="tiny muted">—</span>'}</td><td class="tiny muted" id="prh_${k}">${PLANES_SEMANA.includes(k) ? hint(k) : ''}</td></tr>`).join('')}
           </tbody></table></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="precios">${icon('check')} Guardar precios</button></div>
         </section>
-        <section class="card stack" style="gap:10px">
-          <div class="card-title">${icon('wallet')} Datos para la transferencia</div>
-          <p class="small muted">Se le muestran a la acompañante cuando pide un plan (junto con el monto y la referencia). Por ejemplo: titular, CBU o alias, banco, y aclaración de poner la referencia en el concepto. Si está vacío, ve «Datos de pago a confirmar».</p>
-          <textarea class="textarea" id="ajTransferencia" rows="5" maxlength="2000" placeholder="Titular: …&#10;CBU: …&#10;Alias: …&#10;Banco: …">${esc(a.transferencia || '')}</textarea>
-          ${!a.transferencia ? `<div class="notice warn">${icon('alert')}<span>Todavía no cargaste los datos: las acompañantes no van a saber a dónde transferir.</span></div>` : ''}
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="transferencia">${icon('check')} Guardar datos</button></div>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('pack')} Packs de créditos</div>${upd('packs')}</div>
+          <p class="small muted">Lo que ven las acompañantes al cargar créditos. Si reciben más de lo que pagan, la diferencia es el regalo. «Alcanza para» vacío = se calcula solo con los precios.</p>
+          <div class="stack" id="prodPacks" style="gap:10px">${packsHtml()}</div>
         </section>
-        <section class="card stack" style="gap:10px">
-          <div class="card-title">${icon('image')} Portada</div>
-          <div class="field"><label for="ajTit">Título</label><input class="input" id="ajTit" maxlength="120" value="${esc((a.portada || {}).titulo || '')}"></div>
-          <div class="field"><label for="ajSub">Subtítulo</label><textarea class="textarea" id="ajSub" rows="2" maxlength="300">${esc((a.portada || {}).subtitulo || '')}</textarea></div>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="portada">${icon('check')} Guardar portada</button></div>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('trending')} Precios del Destacado (créditos)</div>${upd('destacado')}</div>
+          <p class="small muted">Solo Bronce, Plata y Oro (Star ya tiene lugar fijo). El cupo es el 20 % de las publicadas del plan en la provincia, mínimo 1.</p>
+          <div class="table-wrap"><table class="table pa-prices"><thead><tr><th>Plan</th><th>1 día</th><th>7 días</th></tr></thead><tbody>
+            ${PLANES_DEST.map((k) => `<tr><td>${planBadge(k)}</td><td>${dpin(k, 'dia')}</td><td>${dpin(k, 'semana')}</td></tr>`).join('')}
+          </tbody></table></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="destacado">${icon('check')} Guardar precios del Destacado</button></div>
         </section>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('dollar')} Cotización del dólar</div>${co.fecha ? `<span class="tiny ${cotHoy ? 'muted' : ''}"${cotHoy ? '' : ' style="color:var(--warn)"'}>Cargada el ${fecha(co.fecha)}</span>` : ''}</div>
+          <p class="small muted">Pesos por cada dólar. Se usa para sugerir el monto en pesos de cada pedido (redondeado hacia arriba a la centena). Actualizala cada día que cobres.</p>
+          ${!co.arsPorUsd ? `<div class="notice warn">${icon('alert')}<span>Sin cotización: los pedidos no muestran el monto en pesos ni el mensaje para copiar.</span></div>` : !cotHoy ? `<div class="notice warn">${icon('alert')}<span>La cotización no es de hoy.</span></div>` : ''}
+          <div class="grid-2"><div class="field"><label for="ajCotArs">ARS por USD</label><input class="input" id="ajCotArs" type="number" min="1" step="1" inputmode="decimal" value="${esc(co.arsPorUsd != null ? co.arsPorUsd : '')}" placeholder="Ej.: 1300"></div>
+          <div class="field"><label for="ajCotNota">Nota (opcional)</label><input class="input" id="ajCotNota" maxlength="200" value="${esc(co.nota || '')}" placeholder="Ej.: dólar blue venta"></div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="cotizacion">${icon('check')} Guardar cotización</button></div>
+        </section>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('whatsapp')} Contacto para comprar créditos</div>${upd('contacto')}</div>
+          <p class="small muted">Las acompañantes te escriben a este WhatsApp con el código del pedido. Telegram es opcional.</p>
+          ${!ct.whatsapp ? `<div class="notice warn">${icon('alert')}<span>Sin número de WhatsApp: el botón de pedir créditos no abre ningún chat.</span></div>` : ''}
+          <div class="grid-2"><div class="field"><label for="ajWa">WhatsApp del sitio (con código de país)</label><input class="input" id="ajWa" inputmode="tel" maxlength="20" value="${esc(ct.whatsapp || '')}" placeholder="5491122334455"></div>
+          <div class="field"><label for="ajTg">Usuario de Telegram</label><input class="input" id="ajTg" maxlength="40" value="${esc(ct.telegram || '')}" placeholder="sexyrose_soporte"></div></div>
+          <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="ajTgOn"${ct.telegramActivo ? ' checked' : ''}> Mostrar también Telegram</label>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar contacto</button></div>
+        </section>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('message')} Mensajes</div>${upd('mensajes')}</div>
+          <p class="small muted">Mensaje que la acompañante te manda por WhatsApp al pedir créditos, en su idioma. Variables: ${ph(['pack', 'creditos', 'monto', 'codigo'])}. <strong>{codigo}</strong> es obligatorio.</p>
+          ${['es', 'en', 'pt'].map((l) => `<div class="field"><label for="ajMsg_${l}">WhatsApp · ${{ es: 'Español', en: 'Inglés', pt: 'Portugués' }[l]}</label><textarea class="textarea" id="ajMsg_${l}" rows="2" maxlength="500" data-noi18n>${esc((ms.whatsapp || {})[l] || '')}</textarea></div>`).join('')}
+          <div class="field"><label for="ajMsgAdmin">Tu respuesta («Copiar mensaje» en Pedidos)</label><textarea class="textarea" id="ajMsgAdmin" rows="3" maxlength="1000">${esc(ms.admin || '')}</textarea><div class="tiny muted">Variables: ${ph(['codigo', 'pack', 'creditos', 'monto', 'ars', 'cotizacion', 'fecha'])}. No pongas tus datos bancarios acá: agregalos a mano en WhatsApp.</div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
+        </section>
+        <section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('bag')} Comisión de venta de contenido</div>${upd('comision')}</div>
+          <p class="small muted">Preparado para cuando se active la venta de contenido: SexyRose descuenta este porcentaje en créditos de cada venta. El saldo puede quedar en negativo hasta el máximo indicado.</p>
+          <div class="grid-2"><div class="field"><label for="ajComP">Comisión (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.5" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}"></div>
+          <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
+        </section>
+        ${textosInicioCard()}
         <section class="card stack" style="gap:10px">
           <div class="card-title">${icon('sparkles')} Promoción</div>
           <p class="small muted">Texto corto de la promoción vigente (se muestra en la portada y en la página de planes). Dejalo vacío para no mostrar ninguna.</p>
@@ -719,7 +1039,7 @@
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="promo">${icon('check')} Guardar promoción</button></div>
         </section>`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Precios, datos de pago, portada y promoción')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Precios, packs de créditos, Destacado, cotización, contacto, mensajes, textos del inicio y promoción')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Acciones de Fase 1+2 ---------- */
@@ -727,15 +1047,132 @@
   Object.assign(HH.actions, {
     prodAcFilter(el) { S.af = el.dataset.f; HH.refresh(); },
     prodAcSearch(el) { S.aq = el.value; const box = document.getElementById('prodAcRows'); if (box) box.innerHTML = acRows(); },
-    prodPedFilter(el) { S.pgf = el.dataset.f; HH.refresh(); },
     prodSusFilter(el) { S.suf = el.dataset.f; HH.refresh(); },
     prodUbFilter(el) { S.uf = el.dataset.f; HH.refresh(); },
     prodUbSearch(el) { S.uq = el.value; clearTimeout(S._ubT); S._ubT = setTimeout(() => { HH.refresh(); const i = document.getElementById('prodUbQ'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); },
+    prodPcFilter(el) { S.pcf = el.dataset.f; S.pcq = ''; HH.refresh(); },
+    prodPcSearch(el) {
+      S.pcq = el.value; const box = document.getElementById('prodPcRows'); if (box) box.innerHTML = pcRows();
+      document.querySelectorAll('[data-action="prodPcFilter"]').forEach((c) => { const on = !S.pcq.trim() && c.dataset.f === S.pcf; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); });
+      // Además se busca en el servidor (por si el pedido es viejo y no está entre los últimos 500)
+      clearTimeout(S._pcT); const q = S.pcq.trim();
+      if (q.length >= 2) S._pcT = setTimeout(() => {
+        HH.api('GET', '/pedidos-creditos?q=' + encodeURIComponent(q)).then((d) => {
+          if (!S.pc || S.pcq.trim() !== q) return;
+          const ids = new Set((S.pc.items || []).map((x) => x.id)); const nuevos = (d.items || []).filter((x) => !ids.has(x.id));
+          if (nuevos.length) { S.pc.items = (S.pc.items || []).concat(nuevos); const b = document.getElementById('prodPcRows'); if (b) b.innerHTML = pcRows(); }
+        }).catch(() => { /* la búsqueda local ya se mostró */ });
+      }, 350);
+    },
+    prodPcVer(el, ev) { if (ev) ev.preventDefault(); S.pcq = el.dataset.q || ''; HH.go('#admin.pedidos'); },
     prodCopy(el) {
-      const v = el.dataset.v || '';
-      const ok = () => HH.toast('Referencia copiada: ' + v, { type: 'ok' });
+      const v = el.dataset.v || ''; const l = el.dataset.l || 'Texto';
+      const ok = () => HH.toast(l + ' copiado: ' + v, { type: 'ok' });
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(ok, () => HH.toast(v)); else HH.toast(v);
     },
+    prodPcComprobante(el) {
+      HH.modal({ title: 'Comprobante · ' + (el.dataset.ref || ''), wide: true, body: `<div class="pa-priv" data-blob="/pedidos-creditos/${esc(el.dataset.id)}/comprobante" data-alt="Comprobante">${loadingCard(1)}</div><p class="tiny muted">Privado: no se publica ni se guarda en este equipo.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] });
+      fillBlobs(document.getElementById('modalBox'));
+    },
+    prodPcMensaje(el) {
+      const x = pcFind(el.dataset.id); if (!x || !x.mensajeSugerido) return;
+      const v = x.mensajeSugerido;
+      const vieja = !hoyAR(pcCot().fecha);
+      const ok = () => HH.toast(vieja ? 'Mensaje copiado. Ojo: la cotización no es de hoy.' : 'Mensaje copiado. Agregá tus datos de pago antes de enviarlo.', { type: vieja ? 'warn' : 'ok', ms: 4000 });
+      const show = () => HH.modal({ title: 'Mensaje para ' + ((x.cuenta || {}).displayName || x.codigo), body: `<textarea class="textarea" rows="5" readonly data-noi18n>${esc(v)}</textarea><p class="tiny muted">Copialo y agregá tus datos de pago a mano en WhatsApp.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] });
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(ok, show); else show();
+    },
+    prodPcConfirmar(el) {
+      const x = pcFind(el.dataset.id); if (!x) return;
+      const n = esc((x.cuenta || {}).displayName || (x.cuenta || {}).email || '');
+      HH.modal({ title: 'Confirmar pago · ' + x.codigo, body: `<div class="stack" style="gap:10px">
+          <p>¿Ya está en tu cuenta el pago de <strong data-noi18n>${n}</strong> por <strong>${money(x.pagaUsd)}</strong>${x.arsSugerido != null ? ` (sugerido <strong>${ars(x.arsSugerido)}</strong>)` : ''}?</p>
+          <div class="notice ok">${icon('wallet')}<span>Se acreditan <strong>${cred(x.total)}</strong>${cnum(x.bonus) > 0 ? ` (${cred(x.base, false)} + ${cred(x.bonus, false)} de regalo del pack ${esc(x.packNombre)})` : ` (${esc(x.packNombre)})`}.</span></div>
+          ${x.estado === 'vencido' ? `<p class="small">${icon('alert')} El pedido está vencido: igual se puede confirmar si el pago llegó.</p>` : ''}
+          <p class="tiny muted">Le avisamos por email. Si estaba pausada por falta de saldo, se reintenta la renovación del plan.</p>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Confirmar y acreditar', onClick: (btn) => {
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/pedidos-creditos/' + encodeURIComponent(x.id) + '/confirmar')
+            .then((r) => { HH.closeModal(); HH.toast(`Acreditados ${cred({ centavos: r.total })}. Saldo: ${cred(r.saldo)}`, { type: 'ok', ms: 4000 }); after(['pc', 'cr:' + x.cuentaId, 'acd:' + x.cuentaId, 'ven', 'pau']); })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); if (e.status === 409) after(['pc']); });
+        } }] });
+    },
+    prodPcRechazar(el) {
+      const x = pcFind(el.dataset.id); if (!x) return;
+      pedirMotivo({ title: 'Rechazar pedido ' + x.codigo, intro: 'El pedido se cierra sin acreditar créditos. El motivo le llega por email (es opcional).', motivos: ['No recibimos el pago.', 'El monto pagado no coincide.', 'No pudimos identificar el pago.', 'Ella pidió cancelarlo.'], okLabel: 'Rechazar pedido', cls: 'danger', requerido: false, onOk: (m, re) => {
+        HH.api('POST', '/pedidos-creditos/' + encodeURIComponent(x.id) + '/rechazar', { motivo: m })
+          .then(() => { HH.closeModal(); HH.toast('Pedido ' + x.codigo + ' rechazado', { type: 'ok' }); after(['pc', 'cr:' + x.cuentaId]); })
+          .catch((e) => { re(); fail(e); });
+      } });
+    },
+    prodPcReabrir(el) {
+      const x = pcFind(el.dataset.id); if (!x) return;
+      HH.confirm({ title: 'Reabrir pedido ' + x.codigo, text: 'Vuelve a quedar pendiente por 48 horas más. Si el código ya lo usa otro pedido, recibe uno nuevo.', okLabel: 'Reabrir', onOk: () => {
+        HH.api('POST', '/pedidos-creditos/' + encodeURIComponent(x.id) + '/reabrir')
+          .then((r) => { const c = r && r.pedido && r.pedido.codigo; HH.toast(c && c !== x.codigo ? `Reabierto con código nuevo ${c}` : 'Pedido reabierto por 48 h', { type: 'ok' }); after(['pc', 'cr:' + x.cuentaId]); })
+          .catch(fail);
+      } });
+    },
+    prodMovMas(el) {
+      const id = el.dataset.id; const k = 'cr:' + id; const d = S[k]; if (!d || !d.siguiente) return;
+      el.disabled = true;
+      HH.api('GET', '/creditos/' + encodeURIComponent(id) + '?limite=20&antesDe=' + encodeURIComponent(d.siguiente))
+        .then((r) => { d.movimientos = (d.movimientos || []).concat(r.movimientos || []); d.siguiente = r.siguiente; HH.refresh(); })
+        .catch((e) => { el.disabled = false; fail(e); });
+    },
+    prodAjuste(el) {
+      const id = el.dataset.id; const d = S['cr:' + id];
+      HH.modal({ title: 'Ajuste manual de créditos', body: `<div class="stack" style="gap:12px">
+          <p class="small">Sumá (número positivo) o restá (negativo) créditos a <strong data-noi18n>${esc(el.dataset.n || 'esta cuenta')}</strong>. Saldo actual: <strong>${d ? cred(d.saldo) : '…'}</strong>. Un ajuste negativo no puede dejar el saldo por debajo de 0.</p>
+          <div class="field"><label for="ajCr">Créditos (ej. 10 o -5,50)</label><input class="input" id="ajCr" inputmode="decimal" maxlength="12" placeholder="10" autocomplete="off"></div>
+          <div class="field"><label for="ajMot">Motivo (obligatorio, queda en el historial)</label><input class="input" id="ajMot" maxlength="300" placeholder="Ej.: compensación por error en el sitio"></div>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Aplicar ajuste', onClick: (btn) => {
+          const raw = String(document.getElementById('ajCr').value || '').trim().replace(/\s/g, '');
+          const motivo = String(document.getElementById('ajMot').value || '').trim();
+          const n = Number(raw.replace(',', '.'));
+          if (!raw || !Number.isFinite(n) || n === 0 || !/^-?\d+([.,]\d{1,2})?$/.test(raw)) { HH.toast('Escribí cuántos créditos sumar o restar (distinto de 0, hasta 2 decimales).', { type: 'warn' }); return; }
+          if (motivo.length < 3) { HH.toast('Escribí el motivo del ajuste.', { type: 'warn' }); return; }
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/creditos/' + encodeURIComponent(id) + '/ajuste', { creditos: raw, motivo })
+            .then((r) => { HH.closeModal(); HH.toast(`Ajuste aplicado (${credSig({ centavos: Math.round(n * 100) })}). Saldo: ${cred(r.saldo)}`, { type: 'ok' }); after(['cr:' + id, 'acd:' + id, 'ven', 'pau']); })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+        } }] });
+      setTimeout(() => { const i = document.getElementById('ajCr'); if (i) i.focus(); }, 50);
+    },
+    prodDstFilter(el) { S.dsf = el.dataset.f; HH.refresh(); },
+    prodDstCancelar(el) {
+      const x = ((S.dstT && S.dstT.items) || []).find((d) => d.id === el.dataset.id); if (!x) return;
+      const fut = new Date(x.desde) > new Date();
+      HH.modal({ title: 'Cancelar Destacado', body: `<div class="stack" style="gap:10px">
+          <p>Se cancela el Destacado de <strong data-noi18n>${esc(nombreCu(x) || '')}</strong> (${esc(x.planNombre || PLAN_NOMBRE[x.plan])}, ${esc(ubNombre(x.provincia) || x.provincia || '')}, ${fecha(x.desde)} → ${fecha(x.hasta)}) y deja de mostrarse.</p>
+          <label class="row nowrap small" style="gap:8px;align-items:flex-start"><input type="checkbox" id="dstDev" checked> <span>Devolverle los créditos ${fut ? `(todavía no empezó: ${cred(x.costo)})` : 'proporcionales al tiempo que falta'}</span></label>
+          <p class="tiny muted">Le avisamos en su panel.</p>
+        </div>`, actions: [{ label: 'Volver', cls: 'ghost', action: 'closeModal' }, { label: 'Cancelar Destacado', cls: 'danger', onClick: (btn) => {
+          const devolver = document.getElementById('dstDev').checked;
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/destacados/' + encodeURIComponent(x.id) + '/cancelar', { devolver })
+            .then((r) => { HH.closeModal(); HH.toast(`Destacado cancelado${r && r.devuelto && r.devuelto.centavos ? ` · devueltos ${cred(r.devuelto)}` : ''}`, { type: 'ok' }); after(['dstT', 'dst', 'cr:' + x.cuentaId]); })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+        } }] });
+    },
+    prodPkField(el) {
+      const i = Number(el.dataset.i); const f = el.dataset.f; const list = pkEdit(); const p = list[i]; if (!p) return;
+      S.pkDirty = true;
+      if (f === 'masElegido') { list.forEach((q, j) => { q.masElegido = j === i ? el.checked : false; }); document.getElementById('prodPacks').innerHTML = packsHtml(); return; }
+      if (f === 'activo') { p.activo = el.checked; document.getElementById('prodPacks').innerHTML = packsHtml(); return; }
+      p[f] = f === 'pagaUsd' || f === 'recibe' ? el.value : el.value;
+      if (f === 'pagaUsd' || f === 'recibe') {
+        const b = document.getElementById('pk_b_' + i); if (b) b.innerHTML = pkBonus(p) > 0 ? `<span class="badge ok">+${pkBonus(p)} de regalo</span>` : '<span class="tiny muted">sin regalo</span>';
+        const a = document.getElementById('pk_a_' + i); if (a) a.placeholder = 'Automático: ' + alcanzaSug(p.recibe);
+      }
+    },
+    prodPkMove(el) {
+      const i = Number(el.dataset.i); const j = i + Number(el.dataset.d); const list = pkEdit(); if (j < 0 || j >= list.length) return;
+      [list[i], list[j]] = [list[j], list[i]]; S.pkDirty = true; document.getElementById('prodPacks').innerHTML = packsHtml();
+    },
+    prodPkDel(el) { const list = pkEdit(); list.splice(Number(el.dataset.i), 1); S.pkDirty = true; document.getElementById('prodPacks').innerHTML = packsHtml(); },
+    prodPkAdd() { const list = pkEdit(); if (list.length >= 12) return; list.push({ id: '', nombre: '', pagaUsd: 10, recibe: 10, alcanzaPara: '', masElegido: false, activo: true }); S.pkDirty = true; document.getElementById('prodPacks').innerHTML = packsHtml(); const n = document.getElementById('pk_n_' + (list.length - 1)); if (n) n.focus(); },
+    prodPkReset() { S.pkEdit = null; S.pkDirty = false; document.getElementById('prodPacks').innerHTML = packsHtml(); },
     prodFoto(el) { HH.modal({ title: 'Foto', wide: true, body: `<img src="${esc(el.dataset.url)}" alt="" class="pa-full">`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); },
     prodBlobZoom(el) { HH.modal({ title: 'Archivo privado', wide: true, body: `<img src="${el.dataset.url}" alt="" class="pa-full"><p class="tiny muted">Privado: no se publica ni se guarda en este equipo.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); },
     prodVerif(el) {
@@ -774,35 +1211,9 @@
         } }] });
     },
     prodPmDias(el) { const i = document.getElementById('pmDias'); if (i) i.value = el.dataset.v; },
-    prodComprobante(el) {
-      HH.modal({ title: 'Comprobante · ' + (el.dataset.ref || ''), wide: true, body: `<div class="pa-priv" data-blob="/pedidos/${esc(el.dataset.id)}/comprobante" data-alt="Comprobante">${loadingCard(1)}</div><p class="tiny muted">Privado: no se publica ni se guarda en este equipo.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] });
-      fillBlobs(document.getElementById('modalBox'));
-    },
-    prodPedConfirmar(el) {
-      const id = el.dataset.id; const x = ((S.ped && S.ped.items) || []).find((p) => String(p.id) === id); if (!x) return;
-      const dias = x.periodo === 'semana' ? 7 : 30;
-      const star = x.plan === 'S' ? `<p class="small">${icon('star')} Star en ${esc(ubNombre(x.provinciaStar || (x.cuenta || {}).provincia) || 'provincia sin cargar')}: ${starLibres(x.provinciaStar || (x.cuenta || {}).provincia)}.</p>` : '';
-      HH.modal({ title: 'Confirmar pago', body: `<div class="stack" style="gap:10px">
-          <p>¿Ya está en tu cuenta la transferencia de <strong>${money(x.montoUsd)}</strong> con la referencia <code>${esc(x.referencia)}</code>?</p>
-          <p class="small">Se activa el plan <strong>${esc(PLAN_NOMBRE[x.plan])}</strong> por <strong>${dias} días</strong> para <strong data-noi18n>${esc((x.cuenta || {}).displayName || '')}</strong>. Si ya tiene ese plan, los días se suman al final del actual. Le avisamos por email.</p>${star}
-        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Confirmar y activar', onClick: (btn) => {
-          if (btn) btn.disabled = true;
-          HH.api('POST', '/pedidos/' + encodeURIComponent(id) + '/confirmar')
-            .then((r) => { HH.closeModal(); const s = r && r.suscripcion; HH.toast(`Pago confirmado: ${PLAN_NOMBRE[x.plan]} activo${s && s.hasta ? ' hasta el ' + dia(s.hasta) : ''}`, { type: 'ok' }); after(['ped', 'sus', 'stars', 'ac', 'acd:' + x.cuentaId]); })
-            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
-        } }] });
-    },
-    prodPedRechazar(el) {
-      const id = el.dataset.id; const x = ((S.ped && S.ped.items) || []).find((p) => String(p.id) === id);
-      pedirMotivo({ title: 'Rechazar pedido', intro: 'El pedido se cierra sin activar el plan. El motivo le llega por email.', motivos: ['No recibimos la transferencia.', 'El monto transferido no coincide.', 'La transferencia no tiene la referencia y no la pudimos identificar.', 'No hay lugar Star libre en su provincia.'], okLabel: 'Rechazar pedido', cls: 'danger', onOk: (m, re) => {
-        HH.api('POST', '/pedidos/' + encodeURIComponent(id) + '/rechazar', { motivo: m })
-          .then(() => { HH.closeModal(); HH.toast('Pedido rechazado', { type: 'ok' }); after(['ped'].concat(x ? ['acd:' + x.cuentaId] : [])); })
-          .catch((e) => { re(); fail(e); });
-      } });
-    },
     prodSusCancelar(el) {
       const id = el.dataset.id;
-      HH.confirm({ title: 'Cancelar suscripción', text: 'El plan deja de valer desde ahora (no se devuelve dinero automáticamente). Si tiene otro plan activo, queda en ese; si no, vuelve a Bronce.', okLabel: 'Cancelar suscripción', cls: 'danger', onOk: () => {
+      HH.confirm({ title: 'Cancelar suscripción', text: 'El plan deja de valer desde ahora y no se devuelven créditos automáticamente (si corresponde, hacé un ajuste manual en su ficha). Si tiene otro plan activo, queda en ese; si no, vuelve a Bronce.', okLabel: 'Cancelar suscripción', cls: 'danger', onOk: () => {
         HH.api('POST', '/suscripciones/' + encodeURIComponent(id) + '/cancelar')
           .then(() => { HH.toast('Suscripción cancelada', { type: 'ok' }); after(['sus', 'stars', 'ac']); })
           .catch(fail);
@@ -854,19 +1265,55 @@
     },
     prodAjSave(el) {
       const k = el.dataset.k; let valor;
+      const val = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+      const num = (id) => { const v = String(val(id)).trim().replace(',', '.'); const n = v === '' ? NaN : Number(v); return Number.isFinite(n) ? n : NaN; };
+      const warn = (m) => HH.toast(m, { type: 'warn' });
       if (k === 'precios') {
-        const num = (id) => { const e = document.getElementById(id); const n = Number(e && e.value); return Number.isFinite(n) ? n : NaN; };
         valor = { mes: { E: 0 }, semana: {} };
-        for (const p of ['D', 'C', 'B', 'A', 'S']) valor.mes[p] = num('pr_mes_' + p);
+        for (const p of PLANES_PAGOS) valor.mes[p] = num('pr_mes_' + p);
         for (const p of PLANES_SEMANA) valor.semana[p] = num('pr_semana_' + p);
         const bad = [].concat(Object.entries(valor.mes), Object.entries(valor.semana)).find(([, n]) => !Number.isFinite(n) || n < 0);
-        if (bad) { HH.toast(`Revisá el precio de ${PLAN_NOMBRE[bad[0]]}: tiene que ser un número de 0 o más.`, { type: 'warn' }); return; }
-      } else if (k === 'transferencia') valor = document.getElementById('ajTransferencia').value;
-      else if (k === 'promo') valor = document.getElementById('ajPromo').value;
-      else if (k === 'portada') valor = { titulo: document.getElementById('ajTit').value, subtitulo: document.getElementById('ajSub').value };
+        if (bad) { warn(`Revisá el precio de ${PLAN_NOMBRE[bad[0]]}: tiene que ser un número de 0 o más.`); return; }
+      } else if (k === 'packs') {
+        const list = pkEdit();
+        for (const [i, p] of list.entries()) {
+          if (String(p.nombre || '').trim().length < 2) { warn(`Pack ${i + 1}: escribí el nombre.`); return; }
+          if (!(Number(p.pagaUsd) >= 10)) { warn(`Pack ${p.nombre}: el precio tiene que ser de al menos USD 10.`); return; }
+          if (!(Number(p.recibe) >= Number(p.pagaUsd))) { warn(`Pack ${p.nombre}: los créditos tienen que ser iguales o mayores a lo que se paga.`); return; }
+        }
+        valor = list.map((p, i) => ({ ...(p.id ? { id: p.id } : {}), nombre: String(p.nombre).trim(), pagaUsd: Number(p.pagaUsd), recibe: Number(p.recibe), alcanzaPara: String(p.alcanzaPara || '').trim(), masElegido: !!p.masElegido, activo: !!p.activo, orden: i + 1 }));
+      } else if (k === 'destacado') {
+        valor = {};
+        for (const p of PLANES_DEST) {
+          valor[p] = { dia: num(`ds_${p}_dia`), semana: num(`ds_${p}_semana`) };
+          if (!(valor[p].dia > 0) || !(valor[p].semana > 0)) { warn(`Revisá el Destacado de ${PLAN_NOMBRE[p]}: los precios tienen que ser mayores a 0.`); return; }
+        }
+      } else if (k === 'contacto') {
+        valor = { whatsapp: String(val('ajWa')).replace(/\D/g, ''), telegram: String(val('ajTg')).trim(), telegramActivo: document.getElementById('ajTgOn').checked };
+      } else if (k === 'cotizacion') {
+        const raw = String(val('ajCotArs')).trim();
+        const n = num('ajCotArs');
+        if (raw && !(n > 0)) { warn('La cotización tiene que ser un número mayor a 0.'); return; }
+        valor = { arsPorUsd: raw ? n : null, nota: val('ajCotNota') };
+      } else if (k === 'comision') {
+        valor = { porcentaje: num('ajComP'), saldoNegativoMax: num('ajComN') };
+        if (!Number.isFinite(valor.porcentaje) || !Number.isFinite(valor.saldoNegativoMax)) { warn('Completá la comisión y el saldo negativo máximo.'); return; }
+      } else if (k === 'mensajes') {
+        valor = { whatsapp: { es: val('ajMsg_es'), en: val('ajMsg_en'), pt: val('ajMsg_pt') }, admin: val('ajMsgAdmin') };
+        const sin = ['es', 'en', 'pt'].find((l) => valor.whatsapp[l].trim() && !valor.whatsapp[l].includes('{codigo}'));
+        if (sin) { warn(`El mensaje de WhatsApp (${sin.toUpperCase()}) tiene que incluir {codigo}.`); return; }
+        if (valor.admin.trim() && !valor.admin.includes('{codigo}')) { warn('Tu respuesta tiene que incluir {codigo}.'); return; }
+      } else if (k === 'promo') valor = val('ajPromo');
+      else if (k === 'portada') valor = { titulo: val('ajTit'), subtitulo: val('ajSub') };
+      else return;
       el.disabled = true;
       HH.api('PUT', '/ajustes/' + k, { valor })
-        .then((r) => { if (S.aj && r) S.aj[k] = r.valor; HH.toast({ precios: 'Precios guardados', transferencia: 'Datos de transferencia guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' }); load('aj', '/ajustes', true); })
+        .then((r) => {
+          if (S.aj && r) S.aj[k] = r.valor;
+          if (k === 'packs') { S.pkEdit = null; S.pkDirty = false; }
+          HH.toast({ precios: 'Precios guardados', packs: 'Packs guardados', destacado: 'Precios del Destacado guardados', contacto: 'Contacto guardado', cotizacion: 'Cotización guardada', comision: 'Comisión guardada', mensajes: 'Mensajes guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' });
+          load('aj', '/ajustes', true); if (k === 'cotizacion' || k === 'mensajes') after(['pc']);
+        })
         .catch((e) => { el.disabled = false; fail(e); });
     },
   });
@@ -900,7 +1347,7 @@
   // Todas las pestañas del menú pasan por acá (Object.assign sobre las vistas de la demo)
   const views = {};
   TABS.forEach((t) => { views[t.id] = () => vSoon(t.id); });
-  Object.assign(views, { resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pagos: vPagos, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
+  Object.assign(views, { resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
   HH.adminViews = views;
   HH.route('admin.textos.:pagina', ({ pagina }) => (HH.requireRole('admin') ? vTextoPagina(pagina) : false));
   HH.route('admin.acompanantes.:id', ({ id }) => (HH.requireRole('admin') ? vAcompanante(id) : false));
@@ -910,8 +1357,9 @@
     prodRetry(el) {
       const k = el.dataset.k;
       if (k.startsWith('page:')) loadPage(k.slice(5), true);
-      else if (k.startsWith('acd:')) { [...blobs.keys()].forEach((b) => { URL.revokeObjectURL(blobs.get(b).url); blobs.delete(b); }); load(k, '/acompanantes/' + encodeURIComponent(k.slice(4)), true); }
-      else load(k, { res: '/resumen', pre: '/preregistros', den: '/denuncias', txt: '/textos', ac: '/acompanantes', ped: '/pedidos', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses' }[k], true);
+      else if (k.startsWith('acd:')) { [...blobs.keys()].forEach((b) => { URL.revokeObjectURL(blobs.get(b).url); blobs.delete(b); }); load(k, '/acompanantes/' + encodeURIComponent(k.slice(4)), true); load('acv:' + k.slice(4), '/acompanantes/' + encodeURIComponent(k.slice(4)) + '/videos', true); load('cr:' + k.slice(4), '/creditos/' + encodeURIComponent(k.slice(4)) + '?limite=20', true); load('dst', '/destacados', true); }
+      else if (k === 'ren') { load('ven', PATHS.ven, true); load('pau', PATHS.pau, true); }
+      else { if (k === 'aj') { S.pkEdit = null; S.pkDirty = false; } load(k, { res: '/resumen', pre: '/preregistros', den: '/denuncias', txt: '/textos' }[k] || pathDe(k), true); }
       if (k === 'cat') load('int', '/intereses', true);
       if (k !== 'res') refreshResumen();
       HH.refresh();
@@ -999,7 +1447,7 @@
     const hi = document.getElementById('headerInner');
     if (hi) {
       hi.innerHTML = `<a class="brand" href="#admin.resumen" data-go="#admin.resumen" aria-label="SexyRose, panel de administración"><span class="mark">${icon('heart')}</span><span>SexyRose</span></a><span class="pa-tag">Administración</span><span class="hdr-spacer"></span>
-        <div class="header-actions"><a class="btn ghost sm" href="/" target="_blank" rel="noopener noreferrer">${icon('external')}<span class="hide-mobile">Ver sitio</span></a><button type="button" class="btn secondary sm" data-action="prodLogout">${icon('logout')}<span class="hide-mobile">Salir</span></button></div>`;
+        <div class="header-actions"><a class="btn ghost sm" href="/" target="_blank" rel="noopener noreferrer">${icon('external')}<span class="hide-mobile">Ver sitio</span></a><a class="btn ghost sm" href="/demo/" target="_blank" rel="noopener noreferrer" title="Demostración con perfiles de ejemplo">${icon('sparkles')}<span class="hide-mobile">Ver demo</span></a><button type="button" class="btn secondary sm" data-action="prodLogout">${icon('logout')}<span class="hide-mobile">Salir</span></button></div>`;
       if (HH.linkify) HH.linkify(hi);
     }
     const bn = document.getElementById('bottomNav'); if (bn) bn.innerHTML = '';
@@ -1041,6 +1489,7 @@
 html[data-prod="admin"] .bottomnav{display:none!important}
 html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var(--header-h))}
 .pa-tag{font-weight:700;color:var(--muted);font-size:14px;margin-left:4px;white-space:nowrap}
+@media(max-width:440px){.pa-tag{display:none}}
 .pa-pre{white-space:pre-wrap;overflow-wrap:anywhere}
 .pa-url{overflow-wrap:anywhere}
 .pa-contact{overflow-wrap:anywhere}.pa-contact svg{width:14px;height:14px;vertical-align:-2px;color:var(--muted)}
@@ -1076,13 +1525,23 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-foto-tag{position:absolute;left:6px;bottom:6px;font-size:11px}
 .pa-grid2{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}@media(min-width:860px){.pa-grid2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pa-hl{border-color:color-mix(in srgb,var(--warn) 60%,transparent)}
-.pa-money{font-size:18px}.pa-ref{font-size:14px;padding:2px 8px;border-radius:8px;background:var(--surface-2);letter-spacing:.04em}
+.pa-money{font-size:18px}.pa-ref{font-size:14px;padding:2px 8px;border-radius:8px;background:var(--surface-2);letter-spacing:.04em;white-space:nowrap}
 .pa-bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}.pa-bar i{display:block;height:100%;background:var(--berry)}
 .pa-catic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--berry-tint);color:var(--berry);flex:none}.pa-catic svg{width:18px;height:18px}
 .pa-num{max-width:120px;padding-block:6px}
 .pa-prices td{vertical-align:middle}
 .pa-statlink{display:block;color:inherit;text-decoration:none}.pa-statlink .stat{height:100%}
 .stat.pa-warn{border-color:color-mix(in srgb,var(--warn) 60%,transparent)}.stat.pa-warn .v{color:var(--warn)}
+.pa-mov{white-space:nowrap;font-variant-numeric:tabular-nums}.pa-mov.pos{color:var(--ok)}.pa-mov.neg{color:var(--danger)}
+.pa-movs{max-height:420px;overflow:auto}
+.pa-icbtn{padding:4px 6px;min-height:0}.pa-icbtn svg{width:15px;height:15px}
+.pa-acts .btn{white-space:nowrap}.pa-acts-c{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+.pa-pctable td{vertical-align:top}.pa-pctable tr.pa-mainrow>td:first-child{white-space:nowrap}.pa-pcw{max-width:210px;overflow-wrap:anywhere;white-space:normal}.pa-subrow .pa-acts{flex-wrap:wrap;justify-content:flex-end}.pa-pctable tr.has-sub>td{border-bottom:0;padding-bottom:4px}.pa-subrow>td{padding-top:4px}
+.pa-hlrow td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
+.pa-pack{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.pa-pack.off{opacity:.7}
+.pa-pkgrid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}.pa-pkgrid .field{min-width:0}.pa-pkwide{grid-column:1/-1}
+@media(min-width:860px){.pa-pkgrid{grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr) minmax(0,.7fr) minmax(0,1.6fr)}.pa-pkwide{grid-column:auto}}
+.ico.pa-up{transform:rotate(90deg)}
 .pa-soon-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--berry-tint);color:var(--berry);flex:none}.pa-soon-ic svg{width:22px;height:22px}
 `;
   document.head.appendChild(st);

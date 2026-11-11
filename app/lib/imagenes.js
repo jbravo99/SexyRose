@@ -1,6 +1,8 @@
 // Procesamiento de imágenes con sharp.
 // - Fotos públicas (perfil, historias): gira según EXIF y descarta todos los metadatos (EXIF, GPS, ICC),
-//   máx. 1600 px del lado mayor, WebP calidad 82, marca de agua "SexyRose" semitransparente abajo al centro,
+//   máx. 1600 px del lado mayor, WebP calidad 82, marca de agua "SexyRose" semitransparente arriba a la derecha
+//   (desde el 11/11/2026; antes iba abajo al centro y en las tarjetas la tapaba el nombre — las fotos ya subidas
+//   no se reprocesan),
 //   y una miniatura de 480 px (también con marca).
 // - Privadas (selfie, documento, comprobante): JPEG sin metadatos, máx. 2400 px, sin marca.
 // Rechaza lo que no sea imagen, más de 12 MB o más de 40 megapíxeles (bombas de descompresión).
@@ -30,14 +32,16 @@ async function abrir(buffer) {
 }
 
 // Marca de agua como SVG del ancho de la imagen.
+// Arriba a la derecha, más chica que la versión anterior: en las tarjetas abajo van el nombre y la zona.
 function marcaSvg(ancho, alto) {
-  const fs = Math.max(14, Math.round(ancho * 0.065));
+  const fs = Math.max(12, Math.round(ancho * 0.045));
   const h = Math.round(fs * 1.9);
   const y = Math.round(h * 0.68);
   const corazon = Math.round(fs * 0.8);
   const textoAncho = Math.round(fs * 4.9);
   const total = corazon + Math.round(fs * 0.35) + textoAncho;
-  const x0 = Math.round((ancho - total) / 2);
+  const margen = Math.max(8, Math.round(ancho * 0.035));
+  const x0 = Math.max(0, ancho - total - margen);
   const cy = Math.round(y - fs * 0.35);
   const s = corazon / 24;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${h}">
@@ -47,7 +51,7 @@ function marcaSvg(ancho, alto) {
     <text x="${x0 + corazon + Math.round(fs * 0.35)}" y="${y}" font-family="DejaVu Sans, Arial, Helvetica, sans-serif" font-weight="700"
       font-size="${fs}" fill="#FFFFFF" stroke="#000000" stroke-opacity="0.35" stroke-width="${Math.max(1, Math.round(fs / 22))}">SexyRose</text>
   </g></svg>`;
-  return { input: Buffer.from(svg), top: Math.max(0, alto - h - Math.round(alto * 0.04)), left: 0 };
+  return { input: Buffer.from(svg), top: Math.max(0, Math.min(alto - h, Math.round(alto * 0.025))), left: 0 };
 }
 
 // Marca de agua como PNG transparente del ancho dado (la usa lib/videos.js para superponerla al video).

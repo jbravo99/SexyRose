@@ -193,7 +193,7 @@ describe('videos con almacenamiento externo', { skip: !hayFfmpeg && 'falta ffmpe
     assert.equal((await c.json('DELETE', `/api/cuenta/videos/${vl.id}`)).status, 200);
   });
 
-  test('cupo por plan: Bronce 2 (procesando + listos); con Plata 5', async () => {
+  test('cupo por plan: Bronce 2 (procesando + listos); con Plata 10', async () => {
     const c = await registrar(s.base);
     for (let i = 0; i < 2; i++) assert.equal((await c.video(path.join(clips, 'w.webm'))).status, 202);
     const tercero = await c.video(path.join(clips, 'w.webm'));
@@ -201,7 +201,7 @@ describe('videos con almacenamiento externo', { skip: !hayFfmpeg && 'falta ffmpe
     await db.query("INSERT INTO suscripciones (cuenta_id, plan, periodo, desde, hasta) VALUES ($1, 'D', 'manual', now() - interval '1 hour', now() + interval '1 day')", [c.id]);
     assert.equal((await c.video(path.join(clips, 'w.webm'))).status, 202);
     const yo = (await c.get('/api/cuenta/yo')).body.cuenta;
-    assert.equal(yo.limites.videos, 5);
+    assert.equal(yo.limites.videos, 10);
     await s.ctx.videos.vacia();
   });
 

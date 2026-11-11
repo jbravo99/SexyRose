@@ -7,6 +7,11 @@ Salida (la sirve app/routes/spa-sitio.js en las direcciones reales: /, /argentin
   app/sitio-spa/assets/app.<hash>.css   todo el CSS del sitio
   app/sitio-spa/assets/i18n.<hash>.js   el diccionario inglés/portugués (un tercio del JS): solo lo baja quien navega
                                         en /en/ o /pt/ (o cambia de idioma); en español no se pide
+  app/sitio-spa/assets/fonts/*.woff2    Poppins 500/600/700 y Manrope 400–800 (latin y latin-ext) con hash en el nombre,
+                                        copiadas de @fontsource (sin Google Fonts: nada se pide a otro dominio)
+  app/sitio-spa/seo-datos.json          plantillas SEO por defecto (mvp/src/seo.js), nombres de lugares (urls.js) y
+                                        traducciones cortas: con eso el servidor arma título, canonical, hreflang y
+                                        sitemap igual que el SPA (app/lib/seo-sitio.js)
 
 Si encuentra esbuild (variable ESBUILD, o `esbuild` en el PATH) minimiza el JS y el CSS; si no, los deja tal cual.
 El servidor los comprime (brotli/gzip) la primera vez que se piden.
@@ -17,8 +22,12 @@ Variables opcionales:
   SITIO_OUT   archivo HTML de salida (por defecto: <REPO_ROOT>/app/sitio-spa/index.html); los assets van al lado
   ESBUILD     ruta del ejecutable de esbuild (opcional)
   NO_MINIFY=1 no minimizar aunque haya esbuild
+  FONTSOURCE_DIR  carpeta con los paquetes @fontsource/poppins y @fontsource/manrope (por defecto se buscan en
+                  node_modules/@fontsource del repo, de app/ y de mvp/). Sin ellos el sitio usa las fuentes del sistema.
+  REQUIRE_FONTS=1 fallar si no encuentra las fuentes (el Dockerfile lo usa)
 """
 import hashlib
+import json
 import os
 import pathlib
 import re
@@ -30,7 +39,90 @@ ROOT = pathlib.Path(os.environ.get('REPO_ROOT') or pathlib.Path(__file__).resolv
 OUT = pathlib.Path(os.environ.get('SITIO_OUT') or ROOT / 'app' / 'sitio-spa' / 'index.html')
 BUILD = ROOT / 'mvp' / 'build.py'
 SRC = ROOT / 'mvp' / 'build' / 'sitio.html'
-FONTS = 'https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap'
+# Fuentes propias (antes Google Fonts): (paquete de @fontsource, familia, pesos). Solo latin y latin-ext.
+FUENTES = [('poppins', 'Poppins', [500, 600, 700]), ('manrope', 'Manrope', [400, 500, 600, 700, 800])]
+SUBSETS = ['latin-ext', 'latin']
+# Las dos que se usan apenas carga la página: el cuerpo (Manrope 400) y los títulos (Poppins 600)
+PRECARGA = [('manrope', 'latin', 400), ('poppins', 'latin', 600)]
+
+
+def fontsource_dir():
+    cands = [os.environ.get('FONTSOURCE_DIR')] if os.environ.get('FONTSOURCE_DIR') else []
+    cands += [ROOT / 'node_modules' / '@fontsource', ROOT / 'app' / 'node_modules' / '@fontsource', ROOT / 'mvp' / 'node_modules' / '@fontsource']
+    for c in cands:
+        c = pathlib.Path(c)
+        if all((c / pkg / 'files').is_dir() for pkg, _, _ in FUENTES):
+            return c
+    return None
+
+
+def fuentes(fonts_out: pathlib.Path, h):
+    """Copia los .woff2 con hash en el nombre y devuelve (css @font-face, [urls para precargar]) o (None, [])."""
+    base = fontsource_dir()
+    if not base:
+        return None, []
+    fonts_out.mkdir(parents=True, exist_ok=True)
+    css, urls = [], {}
+    for pkg, familia, pesos in FUENTES:
+        for w in pesos:
+            fuente_css = (base / pkg / f'{w}.css').read_text(encoding='utf-8')
+            for sub in SUBSETS:
+                nombre = f'{pkg}-{sub}-{w}-normal'
+                m = re.search(r'/\* ' + re.escape(nombre) + r' \*/\s*@font-face\s*\{[^}]*?unicode-range:\s*([^;]+);', fuente_css)
+                if not m:
+                    raise SystemExit(f'error: no encuentro el bloque {nombre} en {base / pkg / f"{w}.css"}')
+                data = (base / pkg / 'files' / f'{nombre}.woff2').read_bytes()
+                dest = f'{pkg}-{sub}-{w}.{hashlib.sha256(data).hexdigest()[:12]}.woff2'
+                (fonts_out / dest).write_bytes(data)
+                urls[(pkg, sub, w)] = f'/assets/fonts/{dest}'
+                css.append(f"@font-face{{font-family:'{familia}';font-style:normal;font-display:swap;font-weight:{w};"
+                           f"src:url({urls[(pkg, sub, w)]}) format('woff2');unicode-range:{m.group(1).strip()}}}")
+    return '\n'.join(css), [urls[k] for k in PRECARGA]
+
+
+def js_literal(src: str, start: int) -> str:
+    """Devuelve el literal {…} de JS que empieza en src[start] (respeta comillas y escapes)."""
+    depth, i, q = 0, start, None
+    while i < len(src):
+        c = src[i]
+        if q:
+            if c == '\\':
+                i += 2
+                continue
+            if c == q:
+                q = None
+        elif c in '\'"`':
+            q = c
+        elif c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+            if depth == 0:
+                return src[start:i + 1]
+        i += 1
+    raise ValueError('literal sin cerrar')
+
+
+def seo_datos(dic_literal: str) -> dict:
+    """Plantillas SEO y nombres de lugares del SPA (evaluados con node) + traducciones cortas del diccionario."""
+    src = ROOT / 'mvp' / 'src'
+    seo = (src / 'seo.js').read_text(encoding='utf-8')
+    urls = (src / 'urls.js').read_text(encoding='utf-8')
+    lits = []
+    for texto, marca in ((seo, 'HH.SEO_DEFAULTS = '), (urls, 'HH.SEO_PLACE_DEFAULTS = ')):
+        i = texto.index(marca) + len(marca)
+        lits.append(js_literal(texto, i))
+    node = shutil.which('node')
+    if not node:
+        raise SystemExit('error: hace falta node para generar seo-datos.json')
+    code = 'process.stdout.write(JSON.stringify([' + ','.join('(' + x + ')' for x in lits) + ']))'
+    r = subprocess.run([node, '-e', code], capture_output=True)
+    if r.returncode != 0:
+        raise SystemExit('error: node no pudo leer las plantillas SEO: ' + r.stderr.decode('utf-8', 'replace')[:400])
+    defaults, lugares = json.loads(r.stdout.decode('utf-8'))
+    dic = json.loads(dic_literal)
+    corto = {k: v for k, v in dic.items() if len(k) <= 60 and '{' not in k and isinstance(v, list) and len(v) >= 2}
+    return {'defaults': defaults, 'lugares': lugares, 'dict': corto}
 
 
 def esbuild_bin():
@@ -71,8 +163,9 @@ def main() -> int:
     # CSS: todos los <style> del <head> en un archivo
     css = '\n'.join(re.findall(r'<style>([\s\S]*?)</style>', head))
     head = re.sub(r'<style>[\s\S]*?</style>\s*', '', head)
-    # Fuentes de Google: sin bloquear el primer dibujo (se cargan con media=print y el JS las activa)
+    # Sin Google Fonts: las fuentes van en /assets/fonts (ver fuentes()); fuera la hoja y los preconnect
     head = re.sub(r'<link rel="stylesheet" href="https://fonts\.googleapis\.com[^"]*">\s*', '', head)
+    head = re.sub(r'<link rel="preconnect" href="https://fonts\.(googleapis|gstatic)\.com"[^>]*>\s*', '', head)
     # JS: los <script> del <body> en un archivo (primero el que define HH_PROD)
     scripts = re.findall(r'<script>([\s\S]*?)</script>', body)
     if len(scripts) != 2 or 'HH_PROD' not in scripts[0]:
@@ -86,7 +179,15 @@ def main() -> int:
         print('error: no encuentro el diccionario (i18n-dict.js) en el build', file=sys.stderr)
         return 1
     app = app[:m.start()] + app[m.end():]
-    dic = 'HH.I18N=Object.assign(' + m.group(1) + ',HH.I18N||{});HH.I18N_BASE=1;'
+    dic_literal = m.group(1)
+    dic = 'HH.I18N=Object.assign(' + dic_literal + ',HH.I18N||{});HH.I18N_BASE=1;'
+    # Mensajes del servidor en en/pt (prod-sitio-errores.js): también van al diccionario, sin pisar lo que ya hay
+    m = re.search(r'/\* ===== prod-sitio-errores\.js ===== \*/[\s\S]*?Object\.assign\(HH\.I18N = HH\.I18N \|\| \{\}, (\{[\s\S]*?\})\);\s*\}\)\(\);\s*(?=/\* ===== )', app)
+    if not m:
+        print('error: no encuentro los mensajes del servidor (prod-sitio-errores.js) en el build', file=sys.stderr)
+        return 1
+    app = app[:m.start()] + app[m.end():]
+    dic += 'HH.I18N=Object.assign(' + m.group(1) + ',HH.I18N);'
 
     exe = esbuild_bin()
 
@@ -96,7 +197,18 @@ def main() -> int:
     dic_min, _ = minify(dic, 'js', exe)
     dic_name = f'i18n.{h(dic_min)}.js'
     js = scripts[0].strip() + '\n' + f'window.HH_I18N_SRC="/assets/{dic_name}";\n' + app
-    js = "(function(){var l=document.querySelector('link[data-fonts]');if(l)l.media='all';})();\n" + js
+    assets = OUT.parent / 'assets'
+    if assets.exists():
+        shutil.rmtree(assets)
+    assets.mkdir(parents=True)
+    css_fuentes, precarga = fuentes(assets / 'fonts', h)
+    if css_fuentes is None:
+        if os.environ.get('REQUIRE_FONTS') == '1':
+            print('error: no encuentro @fontsource/poppins y @fontsource/manrope (FONTSOURCE_DIR)', file=sys.stderr)
+            return 1
+        print('aviso: sin @fontsource (FONTSOURCE_DIR): el sitio usa las fuentes del sistema', file=sys.stderr)
+    else:
+        css = css_fuentes + '\n' + css
     js_min, ok_js = minify(js, 'js', exe)
     css_min, ok_css = minify(css, 'css', exe)
     for code, nombre in ((js_min, 'JS'), (css_min, 'CSS')):
@@ -105,10 +217,6 @@ def main() -> int:
             print(f'error: {nombre} con javascript:', file=sys.stderr)
             return 1
 
-    assets = OUT.parent / 'assets'
-    if assets.exists():
-        shutil.rmtree(assets)
-    assets.mkdir(parents=True)
     js_name = f'app.{h(js_min)}.js'
     css_name = f'app.{h(css_min)}.css'
     (assets / js_name).write_text(js_min, encoding='utf-8')
@@ -116,12 +224,13 @@ def main() -> int:
     (assets / dic_name).write_text(dic_min, encoding='utf-8')
 
     links = (
+        f'<!--SR:SEO-->\n'
         f'<!--SR:PRECONNECT-->\n'
         f'<!--SR:I18N /assets/{dic_name}-->\n'
         f'<link rel="preload" href="/assets/{js_name}" as="script">\n'
         f'<link rel="preload" href="/api/sitio/estado" as="fetch" crossorigin="anonymous">\n'
-        f'<link rel="stylesheet" href="/assets/{css_name}">\n'
-        f'<link rel="stylesheet" href="{FONTS}" media="print" data-fonts>\n'
+        + ''.join(f'<link rel="preload" href="{u}" as="font" type="font/woff2" crossorigin>\n' for u in precarga)
+        + f'<link rel="stylesheet" href="/assets/{css_name}">\n'
     )
     shell = head + links + body.replace('</body>', f'<script src="/assets/{js_name}" defer></script>\n</body>', 1)
     bad = re.findall(r'<[a-z][^>]*\son[a-z]+\s*=', shell, flags=re.I) + re.findall(r'javascript:', shell, flags=re.I) + re.findall(r'<script>', shell)
@@ -130,6 +239,7 @@ def main() -> int:
         return 1
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(shell, encoding='utf-8')
+    (OUT.parent / 'seo-datos.json').write_text(json.dumps(seo_datos(dic_literal), ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(f'ok sitio: {OUT} ({OUT.stat().st_size} bytes) + assets/{js_name} ({len(js_min.encode())} bytes{", minimizado" if ok_js else ""}) '
           f'+ assets/{css_name} ({len(css_min.encode())} bytes{", minimizado" if ok_css else ""}) '
           f'+ assets/{dic_name} ({len(dic_min.encode())} bytes)')

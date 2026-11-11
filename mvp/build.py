@@ -18,7 +18,7 @@ elif TARGET == 'sitio':
     # Sin las vistas que el sitio real no usa (panel y admin de la demo, cuenta de clientes, asistente simulado):
     # prod-sitio.js trae su propio panel. Todos sus usos desde otros módulos están protegidos (if (HH.adminTabs) …).
     SIN_SITIO = {'views-dashboard.js', 'views-admin.js', 'views-client.js', 'ops.js'}
-    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio.js', 'boot.js']
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio-errores.js', 'prod-sitio.js', 'boot.js']
 elif TARGET:
     sys.exit('HH_TARGET desconocido: ' + TARGET)
 parts = []

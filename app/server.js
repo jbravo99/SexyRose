@@ -18,11 +18,15 @@ import { createVideos } from './lib/videos.js';
 
 // ---- Fase 1 (agente B): imports ----
 import { createPlanes } from './lib/planes.js';
+import { createCreditos } from './lib/creditos.js';
 import { createPrivado } from './lib/privado.js';
 import { createAdminFase1Router } from './routes/admin-fase1.js';
 import { createCuentaPlanesRouter } from './routes/cuenta-planes.js';
+import { createAdminCreditosRouter } from './routes/admin-creditos.js';
 import { createSpaSitioRouter } from './routes/spa-sitio.js';
 // ---- fin Fase 1 (agente B): imports ----
+import { createAdminTextosSitioRouter } from './routes/admin-textos-sitio.js';
+import { createAdminVideosRouter } from './routes/admin-videos.js';
 export { escapeHtml };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -150,8 +154,11 @@ function validEmail(s) {
 // ---------------------------------------------------------------------------
 const GENEROS = ['mujer', 'trans', 'hombre'];
 const CONTACTO_TIPOS = ['whatsapp', 'telegram', 'email'];
-const PLANES = ['bronce', 'plata', 'oro', 'platino', 'diamante', 'star', 'no_se'];
-const PLAN_LABEL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', platino: 'Platino', diamante: 'Diamante', star: 'Star', no_se: 'Todavía no sabe' };
+// Planes v2 (11/11/2026): Bronce, Plata, Oro y Star. Platino y Diamante ya no existen: si llega un formulario viejo con
+// esos valores se guarda como Oro (la fusión). Las etiquetas viejas quedan para mostrar los pre-registros anteriores.
+const PLANES = ['bronce', 'plata', 'oro', 'star', 'no_se'];
+const PLANES_VIEJOS = { platino: 'oro', diamante: 'oro' };
+const PLAN_LABEL = { bronce: 'Bronce', plata: 'Plata', oro: 'Oro', star: 'Star', no_se: 'Todavía no sabe', platino: 'Platino (plan viejo)', diamante: 'Diamante (plan viejo)' };
 const CATEGORIAS = ['abuso_infantil', 'imagen_sin_consentimiento', 'trata', 'otro'];
 const CATEGORIA_LABEL = {
   abuso_infantil: 'Abuso sexual infantil',
@@ -197,7 +204,8 @@ export function validatePreregistro(b) {
     contacto = raw;
   }
 
-  const plan = cleanLine(b.plan_interes).toLowerCase();
+  const planRaw = cleanLine(b.plan_interes).toLowerCase();
+  const plan = PLANES_VIEJOS[planRaw] || planRaw;
   if (!PLANES.includes(plan)) return { error: 'Elegí el plan que te interesa (o "Todavía no sé").' };
 
   if (!isTrue(b.mayor_edad)) return { error: 'Tenés que confirmar que sos mayor de 18 años.' };
@@ -442,7 +450,9 @@ export function createApp(config) {
     const parrafos = String(m.text || '').split(/\n{2,}/).map((x) => x.trim()).filter((x) => x && !/^(SexyRose|Hola:?)$/.test(x));
     return sendMailBase({ ...m, html: emailBasico({ titulo: m.subject || 'SexyRose', parrafos }).html });
   };
-  const planes = createPlanes({ pool, sendMail: sendMailPlanes, log, siteUrl: config.siteUrl });
+  // Planes v2: créditos (libro de movimientos, packs, pedidos por WhatsApp, notificaciones). planes.creditos es esta instancia.
+  const creditos = createCreditos({ pool, sendMail: sendMailPlanes, log, siteUrl: config.siteUrl });
+  const planes = createPlanes({ pool, sendMail: sendMailPlanes, log, siteUrl: config.siteUrl, creditos });
   // Cualquier cambio de planes, perfiles o catálogos desde el admin invalida el estado público y los catálogos.
   planes.setInvalidarSitio(() => { invalidarCatalogos(); invalidarSitio(); });
   // Archivos privados: misma raíz DATA_DIR/privado para verificaciones (lib/storage.js) y comprobantes (lib/privado.js).
@@ -453,7 +463,7 @@ export function createApp(config) {
     pool, storage, log, invalidar: () => invalidarSitio(), tmpDir: path.join(storage.dataDir(), 'tmp', 'videos'),
     ffmpeg: config.ffmpegPath || 'ffmpeg', ffprobe: config.ffprobePath || 'ffprobe', marca: config.marcaVideos !== false,
   });
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, privado, videos };
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos };
 
   const app = express();
   app.disable('x-powered-by');
@@ -494,11 +504,14 @@ export function createApp(config) {
 
   const SITEMAP_PAGES = [['', 'index.html'], ['terminos', 'terminos.html'], ['privacidad', 'privacidad.html'],
     ['contenido', 'contenido.html'], ['trata', 'trata.html'], ['denunciar', 'denunciar.html']];
+  let spaSitio = null; // routes/spa-sitio.js (se crea más abajo): con datos reales arma el mapa completo
   app.get('/sitemap.xml', ah(async (req, res) => {
     const urls = [];
     for (const [route, file] of SITEMAP_PAGES) {
       if (await exists(file)) urls.push(`  <url><loc>${escapeXml(config.siteUrl + '/' + route)}</loc></url>`);
     }
+    const completo = spaSitio && spaSitio.sitemap ? await spaSitio.sitemap(urls.slice(1)).catch((e) => { log('sitemap: ' + e.message); return null; }) : null;
+    if (completo) return res.type('application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=600').send(completo);
     res.type('application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=3600')
       .send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
   }));
@@ -1004,8 +1017,12 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // tarea de vencimientos de planes. La instancia `planes` y `privado` se crean arriba, junto a ctx.
   const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
   admin.use('/api', fase1Admin.router);
+  // Planes v2: créditos, pedidos de créditos, vencimientos, pausadas por saldo y Destacados.
+  const creditosAdmin = createAdminCreditosRouter({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
+  admin.use('/api', creditosAdmin.router);
   if (config.tareaPlanes !== false) planes.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
   // ---- fin Fase 1 (agente B) ----
+  admin.use('/api', createAdminTextosSitioRouter({ pool, apiPost }), createAdminVideosRouter({ pool })); // Ajustes → Textos del inicio; videos en la ficha
 
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
@@ -1022,6 +1039,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
       textos: { modificados: bloques.filter((b) => textos.valores.has(b.clave)).length, total: bloques.length },
       generado: new Date().toISOString(),
       ...(await fase1Admin.contadores().catch(() => ({}))), // Fase 1 (agente B)
+      ...(await creditosAdmin.contadores().catch(() => ({}))), // Planes v2
     });
   }));
 
@@ -1162,7 +1180,8 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // /admin y /admin/* no tienen nada especial: caen en la 404 pública como cualquier otra ruta.
 
   // --- Sitio público real (SPA del MVP, HH_PROD='sitio'). Sin build, sigue la portada vieja. ---
-  app.use(createSpaSitioRouter({ config, log, pool }));
+  spaSitio = createSpaSitioRouter({ config, log, pool, planes });
+  app.use(spaSitio);
 
   // --- Páginas HTML (rutas limpias + placeholders) ---------------------------
   const PAGE = /^\/([a-z0-9][a-z0-9-]{0,63})(\.html|\/)?$/;
@@ -1271,7 +1290,9 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
         return;
       } catch (e) {
         const delay = Math.min(30000, 1000 * 2 ** Math.min(attempt - 1, 5));
-        log(`base de datos no disponible (intento ${attempt}: ${e.code || e.message}); reintento en ${delay / 1000} s`);
+        // P0001 = RAISE EXCEPTION de una migración (ej. 050-planes-v2.sql frena si quedan planes Platino/Diamante): se
+        // muestra el mensaje completo, que explica qué hacer.
+        log(`base de datos no disponible (intento ${attempt}: ${e.code === 'P0001' ? e.message : (e.code || e.message)}); reintento en ${delay / 1000} s`);
         await sleep(delay);
       }
     }

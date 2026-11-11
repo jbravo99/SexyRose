@@ -243,10 +243,10 @@ INSERT INTO intereses (id, nombre, nombre_en, nombre_pt, orden) VALUES
   ('negocios', 'Negocios', 'Business', 'Negócios', 15)
 ON CONFLICT (id) DO NOTHING;
 
--- Precios (Juan, 09/11/2026: primeros 3 meses y hasta nuevo aviso). Códigos del MVP:
--- S Star, A Diamante, B Platino, C Oro, D Plata, E Bronce. Semana solo Platino en adelante (1/4 del mes + 20 %).
+-- Precios (Planes v2, Juan 11/11/2026): E Bronce gratis, D Plata 35, C Oro 90, S Star 350 por mes; semana solo Oro y Star
+-- (1/4 del mes + 20 %). Las bases que tenían la semilla vieja (6 planes) se pasan en 050-planes-v2.sql.
 INSERT INTO ajustes (clave, valor) VALUES
-  ('precios', '{"mes": {"E": 0, "D": 20, "C": 45, "B": 70, "A": 150, "S": 350}, "semana": {"B": 21, "A": 45, "S": 105}}'::jsonb),
+  ('precios', '{"mes": {"E": 0, "D": 35, "C": 90, "S": 350}, "semana": {"C": 27, "S": 105}}'::jsonb),  -- Planes v2 (ver 050)
   ('transferencia', '""'::jsonb),
   ('portada', '{"titulo": "Acompañantes para salidas", "subtitulo": "Perfiles verificados en toda la Argentina"}'::jsonb),
   ('promo', '""'::jsonb)

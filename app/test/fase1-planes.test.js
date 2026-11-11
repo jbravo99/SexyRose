@@ -1,6 +1,7 @@
-// Pruebas de Fase 2 (agente B): planes, pedidos por transferencia, suscripciones, cupo Star, vencimientos y API del admin.
+// Pruebas de planes (Planes v2): 4 planes pagados con créditos, subidas, semanas, cupo Star, pedidos viejos por
+// transferencia (historial), vencimientos y API del admin.
 //   DATABASE_URL_B=postgres://postgres@localhost:55432/srtestB node --test test/fase1-planes.test.js
-// Aplica schema.sql + 010-cuentas.sql + 020-planes.sql antes de arrancar.
+// Aplica todos los db/*.sql (como el servidor) antes de arrancar.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -40,6 +41,7 @@ async function aplicarEsquema() {
   await db.query(await leer('db/010-cuentas.sql'));
   await db.query(await leer('db/020-planes.sql'));
   await db.query('TRUNCATE avisos_plan, suscripciones, pedidos RESTART IDENTITY CASCADE');
+  for (const f of (await fs.readdir(path.join(APP, 'db'))).filter((x) => /^\d+-.*\.sql$/.test(x)).sort()) await db.query(await leer('db/' + f));
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzb-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('precios', 'transferencia', 'portada', 'promo')");
   await db.query("DELETE FROM ubicaciones WHERE id LIKE 'zzb-%'");
@@ -57,6 +59,20 @@ async function nuevaCuenta({ provincia = 'Zzb Provincia', estado = 'borrador', v
   return { id, email };
 }
 const ultimoMail = (email) => [...mails].reverse().find((m) => m.to === email);
+// Carga créditos con un ajuste del admin (como hace el admin a mano).
+async function cargar(cuentaId, creditos) {
+  const r = await admPost(`/creditos/${cuentaId}/ajuste`, { creditos, motivo: 'Carga de prueba' });
+  assert.equal(r.status, 200, await r.clone().text());
+}
+// Saldo = suma de movimientos = fila de creditos_cuentas, y saldo_despues del último movimiento.
+async function invariante(cuentaId) {
+  const { rows: [x] } = await db.query(
+    `SELECT COALESCE((SELECT sum(centavos) FROM creditos_movimientos WHERE cuenta_id = $1), 0)::bigint AS suma,
+            COALESCE((SELECT centavos FROM creditos_cuentas WHERE cuenta_id = $1), 0)::bigint AS fila,
+            COALESCE((SELECT saldo_despues FROM creditos_movimientos WHERE cuenta_id = $1 ORDER BY id DESC LIMIT 1), 0)::bigint AS ultimo`, [cuentaId]);
+  assert.equal(x.suma, x.fila);
+  assert.equal(x.suma, x.ultimo);
+}
 
 before(async () => {
   await aplicarEsquema();
@@ -85,73 +101,216 @@ after(async () => {
 });
 
 describe('precios y utilidades', () => {
-  test('referencias cortas sin caracteres ambiguos', () => {
+  test('referencias cortas sin caracteres ambiguos (pedidos viejos)', () => {
     for (let i = 0; i < 200; i++) assert.match(nuevaReferencia(), /^SR-[A-HJ-KMNP-Z2-9]{4}$/);
   });
-  test('defaults, mezcla y validación', async () => {
+  test('defaults v2, mezcla y validación', async () => {
+    assert.deepEqual(PRECIOS_DEFAULT.mes, { E: 0, D: 35, C: 90, S: 350 });
+    assert.deepEqual(PRECIOS_DEFAULT.semana, { C: 27, S: 105 });
     assert.deepEqual(mezclarPrecios(null), { mes: { ...PRECIOS_DEFAULT.mes }, semana: { ...PRECIOS_DEFAULT.semana } });
-    assert.equal(mezclarPrecios({ mes: { D: 25, Z: 9 }, semana: { B: -1 } }).mes.D, 25);
-    assert.equal(mezclarPrecios({ semana: { B: -1 } }).semana.B, 21);
-    assert.ok(validarPrecios({ mes: { E: 0, D: 1, C: 2, B: 3, A: 4, S: 5 }, semana: { B: 1, A: 2, S: 3 } }).valor);
-    assert.ok(validarPrecios({ mes: { E: 0, D: 1, C: 2, B: 3, A: 4, S: 5 }, semana: { B: 1, A: 2, S: 3, D: 1 } }).error);
-    assert.ok(validarPrecios({ mes: { E: 0, D: 'x', C: 2, B: 3, A: 4, S: 5 }, semana: { B: 1, A: 2, S: 3 } }).error);
+    assert.equal(mezclarPrecios({ mes: { D: 25, Z: 9 }, semana: { C: -1 } }).mes.D, 25);
+    assert.equal(mezclarPrecios({ semana: { C: -1 } }).semana.C, 27);
+    // los B/A viejos se ignoran
+    const viejo = mezclarPrecios({ mes: { E: 0, D: 20, C: 45, B: 70, A: 150, S: 350 }, semana: { B: 21, A: 45, S: 105 } });
+    assert.deepEqual(Object.keys(viejo.mes), ['E', 'D', 'C', 'S']);
+    assert.deepEqual(Object.keys(viejo.semana), ['C', 'S']);
+    assert.ok(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 } }).valor);
+    assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, B: 1, S: 350 }, semana: { C: 27, S: 105 } }).error, /desconocido/);
+    assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105, D: 1 } }).error, /desconocido/);
+    assert.ok(validarPrecios({ mes: { E: 0, D: 'x', C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error);
+    assert.match(validarPrecios({ mes: { E: 0, D: 95, C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error, /subir con el plan/);
+    assert.match(validarPrecios({ mes: { E: 5, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error, /gratis/);
   });
-  test('GET /api/cuenta/planes con defaults y luego con precios del admin', async () => {
+  test('GET /api/cuenta/planes: 4 planes, límites, saldo y sin datos bancarios', async () => {
     const c = await nuevaCuenta();
     let r = await cta(c.id, '/planes');
     assert.equal(r.status, 200);
     let j = await r.json();
     assert.equal(j.efectivo, 'E');
-    assert.deepEqual(j.precios.mes, { E: 0, D: 20, C: 45, B: 70, A: 150, S: 350 });
-    assert.deepEqual(j.precios.semana, { B: 21, A: 45, S: 105 });
-    assert.equal(j.planes.find((p) => p.codigo === 'D').semana, null);
+    assert.deepEqual(j.precios.mes, { E: 0, D: 35, C: 90, S: 350 });
+    assert.deepEqual(j.precios.semana, { C: 27, S: 105 });
+    assert.deepEqual(j.planes.map((p) => p.codigo), ['E', 'D', 'C', 'S']);
+    const P = Object.fromEntries(j.planes.map((p) => [p.codigo, p]));
+    assert.equal(P.D.semana, null);
+    assert.equal(P.C.semana, 27);
+    assert.deepEqual(P.E.limites, { fotos: 8, videos: 2, historiasDia: 1, destacadas: 1 });
+    assert.deepEqual(P.D.limites, { fotos: 30, videos: 10, historiasDia: 3, destacadas: 4 });
+    assert.deepEqual(P.C.limites, { fotos: 500, videos: 200, historiasDia: null, destacadas: 10 });
+    assert.deepEqual(P.S.limites, { fotos: 1000, videos: 500, historiasDia: null, destacadas: null });
+    assert.deepEqual(j.planes.map((p) => p.preview), [false, true, true, true]);
+    assert.deepEqual(P.D.destacado, { dia: 2, semana: 9 });
+    assert.equal(P.S.destacado, null);
+    assert.equal(P.S.cupoProvincia, 10);
+    assert.deepEqual(j.saldo, { centavos: 0, creditos: '0.00' });
+    assert.equal(j.base, null);
+    assert.equal(j.pausa, null);
     assert.equal(j.cupoStar.libres, 10);
-    assert.equal(j.transferencia, '');
-    const precios = { mes: { E: 0, D: 22, C: 45, B: 70, A: 150, S: 350 }, semana: { B: 21, A: 45, S: 105 } };
+    assert.ok(!('transferencia' in j));
+    const precios = { mes: { E: 0, D: 36, C: 90, S: 350 }, semana: { C: 27, S: 105 } };
     assert.equal((await admPost('/ajustes/precios', { valor: precios }, { method: 'PUT' })).status, 200);
-    assert.equal((await admPost('/ajustes/transferencia', { valor: 'Alias: SEXYROSE.PAGOS' }, { method: 'PUT' })).status, 200);
+    assert.equal((await admPost('/ajustes/transferencia', { valor: 'Alias: X' }, { method: 'PUT' })).status, 404);
     j = await (await cta(c.id, '/planes')).json();
-    assert.equal(j.precios.mes.D, 22);
-    assert.equal(j.transferencia, 'Alias: SEXYROSE.PAGOS');
+    assert.equal(j.precios.mes.D, 36);
     await admPost('/ajustes/precios', { valor: { mes: { ...PRECIOS_DEFAULT.mes }, semana: { ...PRECIOS_DEFAULT.semana } } }, { method: 'PUT' });
     assert.equal((await cta('', '/planes')).status, 401);
   });
 });
 
-describe('pedidos', () => {
-  test('validaciones', async () => {
+describe('comprar planes con créditos', () => {
+  test('validaciones, saldo insuficiente y reglas de POST', async () => {
     const c = await nuevaCuenta();
-    const err = async (body, status, re) => {
-      const r = await ctaPost(c.id, '/pedidos', body);
+    const err = async (body, status, re, codigo) => {
+      const r = await ctaPost(c.id, '/plan/comprar', body);
       assert.equal(r.status, status, JSON.stringify(body));
-      assert.match((await r.json()).error, re);
+      const j = await r.json();
+      assert.match(j.error, re);
+      if (codigo) assert.equal(j.codigo, codigo);
+      return j;
     };
     await err({ plan: 'E', periodo: 'mes' }, 400, /gratis/);
-    await err({ plan: 'D', periodo: 'semana' }, 400, /por semana/);
-    await err({ plan: 'C', periodo: 'semana' }, 400, /por semana/);
-    await err({ plan: 'X', periodo: 'mes' }, 400, /plan válido/);
-    await err({ plan: 'B', periodo: 'dia' }, 400, /mes o por semana/);
-    const r = await ctaPost(c.id, '/pedidos', { plan: 'B', periodo: 'semana' });
-    assert.equal(r.status, 201);
-    const { pedido } = await r.json();
-    assert.equal(pedido.montoUsd, 21);
-    assert.equal(pedido.estado, 'pendiente');
-    assert.match(pedido.referencia, /^SR-/);
-    await err({ plan: 'B', periodo: 'semana' }, 409, /pedido abierto/);
-    // otro período del mismo plan sí
-    assert.equal((await ctaPost(c.id, '/pedidos', { plan: 'B', periodo: 'mes' })).status, 201);
+    await err({ plan: 'D', periodo: 'semana' }, 400, /por semana: solo Oro y Star/);
+    await err({ plan: 'B', periodo: 'mes' }, 400, /plan válido/);
+    await err({ plan: 'A', periodo: 'semana' }, 400, /plan válido/);
+    await err({ plan: 'C', periodo: 'dia' }, 400, /mes o por semana/);
+    const j = await err({ plan: 'D', periodo: 'mes' }, 402, /No te alcanzan/, 'saldo_insuficiente');
+    assert.deepEqual(j.faltan, { centavos: 3500, creditos: '35.00' });
+    // los pedidos por transferencia ya no existen
+    let r = await ctaPost(c.id, '/pedidos', { plan: 'D', periodo: 'mes' });
+    assert.equal(r.status, 410);
+    assert.match((await r.json()).error, /créditos/);
     // reglas de POST
-    let x = await cta(c.id, '/pedidos', { method: 'POST', body: '{"plan":"A","periodo":"mes"}', headers: { 'content-type': 'application/json', origin: BASE } });
+    let x = await cta(c.id, '/plan/comprar', { method: 'POST', body: '{"plan":"C","periodo":"mes"}', headers: { 'content-type': 'application/json', origin: BASE } });
     assert.equal(x.status, 403);
-    x = await cta(c.id, '/pedidos', { method: 'POST', body: '{"plan":"A","periodo":"mes"}', headers: { 'content-type': 'application/json', 'x-sr': '1', origin: 'https://evil.example' } });
+    x = await cta(c.id, '/plan/comprar', { method: 'POST', body: '{"plan":"C","periodo":"mes"}', headers: { 'content-type': 'application/json', 'x-sr': '1', origin: 'https://evil.example' } });
     assert.equal(x.status, 403);
-    x = await cta(c.id, '/pedidos', { method: 'POST', body: 'plan=A', headers: { 'content-type': 'text/plain', 'x-sr': '1', origin: BASE } });
+    x = await cta(c.id, '/plan/comprar', { method: 'POST', body: 'plan=C', headers: { 'content-type': 'text/plain', 'x-sr': '1', origin: BASE } });
     assert.equal(x.status, 415);
+    r = await cta(c.id, '/plan/cotizar?plan=D&periodo=mes');
+    const q = await r.json();
+    assert.equal(q.tipo, 'nuevo');
+    assert.equal(q.alcanza, false);
+    assert.equal(q.costo.creditos, '35.00');
+  });
+
+  test('alta, renovación anticipada y movimientos del libro', async () => {
+    const c = await nuevaCuenta();
+    await cargar(c.id, 105);
+    let r = await ctaPost(c.id, '/plan/comprar', { plan: 'D', periodo: 'mes' });
+    assert.equal(r.status, 201);
+    let j = await r.json();
+    assert.equal(j.tipo, 'nuevo');
+    assert.equal(j.plan, 'D');
+    assert.equal(j.saldo.creditos, '70.00');
+    assert.equal(j.suscripcion.renovacionAuto, true);
+    assert.equal(j.suscripcion.origen, 'creditos');
+    assert.ok(Math.abs((new Date(j.suscripcion.hasta) - new Date(j.suscripcion.desde)) / 86400000 - 30) < 0.01);
+    const s1 = j.suscripcion;
+    r = await ctaPost(c.id, '/plan/comprar', { plan: 'D', periodo: 'mes' });
+    j = await r.json();
+    assert.equal(j.tipo, 'renovacion_anticipada');
+    assert.equal(new Date(j.suscripcion.desde).getTime(), new Date(s1.hasta).getTime());
+    assert.equal(j.saldo.creditos, '35.00');
+    const pl = await (await cta(c.id, '/planes')).json();
+    assert.equal(pl.efectivo, 'D');
+    assert.equal(pl.base.plan, 'D');
+    assert.equal(new Date(pl.base.hasta).getTime(), new Date(j.suscripcion.hasta).getTime());
+    assert.equal(pl.base.proximaRenovacion.costo.creditos, '35.00');
+    assert.equal(pl.base.proximaRenovacion.alcanza, true);
+    const cr = await (await cta(c.id, '/creditos')).json();
+    assert.equal(cr.saldo.centavos, 3500);
+    assert.deepEqual(cr.movimientos.map((m) => [m.tipo, m.centavos]), [['renovacion_plan', -3500], ['renovacion_plan', -3500], ['ajuste_admin', 10500]]);
+    assert.equal(cr.movimientos[0].saldoDespues.creditos, '35.00');
+    await invariante(c.id);
+  });
+
+  test('subida prorrateada, bajar solo programado y renovación on/off', async () => {
+    const c = await nuevaCuenta();
+    await cargar(c.id, 100);
+    await ctaPost(c.id, '/plan/comprar', { plan: 'D', periodo: 'mes' });
+    // pasaron 15 días: quedan 15
+    await db.query("UPDATE suscripciones SET desde = desde - interval '15 days', hasta = hasta - interval '15 days' WHERE cuenta_id = $1", [c.id]);
+    const hastaVieja = (await db.query("SELECT hasta FROM suscripciones WHERE cuenta_id = $1 AND estado = 'activa'", [c.id])).rows[0].hasta;
+    let q = await (await cta(c.id, '/plan/cotizar?plan=C&periodo=mes')).json();
+    assert.equal(q.tipo, 'subida');
+    assert.equal(q.planAnterior, 'D');
+    assert.equal(q.costo.centavos, 2750); // (90 − 35) × 15 / 30
+    assert.equal(q.diasRestantes, 15);
+    let r = await ctaPost(c.id, '/plan/comprar', { plan: 'C', periodo: 'mes' });
+    assert.equal(r.status, 201);
+    let j = await r.json();
+    assert.equal(j.tipo, 'subida');
+    assert.equal(j.plan, 'C');
+    assert.equal(new Date(j.suscripcion.hasta).getTime(), new Date(hastaVieja).getTime());
+    assert.equal(j.saldo.centavos, 10000 - 3500 - 2750);
+    const vieja = await db.query("SELECT estado, nota FROM suscripciones WHERE cuenta_id = $1 AND plan = 'D'", [c.id]);
+    assert.equal(vieja.rows[0].estado, 'cancelada');
+    assert.match(vieja.rows[0].nota, /pasó a Oro/);
+    // bajar a Plata: no se compra, se programa
+    r = await ctaPost(c.id, '/plan/comprar', { plan: 'D', periodo: 'mes' });
+    assert.equal(r.status, 409);
+    assert.equal((await r.json()).codigo, 'usar_cambio_programado');
+    r = await ctaPost(c.id, '/plan/cambio', { plan: 'S' });
+    assert.equal(r.status, 409);
+    assert.equal((await r.json()).codigo, 'usar_subida');
+    r = await cta(c.id, '/plan/cambio', { method: 'PUT', body: JSON.stringify({ plan: 'D' }), headers: { 'content-type': 'application/json', 'x-sr': '1', origin: BASE } });
+    assert.equal(r.status, 200);
+    j = await r.json();
+    assert.equal(j.cambioProgramado, 'D');
+    assert.equal(j.base.proximaRenovacion.plan, 'D');
+    assert.equal(j.base.proximaRenovacion.costo.creditos, '35.00');
+    r = await cta(c.id, '/plan/renovacion', { method: 'PUT', body: JSON.stringify({ activa: false }), headers: { 'content-type': 'application/json', 'x-sr': '1', origin: BASE } });
+    assert.equal(r.status, 200);
+    j = await r.json();
+    assert.equal(j.renovacionAuto, false);
+    assert.equal(j.base.proximaRenovacion, null);
+    assert.equal((await ctaPost(c.id, '/plan/renovacion', { activa: 'si' })).status, 400);
+    assert.equal((await ctaPost(c.id, '/plan/cambio', { plan: null })).status, 200);
+    const sin = await nuevaCuenta();
+    assert.equal((await ctaPost(sin.id, '/plan/renovacion', { activa: true })).status, 409);
+    await invariante(c.id);
+  });
+
+  test('semana: Bronce → semana; Plata → subida temporal de 7 días; no sirve para el mismo plan', async () => {
+    const b = await nuevaCuenta();
+    await cargar(b.id, 54);
+    let j = await (await ctaPost(b.id, '/plan/comprar', { plan: 'C', periodo: 'semana' })).json();
+    assert.equal(j.tipo, 'semana');
+    assert.equal(j.costo.creditos, '27.00');
+    assert.equal(j.plan, 'C');
+    const s1 = j.suscripcion;
+    assert.equal(s1.renovacionAuto, false);
+    assert.ok(Math.abs((new Date(s1.hasta) - new Date(s1.desde)) / 86400000 - 7) < 0.01);
+    // segunda semana se apila
+    j = await (await ctaPost(b.id, '/plan/comprar', { plan: 'C', periodo: 'semana' })).json();
+    assert.equal(new Date(j.suscripcion.desde).getTime(), new Date(s1.hasta).getTime());
+    const mov = await db.query('SELECT tipo FROM creditos_movimientos WHERE cuenta_id = $1 AND centavos < 0', [b.id]);
+    assert.deepEqual(mov.rows.map((x) => x.tipo), ['semana', 'semana']);
+
+    const p = await nuevaCuenta();
+    await cargar(p.id, 35 + 105);
+    await ctaPost(p.id, '/plan/comprar', { plan: 'D', periodo: 'mes' });
+    j = await (await ctaPost(p.id, '/plan/comprar', { plan: 'S', periodo: 'semana' })).json();
+    assert.equal(j.tipo, 'subida_temporal');
+    assert.equal(j.plan, 'S');
+    const pl = await (await cta(p.id, '/planes')).json();
+    assert.equal(pl.efectivo, 'S');
+    assert.equal(pl.base.plan, 'D');
+    assert.equal(pl.semanas.length, 1);
+    // pasan los 7 días: vuelve a Plata
+    await db.query("UPDATE suscripciones SET desde = desde - interval '8 days', hasta = hasta - interval '8 days' WHERE id = $1", [j.suscripcion.id]);
+    assert.equal((await (await cta(p.id, '/planes')).json()).efectivo, 'D');
+    const o = await nuevaCuenta();
+    await cargar(o.id, 200);
+    await ctaPost(o.id, '/plan/comprar', { plan: 'C', periodo: 'mes' });
+    const r = await ctaPost(o.id, '/plan/comprar', { plan: 'C', periodo: 'semana' });
+    assert.equal(r.status, 409);
+    assert.equal((await r.json()).codigo, 'semana_no_sube');
   });
 
   test('Star exige provincia y cupo (10 por provincia)', async () => {
     const sinProv = await nuevaCuenta({ provincia: '' });
-    let r = await ctaPost(sinProv.id, '/pedidos', { plan: 'S', periodo: 'mes' });
+    await cargar(sinProv.id, 400);
+    let r = await ctaPost(sinProv.id, '/plan/comprar', { plan: 'S', periodo: 'mes' });
     assert.equal(r.status, 400);
     assert.match((await r.json()).error, /provincia/);
     const prov = 'Zzb Cupo ' + crypto.randomBytes(2).toString('hex');
@@ -160,25 +319,49 @@ describe('pedidos', () => {
       await db.query("INSERT INTO suscripciones (cuenta_id, plan, periodo, desde, hasta) VALUES ($1, 'S', 'mes', now() - interval '1 day', now() + interval '20 days')", [s.id]);
     }
     const otra = await nuevaCuenta({ provincia: prov.toUpperCase() + '  ' });
-    r = await ctaPost(otra.id, '/pedidos', { plan: 'S', periodo: 'semana' });
+    await cargar(otra.id, 400);
+    r = await ctaPost(otra.id, '/plan/comprar', { plan: 'S', periodo: 'semana' });
     assert.equal(r.status, 409);
-    assert.match((await r.json()).error, /No quedan lugares Star/);
+    const j = await r.json();
+    assert.match(j.error, /No quedan lugares Star/);
+    assert.equal(j.codigo, 'cupo_star');
+    assert.equal((await ctaPost(otra.id, '/plan/comprar', { plan: 'S', periodo: 'mes' })).status, 409);
+    assert.equal((await cta(otra.id, '/plan/cotizar?plan=S&periodo=mes')).status, 409);
+    assert.equal((await (await cta(otra.id, '/creditos')).json()).saldo.creditos, '400.00'); // no se cobró nada
     const plan = await (await cta(otra.id, '/planes')).json();
     assert.equal(plan.cupoStar.libres, 0);
     const stars = await (await adm('/stars')).json();
     const p = stars.provincias.find((x) => x.provincia.toLowerCase() === prov.toLowerCase());
     assert.equal(p.ocupadas, 10);
     assert.equal(p.libres, 0);
-    // en otra provincia sí hay lugar
     const libre = await nuevaCuenta({ provincia: 'Zzb Libre ' + crypto.randomBytes(2).toString('hex') });
-    r = await ctaPost(libre.id, '/pedidos', { plan: 'S', periodo: 'mes' });
+    await cargar(libre.id, 350);
+    r = await ctaPost(libre.id, '/plan/comprar', { plan: 'S', periodo: 'mes' });
     assert.equal(r.status, 201);
-    assert.equal((await r.json()).pedido.montoUsd, 350);
+    assert.equal((await r.json()).saldo.centavos, 0);
   });
+
+  test('dos compras a la vez no se pasan del saldo', async () => {
+    const c = await nuevaCuenta();
+    await cargar(c.id, 35);
+    const rs = await Promise.all([1, 2, 3].map(() => ctaPost(c.id, '/plan/comprar', { plan: 'D', periodo: 'mes' })));
+    assert.deepEqual(rs.map((r) => r.status).sort(), [201, 402, 402]);
+    assert.equal((await (await cta(c.id, '/creditos')).json()).saldo.centavos, 0);
+    await invariante(c.id);
+  });
+});
+
+describe('pedidos viejos por transferencia (historial)', () => {
+  const pedidoViejo = async (cuentaId, plan = 'C', periodo = 'mes', monto = 45) => {
+    const { rows } = await db.query(
+      'INSERT INTO pedidos (cuenta_id, plan, periodo, monto_usd, referencia) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [cuentaId, plan, periodo, monto, nuevaReferencia()]);
+    return rows[0];
+  };
 
   test('informar con comprobante, confirmar crea suscripción, el admin ve el comprobante', async () => {
     const c = await nuevaCuenta();
-    const { pedido } = await (await ctaPost(c.id, '/pedidos', { plan: 'C', periodo: 'mes' })).json();
+    const pedido = await pedidoViejo(c.id);
     const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), crypto.randomBytes(64)]);
     const fd = new FormData();
     fd.append('nota', 'Transferí desde Banco X');
@@ -188,24 +371,19 @@ describe('pedidos', () => {
     let j = await r.json();
     assert.equal(j.pedido.estado, 'informado');
     assert.equal(j.pedido.tieneComprobante, true);
-    // comprobante falso (texto) rechazado
     const fd2 = new FormData();
     fd2.append('comprobante', new Blob([Buffer.from('<html>hola</html> no es imagen')], { type: 'image/png' }), 'x.png');
     r = await cta(c.id, `/pedidos/${pedido.id}/informar`, { method: 'POST', body: fd2, headers: { 'x-sr': '1', origin: BASE } });
     assert.equal(r.status, 400);
-    // otra cuenta no puede informar este pedido
     const otra = await nuevaCuenta();
     r = await ctaPost(otra.id, `/pedidos/${pedido.id}/informar`, { nota: 'x' });
     assert.equal(r.status, 404);
-    // admin: lista, comprobante, confirmar
     const lista = await (await adm('/pedidos?estado=abiertos')).json();
     const item = lista.items.find((x) => x.id === pedido.id);
     assert.ok(item && item.cuenta.email === c.email && item.tieneComprobante);
-    assert.ok(lista.informados >= 1);
     r = await adm(`/pedidos/${pedido.id}/comprobante`);
     assert.equal(r.status, 200);
     assert.equal(r.headers.get('content-type'), 'image/png');
-    assert.match(r.headers.get('cache-control'), /no-store/);
     assert.deepEqual(Buffer.from(await r.arrayBuffer()), png);
     assert.equal((await fetch(BASE + A + `/api/pedidos/${pedido.id}/comprobante`)).status, 401);
     r = await admPost(`/pedidos/${pedido.id}/confirmar`, {});
@@ -213,20 +391,18 @@ describe('pedidos', () => {
     j = await r.json();
     assert.equal(j.pedido.estado, 'confirmado');
     assert.equal(j.suscripcion.plan, 'C');
-    const dias = (new Date(j.suscripcion.hasta) - new Date(j.suscripcion.desde)) / 86400000;
-    assert.ok(Math.abs(dias - 30) < 0.01);
+    assert.ok(Math.abs((new Date(j.suscripcion.hasta) - new Date(j.suscripcion.desde)) / 86400000 - 30) < 0.01);
     assert.match(ultimoMail(c.email).subject, /Recibimos tu pago/);
     assert.equal((await admPost(`/pedidos/${pedido.id}/confirmar`, {})).status, 409);
-    const yo = await (await cta(c.id, '/planes')).json();
-    assert.equal(yo.efectivo, 'C');
+    assert.equal((await (await cta(c.id, '/planes')).json()).efectivo, 'C');
   });
 
   test('cancelar y rechazar', async () => {
     const c = await nuevaCuenta();
-    const p1 = (await (await ctaPost(c.id, '/pedidos', { plan: 'D', periodo: 'mes' })).json()).pedido;
+    const p1 = await pedidoViejo(c.id, 'D', 'mes', 20);
     assert.equal((await (await ctaPost(c.id, `/pedidos/${p1.id}/cancelar`, {})).json()).pedido.estado, 'cancelado');
     assert.equal((await ctaPost(c.id, `/pedidos/${p1.id}/cancelar`, {})).status, 409);
-    const p2 = (await (await ctaPost(c.id, '/pedidos', { plan: 'D', periodo: 'mes' })).json()).pedido;
+    const p2 = await pedidoViejo(c.id, 'D', 'mes', 20);
     const r = await admPost(`/pedidos/${p2.id}/rechazar`, { motivo: 'No llegó la transferencia' });
     assert.equal(r.status, 200);
     assert.equal((await r.json()).pedido.motivo, 'No llegó la transferencia');
@@ -235,45 +411,21 @@ describe('pedidos', () => {
 });
 
 describe('suscripciones y plan efectivo', () => {
-  test('renovación apilada del mismo plan no pierde días', async () => {
-    const c = await nuevaCuenta();
-    const a = (await (await ctaPost(c.id, '/pedidos', { plan: 'B', periodo: 'mes' })).json()).pedido;
-    const s1 = (await (await admPost(`/pedidos/${a.id}/confirmar`, {})).json()).suscripcion;
-    const b = (await (await ctaPost(c.id, '/pedidos', { plan: 'B', periodo: 'mes' })).json()).pedido;
-    const s2 = (await (await admPost(`/pedidos/${b.id}/confirmar`, {})).json()).suscripcion;
-    assert.equal(new Date(s2.desde).getTime(), new Date(s1.hasta).getTime());
-    assert.ok(Math.abs((new Date(s2.hasta) - new Date(s1.desde)) / 86400000 - 60) < 0.01);
-  });
-
-  test('semana de Diamante sobre Platino mensual: sube 7 días y vuelve a Platino', async () => {
-    const c = await nuevaCuenta();
-    const pm = (await (await ctaPost(c.id, '/pedidos', { plan: 'B', periodo: 'mes' })).json()).pedido;
-    await admPost(`/pedidos/${pm.id}/confirmar`, {});
-    const pw = (await (await ctaPost(c.id, '/pedidos', { plan: 'A', periodo: 'semana' })).json()).pedido;
-    assert.equal(pw.montoUsd, 45);
-    const sw = (await (await admPost(`/pedidos/${pw.id}/confirmar`, {})).json()).suscripcion;
-    assert.ok(Math.abs((new Date(sw.hasta) - new Date(sw.desde)) / 86400000 - 7) < 0.01);
-    assert.equal((await (await cta(c.id, '/planes')).json()).efectivo, 'A');
-    const det = await (await adm(`/acompanantes/${c.id}`)).json();
-    assert.equal(det.plan, 'A');
-    // pasan los 7 días
-    await db.query("UPDATE suscripciones SET desde = desde - interval '8 days', hasta = hasta - interval '8 days' WHERE id = $1", [sw.id]);
-    assert.equal((await (await cta(c.id, '/planes')).json()).efectivo, 'B');
-    const lista = await (await adm('/acompanantes?q=' + encodeURIComponent(c.email))).json();
-    assert.equal(lista.items[0].plan, 'B');
-  });
-
   test('plan manual del admin y cancelación', async () => {
     const c = await nuevaCuenta();
-    let r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'A', dias: 400 });
+    let r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'C', dias: 400 });
     assert.equal(r.status, 400);
     r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'E', dias: 10 });
     assert.equal(r.status, 400);
-    r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'A', dias: 10, nota: 'Lanzamiento' });
+    r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'A', dias: 10 });
+    assert.equal(r.status, 400);
+    r = await admPost(`/acompanantes/${c.id}/plan`, { plan: 'C', dias: 10, nota: 'Lanzamiento' });
     assert.equal(r.status, 200);
     const j = await r.json();
-    assert.equal(j.plan, 'A');
+    assert.equal(j.plan, 'C');
     assert.equal(j.suscripcion.periodo, 'manual');
+    assert.equal(j.suscripcion.origen, 'manual');
+    assert.equal(j.suscripcion.renovacionAuto, false);
     assert.match(j.suscripcion.nota, /Lanzamiento · asignado por admin-b/);
     const subs = await (await adm('/suscripciones')).json();
     assert.ok(subs.items.some((s) => s.id === j.suscripcion.id && s.cuenta.email === c.email));
@@ -288,7 +440,7 @@ describe('suscripciones y plan efectivo', () => {
     const { rows: [pv] } = await db.query("INSERT INTO pedidos (cuenta_id, plan, periodo, monto_usd, referencia, creado) VALUES ($1, 'D', 'mes', 20, $2, now() - interval '8 days') RETURNING id", [c.id, 'SR-T' + crypto.randomBytes(3).toString('hex')]);
     // renovación apilada: la que vence no avisa
     const c2 = await nuevaCuenta();
-    await db.query("INSERT INTO suscripciones (cuenta_id, plan, periodo, desde, hasta) VALUES ($1, 'B', 'mes', now() - interval '29 days', now() + interval '1 day'), ($1, 'B', 'mes', now() + interval '1 day', now() + interval '31 days')", [c2.id]);
+    await db.query("INSERT INTO suscripciones (cuenta_id, plan, periodo, desde, hasta) VALUES ($1, 'C', 'mes', now() - interval '29 days', now() + interval '1 day'), ($1, 'C', 'mes', now() + interval '1 day', now() + interval '31 days')", [c2.id]);
     const antes = mails.length;
     const { createPlanes } = await import('../lib/planes.js');
     const enviados = [];
@@ -307,6 +459,9 @@ describe('suscripciones y plan efectivo', () => {
     assert.equal(enviados.filter((m) => m.to === c.email).length, 2);
     assert.equal(enviados.filter((m) => m.to === c2.email).length, 0);
     assert.equal(mails.length, antes);
+    // también quedó en las notificaciones del panel
+    const nots = await (await cta(c.id, '/notificaciones')).json();
+    assert.ok(nots.items.some((n) => n.tipo === 'plan_vence') && nots.items.some((n) => n.tipo === 'plan_vencio'));
   });
 });
 
@@ -406,7 +561,8 @@ describe('admin: ajustes y catálogos', () => {
     const all = await (await adm('/ajustes')).json();
     assert.equal(all.portada.titulo, 'Acompañantes en Argentina');
     assert.equal(all.promo, 'Bronce gratis');
-    assert.deepEqual(all.precios.semana, { B: 21, A: 45, S: 105 });
+    assert.deepEqual(all.precios.semana, { C: 27, S: 105 });
+    assert.ok(!('transferencia' in all));
     assert.equal((await (await adm('/ajustes/promo')).json()).valor, 'Bronce gratis');
   });
 

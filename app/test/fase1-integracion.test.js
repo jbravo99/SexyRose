@@ -1,7 +1,7 @@
 // Pruebas de integración de la Fase 1: cuentas (agente A) + planes y admin (agente B) en un mismo servidor.
 //   DATABASE_URL=postgres://... node --test test/fase1-integracion.test.js
 // Recorrido real: registro → email → perfil → fotos → verificación → revisión → admin aprueba → sitio público,
-// pedidos por transferencia confirmados por el admin y plan efectivo (semana de Diamante sobre Platino mensual).
+// créditos por WhatsApp confirmados por el admin y plan efectivo (semana de Oro pagada con créditos sobre Plata mensual).
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -144,44 +144,68 @@ describe('integración cuentas + admin + planes', () => {
     assert.equal(yo.limites.fotos, 8);
   });
 
-  test('pedidos confirmados por el admin: Platino mensual + semana de Diamante → plan A, después vuelve a B', async () => {
+  test('créditos por WhatsApp → el admin confirma → paga Plata y una semana de Oro con créditos; la semana termina y vuelve a Plata', async () => {
     const c = await cuentaEnRevision();
     assert.equal((await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'aprobar' })).status, 200);
 
-    let r = await c.json('POST', '/api/cuenta/pedidos', { plan: 'B', periodo: 'mes' });
+    // Los planes ya no se piden por transferencia.
+    let r = await c.json('POST', '/api/cuenta/pedidos', { plan: 'D', periodo: 'mes' });
+    assert.equal(r.status, 410);
+
+    r = await c.json('POST', '/api/cuenta/creditos/pedidos', { packId: 'trimestre-plata', lang: 'es' });
     assert.equal(r.status, 201, JSON.stringify(r.body));
-    assert.equal(r.body.pedido.montoUsd, 70);
-    const pMes = r.body.pedido;
-    assert.equal((await c.json('POST', `/api/cuenta/pedidos/${pMes.id}/informar`, { nota: 'Transferí hoy' })).status, 200);
-    assert.equal((await admPost(`/pedidos/${pMes.id}/confirmar`, {})).status, 200);
+    const pedido = r.body.pedido;
+    assert.match(pedido.codigo, /^SR-\d{4}$/);
+    assert.equal(pedido.total.creditos, '105.00');
+    assert.equal((await admPost(`/pedidos-creditos/${pedido.id}/confirmar`, {})).status, 200);
+    const mail = [...mailsEnviados].reverse().find((m) => m.to === c.email);
+    assert.match(mail.subject, /Acreditamos 105 créditos/);
 
     let yo = (await c.get('/api/cuenta/yo')).body.cuenta;
-    assert.equal(yo.plan.efectivo, 'B');
-    assert.equal(yo.limites.fotos, 50);
+    assert.deepEqual(yo.creditos.saldo, { centavos: 10500, creditos: '105.00' });
+    assert.equal(yo.notificaciones.noLeidas, 1);
+    assert.equal(yo.plan.efectivo, 'E');
 
-    r = await c.json('POST', '/api/cuenta/pedidos', { plan: 'A', periodo: 'semana' });
+    r = await c.json('POST', '/api/cuenta/plan/comprar', { plan: 'D', periodo: 'mes' });
     assert.equal(r.status, 201, JSON.stringify(r.body));
-    assert.equal(r.body.pedido.montoUsd, 45);
-    assert.equal((await admPost(`/pedidos/${r.body.pedido.id}/confirmar`, {})).status, 200);
-
+    assert.equal(r.body.saldo.creditos, '70.00');
     yo = (await c.get('/api/cuenta/yo')).body.cuenta;
-    assert.equal(yo.plan.efectivo, 'A', 'la semana de Diamante sube el plan');
-    assert.equal(yo.limites.fotos, 500);
-    let e = await estadoPublico();
-    assert.equal(e.perfiles.find((x) => x.cuentaId === c.id).plan, 'A');
+    assert.equal(yo.plan.efectivo, 'D');
+    assert.equal(yo.limites.fotos, 30);
+    assert.equal(yo.limites.destacadas, 4);
+    assert.equal(yo.previewHabilitado, false); // videos sin bunny.net en esta prueba
 
-    // Termina la semana: vuelve solo a Platino (la suscripción mensual sigue vigente).
+    r = await c.json('POST', '/api/cuenta/plan/comprar', { plan: 'C', periodo: 'semana' });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.equal(r.body.tipo, 'subida_temporal');
+    yo = (await c.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(yo.plan.efectivo, 'C', 'la semana de Oro sube el plan');
+    assert.equal(yo.limites.fotos, 500);
+    assert.equal(yo.creditos.saldo.creditos, '43.00');
+    let e = await estadoPublico();
+    assert.equal(e.perfiles.find((x) => x.cuentaId === c.id).plan, 'C');
+
+    // Termina la semana: vuelve sola a Plata (la suscripción mensual sigue vigente).
     await db.query("UPDATE suscripciones SET desde = now() - interval '8 days', hasta = now() - interval '1 minute' WHERE cuenta_id = $1 AND periodo = 'semana'", [c.id]);
     yo = (await c.get('/api/cuenta/yo')).body.cuenta;
-    assert.equal(yo.plan.efectivo, 'B');
-    assert.equal(yo.limites.fotos, 50);
+    assert.equal(yo.plan.efectivo, 'D');
+    assert.equal(yo.limites.fotos, 30);
     e = await estadoPublico();
-    assert.equal(e.perfiles.find((x) => x.cuentaId === c.id).plan, 'B');
+    assert.equal(e.perfiles.find((x) => x.cuentaId === c.id).plan, 'D');
 
     // Las mutaciones de planes exigen la cabecera de seguridad y una sesión.
-    const sinCabecera = await fetch(BASE + '/api/cuenta/pedidos', { method: 'POST', headers: { origin: BASE, 'content-type': 'application/json', cookie: c.cookie }, body: '{"plan":"C","periodo":"mes"}' });
+    const sinCabecera = await fetch(BASE + '/api/cuenta/plan/comprar', { method: 'POST', headers: { origin: BASE, 'content-type': 'application/json', cookie: c.cookie }, body: '{"plan":"C","periodo":"mes"}' });
     assert.equal(sinCabecera.status, 403);
     assert.equal((await new Cliente().get('/api/cuenta/planes')).status, 401);
+    assert.equal((await new Cliente().get('/api/cuenta/creditos')).status, 401);
+
+    // Pausada por falta de saldo: no puede volver a publicarse mandando el perfil a revisión.
+    await db.query("UPDATE perfiles SET estado = 'pausado', pausado_por = 'sin_saldo' WHERE cuenta_id = $1", [c.id]);
+    r = await c.json('POST', '/api/cuenta/perfil/enviar-revision', {});
+    assert.equal(r.status, 409);
+    assert.match(r.body.error, /créditos/);
+    yo = (await c.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(yo.perfil.pausadoPorSaldo, true);
   });
 
   test('el límite de fotos sigue al plan: con Bronce no se suben más de 8', async () => {
@@ -190,6 +214,6 @@ describe('integración cuentas + admin + planes', () => {
     const r = await c.subir('/api/cuenta/fotos', { foto: await jpeg() });
     assert.equal(r.status, 400, JSON.stringify(r.body));
     assert.equal((await admPost(`/acompanantes/${c.id}/plan`, { plan: 'D', dias: 30, nota: 'prueba' })).status, 200);
-    assert.equal((await c.subir('/api/cuenta/fotos', { foto: await jpeg() })).status, 201, 'con Plata (manual) entran 15');
+    assert.equal((await c.subir('/api/cuenta/fotos', { foto: await jpeg() })).status, 201, 'con Plata (manual) entran 30');
   });
 });

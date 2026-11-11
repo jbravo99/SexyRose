@@ -27,3 +27,86 @@ html[data-prod="sitio"] .bn-dot{position:absolute;top:10px;left:calc(50% + 9px);
 @media(prefers-reduced-transparency:reduce){html[data-prod="sitio"] .bottomnav{background:rgba(28,25,33,.97);backdrop-filter:none;-webkit-backdrop-filter:none}}
 @media(prefers-reduced-motion:reduce){html[data-prod="sitio"] .bottomnav a::before{transition:none}}
 }
+/* Barra de arriba en el teléfono: la marca no se achica y, en anchos chicos, los botones de género y "Publicá tu perfil"
+   se compactan para que entren también en inglés y portugués ("Publique seu perfil" tapaba la marca a 390 px) */
+@media(max-width:899px){html[data-prod="sitio"] #headerInner .brand{flex:none}html[data-prod="sitio"] #headerInner .header-actions{min-width:0}}
+@media(max-width:430px){
+html[data-prod="sitio"] #headerInner{gap:6px}
+html[data-prod="sitio"] #headerInner .hdr-genders{gap:4px}
+html[data-prod="sitio"] #headerInner .hdr-g{width:29px;height:29px}
+html[data-prod="sitio"] #headerInner .hdr-g svg{width:15px;height:15px}
+html[data-prod="sitio"] #headerInner .hdr-reg{padding:6px 9px;font-size:11.5px;letter-spacing:-.01em}
+}
+@media(max-width:380px){
+html[data-prod="sitio"] #headerInner{padding-left:10px;padding-right:10px}
+html[data-prod="sitio"] #headerInner .brand{font-size:15px;gap:4px}
+html[data-prod="sitio"] #headerInner .brand .mark{width:22px;height:22px;border-radius:7px}
+html[data-prod="sitio"] #headerInner .hdr-genders{gap:3px}
+html[data-prod="sitio"] #headerInner .hdr-g{width:27px;height:27px}
+html[data-prod="sitio"] #headerInner .hdr-reg{padding:5px 8px;font-size:11px}
+}
+/* Panel · planes v2, créditos, Destacado y avisos */
+html[data-prod="sitio"] .sp-prices{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:640px){html[data-prod="sitio"] .sp-prices{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sp-plans{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:600px){.sp-plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1280px){.sp-plans{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sp-plans .plan{display:flex;flex-direction:column;gap:10px;min-width:0;padding:18px 16px}
+.sp-plans .plan>.stack:last-child{margin-top:auto}
+.sp-plans .plan .price{font-size:32px}
+.sp-plans .plan .btn{white-space:normal;line-height:1.2;min-height:40px;height:auto;padding-top:9px;padding-bottom:9px}
+.sp-plans .plan.sp-cur{outline:2px solid var(--berry);outline-offset:-1px}
+.sp-cur-rib{background:var(--ok);color:#fff}
+.block-badge{display:flex;justify-content:center;padding:9px 10px;font-size:12.5px;white-space:normal;text-align:center}
+.sp-saldo-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);color:var(--fg);font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
+.sp-saldo-chip svg{width:16px;height:16px;color:var(--berry)}
+.sp-saldo{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sp-saldo-n{display:flex;align-items:baseline;gap:6px;margin-top:2px}.sp-saldo-n strong{font-family:var(--font-display);font-size:40px;line-height:1;letter-spacing:-.02em}
+.sp-saldo-n span{font-weight:700;color:var(--fg-2)}
+.sp-saldo-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.sp-cr{white-space:nowrap}
+.sp-packs{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:560px){.sp-packs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1180px){.sp-packs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.sp-pack{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:16px 14px 14px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface-2)}
+.sp-pack.top{border-color:var(--berry);box-shadow:var(--shadow)}
+.sp-pack-rib{position:absolute;top:-11px;left:14px;padding:3px 10px;border-radius:99px;background:var(--berry);color:var(--berry-ink);font-size:11px;font-weight:800;letter-spacing:.02em}
+.sp-pack-name{font-weight:800;font-size:15px}
+.sp-pack-get{display:flex;align-items:baseline;gap:6px}.sp-pack-get strong{font-family:var(--font-display);font-size:30px;line-height:1.05}.sp-pack-get span{font-weight:700;color:var(--fg-2)}
+.sp-pack-pay{color:var(--fg-2)}
+.sp-gift{display:inline-flex;align-self:flex-start;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);font-size:12px;font-weight:800}
+.sp-gift svg{width:13px;height:13px}.sp-gift.none{visibility:hidden;min-height:22px}
+.sp-pack-alc{flex:1}
+.sp-pack .btn{margin-top:4px;white-space:normal;height:auto;min-height:42px}
+.sp-carga{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between;padding-top:12px;border-top:1px solid var(--line)}
+.sp-carga .input{width:110px}
+.sp-ped{border-color:color-mix(in srgb,var(--warn) 55%,var(--line));margin-bottom:14px}
+.sp-ped-code{display:grid;gap:4px}.sp-ped-code strong{font-family:var(--font-display);font-size:30px;letter-spacing:.04em}
+.sp-ped-acts .btn{flex:1 1 auto}
+.sp-mov svg{color:var(--muted)}
+.sp-mov-n{white-space:nowrap;font-size:15px}.sp-mov-n.pos{color:var(--ok)}.sp-mov-n.neg{color:var(--fg-2)}
+.sp-falta{align-items:center;flex-wrap:wrap}.sp-falta .grow{min-width:0}
+.sp-banner{flex-wrap:wrap}
+.sp-dops{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:560px){.sp-dops{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sp-dop{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--surface-2)}
+.sp-dop .btn{margin-top:auto}
+.sp-dop-n{display:flex;align-items:baseline;gap:6px;margin-top:2px}.sp-dop-n strong{font-family:var(--font-display);font-size:30px;line-height:1.05}
+.sp-cupo i{background:var(--berry)}.sp-cupo.full i{background:var(--warn)}
+.sp-dtab tr.on td{background:color-mix(in srgb,var(--berry) 10%,transparent)}
+.sp-notifs{gap:0}
+.sp-notif{width:100%;text-align:left;cursor:pointer;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;color:inherit;font:inherit;align-items:flex-start}
+.sp-notif:last-child{border-bottom:0}
+.sp-notif.nueva .title{font-weight:800}
+.sp-notif-t{white-space:normal}
+.sp-notif-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--surface-2)}
+.sp-notif-ic svg{width:17px;height:17px}.sp-notif-ic.ok{color:var(--ok)}.sp-notif-ic.warn{color:var(--warn)}.sp-notif-ic.danger{color:var(--danger)}.sp-notif-ic.info{color:var(--info)}
+.sp-ndot{display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:var(--berry);vertical-align:middle}
+.sp-hdot{display:inline-block;width:7px;height:7px;margin-left:5px;border-radius:50%;background:var(--berry);vertical-align:top}
+/* Inicio: Oro (ahora la sección que sigue a Star) con tarjetas más grandes en el celular: 2 por fila en vez de 3.
+   En escritorio, 6 por fila como el resto (las 6 que se muestran entran en una sola fila). */
+@media(max-width:719px){html[data-prod="sitio"] .tier-C .tier-grid.sm{grid-template-columns:repeat(2,minmax(0,1fr))}}
+html[data-prod="sitio"] table.table.sp-dtab{min-width:0;width:100%}
+@media(max-width:559px){.sp-gift.none{display:none}}
+.sp-banner>.grow{flex:1 1 220px}
+.notice .btn svg{color:inherit}

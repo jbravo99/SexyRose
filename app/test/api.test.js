@@ -993,6 +993,7 @@ describe('panel nuevo (SPA) y API JSON del admin', () => {
   });
 
   test('pre-registros: lista y cambio de estado validado', async () => {
+    // Planes v2: un formulario viejo con 'platino' se guarda como Oro (Platino y Diamante se fusionaron en Oro).
     const v = validPre({ plan_interes: 'platino' });
     assert.equal((await post('/api/preregistro', v)).status, 201);
     const j = await (await aget('/api/preregistros')).json();
@@ -1000,7 +1001,8 @@ describe('panel nuevo (SPA) y API JSON del admin', () => {
     assert.deepEqual(j.estados, ['nuevo', 'contactado', 'invitado', 'descartado']);
     const it = j.items.find((x) => x.nombre_artistico === v.nombre_artistico);
     assert.ok(it);
-    assert.equal(it.plan_label, 'Platino');
+    assert.equal(it.plan_label, 'Oro');
+    assert.equal(it.plan_interes, 'oro');
     assert.equal(it.estado, 'nuevo');
     assert.ok(!('ip_hash' in it));
     for (const k of ['id', 'creado', 'genero', 'provincia', 'ciudad', 'contacto_tipo', 'contacto', 'plan_interes']) assert.ok(k in it, k);
@@ -1015,7 +1017,7 @@ describe('panel nuevo (SPA) y API JSON del admin', () => {
     const out = await r.json();
     assert.equal(out.ok, true);
     assert.equal(out.item.estado, 'invitado');
-    assert.equal(out.item.plan_label, 'Platino');
+    assert.equal(out.item.plan_label, 'Oro');
     const { rows } = await db.query('SELECT estado FROM preregistros WHERE id = $1', [it.id]);
     assert.equal(rows[0].estado, 'invitado');
   });

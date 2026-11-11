@@ -12,7 +12,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import { codificacion, fresco, paquete } from '../lib/compresion.js';
+import { codificacion, enviar, fresco, paquete } from '../lib/compresion.js';
 import { createSpaSitioRouter } from '../routes/spa-sitio.js';
 import { start } from '../server.js';
 import { invalidarSitio } from '../routes/sitio.js';
@@ -58,6 +58,26 @@ describe('lib/compresion', () => {
     assert.notEqual(paquete(txt + '!').etag, p.etag);
     assert.match(p.etag, /^"[A-Za-z0-9_-]{27}"$/);
   });
+  test('enviar: archivo grande con el brotli todavía sin preparar → gzip (nunca gzip con cabecera br)', async () => {
+    const grande = crypto.randomBytes(400 * 1024).toString('hex'); // 800 KB de texto
+    const p = paquete(grande);
+    const res = { h: {}, code: 0, body: null, setHeader(k, v) { this.h[k.toLowerCase()] = v; }, status(c) { this.code = c; return this; }, end(b) { this.body = b; return this; } };
+    enviar({ method: 'GET', headers: { 'accept-encoding': 'br, gzip' } }, res, p, {});
+    assert.equal(res.h['content-encoding'], 'gzip');
+    assert.equal(zlib.gunzipSync(res.body).toString(), grande);
+    const res2 = { ...res, h: {} };
+    enviar({ method: 'GET', headers: { 'accept-encoding': 'br' } }, res2, p, {});
+    assert.equal(res2.h['content-encoding'], undefined);
+    assert.equal(res2.body.toString(), grande);
+    await p.preparar();
+    const res3 = { ...res, h: {} };
+    enviar({ method: 'GET', headers: { 'accept-encoding': 'br' } }, res3, p, {});
+    assert.equal(res3.h['content-encoding'], 'br');
+    assert.equal(zlib.brotliDecompressSync(res3.body).toString(), grande);
+    const res4 = { ...res, h: {} };
+    enviar({ method: 'GET', headers: { 'if-none-match': p.etag } }, res4, p, {}, 404);
+    assert.equal(res4.code, 404);
+  });
   test('fresco: If-None-Match con el ETag (también débil o en lista)', () => {
     const e = '"abc"';
     assert.equal(fresco({ headers: { 'if-none-match': '"abc"' } }, e), true);
@@ -74,6 +94,7 @@ describe('SPA del sitio: cáscara y assets', () => {
   const CSS = 'body{color:#fff}\n'.repeat(300);
   const DIC = 'HH.I18N=Object.assign({"Hola":["Hi","Olá"]},HH.I18N||{});\n'.repeat(50);
   const jsName = `app.${sha12(JS)}.js`; const cssName = `app.${sha12(CSS)}.css`;
+  const FONT = 'wOF2' + 'f'.repeat(3000); const fontName = `manrope-latin-400.${sha12(FONT)}.woff2`;
   before(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-sitio-spa-'));
     await fs.mkdir(path.join(dir, 'assets'));
@@ -81,6 +102,8 @@ describe('SPA del sitio: cáscara y assets', () => {
     await fs.writeFile(path.join(dir, 'assets', cssName), CSS);
     await fs.writeFile(path.join(dir, 'assets', 'i18n.0123456789ab.js'), DIC);
     await fs.writeFile(path.join(dir, 'assets', 'otro.0123456789ab.js'), 'no');
+    await fs.mkdir(path.join(dir, 'assets', 'fonts'));
+    await fs.writeFile(path.join(dir, 'assets', 'fonts', fontName), FONT);
     await fs.writeFile(path.join(dir, 'index.html'), '<!doctype html><html data-prod="sitio" data-routing="path"><head><title>x</title>\n'
       + '<!--SR:PRECONNECT-->\n<!--SR:I18N /assets/i18n.0123456789ab.js-->\n'
       + `<link rel="preload" href="/assets/${jsName}" as="script">\n<link rel="stylesheet" href="/assets/${cssName}">\n</head><body>`
@@ -126,6 +149,16 @@ describe('SPA del sitio: cáscara y assets', () => {
     assert.equal(n.body.length, 0);
     const h = await pedir(BASE, '/assets/' + jsName, { 'accept-encoding': 'br' }, 'HEAD');
     assert.equal(h.status, 200); assert.equal(h.body.length, 0); assert.equal(h.headers['content-encoding'], 'br');
+  });
+  test('fuentes (/assets/fonts/*.woff2): font/woff2, caché de un año, sin volver a comprimir', async () => {
+    const r = await pedir(BASE, '/assets/fonts/' + fontName, { 'accept-encoding': 'br, gzip' });
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['content-type'], 'font/woff2');
+    assert.equal(r.headers['cache-control'], 'public, max-age=31536000, immutable');
+    assert.equal(r.headers['x-content-type-options'], 'nosniff');
+    assert.equal(r.headers['content-encoding'], undefined);
+    assert.equal(r.body.toString(), FONT);
+    for (const p of ['/assets/fonts/manrope.woff2', '/assets/fonts/x.0123456789ab.ttf', '/assets/fonts/sub/a.0123456789ab.woff2']) assert.equal((await pedir(BASE, p)).status, 404, p);
   });
   test('assets: nombres sin hash, con otra forma o inexistentes no se sirven', async () => {
     for (const p of ['/assets/app.js', '/assets/app.ZZZZZZZZ.js', '/assets/otro.0123456789ab.js', '/assets/app.0123456789ab.html',
@@ -217,8 +250,22 @@ describe('build del sitio (app/scripts/build-sitio.py)', () => {
   const py = spawnSync('python3', ['--version']);
   test('cáscara chica sin JS en línea + assets con el hash de su contenido + diccionario aparte', { skip: py.status !== 0 && 'sin python3' }, async () => {
     const out = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-build-sitio-'));
+    // @fontsource de mentira (mismo formato que los paquetes reales): CSS por peso con un bloque por subconjunto
+    const fsrc = path.join(out, 'fontsource');
+    const FUENTES = { poppins: ['Poppins', [500, 600, 700]], manrope: ['Manrope', [400, 500, 600, 700, 800]] };
+    for (const [pkg, [fam, pesos]] of Object.entries(FUENTES)) {
+      await fs.mkdir(path.join(fsrc, pkg, 'files'), { recursive: true });
+      for (const w of pesos) {
+        let css = '';
+        for (const sub of ['latin-ext', 'latin']) {
+          await fs.writeFile(path.join(fsrc, pkg, 'files', `${pkg}-${sub}-${w}-normal.woff2`), `wOF2 ${pkg} ${sub} ${w}`);
+          css += `/* ${pkg}-${sub}-${w}-normal */\n@font-face {\n  font-family: '${fam}';\n  font-style: normal;\n  font-display: swap;\n  font-weight: ${w};\n  src: url(./files/${pkg}-${sub}-${w}-normal.woff2) format('woff2');\n  unicode-range: ${sub === 'latin' ? 'U+0000-00FF,U+0131' : 'U+0100-02BA'};\n}\n\n`;
+        }
+        await fs.writeFile(path.join(fsrc, pkg, `${w}.css`), css);
+      }
+    }
     try {
-      const r = spawnSync('python3', [path.join(HERE, '..', 'scripts', 'build-sitio.py')], { env: { ...process.env, SITIO_OUT: path.join(out, 'index.html'), NO_MINIFY: '1' }, encoding: 'utf8' });
+      const r = spawnSync('python3', [path.join(HERE, '..', 'scripts', 'build-sitio.py')], { env: { ...process.env, SITIO_OUT: path.join(out, 'index.html'), NO_MINIFY: '1', FONTSOURCE_DIR: fsrc, REQUIRE_FONTS: '1' }, encoding: 'utf8' });
       assert.equal(r.status, 0, r.stderr);
       const html = await fs.readFile(path.join(out, 'index.html'), 'utf8');
       assert.ok(html.length < 8000, 'la cáscara tiene que ser chica: ' + html.length);
@@ -226,7 +273,23 @@ describe('build del sitio (app/scripts/build-sitio.py)', () => {
       assert.doesNotMatch(html, /\son[a-z]+\s*=/i);
       assert.match(html, /<!--SR:PRECONNECT-->/);
       assert.match(html, /<link rel="preload" href="\/api\/sitio\/estado" as="fetch" crossorigin="anonymous">/);
-      assert.match(html, /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com[^"]*" media="print" data-fonts>/);
+      // Fuentes propias (sin Google Fonts): .woff2 con hash, @font-face con font-display: swap y las 2 más usadas precargadas
+      assert.doesNotMatch(html, /fonts\.(googleapis|gstatic)\.com/);
+      assert.match(html, /<!--SR:SEO-->/);
+      const fuentes = await fs.readdir(path.join(out, 'assets', 'fonts'));
+      assert.equal(fuentes.length, 16, fuentes.join(','));
+      for (const n of fuentes) {
+        const m = n.match(/^(poppins|manrope)-(latin|latin-ext)-(\d00)\.([0-9a-f]{12})\.woff2$/);
+        assert.ok(m, n);
+        assert.equal(m[4], sha12(await fs.readFile(path.join(out, 'assets', 'fonts', n))), n);
+      }
+      const pre = [...html.matchAll(/<link rel="preload" href="(\/assets\/fonts\/[^"]+)" as="font" type="font\/woff2" crossorigin>/g)].map((x) => x[1]);
+      assert.equal(pre.length, 2);
+      assert.ok(pre.some((u) => /manrope-latin-400\./.test(u)) && pre.some((u) => /poppins-latin-600\./.test(u)), pre.join(','));
+      const seoDatos = JSON.parse(await fs.readFile(path.join(out, 'seo-datos.json'), 'utf8'));
+      assert.ok(seoDatos.defaults.tpl.es.place.title.includes('{lugar}'));
+      assert.equal(seoDatos.lugares['Ciudad de Buenos Aires'].slug, 'buenos-aires');
+      assert.deepEqual(seoDatos.dict.Cena, ['Dinner', 'Jantar']);
       const ls = await fs.readdir(path.join(out, 'assets'));
       const js = ls.find((n) => /^app\.[0-9a-f]{12}\.js$/.test(n)); const css = ls.find((n) => /^app\.[0-9a-f]{12}\.css$/.test(n)); const dic = ls.find((n) => /^i18n\.[0-9a-f]{12}\.js$/.test(n));
       assert.ok(js && css && dic, ls.join(','));
@@ -234,12 +297,19 @@ describe('build del sitio (app/scripts/build-sitio.py)', () => {
       assert.match(html, new RegExp(`<script src="/assets/${js}" defer></script>`));
       assert.match(html, new RegExp(`<link rel="stylesheet" href="/assets/${css}">`));
       assert.match(html, new RegExp(`<!--SR:I18N /assets/${dic}-->`));
+      const cssCode = await fs.readFile(path.join(out, 'assets', css), 'utf8');
+      assert.match(cssCode, /@font-face\{font-family:'Manrope';font-style:normal;font-display:swap;font-weight:400;src:url\(\/assets\/fonts\/manrope-latin-400\.[0-9a-f]{12}\.woff2\) format\('woff2'\);unicode-range:U\+0000-00FF,U\+0131\}/);
+      assert.doesNotMatch(cssCode, /googleapis/);
       const code = await fs.readFile(path.join(out, 'assets', js), 'utf8');
+      assert.ok(!code.includes('data-fonts'));
+      // Mensajes del servidor en/pt: van al diccionario, no al JS principal
+      assert.ok(!code.includes('Wrong email or password.'));
       assert.ok(code.includes(`window.HH_I18N_SRC="/assets/${dic}"`));
       assert.ok(!code.includes('/* ===== i18n-dict.js ===== */'));
       assert.ok(code.includes("window.HH_PROD = 'sitio'"));
       const d = await fs.readFile(path.join(out, 'assets', dic), 'utf8');
       assert.match(d, /^HH\.I18N=Object\.assign\(\{/);
+      assert.ok(d.includes('Wrong email or password.'));
     } finally { await fs.rm(out, { recursive: true, force: true }); }
   });
 });

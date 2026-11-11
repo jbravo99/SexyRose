@@ -288,10 +288,15 @@ describe('fotos', () => {
     assert.equal(meta.width, 1600); assert.equal(meta.height, 1067);
     assert.equal(meta.exif, undefined, 'EXIF eliminado');
     assert.ok(!buf.includes(Buffer.from('dato-secreto-exif')));
-    // Marca de agua: la imagen era negra; abajo al centro tiene que haber píxeles claros.
-    const { data, info } = await sharp(buf).extract({ left: 500, top: 850, width: 600, height: 200 }).raw().toBuffer({ resolveWithObject: true });
-    let max = 0; for (let i = 0; i < data.length; i += info.channels) max = Math.max(max, data[i]);
-    assert.ok(max > 60, 'hay marca de agua');
+    // Marca de agua (desde 11/11/2026 arriba a la derecha): la imagen era negra; arriba a la derecha tiene que haber
+    // píxeles claros y abajo al centro (donde la tarjeta muestra el nombre) ya no.
+    const maxRegion = async (left, top, width, height) => {
+      const { data, info } = await sharp(buf).extract({ left, top, width, height }).raw().toBuffer({ resolveWithObject: true });
+      let m = 0; for (let i = 0; i < data.length; i += info.channels) m = Math.max(m, data[i]);
+      return m;
+    };
+    assert.ok(await maxRegion(1100, 0, 500, 160) > 60, 'hay marca de agua arriba a la derecha');
+    assert.ok(await maxRegion(500, 850, 600, 200) < 20, 'abajo al centro no hay marca');
     const mini = await sharp(Buffer.from(await (await fetch(BASE + f.urlMini)).arrayBuffer())).metadata();
     assert.equal(mini.width, 480);
 
@@ -387,7 +392,7 @@ describe('enviar a revisión y sitio público', () => {
     invalidarSitio();
     let e = (await pub.get('/api/sitio/estado')).body;
     assert.ok(Array.isArray(e.perfiles) && e.ubicaciones.length > 50 && e.categorias.length >= 11 && e.intereses.length === 16);
-    assert.ok(e.ajustes.precios.mes.S === 350 && e.ajustes.precios.semana.B === 21);
+    assert.ok(e.ajustes.precios.mes.S === 350 && e.ajustes.precios.semana.C === 27 && !('B' in e.ajustes.precios.mes));
     assert.ok(!e.perfiles.some((p) => p.cuentaId === a.yo.id));
 
     await db.query("UPDATE perfiles SET estado = 'publicado', verificacion = 'pendiente', publicado_en = now() WHERE cuenta_id = $1", [a.yo.id]);

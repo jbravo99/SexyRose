@@ -211,7 +211,7 @@ export function faltantesDe({ datos = {}, fotosN = 0, emailVerificado = false, v
 }
 
 // Forma pública (lo que ve cualquiera en el sitio). ubic: Map(id → {nombre}).
-export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos = [], preview = null, plan = 'E', actualizado, publicadoEn }, ubic) {
+export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos = [], preview = null, plan = 'E', destacado = false, actualizado, publicadoEn }, ubic) {
   const nombre = (id) => (id && ubic.get(id) ? ubic.get(id).nombre : '');
   return {
     cuentaId,
@@ -240,6 +240,8 @@ export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos =
     preview: preview && preview.url ? { url: preview.url } : null,
     plan,
     star: plan === 'S',
+    // Planes v2: primeras dentro de su plan en su provincia (el orden lo arma el front: Star, destacadas rotando, resto).
+    destacado: plan !== 'S' && Boolean(destacado),
     verificada: true,
     actualizado,
     publicadoEn,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pruebas de agenda, comisiones, asistente de soporte, WhatsApp y verificación automática."""
 import asyncio
+import pathlib
 from playwright.async_api import async_playwright
 R = []
 def check(name, ok): R.append((name, bool(ok))); print(('OK  ' if ok else 'FAIL'), name)
@@ -8,7 +9,9 @@ async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(); pg = await b.new_page(locale='es-AR', viewport={'width': 1280, 'height': 900})
         errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
-        await pg.goto('file:///home/claude/happyhouse/build/full.html'); await pg.wait_for_timeout(300)
+        # La ventana de +18 (agegate.js) tapa la página en cada pestaña nueva: se marca como aceptada antes de cargar.
+        await pg.add_init_script("try { sessionStorage.setItem('hh_age_ok', '1'); } catch (e) {}")
+        await pg.goto((pathlib.Path(__file__).resolve().parent / 'build' / 'full.html').as_uri()); await pg.wait_for_timeout(300)
         ev = pg.evaluate
         # Agenda: bloqueo excluye horarios
         await ev("HH.login('u_vale')")

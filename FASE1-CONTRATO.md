@@ -1,6 +1,8 @@
 # Fase 1+2 — Contrato de trabajo (lanzamiento 15/11/2026)
 
 Objetivo: desde el 15/11 las acompañantes crean su cuenta en sexyrose.net, arman su perfil con fotos, suben selfie + documento, Juan aprueba desde el admin y el perfil aparece en el sitio público real. Planes por mes y por semana pagados por transferencia, activados desde el admin. Stars con cupo. Historias con foto.
+
+> **11/11/2026 — Planes v2.** Los planes pasaron de 6 a 4 y se pagan con **créditos**; los créditos se compran por WhatsApp. Lo que dice este documento sobre pedidos de plan por transferencia, Platino/Diamante y el ajuste `transferencia` queda reemplazado por la sección [Planes v2, créditos y destacado](#planes-v2-créditos-y-destacado) (al final).
 Fuera del 15: videos y shorts, destacadas, venta de contenido, packs, pedidos, chat pago, reservas, estadísticas avanzadas, cuentas de clientes (los clientes NUNCA tienen cuenta).
 
 Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de Juan). No tocar el equipo de Juan. Idioma de la interfaz: castellano rioplatense (las acompañantes pueden ver EN/PT con el traductor del MVP); admin solo en castellano.
@@ -29,7 +31,7 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text, estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text).
 - `historias` (id uuid pk, cuenta_id fk, url, url_mini, texto (≤120), creado, expira = creado + 24 h). Límite por día según plan (E 1, D 3, resto ilimitado).
 - `ubicaciones` (id text pk (slug), nombre, tipo (pais|provincia|ciudad|zona), padre text null, activa boolean, orden int), `categorias` (id text pk, nombre, icono, orden, activa), `intereses` (id text pk, nombre, nombre_en, nombre_pt, orden). Se siembran (INSERT … ON CONFLICT DO NOTHING) con los valores del MVP: ubicaciones de Argentina (todas las provincias + ciudades principales que tenga mvp/src/geo.js o data.js), categorías HH.ACTIVITIES, 16 intereses iniciales.
-- `ajustes` (clave text pk, valor jsonb, actualizado). Claves: `precios`, `transferencia` (texto con los datos bancarios; vacío = "a confirmar"), `portada` (título, subtítulo), `promo` (texto).
+- `ajustes` (clave text pk, valor jsonb, actualizado). Claves: `precios`, `transferencia` (**quitada en Planes v2**: no se muestran datos bancarios en la web), `portada` (título, subtítulo), `promo` (texto). Planes v2 suma `packs`, `destacado`, `contacto`, `cotizacion`, `comision`, `mensajes`.
 
 ### 020-planes.sql (agente B)
 - `pedidos` (id uuid pk, cuenta_id fk, plan text check in (D,C,B,A,S) (códigos del MVP: S Star, A Diamante, B Platino, C Oro, D Plata, E Bronce), periodo text check in (mes, semana), monto_usd numeric, estado text check in (pendiente, informado, confirmado, rechazado, cancelado, vencido), referencia text (código corto para poner en la transferencia, ej. SR-7K3Q), comprobante_ruta text null, nota text, creado, informado timestamptz, confirmado timestamptz, confirmado_por text, provincia_star text null).
@@ -79,3 +81,162 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 ## Front (segunda ola, agentes C y D)
 - C: paquete "sitio" (HH_PROD='sitio') servido en `/` (y rutas del MVP con direcciones reales); portada pública con datos reales, perfil, swipe, cerca, ciudades; registro/login y panel de la acompañante conectados a /api/cuenta; oculta lo que queda fuera del 15. Las páginas legales siguen como HTML del servidor.
 - D: admin (prod-admin.js) con Acompañantes (lista, detalle, ver selfie/documento, aprobar/rechazar, estado, plan manual), Pagos/Pedidos (confirmar/rechazar, comprobante), Suscripciones, Stars (cupo), Ubicaciones, Categorías + Intereses, Ajustes (precios, datos de transferencia, portada, promo).
+
+## Planes v2, créditos y destacado
+
+Decidido por Juan el 11/11/2026 (detalle en el proyecto: `claude/sexyrose-planes-v2-propuesta.md`). Backend: `lib/creditos.js`, `lib/planes.js`, `lib/planes-ref.js`, `routes/cuenta-planes.js`, `routes/admin-creditos.js`, `routes/admin-fase1.js` (ajustes), migraciones `db/050-planes-v2.sql` y `db/060-creditos.sql`. Pruebas: `test/fase1-planes.test.js`, `test/planes-v2.test.js`.
+
+### Planes
+
+| Código | Nombre | Mes (USD = créditos) | Semana | Fotos | Videos | Historias/día | Destacadas (historias) | Clip 5 s en la tarjeta | Destacado (1 día / 7 días) |
+|---|---|---|---|---|---|---|---|---|---|
+| E | Bronce | 0 (gratis) | — | 8 | 2 | 1 | 1 | no | 1 / 5 |
+| D | Plata | 35 | — | 30 | 10 | 3 | 4 | sí | 2 / 9 |
+| C | Oro | 90 | 27 | 500 | 200 | ∞ | 10 | sí | 4 / 20 |
+| S | Star | 350 | 105 | 1000 | 500 | ∞ | ∞ | sí | — (ya va arriba; cupo 10 por provincia) |
+
+- `null` = ilimitado en la API (`limites.historiasDia`, `limites.destacadas`). `lib/planes-ref.js` exporta `LIMITES`, `PLANES_PREVIEW` (D, C, S) y `limitesDe(plan)`.
+- Platino (B) y Diamante (A) **no existen más**. `050-planes-v2.sql` **frena el arranque** (`RAISE EXCEPTION`, el sitio queda en 503 y el log muestra el mensaje) si hay suscripciones activas vigentes o pedidos abiertos con B/A: se decide con Juan cómo pasarlos y se vuelve a desplegar. El historial con B/A (vencido, cancelado, confirmado) se conserva; las restricciones nuevas son `NOT VALID` y ninguna fila nueva puede usar B/A (ni Plata por semana). Si `ajustes.precios` era la semilla vieja, pasa sola a la de v2.
+- Precios en `ajustes.precios` = `{"mes": {"E": 0, "D": 35, "C": 90, "S": 350}, "semana": {"C": 27, "S": 105}}`. El PUT del admin rechaza claves B/A, exige E = 0 y Plata < Oro < Star.
+- **Plan efectivo** = el de mayor rango entre las suscripciones activas vigentes; sin ninguna, E. **Plan mensual (cadena base)** = suscripciones activas por `mes` o `manual`. Encima se apilan semanas (solo Oro y Star) que suben el plan 7 días y después vuelve solo al mensual.
+- Pre-registro de la portada: acepta `bronce, plata, oro, star, no_se`; un formulario viejo con `platino`/`diamante` se guarda como `oro`.
+
+### Créditos (reglas)
+
+- 1 crédito = USD 1 de lista. Se guardan en **centésimos enteros** (`bigint`). **En la API todo importe sale como `{ "centavos": 3500, "creditos": "35.00" }`** (lo llamamos *Monto*). En los POST se mandan créditos enteros (packs/carga) o, en el ajuste del admin, `creditos` con hasta 2 decimales (`"2,5"` o `2.5`) o `centavos` enteros.
+- Libro `creditos_movimientos` (tipo ∈ `compra`, `pack_bonus`, `renovacion_plan`, `semana`, `subida_temporal`, `destacado`, `ajuste_admin`, `comision_venta`; positivo acredita, negativo debita; guarda `saldo_despues`). Saldo = suma de movimientos = `creditos_cuentas.centavos` (fila bloqueada con `FOR UPDATE` en cada movimiento: dos débitos simultáneos nunca se pasan del saldo).
+- Sin saldo negativo, salvo `comision_venta` hasta −`ajustes.comision.saldoNegativoMax` (20). No vencen, no se devuelven en dinero y **no se transfieren entre cuentas** (no hay endpoint).
+- Error de saldo (cualquier compra): **402** `{ "error": "No te alcanzan los créditos: necesitás 35.00 y tenés 10.00.", "codigo": "saldo_insuficiente", "faltan": Monto, "saldo": Monto }`.
+
+### Cuenta — `routes/cuenta-planes.js` bajo `/api/cuenta`
+
+Sesión de acompañante (401 sin sesión). POST/PUT: mismo origen + `X-SR: 1` + JSON (multipart solo en comprobantes). Errores `{ error, codigo?, faltan?, saldo?, proximaFechaLibre?, cupo? }` en castellano. Respuestas `Cache-Control: no-store`.
+
+**`GET /yo`** (routes/cuenta.js) suma: `creditos: { saldo: Monto }`, `notificaciones: { noLeidas }`, `limites.destacadas`, `perfil.pausadoPorSaldo` (bool). `previewHabilitado` ahora es desde Plata (`PUT /preview` responde 403 "Disponible desde Plata."). `POST /perfil/enviar-revision` responde **409** si el perfil está pausado por saldo.
+
+**`GET /planes`** →
+```json
+{
+  "precios": { "mes": {"E":0,"D":35,"C":90,"S":350}, "semana": {"C":27,"S":105} },
+  "planes": [ { "codigo":"D", "nombre":"Plata", "mes":35, "semana":null,
+                "limites": {"fotos":30,"videos":10,"historiasDia":3,"destacadas":4},
+                "preview": true, "destacado": {"dia":2,"semana":9}, "cupoProvincia": null } ],
+  "efectivo": "C",
+  "base": { "plan":"D", "planNombre":"Plata", "hasta":"…", "suscripcionId":"uuid",
+            "renovacionAuto": true, "cambioProgramado": null,
+            "proximaRenovacion": { "fecha":"…", "plan":"D", "planNombre":"Plata", "costo": Monto, "alcanza": true, "faltan": Monto } },
+  "semanas": [ Suscripcion ],
+  "saldo": Monto,
+  "pausa": { "plan":"D", "planNombre":"Plata", "desde":"…", "costo": Monto, "perfilPausado": true },
+  "suscripciones": [ Suscripcion ], "pedidos": [ PedidoViejo ],
+  "cupoStar": { "provincia":"provincia-de-cordoba", "libres": 3, "total": 10 }
+}
+```
+`base` es `null` sin plan mensual; `proximaRenovacion` es `null` si la renovación está apagada o el cambio programado es `E`; `pausa` es `null` salvo que una renovación no se pudo cobrar. `planes` trae siempre E, D, C, S en ese orden. Ya **no** viene `transferencia`.
+*Suscripcion* = `{ id, cuentaId, pedidoId, plan, planNombre, periodo: "mes"|"semana"|"manual", desde, hasta, estado: "activa"|"vencida"|"cancelada", nota, creado, vigente, renovacionAuto, cambioProgramado, origen: "pedido"|"manual"|"creditos", costo: Monto|null }`.
+
+**`GET /plan/cotizar?plan=C&periodo=mes`** → vista previa sin cobrar:
+`{ tipo, plan, planNombre, periodo, planAnterior, costo: Monto, desde, hasta, diasRestantes, detalle, saldo: Monto, alcanza, faltan: Monto }`. Mismos errores que comprar (400/409), sin el 402.
+
+**`POST /plan/comprar` `{ plan: "D"|"C"|"S", periodo: "mes"|"semana" }`** → **201** `{ ok, tipo, suscripcion: Suscripcion, costo: Monto, movimiento: Movimiento|null, saldo: Monto, plan: <efectivo>, reanudado: bool, devueltoDestacado: Monto }`. Qué hace según `tipo`:
+- `nuevo` (sin plan mensual): 30 días desde ahora, renovación automática **encendida**.
+- `renovacion_anticipada` (mismo plan que el mensual): 30 días más pegados al final; mantiene renovación y cambio programado.
+- `subida` (plan mensual superior): empieza ya y termina el mismo día que el plan anterior; se paga la **diferencia prorrateada**: `ceil((precioNuevo − precioActual) × díasRestantes / 30)` en centésimos. Los tramos del plan anterior quedan `cancelada` (nota "pasó a Oro el …"). Los Destacados del plan anterior se cancelan y se devuelve en créditos lo no usado (`devueltoDestacado`).
+- `semana` (Bronce compra una semana de Oro/Star) y `subida_temporal` (Plata u Oro compra la semana de un plan superior): 7 días, se apilan si ya tenía otra semana del mismo plan; sin renovación automática.
+- Errores: 400 (`E` es gratis, plan inválido incluidos B/A, Plata por semana, período inválido, Star sin provincia); **409** `codigo: "usar_cambio_programado"` (comprar por mes un plan **inferior** al mensual: se programa), `"semana_no_sube"` (semana de un plan igual o inferior al mensual), `"cupo_star"` (10 Stars vigentes en su provincia); **402** saldo. No se cobra nada si falla.
+- Comprar un plan mensual borra una renovación pendiente y **reanuda** el perfil pausado por saldo (`reanudado: true`).
+
+**`PUT /plan/renovacion` `{ activa: true|false }`** (también POST) → `{ ok, renovacionAuto, base, reanudado }`. 409 sin plan mensual. Si estaba **pausada por saldo** y manda `false`: se borra la renovación pendiente y el perfil vuelve a verse con Bronce (`reanudado: true`).
+
+**`PUT /plan/cambio` `{ plan: "E"|"D"|"C"|null }`** (también POST) → `{ ok, cambioProgramado, base }`. Baja de plan **en la próxima renovación** (`"E"` = no renovar y pasar a Bronce al vencer; `null` o el mismo plan = sin cambio). 409 `codigo: "usar_subida"` si es un plan superior; 409 sin plan mensual.
+
+**`GET /creditos[?limite=50&antesDe=<idMovimiento>]`** →
+```json
+{ "saldo": Monto,
+  "movimientos": [ Movimiento ], "siguiente": "id-para-paginar|null",
+  "packs": [ { "id":"trimestre-plata", "nombre":"Trimestre Plata", "pagaUsd":95, "recibe":105, "bonus":10,
+               "alcanzaPara":"3 meses de Plata, o 1 de Oro + 15", "masElegido":true } ],
+  "cargaMinima": 10, "cargaMaxima": 10000, "horasPedido": 48,
+  "pedidos": [ PedidoCreditos ],
+  "canales": { "whatsapp": true, "telegram": false } }
+```
+*Movimiento* = `{ id, tipo, centavos, creditos, saldoDespues: Monto, refTipo, refId, motivo, creado, creadoPor }`. Si el admin dejó `alcanzaPara` vacío, viene la sugerencia automática (el plan más alto que entra al menos un mes + el resto, ej. "1 mes de Oro + 15"; si no entra ninguno, "Destacados sueltos"). `canales.whatsapp` falso = el admin todavía no cargó el número (el front muestra "Muy pronto").
+
+**`POST /creditos/pedidos` `{ packId }` o `{ creditos: <entero 10..10000> }`, más `lang: "es"|"en"|"pt"`** (idioma del panel) → **201** `{ ok, pedido: PedidoCreditos }`:
+```json
+{ "id":"uuid", "codigo":"SR-4821", "cuentaId":"uuid", "packId":"trimestre-plata", "packNombre":"Trimestre Plata",
+  "pagaUsd":95, "base": Monto, "bonus": Monto, "total": Monto, "estado":"pendiente", "lang":"es",
+  "tieneComprobante":false, "nota":null, "motivo":null, "creado":"…", "vence":"… (+48 h)", "confirmado":null, "reaperturas":0,
+  "mensaje":"Hola, quiero comprar Trimestre Plata (105 créditos, USD 95). Pedido SR-4821",
+  "whatsappUrl":"https://wa.me/5491122334455?text=…", "telegramUrl":"https://t.me/usuario" }
+```
+Carga a medida: `packId: null`, sin bonificación, nombre "Carga a medida" / "Custom top-up" / "Recarga personalizada". `mensaje`, `whatsappUrl` y `telegramUrl` solo vienen mientras el pedido está `pendiente`; `whatsappUrl`/`telegramUrl` son `null` si no hay número/Telegram activo. Código `SR-####` (4 dígitos), único entre los pendientes. Errores: 400 (pack inexistente o inactivo, carga fuera de rango o con decimales), 409 (ya tiene 3 pedidos pendientes), 403 (cuenta no activa). **Nunca hay datos bancarios en la web**: el monto en pesos y la cuenta los pasa el responsable por WhatsApp.
+
+**`POST /creditos/pedidos/:id/comprobante`** (multipart: `comprobante` JPG/PNG/WebP/HEIC/PDF ≤ 8 MB y/o `nota`; o JSON `{nota}`) → `{ ok, pedido }`. 400 sin archivo ni nota o archivo inválido; 409 si ya no está pendiente; 404 si no es suyo.
+**`POST /creditos/pedidos/:id/cancelar`** → `{ ok, pedido }` (409 si no está pendiente).
+
+**`GET /destacado`** →
+```json
+{ "plan":"D", "planNombre":"Plata", "provincia":"provincia-de-cordoba", "disponible":true, "motivo":null,
+  "precios": { "E": {"dia": Monto, "semana": Monto}, "D": {…}, "C": {…} },
+  "precio": { "dia": Monto, "semana": Monto },
+  "cupo": { "cupo": 2, "activos": 7, "ocupadosAhora": 1, "porcentaje": 20 },
+  "proximaFechaLibre": { "dia": "ISO", "semana": "ISO" },
+  "mios": [ Destacado ], "saldo": Monto }
+```
+`disponible: false` con `motivo` ("Con Star ya aparecés arriba de todo.", perfil sin publicar, sin provincia). Para Star `precio`, `cupo` y `proximaFechaLibre` son `null`.
+*Destacado* = `{ id, cuentaId, plan, planNombre, provincia, dias: 1|7, desde, hasta, estado: "activo"|"programado"|"vencido"|"cancelado", costo: Monto, creado, vigente }`.
+
+**`POST /destacado` `{ dias: 1|7, desde?: ISO }`** → **201** `{ ok, destacado, saldo }`.
+- Sin `desde`: empieza ahora, o cuando termina el Destacado que ya tiene (se encadena). Con `desde` (reserva): de ahora a 60 días; 409 si se superpone con uno suyo.
+- Cupo por plan y provincia = 20 % de los perfiles **publicados** con ese plan efectivo en la provincia, redondeado hacia arriba, mínimo 1. Si en algún momento del período se pasa del cupo: **409** `{ error, codigo: "cupo_lleno", proximaFechaLibre: ISO, cupo, activos }` (el front ofrece reservar esa fecha con el mismo POST + `desde`).
+- 409 Star, 409 perfil no publicado, 400 sin provincia o `dias`/`desde` inválidos, 402 saldo.
+- **Atado al plan**: solo cuenta mientras su plan efectivo sea el mismo con el que lo compró y siga en la misma provincia. Durante una semana de subida temporal no se ve (no se devuelve); al **subir de plan mensual** se cancela y se devuelve lo no usado.
+
+**`GET /notificaciones[?limite=30]`** → `{ items: [{ id, tipo, texto, leida, creado }], noLeidas }`. Tipos: `creditos_acreditados`, `pedido_rechazado`, `plan_comprado`, `plan_renovado`, `plan_asignado`, `plan_vence`, `plan_vencio`, `saldo_insuficiente`, `perfil_pausado`, `renovacion_pendiente`, `destacado`. Los textos vienen en castellano (el front puede traducir por `tipo`).
+**`POST /notificaciones/leer` `{ ids?: [id] }`** → `{ ok, noLeidas }` (sin `ids` marca todas).
+
+**Pedidos viejos por transferencia**: `POST /pedidos` → **410** "Los planes ahora se pagan con créditos…". `POST /pedidos/:id/informar` y `/cancelar` siguen andando solo para pedidos abiertos de antes.
+
+### Renovación automática, avisos y pausa (tarea cada 10 min, `planes.ejecutarVencimientos()`)
+
+1. Plan mensual con renovación encendida que termina en ≤ 15 min (o ya terminó y sigue activo): se cobra el precio del plan (o del `cambioProgramado`) y se crea el tramo siguiente pegado (30 días). Email "Renovamos tu plan …" + notificación.
+2. Si no alcanza el saldo cuando llega la fecha: el perfil publicado pasa a `pausado` con `perfiles.pausado_por = 'sin_saldo'`, queda una fila en `renovaciones_pendientes` y se avisa (email + notificación). **Apenas entran créditos** (pedido confirmado o ajuste positivo del admin) se reintenta solo: si alcanza, se cobra, se crea el plan por 30 días desde ese momento y el perfil vuelve a `publicado`. Si era Star y ya no hay cupo, queda pendiente y se le avisa que elija otro plan. La pausa del admin (`pausado_por = 'admin'`) nunca se levanta sola.
+3. Avisos de saldo insuficiente **7 y 2 días antes** de la renovación (una sola vez cada uno): email + notificación con cuánto falta.
+4. Lo que **no** se renueva solo (renovación apagada, semanas, planes manuales) recibe el aviso de "vence en 3 días" y el de "venció" (como antes).
+5. Pedidos de créditos pendientes con más de 48 h → `vencido`. Pedidos viejos por transferencia sin informar con más de 7 días → `vencido`.
+6. Destacados: `programado` → `activo` al empezar; `activo`/`programado` → `vencido` al terminar.
+
+### Admin — `routes/admin-creditos.js` y `routes/admin-fase1.js` bajo `${A}/api/`
+
+Mismo Basic Auth; POST con `X-SR-Admin: 1` + mismo origen + JSON. `adminUser` queda como autor (`creadoPor`, `confirmado_por`).
+
+- **`GET /creditos[?q=]`** → `{ items: [{ cuentaId, email, slug, displayName, perfilEstado, pausadoPorSaldo, plan, saldo: Monto, actualizado }], total }` (ordenado por saldo).
+- **`GET /creditos/:cuentaId[?limite&antesDe]`** → `{ cuentaId, cuenta: {email, slug, displayName}, saldo, plan, base, movimientos, siguiente, pedidos: [PedidoCreditos] }`.
+- **`POST /creditos/:cuentaId/ajuste` `{ creditos: "-5,50" | 10 } o { centavos: -550 }, motivo`** (motivo obligatorio, ≥ 3 letras) → `{ ok, movimiento, saldo }`. Un ajuste negativo no puede dejar saldo negativo (402). Un ajuste positivo dispara el reintento de renovación pendiente.
+- **`GET /pedidos-creditos[?estado=pendiente|confirmado|vencido|cancelado|rechazado][&q=]`** — `q` busca por código (`4821`, `SR-4821`), email o nombre → `{ items: [PedidoCreditos + { cuenta: {email, slug, displayName}, arsSugerido, mensajeSugerido }], total, pendientes, conComprobante, cotizacion }`. `arsSugerido` = USD × `cotizacion.arsPorUsd` **redondeado hacia arriba a la centena** (null sin cotización); `mensajeSugerido` = plantilla `ajustes.mensajes.admin` lista para copiar y pegar en WhatsApp (sin datos bancarios: la cuenta la agrega el responsable a mano).
+- **`GET /pedidos-creditos/:id/comprobante`** → el archivo (no-store, inline, sandbox).
+- **`POST /pedidos-creditos/:id/confirmar`** → acredita `compra` (lo pagado) + `pack_bonus` (el regalo, si hay), marca confirmado, email "Acreditamos N créditos…" + notificación, y reintenta la renovación pendiente → `{ ok, pedido, movimientos, saldo, total }`. También confirma un pedido `vencido` (pagó tarde). 409 si ya estaba confirmado/rechazado/cancelado.
+- **`POST /pedidos-creditos/:id/rechazar` `{ motivo? }`** → email + notificación. **`POST /pedidos-creditos/:id/reabrir`** → un `vencido` o `cancelado` vuelve a `pendiente` por 48 h más (`reaperturas` + 1; si su código ya lo usa otro pendiente, recibe uno nuevo).
+- **`GET /planes/vencen[?dias=7]`** → `{ items: [Suscripcion + { cuenta, saldo, renueva, costoRenovacion, alcanza }], total, sinSaldo }` (último tramo de cada plan que termina en esos días).
+- **`GET /planes/pausadas`** → `{ items: [{ cuentaId, plan, planNombre, desde, perfilEstado, pausado, cuenta, saldo, costo, faltan }], total }`.
+- **`GET /destacados[?estado=todos]`** → `{ items: [Destacado + { cuenta }], zonas: [{ plan, planNombre, provincia, cupo, activos, ocupadosAhora, reservas }], porcentaje }`. **`POST /destacados/:id/cancelar` `{ devolver?: true }`** → devuelve todo si no empezó o la parte no usada → `{ ok, destacado, devuelto }`.
+- **`GET /resumen`** suma `pedidosCreditos: { pendientes, conComprobante }`, `pausadasSinSaldo`, `vencen7: { total, sinSaldo }`.
+- **`GET /acompanantes/:id`** suma `saldo`, `base`, `pausadoPorSaldo`. **`POST /acompanantes/:id/estado`** guarda `pausado_por = 'admin'` al pausar (y lo limpia al cambiar a otro estado).
+- **`POST /acompanantes/:id/plan` `{ plan: D|C|S, dias, nota }`** (plan manual, sin cobrar créditos, sin renovación automática; borra una renovación pendiente y reanuda la pausa por saldo).
+- **Ajustes** `GET /ajustes`, `GET|PUT /ajustes/:clave` con `{ valor }`. Claves: `precios`, `portada`, `promo`, y nuevas:
+  - `packs`: lista `[{ id?, nombre, pagaUsd ≥ 10, recibe ≥ pagaUsd, alcanzaPara ("" = sugerencia automática), masElegido, orden, activo }]` (máx. 12; `id` se arma del nombre si falta). El GET devuelve además `bonus` y `alcanzaParaSugerido`.
+  - `destacado`: `{ "E": {"dia":1,"semana":5}, "D": {"dia":2,"semana":9}, "C": {"dia":4,"semana":20} }` (precios en créditos, > 0).
+  - `contacto`: `{ whatsapp: "5491122334455" (con código de país; se guardan solo dígitos), telegram: "usuario", telegramActivo: bool }` — segundo canal por si bloquean el número.
+  - `cotizacion`: `{ arsPorUsd: 1450 | null, nota }` (la `fecha` la pone el servidor al guardar).
+  - `comision`: `{ porcentaje: 10, saldoNegativoMax: 20 }`.
+  - `mensajes`: `{ whatsapp: { es, en, pt }, admin }` — plantillas con `{pack}`, `{creditos}`, `{monto}`, `{codigo}` (obligatorio) y, en `admin`, `{ars}`, `{cotizacion}`, `{fecha}`.
+  - `transferencia` **se quitó** (404): no se muestran datos bancarios en la web.
+
+### Sitio público
+
+- `GET /api/sitio/estado`: `ajustes` = `{ portada, promo, precios (solo E/D/C/S), destacado }`. Cada perfil suma **`destacado: bool`** (nunca para Star). Orden sugerido para el front en cada listado de su provincia: Star primero, después las destacadas de cada plan (rotando el orden en cada visita), después el resto. El clip de 5 s (`preview`) se publica desde Plata.
+
+### Venta de contenido (solo preparado, sin UI)
+
+`creditos.registrarComisionVenta(cuentaId, ventaCentavos, ref)` descuenta `ajustes.comision.porcentaje` % de la venta como movimiento `comision_venta`; puede dejar el saldo hasta −`saldoNegativoMax`; más allá responde 402 (a definir con el procesador: pausar la venta o cobrar al liquidar).

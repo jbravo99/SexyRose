@@ -108,12 +108,12 @@ describe('clip de tarjeta con almacenamiento local', () => {
   });
 });
 
-describe('clip de tarjeta (5 s, sin audio, desde Oro)', { skip: !hayFfmpeg && 'falta ffmpeg' }, () => {
+describe('clip de tarjeta (5 s, sin audio, desde Plata)', { skip: !hayFfmpeg && 'falta ffmpeg' }, () => {
   let s;
   before(async () => { s = await servidor({ storageDriver: driver }); });
   after(async () => { if (s) await s.close(); });
 
-  test('Bronce: el automático se arma igual pero no se publica; con Oro aparece en la tarjeta', async () => {
+  test('Bronce: el automático se arma igual pero no se publica; con Plata aparece en la tarjeta', async () => {
     const c = await registrar(s.base);
     assert.equal((await c.video(path.join(clips, 'v12.mp4'))).status, 202);
     await s.ctx.videos.vacia();
@@ -124,12 +124,12 @@ describe('clip de tarjeta (5 s, sin audio, desde Oro)', { skip: !hayFfmpeg && 'f
     assert.equal(yo.perfil.preview.inicio, 0);
     assert.match(yo.perfil.preview.url, /^https:\/\/cdn\.prueba\.test\/p\/[0-9a-f-]+-[0-9a-f]{12}\.mp4$/);
     const r = await c.json('PUT', '/api/cuenta/preview', { videoId: yo.perfil.videos[0].id, inicio: 2 });
-    assert.equal(r.status, 403); assert.match(r.body.error, /Disponible desde Oro/);
+    assert.equal(r.status, 403); assert.match(r.body.error, /Disponible desde Plata/);
     await publicar(c.id);
     assert.equal((await perfilPublico(c)).preview, null);
-    await darPlan(c.id, 'C');
+    await darPlan(c.id, 'D');
     const p = await perfilPublico(c);
-    assert.equal(p.plan, 'C');
+    assert.equal(p.plan, 'D');
     assert.deepEqual(p.preview, { url: yo.perfil.preview.url });
     assert.equal((await c.yo()).previewHabilitado, true);
   });
@@ -149,7 +149,7 @@ describe('clip de tarjeta (5 s, sin audio, desde Oro)', { skip: !hayFfmpeg && 'f
     assert.equal((await c.json('PUT', '/api/cuenta/preview', { videoId: vid, inicio: -1 })).status, 400);
     assert.equal((await c.json('PUT', '/api/cuenta/preview', { videoId: 'nada', inicio: 0 })).status, 400);
     const ajeno = await registrar(s.base);
-    await darPlan(ajeno.id, 'B');
+    await darPlan(ajeno.id, 'C');
     assert.equal((await ajeno.json('PUT', '/api/cuenta/preview', { videoId: vid, inicio: 0 })).status, 404);
     // elegir desde el segundo 3
     const r = await c.json('PUT', '/api/cuenta/preview', { videoId: vid, inicio: 3 });
@@ -185,7 +185,7 @@ describe('clip de tarjeta (5 s, sin audio, desde Oro)', { skip: !hayFfmpeg && 'f
 
   test('video más corto que 5 s: solo se permite arrancar en 0', async () => {
     const c = await registrar(s.base);
-    await darPlan(c.id, 'A');
+    await darPlan(c.id, 'S');
     await c.video(path.join(clips, 'v3.mp4'));
     await s.ctx.videos.vacia();
     const v = (await c.yo()).perfil.videos[0];

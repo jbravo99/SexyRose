@@ -25,8 +25,12 @@
     suspendido: ['danger', 'Suspendido', 'Tu perfil fue suspendido. Escribinos a contacto@sexyrose.net.'],
   };
   const VERIF = { sin_enviar: ['neutral', 'Sin enviar'], pendiente: ['warn', 'En revisión'], verificada: ['ok', 'Verificada'], rechazada: ['danger', 'Rechazada'] };
-  const PEDIDO = { pendiente: ['warn', 'Esperando tu transferencia'], informado: ['info', 'Transferencia informada'], confirmado: ['ok', 'Confirmado'], rechazado: ['danger', 'Rechazado'], cancelado: ['neutral', 'Cancelado'], vencido: ['neutral', 'Vencido'] };
-  const RANK = { E: 1, D: 2, C: 3, B: 4, A: 5, S: 6 };
+  // Pedidos de créditos (se pagan por WhatsApp; en la web nunca hay datos bancarios)
+  const PEDIDO = { pendiente: ['warn', 'Esperando pago'], confirmado: ['ok', 'Acreditado'], rechazado: ['danger', 'Rechazado'], cancelado: ['neutral', 'Cancelado'], vencido: ['neutral', 'Vencido'] };
+  // Planes v2 (11/11/2026): Bronce, Plata, Oro y Star. Platino y Diamante no existen más.
+  const RANK = { E: 1, D: 2, C: 3, S: 4 };
+  // Etiqueta "Destacado" en la tarjeta: 'A' = arriba del nombre (por defecto), 'B' = pastilla arriba a la izquierda
+  const BADGE_DESTACADO = 'A';
   const PANEL_TABS = [
     { id: 'resumen', label: 'Resumen', icon: 'dashboard' },
     { id: 'perfil', label: 'Mi perfil', icon: 'user' },
@@ -34,12 +38,15 @@
     { id: 'verificacion', label: 'Verificación', icon: 'shield' },
     { id: 'historias', label: 'Historias', icon: 'camera' },
     { id: 'plan', label: 'Plan', icon: 'card' },
+    { id: 'creditos', label: 'Créditos', icon: 'wallet' },
+    { id: 'destacado', label: 'Destacado', icon: 'sparkles' },
+    { id: 'avisos', label: 'Avisos', icon: 'bell' },
     { id: 'cuenta', label: 'Cuenta', icon: 'settings' },
   ];
 
   /* ---------- Textos del sitio real en inglés y portugués (no tocan el diccionario de la demo) ---------- */
   Object.assign(HH.I18N = HH.I18N || {}, {"Videos · {n} / {n}": ["Videos · {n} / {n}", "Vídeos · {n} / {n}"], "Hasta 30 segundos y 95 MB. Les agregamos la marca de agua y les sacamos los datos de ubicación.": ["Up to 30 seconds and 95 MB. We add the watermark and remove location data.", "Até 30 segundos e 95 MB. Adicionamos a marca d’água e removemos os dados de localização."], "Subir video": ["Upload video", "Enviar vídeo"], "Subiendo video…": ["Uploading video…", "Enviando vídeo…"], "Procesando…": ["Processing…", "Processando…"], "No se pudo procesar.": ["Could not be processed.", "Não foi possível processar."], "Todavía no subiste videos": ["You have not uploaded videos yet", "Você ainda não enviou vídeos"], "Videos cortos de tus salidas, con la cara visible. Sin desnudos.": ["Short videos of your outings, with your face visible. No nudity.", "Vídeos curtos dos seus passeios, com o rosto visível. Sem nudez."], "Recibimos el video. Lo estamos procesando.": ["We received the video. We are processing it.", "Recebemos o vídeo. Estamos processando."], "Borrar video": ["Delete video", "Apagar vídeo"], "¿Querés borrar este video? No se puede deshacer.": ["Delete this video? This cannot be undone.", "Apagar este vídeo? Não dá para desfazer."], "Video borrado.": ["Video deleted.", "Vídeo apagado."], "El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.": ["The video is larger than 95 MB. Trim it or record it in lower quality.", "O vídeo tem mais de 95 MB. Corte ou grave em qualidade menor."], "Video": ["Video", "Vídeo"], "Videos": ["Videos", "Vídeos"]});
-  Object.assign(HH.I18N = HH.I18N || {}, { "1 mes": ["1 month", "1 mês"], "1 semana": ["1 week", "1 semana"], "asignado": ["assigned", "atribuído"], "Te mostramos los datos para transferir.": ["We will show you the transfer details.", "Mostramos os dados para transferência."], "Del {x} al {x}": ["From {x} to {x}", "De {x} a {x}"], "(hasta 4, con https://)": [ "(up to 4, with https://)", "(até 4, com https://)" ], "(opcional, para clientes de afuera)": [ "(optional, for clients from abroad)", "(opcional, para clientes de fora)" ], "A convenir": [ "To be agreed", "A combinar" ], "Acepto los": [ "I accept the", "Aceito os" ], "Acompañantes": [ "Companions", "Acompanhantes" ], "Activas": [ "Active", "Ativas" ], "Aprobamos tu perfil y aparece en el sitio. Los clientes te escriben directo por WhatsApp o Telegram.": [ "We approve your profile and it shows on the site. Clients write to you directly on WhatsApp or Telegram.", "Aprovamos seu perfil e ele aparece no site. Os clientes escrevem direto pelo WhatsApp ou Telegram." ], "Avisar que transferí": [ "Let you know I paid", "Avisar que transferi" ], "Barrio o zona": [ "Neighborhood or area", "Bairro ou região" ], "Borrador": [ "Draft", "Rascunho" ], "Borrar foto": [ "Delete photo", "Apagar foto" ], "Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.": [ "Each companion sends a selfie holding her ID and a photo of the ID, reviewed by the SexyRose team: we confirm she is of legal age and the person in the photos. Only verified profiles are published.", "Cada acompanhante envia uma selfie com o documento e uma foto do documento, que a equipe da SexyRose revisa: confirmamos que é maior de idade e que é a pessoa das fotos. Só os perfis verificados são publicados." ], "Cancelado": [ "Canceled", "Cancelado" ], "Completá tu perfil y envialo a revisión. Nadie lo ve todavía.": [ "Complete your profile and send it for review. Nobody can see it yet.", "Complete seu perfil e envie para revisão. Ninguém o vê ainda." ], "Completá tu perfil y subí al menos 3 fotos.": [ "Complete your profile and upload at least 3 photos.", "Complete seu perfil e envie pelo menos 3 fotos." ], "Comprobante": [ "Receipt", "Comprovante" ], "Con código de país. Es el número al que te escriben.": [ "With country code. It is the number clients write to.", "Com código do país. É o número para o qual escrevem." ], "Confirmado": [ "Confirmed", "Confirmado" ], "Confirmando tu email…": [ "Confirming your email…", "Confirmando seu e-mail…" ], "Confirmar email": [ "Confirm email", "Confirmar e-mail" ], "Confirmá tu email: te mandamos un link a": [ "Confirm your email: we sent a link to", "Confirme seu e-mail: enviamos um link para" ], "Contacto y tarifa": [ "Contact and rate", "Contato e tarifa" ], "Contanos qué pasó. Revisamos cada reporte y podemos suspender el perfil.": [ "Tell us what happened. We review every report and can suspend the profile.", "Conte o que aconteceu. Revisamos cada denúncia e podemos suspender o perfil." ], "Contraseña cambiada.": [ "Password changed.", "Senha alterada." ], "Contraseña nueva": [ "New password", "Nova senha" ], "Creá tu cuenta": [ "Create your account", "Crie sua conta" ], "Creá tu cuenta y confirmá tu email.": [ "Create your account and confirm your email.", "Crie sua conta e confirme seu e-mail." ], "Cuando transfieras, tocá \"Ya transferí\" en tus pedidos. Confirmamos el pago y se activa el plan.": [ "Once you transfer, tap \"I already paid\" in your orders. We confirm the payment and the plan is activated.", "Quando transferir, toque em \"Já transferi\" nos seus pedidos. Confirmamos o pagamento e o plano é ativado." ], "Cuenta creada. Te mandamos un email para confirmarlo.": [ "Account created. We sent you an email to confirm it.", "Conta criada. Enviamos um e-mail para confirmá-lo." ], "Cómo funciona": [ "How it works", "Como funciona" ], "Datos para transferir": [ "Transfer details", "Dados para transferência" ], "Demasiados intentos. Probá de nuevo en un rato.": [ "Too many attempts. Try again in a while.", "Muitas tentativas. Tente de novo daqui a pouco." ], "Denunciar": [ "Report", "Denunciar" ], "Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.": [ "They last 24 hours and appear on the home page with your ring. The best way to show your day.", "Duram 24 horas e aparecem no início com o seu anel. O melhor jeito de mostrar seu dia." ], "Dónde estás": [ "Where you are", "Onde você está" ], "El archivo es demasiado grande.": [ "The file is too large.", "O arquivo é grande demais." ], "El link no es válido o ya venció.": [ "The link is not valid or has expired.", "O link não é válido ou já expirou." ], "El link no tiene el código de confirmación.": [ "The link is missing the confirmation code.", "O link não tem o código de confirmação." ], "El link no tiene el código. Pedí uno nuevo desde \"¿Olvidaste tu contraseña?\".": [ "The link is missing the code. Request a new one from \"Forgot your password?\".", "O link não tem o código. Peça um novo em \"Esqueceu sua senha?\"." ], "Elegí las dos fotos: la selfie con el documento y el frente del documento.": [ "Choose both photos: the selfie with your ID and the front of your ID.", "Escolha as duas fotos: a selfie com o documento e a frente do documento." ], "Elegí primero la provincia": [ "Choose the province first", "Escolha primeiro a província" ], "Elegí tu provincia": [ "Choose your province", "Escolha sua província" ], "Elegí tu provincia en Mi perfil para ver el cupo.": [ "Choose your province in My profile to see availability.", "Escolha sua província em Meu perfil para ver as vagas." ], "Elegí una contraseña nueva de al menos 10 caracteres. Se cierran las sesiones abiertas en otros dispositivos.": [ "Choose a new password of at least 10 characters. Sessions open on other devices will be closed.", "Escolha uma nova senha com pelo menos 10 caracteres. As sessões abertas em outros dispositivos serão encerradas." ], "Elegí una foto.": [ "Choose a photo.", "Escolha uma foto." ], "Email confirmado": [ "Email confirmed", "E-mail confirmado" ], "Email sin confirmar": [ "Email not confirmed", "E-mail não confirmado" ], "Error del servidor. Probá de nuevo en unos minutos.": [ "Server error. Try again in a few minutes.", "Erro do servidor. Tente de novo em alguns minutos." ], "Es el nombre que se ve en el sitio. No uses tu nombre completo.": [ "It is the name shown on the site. Do not use your full name.", "É o nome que aparece no site. Não use seu nome completo." ], "Escribinos a": [ "Write to us at", "Escreva para" ], "Escribí el email de tu cuenta y te mandamos un link para crear una nueva.": [ "Enter your account email and we will send you a link to create a new one.", "Digite o e-mail da sua conta e enviamos um link para criar uma nova." ], "Esperando tu transferencia": [ "Waiting for your transfer", "Aguardando sua transferência" ], "Estado": [ "Status", "Status" ], "Estado de tu perfil": [ "Your profile status", "Status do seu perfil" ], "Estamos revisando tu perfil y tu verificación. Te avisamos por email.": [ "We are reviewing your profile and your verification. We will let you know by email.", "Estamos revisando seu perfil e sua verificação. Avisamos por e-mail." ], "Estás en Bronce, gratis.": [ "You are on Bronze, free.", "Você está no Bronze, grátis." ], "Estás en Bronce, gratis. Con un plan más alto aparecés más arriba y podés subir más fotos e historias.": [ "You are on Bronze, free. With a higher plan you appear higher up and can upload more photos and stories.", "Você está no Bronze, grátis. Com um plano mais alto você aparece mais acima e pode enviar mais fotos e stories." ], "Fecha de nacimiento": [ "Date of birth", "Data de nascimento" ], "Foto borrada.": [ "Photo deleted.", "Foto apagada." ], "Fotos reales, con la cara visible y en lugares públicos. Sin desnudos.": [ "Real photos, with your face visible and in public places. No nudity.", "Fotos reais, com o rosto visível e em lugares públicos. Sem nudez." ], "Fotos subidas.": [ "Photos uploaded.", "Fotos enviadas." ], "Frente del documento": [ "Front of your ID", "Frente do documento" ], "Gracias. Recibimos tu reporte.": [ "Thank you. We received your report.", "Obrigado. Recebemos sua denúncia." ], "Guardado.": [ "Saved.", "Salvo." ], "Guardar contraseña": [ "Save password", "Salvar senha" ], "Género": [ "Gender", "Gênero" ], "Hasta {n} fotos": [ "Up to {n} photos", "Até {n} fotos" ], "Historia borrada.": [ "Story deleted.", "Story apagado." ], "Historia publicada por 24 horas.": [ "Story posted for 24 hours.", "Story publicado por 24 horas." ], "Historias ilimitadas con tu plan": [ "Unlimited stories with your plan", "Stories ilimitados com seu plano" ], "Imágenes sin consentimiento": [ "Images without consent", "Imagens sem consentimento" ], "Ingresar": [ "Log in", "Entrar" ], "Ingresá": [ "Log in", "Entre" ], "La contraseña tiene que tener al menos 10 caracteres.": [ "The password must be at least 10 characters long.", "A senha precisa ter pelo menos 10 caracteres." ], "Las dos contraseñas no coinciden.": [ "The two passwords do not match.", "As duas senhas não coincidem." ], "Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.": [ "Outings are canceled with the person you arranged them with, on WhatsApp and in advance. Companion plans are paid by month or by week and do not renew automatically.", "Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. Os planos das acompanhantes são pagos por mês ou por semana e não se renovam sozinhos." ], "Link incompleto": [ "Incomplete link", "Link incompleto" ], "Listo, avisamos que transferiste. Te confirmamos por email.": [ "Done, we noted your transfer. We will confirm by email.", "Pronto, avisamos que você transferiu. Confirmamos por e-mail." ], "Listo, confirmaste tu email.": [ "Done, your email is confirmed.", "Pronto, você confirmou seu e-mail." ], "Listo, tu perfil está en revisión.": [ "Done, your profile is under review.", "Pronto, seu perfil está em revisão." ], "Listo, ya podés entrar con tu contraseña nueva.": [ "Done, you can now log in with your new password.", "Pronto, você já pode entrar com sua nova senha." ], "Llegaste al límite de tu plan": [ "You reached your plan limit", "Você atingiu o limite do seu plano" ], "Lo hago después": [ "I will do it later", "Faço depois" ], "Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.": [ "What you see here is what gets published. Your email, your ID and your date of birth are never shown.", "O que você vê aqui é o que é publicado. Seu e-mail, seu documento e sua data de nascimento não aparecem." ], "Lo revisamos a mano para confirmar que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten.": [ "We review it by hand to confirm it is you and that you are over 18. The selfie and the ID are never published or shared.", "Revisamos manualmente para confirmar que é você e que você é maior de 18. A selfie e o documento nunca são publicados nem compartilhados." ], "Lo sacás del sitio cuando quieras, sin perder nada.": [ "Take it off the site whenever you want, without losing anything.", "Tire do site quando quiser, sem perder nada." ], "Los cambios se ven en el sitio apenas guardás (si tu perfil está publicado).": [ "Changes show on the site as soon as you save (if your profile is published).", "As mudanças aparecem no site assim que você salva (se seu perfil estiver publicado)." ], "Los datos para transferir te llegan por email.": [ "You will receive the transfer details by email.", "Os dados para transferência chegam por e-mail." ], "Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.": [ "Fixed spot at the top of the home page in your province. Only 10 per province.", "Lugar fixo no topo do início na sua província. Só 10 por província." ], "Mandar de nuevo": [ "Send again", "Enviar de novo" ], "Mandar verificación": [ "Send verification", "Enviar verificação" ], "Mandarme el link": [ "Send me the link", "Me enviar o link" ], "Mandá una selfie y tu documento: los revisamos y nunca se publican.": [ "Send a selfie and your ID: we review them and they are never published.", "Envie uma selfie e seu documento: revisamos e nunca são publicados." ], "Mover antes": [ "Move earlier", "Mover para antes" ], "Mover después": [ "Move later", "Mover para depois" ], "Más arriba en el inicio, más fotos e historias ilimitadas.": [ "Higher on the home page, more photos and unlimited stories.", "Mais acima no início, mais fotos e stories ilimitados." ], "Más fotos y hasta 3 historias por día.": [ "More photos and up to 3 stories per day.", "Mais fotos e até 3 stories por dia." ], "No hay conexión. Revisá internet y probá de nuevo.": [ "No connection. Check your internet and try again.", "Sem conexão. Verifique a internet e tente de novo." ], "No quedan lugares Star en tu provincia.": [ "No Star spots left in your province.", "Não há mais vagas Star na sua província." ], "No tenés historias activas.": [ "You have no active stories.", "Você não tem stories ativos." ], "Nombre artístico": [ "Stage name", "Nome artístico" ], "Nota": [ "Note", "Nota" ], "Ocultar mi perfil": [ "Hide my profile", "Ocultar meu perfil" ], "Pagás por transferencia. Cuando la confirmamos, el plan se activa. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.": [ "You pay by bank transfer. Once we confirm it, the plan is activated. A week of a higher plan moves you up for 7 days and then you go back to your plan automatically.", "Você paga por transferência. Quando confirmamos, o plano é ativado. Uma semana de um plano mais alto te sobe por 7 dias e depois você volta sozinha ao seu plano." ], "Para mirar perfiles y escribir por WhatsApp no hace falta cuenta.": [ "You do not need an account to browse profiles and write on WhatsApp.", "Não é preciso conta para ver perfis e escrever pelo WhatsApp." ], "Para publicar te falta": [ "To publish you still need", "Para publicar falta" ], "Pausado": [ "Paused", "Pausado" ], "Pedido cancelado.": [ "Order canceled.", "Pedido cancelado." ], "Pedido en curso": [ "Order in progress", "Pedido em andamento" ], "Pedir": [ "Order", "Pedir" ], "Pedir 1 mes · {x}": [ "Order 1 month · {x}", "Pedir 1 mês · {x}" ], "1 semana · {x}": [ "1 week · {x}", "1 semana · {x}" ], "Subí a {x} por 7 días · {x}": [ "Upgrade to {x} for 7 days · {x}", "Suba para {x} por 7 dias · {x}" ], "Perfil falso, engaño u otro": [ "Fake profile, scam or other", "Perfil falso, golpe ou outro" ], "Podés elegir hasta 6 intereses.": [ "You can choose up to 6 interests.", "Você pode escolher até 6 interesses." ], "Podés pedir un link nuevo desde tu panel.": [ "You can request a new link from your dashboard.", "Você pode pedir um novo link no seu painel." ], "Política de contenido": [ "Content policy", "Política de conteúdo" ], "Política de privacidad": [ "Privacy policy", "Política de privacidade" ], "Poné esta referencia en la transferencia": [ "Put this reference in the transfer", "Coloque esta referência na transferência" ], "Posible menor de edad": [ "Possible minor", "Possível menor de idade" ], "Posible trata o explotación": [ "Possible trafficking or exploitation", "Possível tráfico ou exploração" ], "Precio por mes, en dólares. Platino, Diamante y Star también se pueden pedir por una semana. Pagás por transferencia.": [ "Price per month, in US dollars. Platinum, Diamond and Star can also be ordered for one week. You pay by bank transfer.", "Preço por mês, em dólares. Platina, Diamante e Star também podem ser pedidos por uma semana. Você paga por transferência." ], "Provincia": [ "Province", "Província" ], "Publicado": [ "Published", "Publicado" ], "Publicá tu perfil": [ "Publish your profile", "Publique seu perfil" ], "Rechazado": [ "Rejected", "Rejeitado" ], "Recibimos tu verificación.": [ "We received your verification.", "Recebemos sua verificação." ], "Recibimos tu verificación. Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.": [ "We received your verification. We will email you when we review it. If you sent the wrong file, you can send it again.", "Recebemos sua verificação. Avisamos por e-mail quando revisarmos. Se você errou o arquivo, pode enviar de novo." ], "Recuperar contraseña": [ "Recover password", "Recuperar senha" ], "Reenviar": [ "Resend", "Reenviar" ], "Referencia": [ "Reference", "Referência" ], "Repetila": [ "Repeat it", "Repita" ], "Revisá el motivo, corregí lo necesario y volvé a enviarlo.": [ "Check the reason, fix what is needed and send it again.", "Veja o motivo, corrija o necessário e envie de novo." ], "Salidas que te gustan": [ "Outings you like", "Passeios de que você gosta" ], "Se publica solo tu edad.": [ "Only your age is published.", "Só sua idade é publicada." ], "Sección Diamante, la primera debajo de Stars, con tarjetas grandes.": [ "Diamond section, the first one below Stars, with large cards.", "Seção Diamante, a primeira abaixo de Stars, com cards grandes." ], "Sección Platino en el inicio y hasta 50 fotos.": [ "Platinum section on the home page and up to 50 photos.", "Seção Platina no início e até 50 fotos." ], "Selfie con el documento": [ "Selfie with your ID", "Selfie com o documento" ], "Separalos con comas.": [ "Separate them with commas.", "Separe com vírgulas." ], "Si hay una cuenta con ese email, te mandamos un link para crear una contraseña nueva. Revisá también la carpeta de spam.": [ "If there is an account with that email, we sent you a link to create a new password. Also check your spam folder.", "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Verifique também a pasta de spam." ], "Si querés, adjuntá el comprobante. Así lo confirmamos más rápido.": [ "If you want, attach the receipt. That way we confirm it faster.", "Se quiser, anexe o comprovante. Assim confirmamos mais rápido." ], "Sin confirmar": [ "Not confirmed", "Não confirmado" ], "Sin enviar": [ "Not sent", "Não enviada" ], "Sobre vos": [ "About you", "Sobre você" ], "Sobre vos en inglés": [ "About you in English", "Sobre você em inglês" ], "Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.": [ "Only for companions over 18. With the Bronze plan you publish for free.", "Só para acompanhantes maiores de 18. Com o plano Bronze você publica grátis." ], "Soy mayor de 18 años.": [ "I am over 18 years old.", "Sou maior de 18 anos." ], "Subiendo {n} de {n}…": [ "Uploading {n} of {n}…", "Enviando {n} de {n}…" ], "Suspendido": [ "Suspended", "Suspenso" ], "Tarifa desde (USD por hora)": [ "Rate from (USD per hour)", "Tarifa a partir de (USD por hora)" ], "Te mandamos el email de nuevo.": [ "We sent the email again.", "Enviamos o e-mail de novo." ], "Te mandamos un link para confirmarlo. No se publica.": [ "We will send you a link to confirm it. It is not published.", "Enviamos um link para confirmá-lo. Não é publicado." ], "Tenés que aceptar los Términos y las políticas.": [ "You must accept the Terms and policies.", "Você precisa aceitar os Termos e as políticas." ], "Tenés que confirmar que sos mayor de 18 años.": [ "You must confirm that you are over 18.", "Você precisa confirmar que é maior de 18 anos." ], "Texto": [ "Text", "Texto" ], "Titular": [ "Headline", "Título" ], "Todavía no subiste fotos": [ "You have not uploaded photos yet", "Você ainda não enviou fotos" ], "Transferencia informada": [ "Transfer reported", "Transferência informada" ], "Transferí desde la cuenta de…": [ "I transferred from the account of…", "Transferi da conta de…" ], "Transferí para activar tu plan": [ "Transfer to activate your plan", "Transfira para ativar seu plano" ], "Tu email": [ "Your email", "Seu e-mail" ], "Tu identidad está verificada.": [ "Your identity is verified.", "Sua identidade está verificada." ], "Tu perfil está completo.": [ "Your profile is complete.", "Seu perfil está completo." ], "Tu perfil está oculto.": [ "Your profile is hidden.", "Seu perfil está oculto." ], "Tu perfil está oculto: nadie lo ve en el sitio.": [ "Your profile is hidden: nobody sees it on the site.", "Seu perfil está oculto: ninguém o vê no site." ], "Tu perfil fue suspendido. Escribinos a contacto@sexyrose.net.": [ "Your profile was suspended. Write to us at contacto@sexyrose.net.", "Seu perfil foi suspenso. Escreva para contacto@sexyrose.net." ], "Tu perfil no se ve en el sitio por ahora.": [ "Your profile is not shown on the site for now.", "Seu perfil não aparece no site por enquanto." ], "Tu perfil se ve de nuevo.": [ "Your profile is visible again.", "Seu perfil aparece de novo." ], "Tu perfil se ve en el sitio.": [ "Your profile is shown on the site.", "Seu perfil aparece no site." ], "Tus fotos": [ "Your photos", "Suas fotos" ], "Tus historias": [ "Your stories", "Seus stories" ], "Tus historias se ven en el sitio cuando tu perfil esté publicado.": [ "Your stories show on the site once your profile is published.", "Seus stories aparecem no site quando seu perfil estiver publicado." ], "Tus pedidos": [ "Your orders", "Seus pedidos" ], "Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.": [ "A photo of the front of your ID (national ID or passport), with the name and date of birth readable.", "Uma foto da frente do seu documento (RG ou passaporte), com o nome e a data de nascimento legíveis." ], "Una selfie sosteniendo tu documento al lado de la cara, con buena luz.": [ "A selfie holding your ID next to your face, in good light.", "Uma selfie segurando seu documento ao lado do rosto, com boa luz." ], "Ver mi perfil": [ "View my profile", "Ver meu perfil" ], "Verificación: {x}": [ "Verification: {x}", "Verificação: {x}" ], "Vigente hasta el {x}.": [ "Valid until {x}.", "Válido até {x}." ], "Volver a ingresar": [ "Back to log in", "Voltar para entrar" ], "WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar.": [ "WhatsApp opens with an introduction message you can edit before sending.", "O WhatsApp abre com uma mensagem de apresentação que você pode editar antes de enviar." ], "Ya fue verificada con tu documento.": [ "Already verified with your ID.", "Já foi verificada com seu documento." ], "Ya transferí": [ "I already paid", "Já transferi" ], "Enviar a revisión": [ "Send for review", "Enviar para revisão" ], "Enviar verificación": [ "Send verification", "Enviar verificação" ], "Subir fotos": [ "Upload photos", "Enviar fotos" ], "¿Olvidaste tu contraseña?": [ "Forgot your password?", "Esqueceu sua senha?" ], "¿Todavía no publicaste?": [ "Not published yet?", "Ainda não publicou?" ], "Dónde": [ "Where", "Onde" ], "Quedan {n} de {n} lugares en tu provincia.": [ "{n} of {n} spots left in your province.", "Restam {n} de {n} vagas na sua província." ], "Te quedan {n} hoy": [ "{n} left today", "Restam {n} hoje" ], "Pedir {x}": [ "Order {x}", "Pedir {x}" ], "¿Querés borrar esta foto? No se puede deshacer.": [ "Delete this photo? This cannot be undone.", "Apagar esta foto? Não dá para desfazer." ], "¿Querés cancelar este pedido? Si ya transferiste, no lo canceles: tocá \"Ya transferí\".": [ "Cancel this order? If you already transferred, do not cancel it: tap \"I already paid\".", "Cancelar este pedido? Se você já transferiu, não cancele: toque em \"Já transferi\"." ], "Mínimo {n}, hasta {n} con tu plan. La primera es la principal (la del swipe y las historias). Les agregamos la marca de agua de SexyRose y les sacamos los datos de ubicación.": [ "At least {n}, up to {n} with your plan. The first one is the main photo (used in swipe and stories). We add the SexyRose watermark and remove location data.", "Mínimo {n}, até {n} com seu plano. A primeira é a principal (a do swipe e dos stories). Adicionamos a marca d’água da SexyRose e removemos os dados de localização." ], "(hasta 6)": [ "(up to 6)", "(até 6)" ], "En inglés": [ "In English", "Em inglês" ], "Agregá tu WhatsApp o tu usuario de Telegram.": [ "Add your WhatsApp or your Telegram username.", "Adicione seu WhatsApp ou seu usuário do Telegram." ], "Confirmá tu email (te mandamos un link).": [ "Confirm your email (we sent you a link).", "Confirme seu e-mail (enviamos um link)." ], "Elegí tu provincia y tu ciudad.": [ "Choose your province and your city.", "Escolha sua província e sua cidade." ], "Enviá tu verificación de identidad (selfie y documento).": [ "Send your identity verification (selfie and ID).", "Envie sua verificação de identidade (selfie e documento)." ], "Subí al menos 3 fotos (tenés {n}).": [ "Upload at least 3 photos (you have {n}).", "Envie pelo menos 3 fotos (você tem {n})." ], "Completá tu nombre artístico.": [ "Fill in your stage name.", "Preencha seu nome artístico." ], "Elegí tu género.": [ "Choose your gender.", "Escolha seu gênero." ], "Cargá tu fecha de nacimiento.": [ "Enter your date of birth.", "Informe sua data de nascimento." ], ", la": [ ", the", ", a" ], "y la": [ "and the", "e a" ], "Provincia de {x}": [ "Province of {x}", "Província de {x}" ], "tu_usuario": [ "your_username", "seu_usuario" ], "Cafés de especialidad, museos y charlas largas": [ "Specialty coffee, museums and long talks", "Cafés especiais, museus e longas conversas" ] });
+  Object.assign(HH.I18N = HH.I18N || {}, { "1 mes": ["1 month", "1 mês"], "1 semana": ["1 week", "1 semana"], "asignado": ["assigned", "atribuído"], "Te mostramos los datos para transferir.": ["We will show you the transfer details.", "Mostramos os dados para transferência."], "Del {x} al {x}": ["From {x} to {x}", "De {x} a {x}"], "(hasta 4, con https://)": [ "(up to 4, with https://)", "(até 4, com https://)" ], "(opcional, para clientes de afuera)": [ "(optional, for clients from abroad)", "(opcional, para clientes de fora)" ], "A convenir": [ "To be agreed", "A combinar" ], "Acepto los": [ "I accept the", "Aceito os" ], "Acompañantes": [ "Companions", "Acompanhantes" ], "Activas": [ "Active", "Ativas" ], "Aprobamos tu perfil y aparece en el sitio. Los clientes te escriben directo por WhatsApp o Telegram.": [ "We approve your profile and it shows on the site. Clients write to you directly on WhatsApp or Telegram.", "Aprovamos seu perfil e ele aparece no site. Os clientes escrevem direto pelo WhatsApp ou Telegram." ], "Avisar que transferí": [ "Let you know I paid", "Avisar que transferi" ], "Barrio o zona": [ "Neighborhood or area", "Bairro ou região" ], "Borrador": [ "Draft", "Rascunho" ], "Borrar foto": [ "Delete photo", "Apagar foto" ], "Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.": [ "Each companion sends a selfie holding her ID and a photo of the ID, reviewed by the SexyRose team: we confirm she is of legal age and the person in the photos. Only verified profiles are published.", "Cada acompanhante envia uma selfie com o documento e uma foto do documento, que a equipe da SexyRose revisa: confirmamos que é maior de idade e que é a pessoa das fotos. Só os perfis verificados são publicados." ], "Cancelado": [ "Canceled", "Cancelado" ], "Completá tu perfil y envialo a revisión. Nadie lo ve todavía.": [ "Complete your profile and send it for review. Nobody can see it yet.", "Complete seu perfil e envie para revisão. Ninguém o vê ainda." ], "Completá tu perfil y subí al menos 3 fotos.": [ "Complete your profile and upload at least 3 photos.", "Complete seu perfil e envie pelo menos 3 fotos." ], "Comprobante": [ "Receipt", "Comprovante" ], "Con código de país. Es el número al que te escriben.": [ "With country code. It is the number clients write to.", "Com código do país. É o número para o qual escrevem." ], "Confirmado": [ "Confirmed", "Confirmado" ], "Confirmando tu email…": [ "Confirming your email…", "Confirmando seu e-mail…" ], "Confirmar email": [ "Confirm email", "Confirmar e-mail" ], "Confirmá tu email: te mandamos un link a": [ "Confirm your email: we sent a link to", "Confirme seu e-mail: enviamos um link para" ], "Contacto y tarifa": [ "Contact and rate", "Contato e tarifa" ], "Contanos qué pasó. Revisamos cada reporte y podemos suspender el perfil.": [ "Tell us what happened. We review every report and can suspend the profile.", "Conte o que aconteceu. Revisamos cada denúncia e podemos suspender o perfil." ], "Contraseña cambiada.": [ "Password changed.", "Senha alterada." ], "Contraseña nueva": [ "New password", "Nova senha" ], "Creá tu cuenta": [ "Create your account", "Crie sua conta" ], "Creá tu cuenta y confirmá tu email.": [ "Create your account and confirm your email.", "Crie sua conta e confirme seu e-mail." ], "Cuando transfieras, tocá \"Ya transferí\" en tus pedidos. Confirmamos el pago y se activa el plan.": [ "Once you transfer, tap \"I already paid\" in your orders. We confirm the payment and the plan is activated.", "Quando transferir, toque em \"Já transferi\" nos seus pedidos. Confirmamos o pagamento e o plano é ativado." ], "Cuenta creada. Te mandamos un email para confirmarlo.": [ "Account created. We sent you an email to confirm it.", "Conta criada. Enviamos um e-mail para confirmá-lo." ], "Cómo funciona": [ "How it works", "Como funciona" ], "Datos para transferir": [ "Transfer details", "Dados para transferência" ], "Demasiados intentos. Probá de nuevo en un rato.": [ "Too many attempts. Try again in a while.", "Muitas tentativas. Tente de novo daqui a pouco." ], "Denunciar": [ "Report", "Denunciar" ], "Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.": [ "They last 24 hours and appear on the home page with your ring. The best way to show your day.", "Duram 24 horas e aparecem no início com o seu anel. O melhor jeito de mostrar seu dia." ], "Dónde estás": [ "Where you are", "Onde você está" ], "El archivo es demasiado grande.": [ "The file is too large.", "O arquivo é grande demais." ], "El link no es válido o ya venció.": [ "The link is not valid or has expired.", "O link não é válido ou já expirou." ], "El link no tiene el código de confirmación.": [ "The link is missing the confirmation code.", "O link não tem o código de confirmação." ], "El link no tiene el código. Pedí uno nuevo desde \"¿Olvidaste tu contraseña?\".": [ "The link is missing the code. Request a new one from \"Forgot your password?\".", "O link não tem o código. Peça um novo em \"Esqueceu sua senha?\"." ], "Elegí las dos fotos: la selfie con el documento y el frente del documento.": [ "Choose both photos: the selfie with your ID and the front of your ID.", "Escolha as duas fotos: a selfie com o documento e a frente do documento." ], "Elegí primero la provincia": [ "Choose the province first", "Escolha primeiro a província" ], "Elegí tu provincia": [ "Choose your province", "Escolha sua província" ], "Elegí tu provincia en Mi perfil para ver el cupo.": [ "Choose your province in My profile to see availability.", "Escolha sua província em Meu perfil para ver as vagas." ], "Elegí una contraseña nueva de al menos 10 caracteres. Se cierran las sesiones abiertas en otros dispositivos.": [ "Choose a new password of at least 10 characters. Sessions open on other devices will be closed.", "Escolha uma nova senha com pelo menos 10 caracteres. As sessões abertas em outros dispositivos serão encerradas." ], "Elegí una foto.": [ "Choose a photo.", "Escolha uma foto." ], "Email confirmado": [ "Email confirmed", "E-mail confirmado" ], "Email sin confirmar": [ "Email not confirmed", "E-mail não confirmado" ], "Error del servidor. Probá de nuevo en unos minutos.": [ "Server error. Try again in a few minutes.", "Erro do servidor. Tente de novo em alguns minutos." ], "Es el nombre que se ve en el sitio. No uses tu nombre completo.": [ "It is the name shown on the site. Do not use your full name.", "É o nome que aparece no site. Não use seu nome completo." ], "Escribinos a": [ "Write to us at", "Escreva para" ], "Escribí el email de tu cuenta y te mandamos un link para crear una nueva.": [ "Enter your account email and we will send you a link to create a new one.", "Digite o e-mail da sua conta e enviamos um link para criar uma nova." ], "Esperando tu transferencia": [ "Waiting for your transfer", "Aguardando sua transferência" ], "Estado": [ "Status", "Status" ], "Estado de tu perfil": [ "Your profile status", "Status do seu perfil" ], "Estamos revisando tu perfil y tu verificación. Te avisamos por email.": [ "We are reviewing your profile and your verification. We will let you know by email.", "Estamos revisando seu perfil e sua verificação. Avisamos por e-mail." ], "Estás en Bronce, gratis.": [ "You are on Bronze, free.", "Você está no Bronze, grátis." ], "Estás en Bronce, gratis. Con un plan más alto aparecés más arriba y podés subir más fotos e historias.": [ "You are on Bronze, free. With a higher plan you appear higher up and can upload more photos and stories.", "Você está no Bronze, grátis. Com um plano mais alto você aparece mais acima e pode enviar mais fotos e stories." ], "Fecha de nacimiento": [ "Date of birth", "Data de nascimento" ], "Foto borrada.": [ "Photo deleted.", "Foto apagada." ], "Fotos reales, con la cara visible y en lugares públicos. Sin desnudos.": [ "Real photos, with your face visible and in public places. No nudity.", "Fotos reais, com o rosto visível e em lugares públicos. Sem nudez." ], "Fotos subidas.": [ "Photos uploaded.", "Fotos enviadas." ], "Frente del documento": [ "Front of your ID", "Frente do documento" ], "Gracias. Recibimos tu reporte.": [ "Thank you. We received your report.", "Obrigado. Recebemos sua denúncia." ], "Guardado.": [ "Saved.", "Salvo." ], "Guardar contraseña": [ "Save password", "Salvar senha" ], "Género": [ "Gender", "Gênero" ], "Hasta {n} fotos": [ "Up to {n} photos", "Até {n} fotos" ], "Historia borrada.": [ "Story deleted.", "Story apagado." ], "Historia publicada por 24 horas.": [ "Story posted for 24 hours.", "Story publicado por 24 horas." ], "Historias ilimitadas con tu plan": [ "Unlimited stories with your plan", "Stories ilimitados com seu plano" ], "Imágenes sin consentimiento": [ "Images without consent", "Imagens sem consentimento" ], "Ingresar": [ "Log in", "Entrar" ], "Ingresá": [ "Log in", "Entre" ], "La contraseña tiene que tener al menos 10 caracteres.": [ "The password must be at least 10 characters long.", "A senha precisa ter pelo menos 10 caracteres." ], "Las dos contraseñas no coinciden.": [ "The two passwords do not match.", "As duas senhas não coincidem." ], "Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.": [ "Outings are canceled with the person you arranged them with, on WhatsApp and in advance. Companion plans are paid by month or by week and do not renew automatically.", "Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. Os planos das acompanhantes são pagos por mês ou por semana e não se renovam sozinhos." ], "Link incompleto": [ "Incomplete link", "Link incompleto" ], "Listo, avisamos que transferiste. Te confirmamos por email.": [ "Done, we noted your transfer. We will confirm by email.", "Pronto, avisamos que você transferiu. Confirmamos por e-mail." ], "Listo, confirmaste tu email.": [ "Done, your email is confirmed.", "Pronto, você confirmou seu e-mail." ], "Listo, tu perfil está en revisión.": [ "Done, your profile is under review.", "Pronto, seu perfil está em revisão." ], "Listo, ya podés entrar con tu contraseña nueva.": [ "Done, you can now log in with your new password.", "Pronto, você já pode entrar com sua nova senha." ], "Llegaste al límite de tu plan": [ "You reached your plan limit", "Você atingiu o limite do seu plano" ], "Lo hago después": [ "I will do it later", "Faço depois" ], "Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.": [ "What you see here is what gets published. Your email, your ID and your date of birth are never shown.", "O que você vê aqui é o que é publicado. Seu e-mail, seu documento e sua data de nascimento não aparecem." ], "Lo revisamos a mano para confirmar que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten.": [ "We review it by hand to confirm it is you and that you are over 18. The selfie and the ID are never published or shared.", "Revisamos manualmente para confirmar que é você e que você é maior de 18. A selfie e o documento nunca são publicados nem compartilhados." ], "Lo sacás del sitio cuando quieras, sin perder nada.": [ "Take it off the site whenever you want, without losing anything.", "Tire do site quando quiser, sem perder nada." ], "Los cambios se ven en el sitio apenas guardás (si tu perfil está publicado).": [ "Changes show on the site as soon as you save (if your profile is published).", "As mudanças aparecem no site assim que você salva (se seu perfil estiver publicado)." ], "Los datos para transferir te llegan por email.": [ "You will receive the transfer details by email.", "Os dados para transferência chegam por e-mail." ], "Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.": [ "Fixed spot at the top of the home page in your province. Only 10 per province.", "Lugar fixo no topo do início na sua província. Só 10 por província." ], "Mandar de nuevo": [ "Send again", "Enviar de novo" ], "Mandar verificación": [ "Send verification", "Enviar verificação" ], "Mandarme el link": [ "Send me the link", "Me enviar o link" ], "Mandá una selfie y tu documento: los revisamos y nunca se publican.": [ "Send a selfie and your ID: we review them and they are never published.", "Envie uma selfie e seu documento: revisamos e nunca são publicados." ], "Mover antes": [ "Move earlier", "Mover para antes" ], "Mover después": [ "Move later", "Mover para depois" ], "Más arriba en el inicio, más fotos e historias ilimitadas.": [ "Higher on the home page, more photos and unlimited stories.", "Mais acima no início, mais fotos e stories ilimitados." ], "Más fotos y hasta 3 historias por día.": [ "More photos and up to 3 stories per day.", "Mais fotos e até 3 stories por dia." ], "No hay conexión. Revisá internet y probá de nuevo.": [ "No connection. Check your internet and try again.", "Sem conexão. Verifique a internet e tente de novo." ], "No quedan lugares Star en tu provincia.": [ "No Star spots left in your province.", "Não há mais vagas Star na sua província." ], "No tenés historias activas.": [ "You have no active stories.", "Você não tem stories ativos." ], "Nombre artístico": [ "Stage name", "Nome artístico" ], "Nota": [ "Note", "Nota" ], "Ocultar mi perfil": [ "Hide my profile", "Ocultar meu perfil" ], "Pagás por transferencia. Cuando la confirmamos, el plan se activa. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.": [ "You pay by bank transfer. Once we confirm it, the plan is activated. A week of a higher plan moves you up for 7 days and then you go back to your plan automatically.", "Você paga por transferência. Quando confirmamos, o plano é ativado. Uma semana de um plano mais alto te sobe por 7 dias e depois você volta sozinha ao seu plano." ], "Para mirar perfiles y escribir por WhatsApp no hace falta cuenta.": [ "You do not need an account to browse profiles and write on WhatsApp.", "Não é preciso conta para ver perfis e escrever pelo WhatsApp." ], "Para publicar te falta": [ "To publish you still need", "Para publicar falta" ], "Pausado": [ "Paused", "Pausado" ], "Pedido cancelado.": [ "Order canceled.", "Pedido cancelado." ], "Pedido en curso": [ "Order in progress", "Pedido em andamento" ], "Pedir": [ "Order", "Pedir" ], "Pedir 1 mes · {x}": [ "Order 1 month · {x}", "Pedir 1 mês · {x}" ], "1 semana · {x}": [ "1 week · {x}", "1 semana · {x}" ], "Subí a {x} por 7 días · {x}": [ "Upgrade to {x} for 7 days · {x}", "Suba para {x} por 7 dias · {x}" ], "Perfil falso, engaño u otro": [ "Fake profile, scam or other", "Perfil falso, golpe ou outro" ], "Podés elegir hasta 6 intereses.": [ "You can choose up to 6 interests.", "Você pode escolher até 6 interesses." ], "Podés pedir un link nuevo desde tu panel.": [ "You can request a new link from your dashboard.", "Você pode pedir um novo link no seu painel." ], "Política de contenido": [ "Content policy", "Política de conteúdo" ], "Política de privacidad": [ "Privacy policy", "Política de privacidade" ], "Poné esta referencia en la transferencia": [ "Put this reference in the transfer", "Coloque esta referência na transferência" ], "Posible menor de edad": [ "Possible minor", "Possível menor de idade" ], "Posible trata o explotación": [ "Possible trafficking or exploitation", "Possível tráfico ou exploração" ], "Provincia": [ "Province", "Província" ], "Publicado": [ "Published", "Publicado" ], "Publicá tu perfil": [ "Publish your profile", "Publique seu perfil" ], "Rechazado": [ "Rejected", "Rejeitado" ], "Recibimos tu verificación.": [ "We received your verification.", "Recebemos sua verificação." ], "Recibimos tu verificación. Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.": [ "We received your verification. We will email you when we review it. If you sent the wrong file, you can send it again.", "Recebemos sua verificação. Avisamos por e-mail quando revisarmos. Se você errou o arquivo, pode enviar de novo." ], "Recuperar contraseña": [ "Recover password", "Recuperar senha" ], "Reenviar": [ "Resend", "Reenviar" ], "Referencia": [ "Reference", "Referência" ], "Repetila": [ "Repeat it", "Repita" ], "Revisá el motivo, corregí lo necesario y volvé a enviarlo.": [ "Check the reason, fix what is needed and send it again.", "Veja o motivo, corrija o necessário e envie de novo." ], "Salidas que te gustan": [ "Outings you like", "Passeios de que você gosta" ], "Se publica solo tu edad.": [ "Only your age is published.", "Só sua idade é publicada." ], "Selfie con el documento": [ "Selfie with your ID", "Selfie com o documento" ], "Separalos con comas.": [ "Separate them with commas.", "Separe com vírgulas." ], "Si hay una cuenta con ese email, te mandamos un link para crear una contraseña nueva. Revisá también la carpeta de spam.": [ "If there is an account with that email, we sent you a link to create a new password. Also check your spam folder.", "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Verifique também a pasta de spam." ], "Si querés, adjuntá el comprobante. Así lo confirmamos más rápido.": [ "If you want, attach the receipt. That way we confirm it faster.", "Se quiser, anexe o comprovante. Assim confirmamos mais rápido." ], "Sin confirmar": [ "Not confirmed", "Não confirmado" ], "Sin enviar": [ "Not sent", "Não enviada" ], "Sobre vos": [ "About you", "Sobre você" ], "Sobre vos en inglés": [ "About you in English", "Sobre você em inglês" ], "Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.": [ "Only for companions over 18. With the Bronze plan you publish for free.", "Só para acompanhantes maiores de 18. Com o plano Bronze você publica grátis." ], "Soy mayor de 18 años.": [ "I am over 18 years old.", "Sou maior de 18 anos." ], "Subiendo {n} de {n}…": [ "Uploading {n} of {n}…", "Enviando {n} de {n}…" ], "Suspendido": [ "Suspended", "Suspenso" ], "Tarifa desde (USD por hora)": [ "Rate from (USD per hour)", "Tarifa a partir de (USD por hora)" ], "Te mandamos el email de nuevo.": [ "We sent the email again.", "Enviamos o e-mail de novo." ], "Te mandamos un link para confirmarlo. No se publica.": [ "We will send you a link to confirm it. It is not published.", "Enviamos um link para confirmá-lo. Não é publicado." ], "Tenés que aceptar los Términos y las políticas.": [ "You must accept the Terms and policies.", "Você precisa aceitar os Termos e as políticas." ], "Tenés que confirmar que sos mayor de 18 años.": [ "You must confirm that you are over 18.", "Você precisa confirmar que é maior de 18 anos." ], "Texto": [ "Text", "Texto" ], "Titular": [ "Headline", "Título" ], "Todavía no subiste fotos": [ "You have not uploaded photos yet", "Você ainda não enviou fotos" ], "Transferencia informada": [ "Transfer reported", "Transferência informada" ], "Transferí desde la cuenta de…": [ "I transferred from the account of…", "Transferi da conta de…" ], "Transferí para activar tu plan": [ "Transfer to activate your plan", "Transfira para ativar seu plano" ], "Tu email": [ "Your email", "Seu e-mail" ], "Tu identidad está verificada.": [ "Your identity is verified.", "Sua identidade está verificada." ], "Tu perfil está completo.": [ "Your profile is complete.", "Seu perfil está completo." ], "Tu perfil está oculto.": [ "Your profile is hidden.", "Seu perfil está oculto." ], "Tu perfil está oculto: nadie lo ve en el sitio.": [ "Your profile is hidden: nobody sees it on the site.", "Seu perfil está oculto: ninguém o vê no site." ], "Tu perfil fue suspendido. Escribinos a contacto@sexyrose.net.": [ "Your profile was suspended. Write to us at contacto@sexyrose.net.", "Seu perfil foi suspenso. Escreva para contacto@sexyrose.net." ], "Tu perfil no se ve en el sitio por ahora.": [ "Your profile is not shown on the site for now.", "Seu perfil não aparece no site por enquanto." ], "Tu perfil se ve de nuevo.": [ "Your profile is visible again.", "Seu perfil aparece de novo." ], "Tu perfil se ve en el sitio.": [ "Your profile is shown on the site.", "Seu perfil aparece no site." ], "Tus fotos": [ "Your photos", "Suas fotos" ], "Tus historias": [ "Your stories", "Seus stories" ], "Tus historias se ven en el sitio cuando tu perfil esté publicado.": [ "Your stories show on the site once your profile is published.", "Seus stories aparecem no site quando seu perfil estiver publicado." ], "Tus pedidos": [ "Your orders", "Seus pedidos" ], "Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.": [ "A photo of the front of your ID (national ID or passport), with the name and date of birth readable.", "Uma foto da frente do seu documento (RG ou passaporte), com o nome e a data de nascimento legíveis." ], "Una selfie sosteniendo tu documento al lado de la cara, con buena luz.": [ "A selfie holding your ID next to your face, in good light.", "Uma selfie segurando seu documento ao lado do rosto, com boa luz." ], "Ver mi perfil": [ "View my profile", "Ver meu perfil" ], "Verificación: {x}": [ "Verification: {x}", "Verificação: {x}" ], "Vigente hasta el {x}.": [ "Valid until {x}.", "Válido até {x}." ], "Volver a ingresar": [ "Back to log in", "Voltar para entrar" ], "WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar.": [ "WhatsApp opens with an introduction message you can edit before sending.", "O WhatsApp abre com uma mensagem de apresentação que você pode editar antes de enviar." ], "Ya fue verificada con tu documento.": [ "Already verified with your ID.", "Já foi verificada com seu documento." ], "Ya transferí": [ "I already paid", "Já transferi" ], "Enviar a revisión": [ "Send for review", "Enviar para revisão" ], "Enviar verificación": [ "Send verification", "Enviar verificação" ], "Subir fotos": [ "Upload photos", "Enviar fotos" ], "¿Olvidaste tu contraseña?": [ "Forgot your password?", "Esqueceu sua senha?" ], "¿Todavía no publicaste?": [ "Not published yet?", "Ainda não publicou?" ], "Dónde": [ "Where", "Onde" ], "Quedan {n} de {n} lugares en tu provincia.": [ "{n} of {n} spots left in your province.", "Restam {n} de {n} vagas na sua província." ], "Te quedan {n} hoy": [ "{n} left today", "Restam {n} hoje" ], "Pedir {x}": [ "Order {x}", "Pedir {x}" ], "¿Querés borrar esta foto? No se puede deshacer.": [ "Delete this photo? This cannot be undone.", "Apagar esta foto? Não dá para desfazer." ], "¿Querés cancelar este pedido? Si ya transferiste, no lo canceles: tocá \"Ya transferí\".": [ "Cancel this order? If you already transferred, do not cancel it: tap \"I already paid\".", "Cancelar este pedido? Se você já transferiu, não cancele: toque em \"Já transferi\"." ], "Mínimo {n}, hasta {n} con tu plan. La primera es la principal (la del swipe y las historias). Les agregamos la marca de agua de SexyRose y les sacamos los datos de ubicación.": [ "At least {n}, up to {n} with your plan. The first one is the main photo (used in swipe and stories). We add the SexyRose watermark and remove location data.", "Mínimo {n}, até {n} com seu plano. A primeira é a principal (a do swipe e dos stories). Adicionamos a marca d’água da SexyRose e removemos os dados de localização." ], "(hasta 6)": [ "(up to 6)", "(até 6)" ], "En inglés": [ "In English", "Em inglês" ], "Agregá tu WhatsApp o tu usuario de Telegram.": [ "Add your WhatsApp or your Telegram username.", "Adicione seu WhatsApp ou seu usuário do Telegram." ], "Confirmá tu email (te mandamos un link).": [ "Confirm your email (we sent you a link).", "Confirme seu e-mail (enviamos um link)." ], "Elegí tu provincia y tu ciudad.": [ "Choose your province and your city.", "Escolha sua província e sua cidade." ], "Enviá tu verificación de identidad (selfie y documento).": [ "Send your identity verification (selfie and ID).", "Envie sua verificação de identidade (selfie e documento)." ], "Subí al menos 3 fotos (tenés {n}).": [ "Upload at least 3 photos (you have {n}).", "Envie pelo menos 3 fotos (você tem {n})." ], "Completá tu nombre artístico.": [ "Fill in your stage name.", "Preencha seu nome artístico." ], "Elegí tu género.": [ "Choose your gender.", "Escolha seu gênero." ], "Cargá tu fecha de nacimiento.": [ "Enter your date of birth.", "Informe sua data de nascimento." ], ", la": [ ", the", ", a" ], "y la": [ "and the", "e a" ], "Provincia de {x}": [ "Province of {x}", "Província de {x}" ], "tu_usuario": [ "your_username", "seu_usuario" ], "Cafés de especialidad, museos y charlas largas": [ "Specialty coffee, museums and long talks", "Cafés especiais, museus e longas conversas" ] });
   /* ---------- En el navegador solo preferencias de la interfaz ---------- */
   const UI_KEY = 'sr_ui';
   HH.save = function () { try { localStorage.setItem(UI_KEY, JSON.stringify(HH.ui || {})); } catch (e) { /* sin almacenamiento */ } };
@@ -57,8 +64,20 @@
   // Destacadas: fuera del lanzamiento (ni el "+ Nueva" de la dueña)
   HH.highlightsRow = () => '';
   // Descripciones de los planes sin funciones que todavía no existen (chat, estadísticas, venta de contenido)
-  const DESC = { E: 'Tu perfil publicado y verificado, para empezar.', D: 'Más fotos y hasta 3 historias por día.', C: 'Más arriba en el inicio, más fotos e historias ilimitadas.', B: 'Sección Platino en el inicio y hasta 50 fotos.', A: 'Sección Diamante, la primera debajo de Stars, con tarjetas grandes.', S: 'Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.' };
-  Object.keys(DESC).forEach((k) => { if (HH.LEVELS[k]) HH.LEVELS[k].desc = DESC[k]; });
+  const DESC = { E: 'Tu perfil publicado y verificado, gratis.', D: 'Más fotos, hasta 3 historias por día y el clip de 5 segundos en tu tarjeta.', C: 'Más arriba en el inicio, tarjetas más grandes, fotos e historias casi sin límite.', S: 'Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.' };
+  // Los 4 planes v2 (solo en el sitio: la demo sigue con sus 6). Precios en créditos (1 crédito = USD 1); el servidor
+  // los manda en /api/sitio/estado y en /api/cuenta/planes, estos son los de arranque.
+  const PLANES_V2 = {
+    S: { price_usd: 350, rank: 4, photos: 1000, videos: 500, stories_per_day: null, highlights: null },
+    C: { price_usd: 90, rank: 3, photos: 500, videos: 200, stories_per_day: null, highlights: 10 },
+    D: { price_usd: 35, rank: 2, photos: 30, videos: 10, stories_per_day: 3, highlights: 4 },
+    E: { price_usd: 0, rank: 1, photos: 8, videos: 2, stories_per_day: 1, highlights: 1 },
+  };
+  // HH.seed (datos de la demo) usa Platino y Diamante: la forma vacía de HH.db se toma antes de sacarlos
+  const SEED0 = HH.seed();
+  delete HH.LEVELS.A; delete HH.LEVELS.B;
+  Object.keys(PLANES_V2).forEach((k) => { Object.assign(HH.LEVELS[k], PLANES_V2[k], { desc: DESC[k] }); });
+  HH.PLAN_ORDER = ['S', 'C', 'D', 'E'];
   const publishedProfiles0 = () => ((HH.db && HH.db.profiles) || []).filter((p) => p.status === 'active' && !p.hidden && HH.levelOf(p.userId));
 
   /* ---------- Rendimiento: diccionario inglés/portugués aparte ----------
@@ -71,7 +90,7 @@
     if (dictListo) return Promise.resolve();
     return (dictProm ||= new Promise((ok) => {
       const s = document.createElement('script'); s.src = DICT_SRC; s.async = true;
-      s.onload = () => { dictListo = true; ok(); };
+      s.onload = () => { dictListo = true; ok(); if (!HH.db) gateTemprano(HH.currentHash()); };
       s.onerror = () => { dictProm = null; ok(); };  // sin diccionario queda en español; se reintenta al cambiar de idioma
       document.head.appendChild(s);
     }));
@@ -182,10 +201,32 @@
   const levelOf0 = HH.levelOf;
   HH.levelOf = (id) => { const c = M(); if (c.levels.has(id)) return c.levels.get(id); const l = levelOf0(id); c.levels.set(id, l); return l; };
   HH.publishedProfiles = () => { const c = M(); if (!c.pub) c.pub = publishedProfiles0(); return c.pub.slice(); };
+  // Destacado (planes v2): dentro de cada plan, las destacadas van primero y entre ellas el orden rota en cada visita
+  // (semilla nueva por carga de página). Star no se destaca: ya tiene su lugar fijo arriba.
+  const ROTA = Math.floor(Math.random() * 1e9).toString(36);
+  const esDest = (p) => !!(p && p.destacado) && HH.levelOf(p.userId) !== 'S';
+  HH.spEsDestacado = esDest;
   HH.rankList = function (list) {
     const sc = new Map();
-    const score = (p) => { let v = sc.get(p); if (v === undefined) { v = ((HH.LEVELS[HH.levelOf(p.userId)] || { rank: 0 }).rank * 100) + (p.verified === 'verified' ? 10 : 0) + ((p.stats && p.stats.views) || 0) / 1000; sc.set(p, v); } return v; };
+    const score = (p) => {
+      let v = sc.get(p);
+      if (v === undefined) {
+        const base = (HH.LEVELS[HH.levelOf(p.userId)] || { rank: 0 }).rank * 100;
+        v = esDest(p) ? base + 50 + (hash(p.userId + ROTA) % 1000) / 40 : base + (p.verified === 'verified' ? 10 : 0) + ((p.stats && p.stats.views) || 0) / 1000;
+        sc.set(p, v);
+      }
+      return v;
+    };
     return list.slice().sort((a, b) => score(b) - score(a));
+  };
+  // Con ubicación del navegador el inicio ordena por distancia: las destacadas de la provincia de quien mira van primero
+  // (las grillas del inicio separan por plan, así que quedan primeras dentro de su plan). "Cerca" sigue por distancia pura.
+  const byDistance0 = HH.byDistance;
+  HH.byDistance = (list) => {
+    const out = byDistance0(list); if (!HH.geo || !HH.geo() || (HH.current && HH.current.name !== 'inicio')) return out;
+    const reg = HH.viewerRegion ? HH.viewerRegion() : '';
+    const aca = (p) => esDest(p) && (!reg || HH.inCity(p, reg));
+    return out.filter(aca).sort((a, b) => hash(a.userId + ROTA) - hash(b.userId + ROTA)).concat(out.filter((p) => !aca(p)));
   };
   const rankedProfiles0 = HH.rankedProfiles;
   HH.rankedProfiles = () => {
@@ -243,13 +284,13 @@
   }
 
   /* ---------- Estado ---------- */
-  const S = { estado: null, estadoErr: null, yo: null, yoLoaded: false, planes: null, planesErr: null, busy: {}, forgot: false, verif: null, prov: null, up: null, upHist: null, upVid: null };
+  const S = { estado: null, estadoErr: null, yo: null, yoLoaded: false, planes: null, planesErr: null, cred: null, credErr: null, credMas: null, dest: null, destErr: null, notif: null, notifErr: null, busy: {}, forgot: false, verif: null, prov: null, up: null, upHist: null, upVid: null };
   const PANEL_IS = (key) => /^panel(\.|$)/.test(key);
   const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
 
   function emptyDb() {
-    const s = HH.seed(); const db = {};
-    Object.keys(s).forEach((k) => { db[k] = Array.isArray(s[k]) ? [] : s[k]; });
+    const s = SEED0; const db = {};
+    Object.keys(s).forEach((k) => { db[k] = Array.isArray(s[k]) ? [] : (s[k] && typeof s[k] === 'object' ? JSON.parse(JSON.stringify(s[k])) : s[k]); });
     return db;
   }
   const LEVEL_OF_TIPO = { pais: 'country', provincia: 'region', zona: 'zone', ciudad: 'city' };
@@ -285,6 +326,7 @@
         verified: 'verified', emailVerified: true, whatsappVerified: true, status: 'active', hidden: false, online: false,
         lat: cityLoc && cityLoc.lat != null ? cityLoc.lat + jit(9) : null, lng: cityLoc && cityLoc.lng != null ? cityLoc.lng + jit(7) : null,
         hue: h % 360, createdAt: x.publicadoEn || x.actualizado, updatedAt: x.actualizado, stats: { views: 0, rightSwipes: 0 }, chatPriceUsd: 0,
+        destacado: !!x.destacado && plan !== 'S',
       });
       db.subscriptions.push({ id: 'sub_' + x.cuentaId, userId: x.cuentaId, level: plan, status: 'active', startedAt: x.publicadoEn || e.ahora, expiresAt: far, providerRef: 'sitio' });
       if (plan === 'S' || x.star) db.stars.push({ id: 'st_' + x.cuentaId, workerId: x.cuentaId, activeUntil: far, createdAt: x.publicadoEn || e.ahora });
@@ -329,7 +371,7 @@
   HH.me = () => (HH.session && HH.db ? HH.db.users.find((u) => u.id === HH.session.userId) || null : null);
   HH.logout = async function () {
     try { await api('POST', '/cuenta/logout'); } catch (e) { /* igual se cierra */ }
-    S.yo = null; S.planes = null; HH.session = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
+    S.yo = null; S.planes = null; S.cred = null; S.dest = null; S.notif = null; HH.session = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
   };
   HH.requireRole = function () { if (!S.yo) { HH.go('#login'); return false; } return true; };
   HH.homeFor = () => '#panel';
@@ -338,7 +380,7 @@
   const OUT = ['[data-action="pubWaBook"]', '[data-action="pubWaChat"]', '[data-action="pubChat"]', '[data-action="pubBook"]', '[data-action="pubRequest"]', '[data-action="pubBuyPack"]', '[data-action="pubShortBuy"]', '[data-action="clientSignup"]', '[data-action="clientLogin"]', '[data-action="pubPasskeyLogin"]', '[data-go="#shorts"]', '#pubContent', '.pub-shorts', '[data-go^="#chat."]', '[data-go^="#cuenta"]'];
   const FAQ_FIX = {
     '¿Cómo funciona la verificación?': 'Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.',
-    '¿Puedo cancelar?': 'Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.',
+    '¿Puedo cancelar?': 'Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las acompañantes pagan su plan con créditos, por mes o por semana; la renovación automática del plan mensual se apaga cuando quieran desde su panel.',
   };
   function clean(root) {
     if (!root || !root.querySelectorAll) return;
@@ -353,6 +395,7 @@
       if (/cobra el contenido/i.test(q)) { d.remove(); return; }
       if (p && FAQ_FIX[q]) p.textContent = FAQ_FIX[q];
     });
+    faqPropias(root);
     // Pie: links reales a las páginas legales y al contacto
     root.querySelectorAll('nav[aria-label="Legal"]').forEach((n) => {
       n.querySelectorAll('a').forEach((a) => {
@@ -364,6 +407,40 @@
     root.querySelectorAll('p.small.muted').forEach((p) => { if (/reserv(á|a) el encuentro|agenda/i.test(p.textContent || '') && /WhatsApp/.test(p.textContent || '')) p.textContent = 'WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar.'; });
   }
   document.addEventListener('hh:rendered', () => clean(document.getElementById('app')));
+
+  /* ---------- Textos del inicio (Admin → Ajustes → Textos del inicio; ajustes.textos_sitio) ----------
+     { es: { heroEyebrow, heroTitulo, heroSubtitulo, faqTitulo, faq: [{ pregunta, respuesta }] }, en?: {…}, pt?: {…} }
+     Sin el ajuste no cambia nada (los textos de siempre). En inglés y portugués, lo que falta usa el texto en español
+     (el traductor lo pasa al idioma si es el texto por defecto). */
+  const textosSitio = () => { const t = S.estado && S.estado.ajustes && S.estado.ajustes.textos_sitio; return t && t.es ? t : null; };
+  const textoDe = (campo) => {
+    const t = textosSitio(); if (!t) return undefined;
+    const l = t[HH.lang] || {};
+    return l[campo] != null && l[campo] !== '' ? l[campo] : t.es[campo];
+  };
+  const settings0 = HH.settings;
+  HH.settings = function () {
+    const st = settings0.apply(this, arguments);
+    if (!textosSitio()) return st;
+    const eyebrow = textoDe('heroEyebrow');
+    return Object.assign({}, st, { hero: Object.assign({}, HH.DEFAULT_SETTINGS.hero, st.hero || {}, { eyebrow: eyebrow || '', title: textosSitio().es.heroTitulo, subtitle: textoDe('heroSubtitulo') || '' }) });
+  };
+  // Título (H1): en inglés/portugués, el que cargó Juan en ese idioma; si no, el de SEO por idioma (como hasta ahora).
+  const seoH10 = HH.seoH1;
+  HH.seoH1 = function (def) {
+    const t = textosSitio(); const l = HH.lang;
+    if (t && l !== 'es' && t[l] && t[l].heroTitulo) return t[l].heroTitulo;
+    return seoH10 ? seoH10.apply(this, arguments) : def;
+  };
+  function faqPropias(root) {
+    const t = textosSitio(); if (!t) return;
+    const d = root.querySelector('details.pub-faq'); if (!d) return;
+    const list = d.parentElement; const sec = list.closest('section');
+    const propia = t[HH.lang] && Array.isArray(t[HH.lang].faq) && t[HH.lang].faq.length ? t[HH.lang].faq : (t.es.faq || []);
+    if (!propia.length) { if (sec) sec.remove(); return; }
+    const h2 = sec && sec.querySelector('h2'); const tit = textoDe('faqTitulo'); if (h2 && tit) h2.textContent = tit;
+    list.innerHTML = propia.map((x) => `<details class="pub-faq"><summary>${esc(x.pregunta)}${icon('chevronDown')}</summary>${String(x.respuesta).split(/\n{2,}/).map((par) => `<p>${esc(par).replace(/\n/g, '<br>')}</p>`).join('')}</details>`).join('');
+  }
   const modal0 = HH.modal;
   HH.modal = function () { const r = modal0.apply(this, arguments); clean(document.getElementById('modalBox')); return r; };
 
@@ -377,7 +454,7 @@
       hi.querySelectorAll('.topnav a').forEach((a) => { const g = a.getAttribute('data-go') || ''; if (/^#(shorts|admin|cuenta)/.test(g)) a.remove(); });
       const nav = hi.querySelector('.topnav');
       if (nav && !nav.querySelector('[data-go="#favoritos"]')) nav.insertAdjacentHTML('beforeend', `<a href="#favoritos" data-go="#favoritos"${top === 'favoritos' ? ' class="active"' : ''}>Favoritos</a>`);
-      if (nav && logged && !nav.querySelector('[data-go="#panel"]')) nav.insertAdjacentHTML('beforeend', `<a href="#panel" data-go="#panel"${top === 'panel' ? ' class="active"' : ''}>Mi panel</a>`);
+      if (nav && logged && !nav.querySelector('[data-go="#panel"]')) nav.insertAdjacentHTML('beforeend', `<a href="#panel" data-go="#panel"${top === 'panel' ? ' class="active"' : ''}>Mi panel${noLeidas() ? `<span class="sp-hdot" aria-label="Tenés avisos sin leer"></span>` : ''}</a>`);
       const actions = hi.querySelector('.header-actions');
       if (actions && !logged) {
         actions.querySelectorAll('a[data-go="#login"]').forEach((a) => { a.textContent = 'Ingresar'; });
@@ -394,7 +471,7 @@
         const p = (S.yo && S.yo.perfil) || {}; const f = (p.fotos || [])[0];
         const avatar = f ? `<span class="bn-av"><img src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
         // Punto de aviso: el perfil necesita algo de ella (rechazado o verificación rechazada)
-        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' };
+        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 };
       } else ultimo = { h: '#registro', l: 'Publicar', html: plusSq };
       const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#favoritos', l: 'Favoritos', i: 'star' }, ultimo];
       bn.innerHTML = items.map((n) => {
@@ -411,7 +488,7 @@
   HH.render = function (forcePath) {
     if (!forcePath && HH.syncLangFromUrl) HH.syncLangFromUrl();
     const key = forcePath || HH.currentHash();
-    if (!HH.db) { const app = document.getElementById('app'); if (app && !app.innerHTML) app.innerHTML = `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`; return; }
+    if (!HH.db) { const app = document.getElementById('app'); if (app && !app.innerHTML) app.innerHTML = `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`; gateTemprano(key); return; }
     if (/^(shorts|chat)(\.|$)/.test(key)) { HH.go('#inicio', { replace: true }); return; }
     if (!OWN(key)) return render0.call(HH, forcePath);
     const parts = key.split('.');
@@ -430,6 +507,23 @@
     setRobots('noindex,nofollow');
     if (HH.afterRender) { const f = HH.afterRender; HH.afterRender = null; try { f(); } catch (e) { console.error(e); } }
   };
+  /* Ventana de +18: no va en el panel, la cuenta, el ingreso ni el registro (ahí entra la acompañante, no un visitante).
+     agegate.js es compartido con la demo y ya excluye panel/cuenta; acá se cierra también en ingreso y registro.
+     Este listener se registra después del de agegate.js, así que corre después de que la ventana se dibuja y no llega
+     a pintarse. En cuanto el visitante pasa a una página pública, agegate.js la vuelve a mostrar. */
+  const SIN_GATE = /^(panel|cuenta|login|registro)(\.|$)/;
+  const cerrarGate = () => { const r = document.getElementById('agRoot'); if (r) { r.remove(); document.body.style.overflow = ''; } };
+  document.addEventListener('hh:rendered', () => { if (SIN_GATE.test(HH.currentHash())) cerrarGate(); });
+  // La ventana se muestra ya con la cáscara (antes de que llegue /api/sitio/estado): así su texto es lo primero que
+  // se pinta y no espera a los datos (LCP). Con pista de sesión no: puede ser la acompañante entrando a su panel.
+  let gateHecho = false;
+  function gateTemprano(key) {
+    // En inglés/portugués espera al diccionario (si no, la ventana aparecería un instante en español)
+    if (gateHecho || SIN_GATE.test(key) || !HH.ageGateShow || (HH.lang !== 'es' && !dictListo)) return; gateHecho = true;
+    try { if (sessionStorage.getItem('hh_age_ok') === '1' || hasHint()) return; } catch (e) { return; }
+    HH.current = { path: key, params: {}, name: key.split('.')[0] };
+    HH.ageGateShow();
+  }
   const OWN_TITLES = { panel: 'Mi panel', login: 'Ingresar', registro: 'Publicá tu perfil', cuenta: 'Mi cuenta', favoritos: 'Favoritos' };
   function setRobots(v) { let m = document.querySelector('meta[name="robots"]'); if (!m) { m = document.createElement('meta'); m.name = 'robots'; document.head.appendChild(m); } m.content = v; }
   const rerender = () => { if (OWN(HH.currentHash()) && !document.getElementById('modalRoot').classList.contains('open')) HH.refresh(); };
@@ -448,7 +542,7 @@
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
     if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
     const tab = PANEL_TABS.some((t) => t.id === b) ? b : 'resumen';
-    const views = { resumen: panelResumen, perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, cuenta: panelCuenta };
+    const views = { resumen: panelResumen, perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta };
     if (tab === 'fotos') setTimeout(vigilarVideos, 0);
     return panelLayout(tab, views[tab]());
   }
@@ -509,8 +603,8 @@
           <li><span>Mandá una selfie y tu documento: los revisamos y nunca se publican.</span></li>
           <li><span>Aprobamos tu perfil y aparece en el sitio. Los clientes te escriben directo por WhatsApp o Telegram.</span></li>
         </ol>
-        <div class="sp-prices">${['E', 'D', 'C', 'B', 'A', 'S'].map((k) => `<div><span class="small muted">${esc(HH.planName(k))}</span><strong class="num">${Number(pr[k] != null ? pr[k] : HH.LEVELS[k].price_usd) ? HH.money(pr[k] != null ? pr[k] : HH.LEVELS[k].price_usd) : '<span>Gratis</span>'}</strong></div>`).join('')}</div>
-        <p class="tiny muted">Precio por mes, en dólares. Platino, Diamante y Star también se pueden pedir por una semana. Pagás por transferencia.</p>
+        <div class="sp-prices">${['E', 'D', 'C', 'S'].map((k) => { const v = Number(pr[k] != null ? pr[k] : HH.LEVELS[k].price_usd); return `<div><span class="small muted">${esc(HH.planName(k))}</span><strong>${v ? `<span class="num">${fmtCr(v)}</span> <span class="small">créditos</span>` : '<span>Gratis</span>'}</strong></div>`; }).join('')}</div>
+        <p class="tiny muted">Precio por mes, en créditos (1 crédito = 1 dólar). Oro y Star también se pueden pagar por semana. Los créditos se compran por WhatsApp.</p>
       </div>
     </div></div>`;
   }
@@ -554,7 +648,7 @@
   }
   function panelLayout(tab, main) {
     const p = S.yo.perfil; const d = yoDatos();
-    const cnt = { resumen: (p.faltantes || []).length, verificacion: p.verificacion === 'sin_enviar' || p.verificacion === 'rechazada' ? 1 : 0, fotos: (p.fotos || []).length < 3 ? 1 : 0 };
+    const cnt = { resumen: (p.faltantes || []).length, verificacion: p.verificacion === 'sin_enviar' || p.verificacion === 'rechazada' ? 1 : 0, fotos: (p.fotos || []).length < 3 ? 1 : 0, avisos: noLeidas(), plan: p.pausadoPorSaldo ? 1 : 0 };
     const nav = PANEL_TABS.map((t) => `<a href="#panel.${t.id}" data-go="#panel.${t.id}" class="${t.id === tab ? 'active' : ''}">${icon(t.icon)}<span>${t.label}</span>${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</a>`).join('');
     const chips = PANEL_TABS.map((t) => `<button type="button" class="chip ${t.id === tab ? 'active' : ''}" data-go="#panel.${t.id}">${t.label}${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</button>`).join('');
     const pub = p.estado === 'publicado' && !p.oculto && p.slug;
@@ -576,7 +670,8 @@
   }
 
   function panelResumen() {
-    const p = S.yo.perfil; const [cls, label, txt] = ESTADO_PERFIL[p.estado] || ESTADO_PERFIL.borrador;
+    const p = S.yo.perfil; const [cls, label, txt0] = ESTADO_PERFIL[p.estado] || ESTADO_PERFIL.borrador;
+    const txt = p.pausadoPorSaldo ? 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.' : txt0;
     const [vcls, vlabel] = VERIF[p.verificacion] || VERIF.sin_enviar;
     const f = p.faltantes || [];
     const canSend = ['borrador', 'rechazado'].includes(p.estado);
@@ -597,8 +692,10 @@
       </div>` : ''}
       <div class="card stack" style="gap:8px">
         <div class="row between"><div class="card-title">Tu plan</div>${HH.levelBadge(pl, true)}</div>
+        ${p.pausadoPorSaldo ? `<div class="notice danger">${icon('alert')}<span>Tu perfil está pausado: no alcanzaron los créditos para renovar tu plan. Cargá créditos y vuelve a publicarse solo.</span></div>` : ''}
         <p class="small muted" style="margin:0">${pl === 'E' ? 'Estás en Bronce, gratis. Con un plan más alto aparecés más arriba y podés subir más fotos e historias.' : 'Vigente hasta el ' + esc(HH.fmtDate((subs.find((s) => s.plan === pl) || subs[0] || {}).hasta || new Date().toISOString())) + '.'}</p>
-        <a class="btn secondary" href="#panel.plan" data-go="#panel.plan">${icon('card')} Ver planes</a>
+        <div class="sp-saldo-row"><span class="small muted">Tu saldo</span><strong><span class="num">${fmtCr(saldoYo())}</span> <span class="small">créditos</span></strong></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn secondary" href="#panel.plan" data-go="#panel.plan">${icon('card')} Ver planes</a><a class="btn ghost" href="#panel.creditos" data-go="#panel.creditos">${icon('wallet')} Cargar créditos</a></div>
       </div>`;
   }
 
@@ -792,53 +889,266 @@
       </div>`;
   }
 
+  /* ---------- Planes v2: créditos, plan, Destacado y avisos (contrato: FASE1-CONTRATO.md, "Planes v2, créditos y destacado") ----------
+     Todo se paga con créditos (1 crédito = USD 1). Los créditos se compran por WhatsApp (o Telegram): el sitio crea el
+     pedido con un código y abre el chat con el mensaje armado. En la web nunca se muestran datos bancarios. */
+  // Monto de la API ({ centavos, creditos }) o un número de créditos → "35" / "12,50" (según el idioma)
+  function fmtCr(m) {
+    const c = m && typeof m === 'object' ? Number(m.centavos) : Math.round(Number(m || 0) * 100);
+    const n = (Number.isFinite(c) ? c : 0) / 100;
+    return n.toLocaleString(HH.loc(), { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+  }
+  const cents = (m) => (m && typeof m === 'object' ? Number(m.centavos) || 0 : Math.round(Number(m || 0) * 100));
+  const crHtml = (m, cls) => `<strong class="sp-cr ${cls || ''}"><span class="num">${fmtCr(m)}</span> <span>créditos</span></strong>`;
+  const saldoYo = () => (S.yo && S.yo.creditos && S.yo.creditos.saldo) || { centavos: 0 };
+  const noLeidas = () => (S.yo && S.yo.notificaciones && Number(S.yo.notificaciones.noLeidas)) || 0;
+  const fLarga = (iso) => HH.fmtDate(iso, { day: 'numeric', month: 'long' });
+  const fHora = (iso) => HH.fmtDateTime(iso);
+  const diasHasta = (iso) => Math.ceil((new Date(iso) - Date.now()) / 864e5);
+  // Carga perezosa de una sección: esqueleto → datos → se vuelve a dibujar
+  function cargar(key, fn) { if (S.busy[key]) return; S.busy[key] = true; fn().finally(() => { S.busy[key] = false; rerender(); }); }
+  async function loadCred() { try { S.cred = await api('GET', '/cuenta/creditos'); S.credErr = null; S.credMas = null; syncSaldo(S.cred.saldo); } catch (e) { S.credErr = e.message; } }
+  async function loadDest() { try { S.dest = await api('GET', '/cuenta/destacado'); S.destErr = null; syncSaldo(S.dest.saldo); } catch (e) { S.destErr = e.message; } }
+  async function loadNotif() { try { S.notif = await api('GET', '/cuenta/notificaciones?limite=50'); S.notifErr = null; if (S.yo) S.yo.notificaciones = { noLeidas: S.notif.noLeidas || 0 }; } catch (e) { S.notifErr = e.message; } }
+  function syncSaldo(m) { if (S.yo && m) { S.yo.creditos = { saldo: m }; } }
+  const skel = (eb, tt) => head(eb, tt, '') + `<div class="sp-skel"></div><div class="sp-skel"></div>`;
+  const errBox = (msg, action) => `<div class="notice danger">${icon('alert')}<span>${esc(msg)}</span></div><button type="button" class="btn secondary" data-action="${action}">Reintentar</button>`;
+  // Saldo insuficiente: cuánto falta y el atajo a cargar créditos
+  const faltaHtml = (faltan) => `<div class="notice warn sp-falta">${icon('wallet')}<span class="grow"><span>Te faltan</span> ${crHtml(faltan)}<span>.</span> <span>Cargá créditos y volvé a intentarlo.</span></span><a class="btn sm" href="#panel.creditos" data-go="#panel.creditos" data-action="closeModal">${icon('plus')} Cargar créditos</a></div>`;
+  const saldoChip = () => `<a class="sp-saldo-chip" href="#panel.creditos" data-go="#panel.creditos" title="Cargar créditos">${icon('wallet')}<span><span class="num">${fmtCr(saldoYo())}</span> <span>créditos</span></span></a>`;
+  // Errores con código: 402 saldo → aviso con lo que falta (en el modal o como aviso); el resto, el mensaje del servidor
+  function errCompra(e) {
+    const d = e.data || {};
+    if (e.status === 402 && d.faltan) { HH.modal({ title: 'No te alcanzan los créditos', body: `<div class="stack"><p class="small muted"><span>Tu saldo:</span> ${crHtml(d.saldo)}</p>${faltaHtml(d.faltan)}</div>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); return; }
+    HH.toast(e.message, { type: 'danger', ms: 5000 });
+  }
+
+  /* ---- Créditos ---- */
+  const MOV = { compra: 'Compra de créditos', pack_bonus: 'Regalo del pack', renovacion_plan: 'Plan', semana: 'Semana', subida_temporal: 'Subida temporal', destacado: 'Destacado', ajuste_admin: 'Ajuste', comision_venta: 'Comisión' };
+  function pedidoCard(x, C) {
+    const canal = (C && C.canales) || {};
+    const wa = x.whatsappUrl; const tg = x.telegramUrl;
+    return `<div class="card stack sp-ped" style="gap:12px">
+      <div class="row between"><div class="card-title">Pedido en curso</div>${badge('warn', 'Esperando pago')}</div>
+      <div class="sp-ped-code"><span class="small muted">Código del pedido</span><div class="row" style="gap:8px;align-items:center"><strong class="num" data-noi18n>${esc(x.codigo)}</strong><button type="button" class="btn ghost sm" data-action="spCopiar" data-v="${esc(x.codigo)}" aria-label="Copiar código">${icon('copy')} Copiar</button></div></div>
+      <div class="sp-ped-det small"><span>${esc(x.packNombre || '')}</span> · <span>Pagás ${HH.money(x.pagaUsd)}</span> · <span>Recibís ${fmtCr(x.total)} créditos</span></div>
+      <p class="small muted" style="margin:0"><span>Mandanos el mensaje por WhatsApp con este código: te respondemos con el monto y cómo pagar.</span> <span>El pedido espera el pago hasta el ${esc(fHora(x.vence))}.</span></p>
+      ${x.tieneComprobante ? `<div class="notice ok">${icon('checkCircle')}<span>Recibimos tu comprobante. Te avisamos cuando acreditemos los créditos.</span></div>` : ''}
+      <div class="row sp-ped-acts" style="gap:8px;flex-wrap:wrap">
+        ${wa ? `<a class="btn wa" href="${esc(wa)}" target="_blank" rel="noopener">${icon('whatsapp')} Abrir WhatsApp</a>` : ''}
+        ${tg ? `<a class="btn secondary" href="${esc(tg)}" target="_blank" rel="noopener">${icon('send')} Telegram</a>` : ''}
+        ${!wa && !tg && !(canal.whatsapp || canal.telegram) ? `<span class="small muted">Muy pronto vas a poder escribirnos desde acá.</span>` : ''}
+        <button type="button" class="btn ghost" data-action="spComprobante" data-id="${esc(x.id)}">${icon('upload')} ${x.tieneComprobante ? 'Mandar otro comprobante' : 'Adjuntar comprobante'}</button>
+        <button type="button" class="btn ghost" data-action="spCancelarPedidoCr" data-id="${esc(x.id)}" style="color:var(--danger)">Cancelar pedido</button>
+      </div>
+    </div>`;
+  }
+  // Fechas largas del servidor ("21 de noviembre a las 05:49 h") → cortas ("21/11 05:49 h"): así los textos se
+  // traducen con el diccionario (un {x} no puede tener más de 6 palabras)
+  const MESES = { enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7, agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12 };
+  const fechasCortas = (t) => String(t || '').replace(/(\d{1,2}) de ([a-z]+)(?: de (\d{4}))? a las (\d{1,2}:\d{2}) h/g, (m, d, mes, y, h) => (MESES[mes] ? `${d}/${MESES[mes]} ${h} h` : m));
+  // Compra: "Trimestre Plata · SR-8277" → el nombre del pack se traduce, el código no
+  const motivoHtml = (m) => {
+    const t = fechasCortas(m.motivo);
+    const k = m.tipo === 'compra' ? t.lastIndexOf(' · ') : -1;
+    return k > 0 ? `<span>${esc(t.slice(0, k))}</span> · <span data-noi18n>${esc(t.slice(k + 3))}</span>` : `<span>${esc(t)}</span>`;
+  };
+  function movRow(m) {
+    const pos = cents(m) > 0;
+    return `<div class="list-item sp-mov">${icon(pos ? 'plus' : 'arrowRight')}<div class="grow" style="min-width:0"><div class="title"><span>${esc(MOV[m.tipo] || m.tipo)}</span></div>${m.motivo ? `<div class="sub ellipsis">${motivoHtml(m)}</div>` : ''}<div class="sub"><span>${esc(fHora(m.creado))}</span> · <span>Saldo: ${fmtCr(m.saldoDespues)}</span></div></div><strong class="num sp-mov-n ${pos ? 'pos' : 'neg'}">${pos ? '+' : '−'}${fmtCr(Math.abs(cents(m)) / 100)}</strong></div>`;
+  }
+  function panelCreditos() {
+    const eb = 'Créditos', tt = 'Tus créditos';
+    if (!S.cred && !S.credErr) { cargar('cred', loadCred); return skel(eb, tt); }
+    if (S.credErr) return head(eb, tt, '') + errBox(S.credErr, 'spCredReload');
+    const C = S.cred; const canal = C.canales || {}; const hayCanal = !!(canal.whatsapp || canal.telegram);
+    const pend = (C.pedidos || []).filter((x) => x.estado === 'pendiente');
+    const otros = (C.pedidos || []).filter((x) => x.estado !== 'pendiente');
+    const lleno = pend.length >= 3;
+    const comprar = (attrs, lbl) => hayCanal
+      ? `<button type="button" class="btn ${canal.whatsapp ? 'wa' : ''} block" ${attrs}${S.busy.pedCr || lleno ? ' disabled' : ''}>${icon(canal.whatsapp ? 'whatsapp' : 'send')} ${lbl || (canal.whatsapp ? 'Comprar por WhatsApp' : 'Comprar por Telegram')}</button>`
+      : `<button type="button" class="btn secondary block" disabled>Muy pronto</button>`;
+    const packs = (C.packs || []).map((k) => `<div class="sp-pack${k.masElegido ? ' top' : ''}">
+        ${k.masElegido ? `<span class="sp-pack-rib">Más elegido</span>` : ''}
+        <div class="sp-pack-name">${esc(k.nombre)}</div>
+        <div class="sp-pack-get"><strong class="num">${fmtCr(k.recibe)}</strong> <span>créditos</span></div>
+        <div class="sp-pack-pay small"><span>Pagás ${HH.money(k.pagaUsd)}</span> · <span>Recibís ${fmtCr(k.recibe)} créditos</span></div>
+        ${Number(k.bonus) > 0 ? `<span class="sp-gift">${icon('gift')}<span>+${fmtCr(k.bonus)} de regalo</span></span>` : '<span class="sp-gift none" aria-hidden="true"></span>'}
+        ${k.alcanzaPara ? `<div class="small muted sp-pack-alc"><span>Alcanza para</span> <span>${esc(k.alcanzaPara)}</span></div>` : ''}
+        ${comprar(`data-action="spComprarPack" data-id="${esc(k.id)}"`)}
+      </div>`).join('');
+    const movs = (C.movimientos || []).concat(S.credMas ? S.credMas.items : []);
+    const sig = S.credMas ? S.credMas.siguiente : C.siguiente;
+    return head(eb, tt, 'Con créditos pagás tu plan, las semanas y el Destacado. 1 crédito = 1 dólar.') + `
+      <div class="card sp-saldo">
+        <div><div class="small muted">Saldo disponible</div><div class="sp-saldo-n"><strong class="num">${fmtCr(C.saldo)}</strong> <span>créditos</span></div></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn secondary sm" href="#panel.plan" data-go="#panel.plan">${icon('card')} Pagar mi plan</a><a class="btn ghost sm" href="#panel.destacado" data-go="#panel.destacado">${icon('sparkles')} Destacado</a></div>
+      </div>
+      ${pend.map((x) => pedidoCard(x, C)).join('')}
+      ${lleno ? `<div class="notice warn">${icon('info')}<span>Tenés 3 pedidos esperando pago. Pagá o cancelá alguno antes de pedir otro.</span></div>` : ''}
+      <div class="card stack" style="gap:12px">
+        <div><div class="card-title">Comprar créditos</div><p class="small muted" style="margin:4px 0 0">Elegí un pack: te abrimos WhatsApp con el pedido armado y te respondemos con el monto en pesos y cómo pagar. Cuando confirmamos el pago, los créditos se acreditan en tu cuenta.</p></div>
+        <div class="sp-packs">${packs}</div>
+        <form class="sp-carga" data-submit="spCargaMedida" novalidate>
+          <div class="grow" style="min-width:0"><label class="label" for="spCargaN">Carga a medida</label><div class="small muted">De ${fmtCr(C.cargaMinima || 10)} a ${fmtCr(C.cargaMaxima || 10000)} créditos, sin bonificación.</div></div>
+          <div class="row nowrap" style="gap:8px"><input class="input num" id="spCargaN" name="creditos" type="number" inputmode="numeric" min="${C.cargaMinima || 10}" max="${C.cargaMaxima || 10000}" step="1" value="${C.cargaMinima || 10}" aria-label="Créditos"${hayCanal ? '' : ' disabled'}>
+          <button type="submit" class="btn ${canal.whatsapp ? 'wa' : 'secondary'}"${!hayCanal || S.busy.pedCr || lleno ? ' disabled' : ''}>${hayCanal ? 'Pedir' : 'Muy pronto'}</button></div>
+        </form>
+      </div>
+      ${otros.length ? `<div class="card stack" style="gap:10px"><div class="card-title">Tus pedidos</div><div class="list">${otros.slice(0, 10).map((x) => { const [cls, l] = PEDIDO[x.estado] || ['neutral', x.estado]; return `<div class="list-item">${icon('wallet')}<div class="grow" style="min-width:0"><div class="title"><span class="num" data-noi18n>${esc(x.codigo)}</span> · <span>${esc(x.packNombre || '')}</span></div><div class="sub"><span>${fmtCr(x.total)} créditos</span> · <span>${esc(HH.fmtDate(x.creado))}</span>${x.motivo ? ` · <span data-noi18n>${esc(x.motivo)}</span>` : ''}</div></div>${badge(cls, l)}</div>`; }).join('')}</div></div>` : ''}
+      <div class="card stack" style="gap:10px">
+        <div class="card-title">Movimientos</div>
+        ${movs.length ? `<div class="list">${movs.map(movRow).join('')}</div>` : `<p class="small muted" style="margin:0">Todavía no tenés movimientos.</p>`}
+        ${sig ? `<button type="button" class="btn ghost sm" data-action="spMovMas" data-id="${esc(sig)}"${S.busy.movMas ? ' disabled' : ''}>Ver más</button>` : ''}
+      </div>
+      <div class="card stack sp-rules" style="gap:6px">
+        <div class="card-title">Cómo funcionan</div>
+        <ul class="sp-todo"><li>${icon('check')}<span>Los créditos no vencen.</span></li><li>${icon('check')}<span>No se devuelven en dinero ni se pueden pasar a otra cuenta.</span></li><li>${icon('check')}<span>Un pedido espera el pago ${C.horasPedido || 48} horas; después se cancela solo.</span></li><li>${icon('shield')}<span>Nunca te vamos a pedir datos de tu tarjeta ni de tu banco en la web.</span></li></ul>
+      </div>`;
+  }
+
+  /* ---- Plan ---- */
+  const TIPO_COMPRA = { nuevo: 'Plan nuevo', renovacion_anticipada: 'Sumás 30 días', subida: 'Subida de plan', semana: 'Semana', subida_temporal: 'Subida por 7 días' };
   function panelPlan() {
-    if (!S.planes && !S.planesErr) { if (!S.busy.planes) { S.busy.planes = true; loadPlanes().finally(() => { S.busy.planes = false; rerender(); }); } return head('Plan', 'Tu plan', '') + `<div class="sp-skel"></div><div class="sp-skel"></div>`; }
-    if (S.planesErr) return head('Plan', 'Tu plan', '') + `<div class="notice danger">${icon('alert')}<span>${esc(S.planesErr)}</span></div><button type="button" class="btn secondary" data-action="spPlanesReload">Reintentar</button>`;
-    const P = S.planes; const ef = P.efectivo || 'E';
-    const subs = (P.suscripciones || []).filter((s) => s.estado === 'activa' && new Date(s.hasta) > new Date());
-    const monthly = subs.filter((s) => s.periodo === 'mes' || s.periodo === 'manual');
-    const baseRank = Math.max(1, ...monthly.map((s) => RANK[s.plan] || 1));
-    const abiertos = (P.pedidos || []).filter((x) => x.estado === 'pendiente' || x.estado === 'informado');
+    const eb = 'Plan', tt = 'Tu plan';
+    if (!S.planes && !S.planesErr) { cargar('planes', loadPlanes); return skel(eb, tt); }
+    if (S.planesErr) return head(eb, tt, '') + errBox(S.planesErr, 'spPlanesReload');
+    const P = S.planes; const ef = P.efectivo || 'E'; const base = P.base; const saldo = P.saldo || saldoYo(); syncSaldo(P.saldo);
+    const baseRank = base ? RANK[base.plan] || 1 : 1;
     const cupo = P.cupoStar || {};
-    const planes = (P.planes || []).filter((x) => x.codigo !== 'E');
+    const pr = P.precios || {};
+    const prox = base && base.proximaRenovacion;
+    const banners = [];
+    if (P.pausa && P.pausa.perfilPausado !== false) banners.push(`<div class="notice danger sp-banner">${icon('alert')}<span class="grow"><strong>Tu perfil está pausado.</strong> <span>No alcanzaron los créditos para renovar ${esc(P.pausa.planNombre || HH.planName(P.pausa.plan))} (${fmtCr(P.pausa.costo)} créditos). Cargá créditos y tu perfil vuelve a publicarse solo.</span></span><span class="row" style="gap:6px;flex-wrap:wrap"><a class="btn sm" href="#panel.creditos" data-go="#panel.creditos">${icon('plus')} Cargar créditos</a><button type="button" class="btn ghost sm" data-action="spRenovacion" data-v="0">Seguir gratis con Bronce</button></span></div>`);
+    else if (P.pausa) banners.push(`<div class="notice warn sp-banner">${icon('alert')}<span class="grow"><span>No pudimos renovar ${esc(P.pausa.planNombre || HH.planName(P.pausa.plan))}: se renueva solo apenas cargues créditos.</span></span><a class="btn sm" href="#panel.creditos" data-go="#panel.creditos">${icon('plus')} Cargar créditos</a></div>`);
+    if (prox && !prox.alcanza && !P.pausa) {
+      const d = diasHasta(prox.fecha);
+      if (d <= 7) banners.push(`<div class="notice ${d <= 2 ? 'danger' : 'warn'} sp-banner">${icon('wallet')}<span class="grow"><span>Tu plan se renueva el ${esc(fLarga(prox.fecha))} y te faltan ${fmtCr(prox.faltan)} créditos.</span> <span>Si no alcanzan, tu perfil se pausa hasta que cargues.</span></span><a class="btn sm" href="#panel.creditos" data-go="#panel.creditos">${icon('plus')} Cargar créditos</a></div>`);
+    }
+    const semanas = (P.semanas || []).filter((s) => new Date(s.hasta) > new Date());
     const card = (x) => {
-      const isStar = x.codigo === 'S'; const sinCupo = isStar && (!cupo.provincia || !cupo.libres);
-      const open = (per) => abiertos.some((o) => o.plan === x.codigo && o.periodo === per);
-      const weekLabel = x.semana != null ? ((RANK[x.codigo] > baseRank && monthly.length) ? UPGRADE_LABEL(x.nombre) : '1 semana') : '';
-      return `<div class="plan${x.codigo === 'B' ? ' featured' : ''}${ef === x.codigo ? ' sp-cur' : ''}">
-        <div class="row between nowrap"><strong>${esc(x.nombre)}</strong>${HH.levelBadge(x.codigo, true)}</div>
-        <div class="price">${HH.money(x.mes)} <small>/ mes</small></div>
-        <p class="small muted">${esc((HH.LEVELS[x.codigo] || {}).desc || '')}</p>
-        <ul><li>${icon('check')}<span>Hasta ${HH.LEVELS[x.codigo].photos} fotos</span></li><li>${icon('check')}<span>${HH.LEVELS[x.codigo].stories_per_day == null ? 'Historias ilimitadas' : HH.LEVELS[x.codigo].stories_per_day + ' ' + HH.plural(HH.LEVELS[x.codigo].stories_per_day, 'historia', 'historias') + ' por día'}</span></li></ul>
+      const k = x.codigo; const r = RANK[k] || 1; const isStar = k === 'S';
+      const sinCupo = isStar && (!cupo.provincia || !cupo.libres) && ef !== 'S';
+      const lim = x.limites || {};
+      const esBase = base && base.plan === k; const esCambio = base && base.cambioProgramado === k;
+      const btns = [];
+      if (k === 'E') {
+        if (base && base.cambioProgramado === 'E') btns.push(`<span class="badge neutral block-badge">Programado para el ${esc(fLarga(base.hasta))}</span>`);
+        else if (base) btns.push(`<button type="button" class="btn ghost block" data-action="spCambio" data-plan="E">Pasar a Bronce al vencer</button>`);
+        else btns.push(`<span class="badge ok block-badge">${ef === 'E' ? 'Tu plan actual' : 'Gratis'}</span>`);
+      } else {
+        if (esBase) btns.push(`<button type="button" class="btn secondary block" data-action="spCotizar" data-plan="${k}" data-per="mes"${S.busy.cot ? ' disabled' : ''}>Sumar 30 días · ${fmtCr(x.mes)} créditos</button>`);
+        else if (r > baseRank) btns.push(`<button type="button" class="btn ${isStar ? '' : 'secondary'} block" data-action="spCotizar" data-plan="${k}" data-per="mes"${sinCupo || S.busy.cot ? ' disabled' : ''}>${base ? 'Subir a ' + esc(x.nombre) : 'Activar 1 mes · ' + fmtCr(x.mes) + ' créditos'}</button>`);
+        else if (esCambio) btns.push(`<span class="badge neutral block-badge">Programado para el ${esc(fLarga(base.hasta))}</span>`);
+        else btns.push(`<button type="button" class="btn ghost block" data-action="spCambio" data-plan="${k}">Pasar a ${esc(x.nombre)} al renovar</button>`);
+        if (x.semana != null && r > baseRank) btns.push(`<button type="button" class="btn ghost block" data-action="spCotizar" data-plan="${k}" data-per="semana"${sinCupo || S.busy.cot ? ' disabled' : ''}>${esc(base ? UPGRADE_LABEL(x.nombre) : '1 semana')} · ${fmtCr(x.semana)} créditos</button>`);
+      }
+      const feat = [
+        `Hasta ${lim.fotos} fotos y ${lim.videos} videos`,
+        lim.historiasDia == null ? 'Historias ilimitadas' : lim.historiasDia === 1 ? '1 historia por día' : `Hasta ${lim.historiasDia} historias por día`,
+      ];
+      const li = (t, ok) => `<li class="${ok ? '' : 'no'}">${icon(ok ? 'check' : 'x')}<span>${t}</span></li>`;
+      return `<div class="plan${k === 'C' ? ' featured' : ''}${ef === k ? ' sp-cur' : ''}">
+        ${ef === k ? `<span class="badge ribbon sp-cur-rib">Tu plan</span>` : k === 'C' ? `<span class="badge ribbon" style="background:var(--berry);color:var(--berry-ink)">Más elegido</span>` : ''}
+        <div class="row between nowrap"><strong>${esc(x.nombre)}</strong>${HH.levelBadge(k, true)}</div>
+        <div class="price">${x.mes ? `<span class="num">${fmtCr(x.mes)}</span> <small>créditos / mes</small>` : '<span>Gratis</span>'}</div>
+        ${x.semana != null ? `<div class="small muted" style="margin-top:-6px">o ${fmtCr(x.semana)} créditos por semana</div>` : ''}
+        <p class="small muted">${esc((HH.LEVELS[k] || {}).desc || '')}</p>
+        <ul>${feat.map((t) => li(t, true)).join('')}${li('Clip de 5 segundos en tu tarjeta', !!x.preview)}${isStar ? li('Lugar fijo arriba de todo en tu provincia', true) : x.destacado ? li(cents(x.destacado.dia) === 100 ? 'Destacado: 1 crédito el día' : `Destacado: ${fmtCr(x.destacado.dia)} créditos el día`, true) : ''}</ul>
         ${isStar ? `<p class="tiny ${sinCupo ? 'sp-danger' : 'muted'}">${!cupo.provincia ? 'Elegí tu provincia en Mi perfil para ver el cupo.' : cupo.libres ? `Quedan ${cupo.libres} de ${cupo.total || 10} lugares en tu provincia.` : 'No quedan lugares Star en tu provincia.'}</p>` : ''}
-        <div class="stack" style="gap:8px">
-          <button type="button" class="btn ${x.codigo === 'B' ? '' : 'secondary'} block" data-action="spPedir" data-plan="${x.codigo}" data-per="mes"${sinCupo || open('mes') || S.busy.pedir ? ' disabled' : ''}>${open('mes') ? 'Pedido en curso' : 'Pedir 1 mes · ' + HH.money(x.mes)}</button>
-          ${x.semana != null ? `<button type="button" class="btn ghost block" data-action="spPedir" data-plan="${x.codigo}" data-per="semana"${sinCupo || open('semana') || S.busy.pedir ? ' disabled' : ''}>${open('semana') ? 'Pedido en curso' : esc(weekLabel) + ' · ' + HH.money(x.semana)}</button>` : ''}
-        </div>
+        <div class="stack" style="gap:8px">${btns.join('')}</div>
       </div>`;
     };
-    return head('Plan', 'Tu plan', 'Pagás por transferencia. Cuando la confirmamos, el plan se activa. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.') + `
-      <div class="card stack" style="gap:10px">
+    const historial = (P.suscripciones || []).slice(0, 8);
+    return head(eb, tt, 'Pagás con créditos. El plan por mes se renueva solo si te alcanzan los créditos; lo podés apagar cuando quieras. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.', saldoChip()) + banners.join('') + `
+      <div class="card stack" style="gap:12px">
         <div class="row between"><div class="card-title">Plan actual</div>${HH.levelBadge(ef, true)}</div>
-        ${subs.length ? `<div class="list">${subs.map((s) => `<div class="list-item">${icon('card')}<div class="grow"><div class="title"><span>${esc(s.planNombre || HH.planName(s.plan))}</span> · <span>${s.periodo === 'semana' ? '1 semana' : s.periodo === 'manual' ? 'asignado' : '1 mes'}</span></div><div class="sub">Del ${esc(HH.fmtDate(s.desde))} al ${esc(HH.fmtDate(s.hasta))}</div></div></div>`).join('')}</div>` : `<p class="small muted" style="margin:0">Estás en Bronce, gratis.</p>`}
+        ${base ? `<div class="list">
+          <div class="list-item">${icon('card')}<div class="grow"><div class="title"><span>${esc(base.planNombre || HH.planName(base.plan))}</span> · <span>por mes</span></div><div class="sub">Hasta el ${esc(fLarga(base.hasta))}</div></div></div>
+          ${semanas.map((s) => `<div class="list-item">${icon('bolt')}<div class="grow"><div class="title"><span>${esc(s.planNombre || HH.planName(s.plan))}</span> · <span>1 semana</span></div><div class="sub">Del ${esc(HH.fmtDate(s.desde))} al ${esc(HH.fmtDate(s.hasta))}</div></div></div>`).join('')}
+        </div>
+        ${base.cambioProgramado ? `<div class="notice info">${icon('calendar')}<span class="grow"><span>${base.cambioProgramado === 'E' ? 'El ' + esc(fLarga(base.hasta)) + ' pasás a Bronce (gratis).' : 'El ' + esc(fLarga(base.hasta)) + ' pasás a ' + esc(HH.planName(base.cambioProgramado)) + '.'}</span></span><button type="button" class="btn ghost sm" data-action="spCambio" data-plan="">Deshacer</button></div>` : ''}
+        <div class="switch-row" style="border:0;padding:0"><div><div class="t">Renovación automática</div><div class="s">${base.renovacionAuto ? (prox ? `<span>Se renueva el ${esc(fLarga(prox.fecha))} por ${fmtCr(prox.costo)} créditos.</span>` + (prox.alcanza ? '' : ` <span class="sp-danger">Te faltan ${fmtCr(prox.faltan)} créditos.</span>`) : '<span>Encendida.</span>') : `<span>Apagada: el ${esc(fLarga(base.hasta))} pasás a Bronce.</span>`}</div></div><button type="button" class="switch" role="switch" aria-checked="${!!base.renovacionAuto}" data-action="spRenovacion" data-v="${base.renovacionAuto ? '0' : '1'}" aria-label="Renovación automática"${S.busy.renov ? ' disabled' : ''}></button></div>`
+        : semanas.length ? `<div class="list">${semanas.map((s) => `<div class="list-item">${icon('bolt')}<div class="grow"><div class="title"><span>${esc(s.planNombre || HH.planName(s.plan))}</span> · <span>1 semana</span></div><div class="sub">Del ${esc(HH.fmtDate(s.desde))} al ${esc(HH.fmtDate(s.hasta))}</div></div></div>`).join('')}</div><p class="small muted" style="margin:0">Después volvés a Bronce, gratis.</p>`
+        : `<p class="small muted" style="margin:0">Estás en Bronce, gratis.</p>`}
       </div>
-      ${(P.pedidos || []).length ? `<div class="card stack" style="gap:10px"><div class="card-title">Tus pedidos</div><div class="list">${P.pedidos.slice(0, 12).map(pedidoRow).join('')}</div></div>` : ''}
-      <div class="plans plans-6 sp-plans">${planes.map(card).join('')}</div>`;
+      <div class="plans sp-plans">${(P.planes || []).slice().sort((a, b) => (RANK[a.codigo] || 0) - (RANK[b.codigo] || 0)).map(card).join('')}</div>
+      ${historial.length ? `<details class="card sp-det"><summary>Historial de planes</summary><div class="list" style="margin-top:10px">${historial.map((s) => `<div class="list-item">${icon('card')}<div class="grow"><div class="title"><span>${esc(s.planNombre || HH.planName(s.plan))}</span> · <span>${s.periodo === 'semana' ? '1 semana' : s.periodo === 'manual' ? 'asignado' : '1 mes'}</span></div><div class="sub">Del ${esc(HH.fmtDate(s.desde))} al ${esc(HH.fmtDate(s.hasta))}${s.costo ? ` · <span>${fmtCr(s.costo)} créditos</span>` : ''}</div></div>${badge(s.vigente ? 'ok' : 'neutral', s.vigente ? 'Vigente' : s.estado === 'cancelada' ? 'Cancelada' : 'Vencida')}</div>`).join('')}</div></details>` : ''}`;
   }
-  function pedidoRow(x) {
-    const [cls, l] = PEDIDO[x.estado] || ['neutral', x.estado];
-    const actions = x.estado === 'pendiente' ? `<div class="row" style="gap:6px;margin-top:6px"><button type="button" class="btn sm" data-action="spInformar" data-id="${esc(x.id)}">Ya transferí</button><button type="button" class="btn ghost sm" data-action="spDatosPago" data-id="${esc(x.id)}">Datos para transferir</button><button type="button" class="btn ghost sm" data-action="spCancelarPedido" data-id="${esc(x.id)}">Cancelar</button></div>` : '';
-    return `<div class="list-item" style="align-items:flex-start">${icon('card')}<div class="grow" style="min-width:0"><div class="title"><span>${esc(x.planNombre || HH.planName(x.plan))}</span> · <span>${x.periodo === 'semana' ? '1 semana' : '1 mes'}</span> · <span>${HH.money(x.montoUsd)}</span></div><div class="sub"><span>Referencia</span> <strong class="num" data-noi18n>${esc(x.referencia || '')}</strong> · <span>${esc(HH.fmtDate(x.creado))}</span>${x.motivo ? ` · <span data-noi18n>${esc(x.motivo)}</span>` : ''}</div>${actions}</div>${badge(cls, l)}</div>`;
-  }
-  function transferHtml(x) {
-    const t = (S.planes && S.planes.transferencia) || '';
+  // Vista previa de la compra (GET /plan/cotizar) antes de cobrar
+  function cotizacionHtml(q) {
+    const despues = cents(q.saldo) - cents(q.costo);
     return `<div class="stack" style="gap:12px">
-      <div class="sp-amount"><span class="small muted">Monto</span><strong class="num">${HH.money(x.montoUsd)}</strong><span class="small muted"><span>${esc(x.planNombre || HH.planName(x.plan))}</span> · <span>${x.periodo === 'semana' ? '1 semana' : '1 mes'}</span></span></div>
-      <div class="sp-amount"><span class="small muted">Poné esta referencia en la transferencia</span><strong class="num" data-noi18n>${esc(x.referencia || '')}</strong></div>
-      ${t ? `<div class="card soft"><div class="small" style="white-space:pre-wrap" data-noi18n>${esc(t)}</div></div>` : `<div class="notice info">${icon('mail')}<span>Los datos para transferir te llegan por email.</span></div>`}
-      <p class="tiny muted">Cuando transfieras, tocá "Ya transferí" en tus pedidos. Confirmamos el pago y se activa el plan.</p>
+      <div class="sp-amount"><span class="small muted">${esc(TIPO_COMPRA[q.tipo] || '')}</span><strong><span class="num">${fmtCr(q.costo)}</span> <span>créditos</span></strong><span class="small muted"><span>${esc(q.planNombre || HH.planName(q.plan))}</span> · <span>Del ${esc(HH.fmtDate(q.desde))} al ${esc(HH.fmtDate(q.hasta))}</span></span></div>
+      ${q.tipo === 'subida' ? `<p class="small muted" style="margin:0"><span>Pagás solo la diferencia por los ${q.diasRestantes} días que le quedan a tu plan. Termina el mismo día que tu plan actual y después se renueva como ${esc(q.planNombre)}.</span></p>` : ''}
+      ${q.tipo === 'subida_temporal' || q.tipo === 'semana' ? `<p class="small muted" style="margin:0">Son 7 días. Después volvés solo a tu plan.</p>` : ''}
+      ${q.tipo === 'nuevo' ? `<p class="small muted" style="margin:0">Son 30 días con renovación automática (la podés apagar cuando quieras).</p>` : ''}
+      ${q.detalle ? `<div class="small"><span>${esc(q.detalle)}</span></div>` : ''}
+      <div class="sp-saldo-row"><span class="small muted">Tu saldo</span><span><span class="num">${fmtCr(q.saldo)}</span> <span>créditos</span></span></div>
+      ${q.alcanza ? `<div class="sp-saldo-row"><span class="small muted">Te quedan</span><span><span class="num">${fmtCr(despues / 100)}</span> <span>créditos</span></span></div>` : faltaHtml(q.faltan)}
     </div>`;
+  }
+
+  /* ---- Destacado ---- */
+  const EST_DEST = { activo: ['ok', 'Activo'], programado: ['info', 'Programado'], vencido: ['neutral', 'Terminado'], cancelado: ['neutral', 'Cancelado'] };
+  function panelDestacado() {
+    const eb = 'Destacado', tt = 'Destacá tu perfil';
+    const sub = 'Tu tarjeta aparece primero dentro de tu plan en tu provincia, con la etiqueta Destacado. Si hay varias destacadas, el orden cambia en cada visita.';
+    if (!S.dest && !S.destErr) { cargar('dest', loadDest); return skel(eb, tt); }
+    if (S.destErr) return head(eb, tt, sub) + errBox(S.destErr, 'spDestReload');
+    const D = S.dest; const mios = D.mios || [];
+    const activos = mios.filter((m) => m.estado === 'activo' || m.estado === 'programado');
+    const pasados = mios.filter((m) => m.estado !== 'activo' && m.estado !== 'programado').slice(0, 6);
+    const pr = D.precios || {};
+    const tabla = ['E', 'D', 'C'].filter((k) => pr[k]).map((k) => `<tr class="${D.plan === k ? 'on' : ''}"><td>${HH.levelBadge(k, true)}</td><td class="num">${fmtCr(pr[k].dia)}</td><td class="num">${fmtCr(pr[k].semana)}</td></tr>`).join('');
+    const c = D.cupo; const lleno = c && c.ocupadosAhora >= c.cupo;
+    const pf = D.proximaFechaLibre || {};
+    const opcion = (dias) => {
+      const precio = D.precio && (dias === 1 ? D.precio.dia : D.precio.semana);
+      const libre = dias === 1 ? pf.dia : pf.semana;
+      const futuro = libre && new Date(libre) > new Date(Date.now() + 60000);
+      return `<div class="sp-dop">
+        <div><div class="card-title">${dias === 1 ? '1 día' : '7 días'}</div><div class="sp-dop-n"><strong class="num">${fmtCr(precio)}</strong> <span>créditos</span></div>${dias === 7 && D.precio ? `<div class="tiny muted"><span>Ahorrás ${fmtCr(cents(D.precio.dia) * 7 / 100 - cents(D.precio.semana) / 100)} créditos</span></div>` : ''}</div>
+        ${futuro ? `<div class="tiny muted">Próxima fecha libre: ${esc(fHora(libre))}</div>` : ''}
+        <button type="button" class="btn ${dias === 7 ? '' : 'secondary'} block" data-action="spDestacar" data-dias="${dias}"${futuro ? ` data-desde="${esc(libre)}"` : ''}${S.busy.dest ? ' disabled' : ''}>${futuro ? 'Reservar ' + (dias === 1 ? '1 día' : '7 días') : 'Destacar ' + (dias === 1 ? '1 día' : '7 días')}</button>
+      </div>`;
+    };
+    return head(eb, tt, sub, saldoChip()) + `
+      ${!D.disponible ? `<div class="notice ${D.plan === 'S' ? 'info' : 'warn'}">${icon(D.plan === 'S' ? 'star' : 'info')}<span>${esc(D.motivo || 'El Destacado no está disponible para tu perfil por ahora.')}</span></div>` : ''}
+      ${D.disponible ? `<div class="card stack" style="gap:12px">
+        <div class="row between"><div class="card-title">Con tu plan</div>${HH.levelBadge(D.plan, true)}</div>
+        <div class="sp-dops">${opcion(1)}${opcion(7)}</div>
+        ${c ? `<div class="stack" style="gap:6px"><div class="row between small"><span>Lugares en tu provincia</span><span><span class="num">${Math.min(c.ocupadosAhora, c.cupo)}</span> <span>de</span> <span class="num">${c.cupo}</span> <span>ocupados ahora</span></span></div><div class="sp-prog sp-cupo${lleno ? ' full' : ''}"><i style="width:${Math.min(100, Math.round((Math.min(c.ocupadosAhora, c.cupo) / Math.max(1, c.cupo)) * 100))}%"></i></div><div class="tiny muted">Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia.${lleno ? ' Ahora está completo: podés reservar la próxima fecha libre.' : ''}</div></div>` : ''}
+        <p class="tiny muted" style="margin:0">El Destacado vale para el plan con el que lo comprás. Si subís de plan por mes, te devolvemos en créditos lo que no usaste.</p>
+      </div>` : ''}
+      ${activos.length ? `<div class="card stack" style="gap:10px"><div class="card-title">Tus Destacados</div><div class="list">${activos.map(destRow).join('')}</div></div>` : ''}
+      ${tabla ? `<div class="card stack" style="gap:10px"><div class="card-title">Precios por plan</div><div class="table-wrap"><table class="table sp-dtab"><thead><tr><th>Plan</th><th class="num">1 día</th><th class="num">7 días</th></tr></thead><tbody>${tabla}</tbody></table></div><p class="tiny muted" style="margin:0">En créditos. Star no necesita Destacado: ya aparece arriba de todo.</p></div>` : ''}
+      ${pasados.length ? `<details class="card sp-det"><summary>Anteriores</summary><div class="list" style="margin-top:10px">${pasados.map(destRow).join('')}</div></details>` : ''}`;
+  }
+  function destRow(m) {
+    const [cls, l] = EST_DEST[m.estado] || ['neutral', m.estado];
+    return `<div class="list-item">${icon('sparkles')}<div class="grow" style="min-width:0"><div class="title"><span>${m.dias === 7 ? '7 días' : '1 día'}</span> · <span>${esc(m.planNombre || HH.planName(m.plan))}</span></div><div class="sub"><span>Del ${esc(fHora(m.desde))} al ${esc(fHora(m.hasta))}</span> · <span>${fmtCr(m.costo)} créditos</span></div></div>${badge(cls, l)}</div>`;
+  }
+
+  /* ---- Avisos (notificaciones) ---- */
+  const NOTIF = {
+    creditos_acreditados: ['ok', 'wallet', 'Créditos acreditados'], pedido_rechazado: ['danger', 'alert', 'Pedido rechazado'],
+    plan_comprado: ['ok', 'card', 'Plan activado'], plan_renovado: ['ok', 'refresh', 'Plan renovado'], plan_asignado: ['ok', 'gift', 'Plan asignado'],
+    plan_vence: ['warn', 'clock', 'Tu plan está por terminar'], plan_vencio: ['neutral', 'clock', 'Tu plan terminó'],
+    saldo_insuficiente: ['warn', 'wallet', 'Faltan créditos para renovar'], perfil_pausado: ['danger', 'alert', 'Perfil pausado'],
+    renovacion_pendiente: ['warn', 'refresh', 'Renovación pendiente'], destacado: ['info', 'sparkles', 'Destacado'],
+  };
+  const NOTIF_LINK = { creditos_acreditados: 'creditos', pedido_rechazado: 'creditos', saldo_insuficiente: 'creditos', perfil_pausado: 'creditos', renovacion_pendiente: 'plan', plan_comprado: 'plan', plan_renovado: 'plan', plan_asignado: 'plan', plan_vence: 'plan', plan_vencio: 'plan', destacado: 'destacado' };
+  function panelAvisos() {
+    const eb = 'Avisos', tt = 'Tus avisos';
+    if (!S.notif && !S.notifErr) { cargar('notif', loadNotif); return skel(eb, tt); }
+    if (S.notifErr) return head(eb, tt, '') + errBox(S.notifErr, 'spNotifReload');
+    const items = S.notif.items || []; const n = items.filter((x) => !x.leida).length;
+    return head(eb, tt, 'Pagos, renovaciones de tu plan y Destacado.', n ? `<button type="button" class="btn ghost sm" data-action="spNotifLeer"${S.busy.leer ? ' disabled' : ''}>${icon('check')} Marcar todo como leído</button>` : '') + `
+      ${items.length ? `<div class="card" style="padding:6px 8px"><div class="list sp-notifs">${items.map((x) => {
+        const [cls, ic, tit] = NOTIF[x.tipo] || ['neutral', 'bell', 'Aviso']; const to = NOTIF_LINK[x.tipo];
+        return `<button type="button" class="list-item sp-notif${x.leida ? '' : ' nueva'}" data-action="spNotifAbrir" data-id="${esc(String(x.id))}" data-to="${to || ''}"><span class="sp-notif-ic ${cls}">${icon(ic)}</span><div class="grow" style="min-width:0"><div class="title"><span>${esc(tit)}</span>${x.leida ? '' : '<i class="sp-ndot" aria-label="Sin leer"></i>'}</div><div class="sub sp-notif-t"><span>${esc(fechasCortas(x.texto))}</span></div><div class="tiny muted">${esc(fHora(x.creado))}</div></div>${to ? icon('chevronRight') : ''}</button>`;
+      }).join('')}</div></div>` : `<div class="empty">${icon('bell')}<h4>No tenés avisos</h4><p class="small">Acá te avisamos cuando acreditamos tus créditos, se renueva tu plan o empieza tu Destacado.</p></div>`}`;
   }
 
   function panelCuenta() {
@@ -986,21 +1296,97 @@
       } });
     },
     async spPlanesReload() { S.planes = null; S.planesErr = null; rerender(); },
-    async spPedir(el) {
-      const plan = el.dataset.plan, periodo = el.dataset.per; const x = ((S.planes || {}).planes || []).find((p) => p.codigo === plan); if (!x) return;
-      const monto = periodo === 'semana' ? x.semana : x.mes;
-      HH.confirm({ title: 'Pedir ' + x.nombre, text: `<span>${esc(x.nombre)}</span> · <span>${periodo === 'semana' ? '1 semana' : '1 mes'}</span>: <strong>${HH.money(monto)}</strong>. <span>Te mostramos los datos para transferir.</span>`, okLabel: 'Pedir', onOk: async () => {
-        S.busy.pedir = true; rerender();
-        try { const r = await api('POST', '/cuenta/pedidos', { plan, periodo }); await loadPlanes(); S.busy.pedir = false; rerender(); const ped = r.pedido || {}; HH.modal({ title: 'Transferí para activar tu plan', body: transferHtml(ped), actions: [{ label: 'Lo hago después', cls: 'ghost', action: 'closeModal' }, { label: 'Ya transferí', onClick: () => informar(ped.id) }] }); }
-        catch (e) { S.busy.pedir = false; rerender(); HH.toast(e.message, { type: 'danger' }); }
+    spCredReload() { S.cred = null; S.credErr = null; rerender(); },
+    spDestReload() { S.dest = null; S.destErr = null; rerender(); },
+    spNotifReload() { S.notif = null; S.notifErr = null; rerender(); },
+    async spCopiar(el) {
+      const v = el.dataset.v || '';
+      try { await navigator.clipboard.writeText(v); HH.toast('Código copiado.', { type: 'ok' }); }
+      catch (e) { HH.toast(v); }
+    },
+    // Créditos: pedido de un pack o carga a medida → se abre WhatsApp (o Telegram) con el mensaje armado
+    spComprarPack(el) { pedirCreditos({ packId: el.dataset.id }); },
+    spCargaMedida(form, ev, data) {
+      const n = Number(data.creditos); const C = S.cred || {};
+      const min = C.cargaMinima || 10, max = C.cargaMaxima || 10000;
+      if (!Number.isInteger(n) || n < min || n > max) { HH.toast('La carga a medida es de ' + min + ' a ' + max + ' créditos (números enteros).', { type: 'danger' }); return; }
+      pedirCreditos({ creditos: n });
+    },
+    async spMovMas(el) {
+      if (S.busy.movMas) return; S.busy.movMas = true; rerender();
+      try {
+        const r = await api('GET', '/cuenta/creditos?limite=50&antesDe=' + encodeURIComponent(el.dataset.id));
+        S.credMas = { items: (S.credMas ? S.credMas.items : []).concat(r.movimientos || []), siguiente: r.siguiente || null };
+      } catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      S.busy.movMas = false; rerender();
+    },
+    spComprobante(el) { comprobante(el.dataset.id); },
+    spCancelarPedidoCr(el) {
+      HH.confirm({ title: 'Cancelar pedido', text: '¿Querés cancelar este pedido? Si ya pagaste, no lo canceles: mandanos el comprobante.', okLabel: 'Cancelar pedido', cls: 'danger', onOk: async () => {
+        try { await api('POST', '/cuenta/creditos/pedidos/' + encodeURIComponent(el.dataset.id) + '/cancelar'); await loadCred(); HH.toast('Pedido cancelado.'); rerender(); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
       } });
     },
-    spDatosPago(el) { const x = ((S.planes || {}).pedidos || []).find((p) => p.id === el.dataset.id); if (x) HH.modal({ title: 'Datos para transferir', body: transferHtml(x), actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }, { label: 'Ya transferí', onClick: () => informar(x.id) }] }); },
-    spInformar(el) { informar(el.dataset.id); },
-    async spCancelarPedido(el) {
-      HH.confirm({ title: 'Cancelar pedido', text: '¿Querés cancelar este pedido? Si ya transferiste, no lo canceles: tocá "Ya transferí".', okLabel: 'Cancelar pedido', cls: 'danger', onOk: async () => {
-        try { await api('POST', '/cuenta/pedidos/' + encodeURIComponent(el.dataset.id) + '/cancelar'); await loadPlanes(); HH.toast('Pedido cancelado.'); rerender(); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
-      } });
+    // Plan: vista previa (cotizar) y confirmación; nunca se cobra sin que ella vea el costo
+    async spCotizar(el) {
+      const plan = el.dataset.plan, periodo = el.dataset.per; if (S.busy.cot) return;
+      S.busy.cot = true; rerender();
+      let q;
+      try { q = await api('GET', '/cuenta/plan/cotizar?plan=' + encodeURIComponent(plan) + '&periodo=' + encodeURIComponent(periodo)); }
+      catch (e) { S.busy.cot = false; rerender(); HH.toast(e.message, { type: 'danger', ms: 6000 }); return; }
+      S.busy.cot = false; rerender();
+      const titulo = (TIPO_COMPRA[q.tipo] || 'Plan') + ': ' + (q.planNombre || HH.planName(plan));
+      HH.modal({ title: titulo, body: cotizacionHtml(q), actions: q.alcanza
+        ? [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Pagar ' + fmtCr(q.costo) + ' créditos', onClick: (btn) => comprarPlan(plan, periodo, btn) }]
+        : [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] });
+    },
+    async spRenovacion(el) {
+      const activa = el.dataset.v === '1'; if (S.busy.renov) return;
+      const go = async () => {
+        S.busy.renov = true; rerender();
+        try { const r = await api('PUT', '/cuenta/plan/renovacion', { activa }); await loadPlanes(); if (r.reanudado) await afterYoChange(''); HH.toast(activa ? 'Renovación automática encendida.' : r.reanudado ? 'Listo: seguís con Bronce y tu perfil vuelve a verse.' : 'Renovación automática apagada.', { type: 'ok' }); }
+        catch (e) { HH.toast(e.message, { type: 'danger' }); }
+        S.busy.renov = false; rerender();
+      };
+      if (activa) return go();
+      const base = S.planes && S.planes.base;
+      HH.confirm({ title: 'Apagar la renovación automática', text: base ? `<span>Tu plan sigue hasta el ${esc(fLarga(base.hasta))}. Después pasás a Bronce, gratis.</span>` : '<span>Pasás a Bronce, gratis.</span>', okLabel: 'Apagar', onOk: go });
+    },
+    async spCambio(el) {
+      const plan = el.dataset.plan || null; const base = S.planes && S.planes.base; if (!base) return;
+      const go = async () => {
+        try { await api('PUT', '/cuenta/plan/cambio', { plan }); await loadPlanes(); HH.toast(plan ? 'Cambio programado.' : 'Listo, se renueva el mismo plan.', { type: 'ok' }); rerender(); }
+        catch (e) { HH.toast(e.message, { type: 'danger', ms: 6000 }); }
+      };
+      if (!plan) return go();
+      HH.confirm({ title: 'Pasar a ' + HH.planName(plan), text: plan === 'E'
+        ? `<span>Tu plan ${esc(base.planNombre || HH.planName(base.plan))} sigue hasta el ${esc(fLarga(base.hasta))}. Después pasás a Bronce, gratis, y no se cobra nada más.</span>`
+        : `<span>Tu plan ${esc(base.planNombre || HH.planName(base.plan))} sigue hasta el ${esc(fLarga(base.hasta))}. Desde ese día se renueva como ${esc(HH.planName(plan))}, por ${fmtCr((S.planes.precios || {}).mes ? S.planes.precios.mes[plan] : HH.LEVELS[plan].price_usd)} créditos por mes.</span>`, okLabel: 'Programar', onOk: go });
+    },
+    // Destacado: comprar ahora (o reservar la próxima fecha libre si el cupo está lleno)
+    spDestacar(el) {
+      const dias = Number(el.dataset.dias); const desde = el.dataset.desde || null; const D = S.dest || {};
+      const precio = D.precio && (dias === 1 ? D.precio.dia : D.precio.semana);
+      const falta = cents(precio) - cents(D.saldo);
+      HH.modal({ title: (desde ? 'Reservar Destacado' : 'Destacar mi perfil') + ' · ' + (dias === 1 ? '1 día' : '7 días'), body: `<div class="stack" style="gap:12px">
+          <div class="sp-amount"><span class="small muted">Destacado</span><strong><span class="num">${fmtCr(precio)}</span> <span>créditos</span></strong><span class="small muted">${desde ? `<span>Desde el ${esc(fHora(desde))}</span>` : '<span>Empieza ahora</span>'}</span></div>
+          <div class="sp-saldo-row"><span class="small muted">Tu saldo</span><span><span class="num">${fmtCr(D.saldo)}</span> <span>créditos</span></span></div>
+          ${falta > 0 ? faltaHtml({ centavos: falta }) : ''}
+        </div>`, actions: falta > 0 ? [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }]
+        : [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Pagar ' + fmtCr(precio) + ' créditos', onClick: (btn) => destacar(dias, desde, btn) }] });
+    },
+    async spNotifLeer() {
+      S.busy.leer = true; rerender();
+      try { const r = await api('POST', '/cuenta/notificaciones/leer', {}); (S.notif.items || []).forEach((x) => { x.leida = true; }); if (S.yo) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }
+      catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      S.busy.leer = false; rerender();
+    },
+    async spNotifAbrir(el) {
+      const id = el.dataset.id; const x = ((S.notif || {}).items || []).find((n) => String(n.id) === id);
+      if (x && !x.leida) {
+        x.leida = true; if (S.yo) S.yo.notificaciones = { noLeidas: Math.max(0, noLeidas() - 1) };
+        api('POST', '/cuenta/notificaciones/leer', { ids: [x.id] }).then((r) => { if (S.yo && r) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }).catch(() => {});
+      }
+      if (el.dataset.to) { S.planes = null; S.cred = null; S.dest = null; HH.go('#panel.' + el.dataset.to); } else { rerender(); HH.renderShell(); }
     },
     async spPass(form, ev, data) {
       showErr('spCPErr', ''); const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
@@ -1031,20 +1417,69 @@
     },
   });
   async function ordenar(ids) { try { await api('PUT', '/cuenta/fotos/orden', { ids }); await afterYoChange(''); } catch (e) { HH.toast(e.message, { type: 'danger' }); } }
-  function informar(id) {
-    HH.modal({ title: 'Ya transferí', body: `<div class="stack">
-        <p class="small muted">Si querés, adjuntá el comprobante. Así lo confirmamos más rápido.</p>
-        <div class="field"><label for="spInfFile">Comprobante <span class="muted" style="font-weight:500">(opcional)</span></label><input class="input" id="spInfFile" type="file" accept="image/*,application/pdf"></div>
-        <div class="field"><label for="spInfNota">Nota <span class="muted" style="font-weight:500">(opcional)</span></label><input class="input" id="spInfNota" maxlength="300" placeholder="Transferí desde la cuenta de…"></div>
-      </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Avisar que transferí', onClick: async (btn) => {
-        const f = document.getElementById('spInfFile').files[0]; const nota = document.getElementById('spInfNota').value.trim();
+  // Pedido de créditos: lo crea el servidor (código SR-####) y se abre el chat con el mensaje armado. Si el navegador
+  // bloquea la ventana nueva, el pedido queda arriba en Créditos con el botón "Abrir WhatsApp".
+  async function pedirCreditos(body) {
+    if (S.busy.pedCr) return; S.busy.pedCr = true; rerender();
+    // La ventana se abre ya (en el mismo toque) para que el navegador no la bloquee; después se le pone la dirección
+    let w = null; try { w = window.open('', '_blank'); } catch (e) { w = null; }
+    try {
+      const r = await api('POST', '/cuenta/creditos/pedidos', Object.assign({ lang: HH.lang }, body));
+      const ped = r.pedido || {}; const url = ped.whatsappUrl || ped.telegramUrl;
+      if (url && w && !w.closed) { try { w.opener = null; w.location.href = url; } catch (e) { w.close(); } } else if (w) w.close();
+      await loadCred(); S.busy.pedCr = false;
+      if (!/^panel\.creditos/.test(HH.currentHash())) HH.go('#panel.creditos'); else rerender();
+      HH.toast('Pedido ' + (ped.codigo || '') + ' creado. Mandanos el mensaje por WhatsApp para pagarlo.', { type: 'ok', ms: 6000 });
+    } catch (e) { if (w) w.close(); S.busy.pedCr = false; rerender(); HH.toast(e.message, { type: 'danger', ms: 6000 }); }
+  }
+  function comprobante(id) {
+    HH.modal({ title: 'Adjuntar comprobante', body: `<div class="stack">
+        <p class="small muted">Si ya pagaste, mandanos el comprobante: así lo confirmamos más rápido. También podés mandarlo por WhatsApp.</p>
+        <div class="field"><label for="spCompFile">Comprobante <span class="muted" style="font-weight:500">(foto o PDF, hasta 8 MB)</span></label><input class="input" id="spCompFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"></div>
+        <div class="field"><label for="spCompNota">Nota <span class="muted" style="font-weight:500">(opcional)</span></label><input class="input" id="spCompNota" maxlength="300" placeholder="Pagué desde la cuenta de…"></div>
+      </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Enviar', onClick: async (btn) => {
+        const f = document.getElementById('spCompFile').files[0]; const nota = document.getElementById('spCompNota').value.trim();
+        if (!f && !nota) { HH.toast('Adjuntá el comprobante (o escribí una nota).', { type: 'warn' }); return; }
         if (btn) btn.disabled = true;
         try {
-          if (f) { const fd = new FormData(); fd.append('comprobante', f); fd.append('nota', nota); await upload('/cuenta/pedidos/' + encodeURIComponent(id) + '/informar', fd); }
-          else await api('POST', '/cuenta/pedidos/' + encodeURIComponent(id) + '/informar', { nota });
-          HH.closeModal(); await loadPlanes(); HH.toast('Listo, avisamos que transferiste. Te confirmamos por email.', { type: 'ok' }); rerender();
+          const fd = new FormData(); if (f) fd.append('comprobante', f); if (nota) fd.append('nota', nota);
+          await upload('/cuenta/creditos/pedidos/' + encodeURIComponent(id) + '/comprobante', fd);
+          HH.closeModal(); await loadCred(); HH.toast('Recibimos tu comprobante. Te avisamos cuando acreditemos los créditos.', { type: 'ok' }); rerender();
         } catch (e) { if (btn) btn.disabled = false; HH.toast(e.message, { type: 'danger' }); }
       } }] });
+  }
+  async function comprarPlan(plan, periodo, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await api('POST', '/cuenta/plan/comprar', { plan, periodo });
+      HH.closeModal(); syncSaldo(r.saldo);
+      const nom = HH.planName(plan);
+      const msg = { nuevo: 'Listo: activaste ' + nom + '.', renovacion_anticipada: 'Listo: sumaste 30 días de ' + nom + '.', subida: 'Listo: pasaste a ' + nom + '.', semana: 'Listo: activaste una semana de ' + nom + '.', subida_temporal: 'Listo: subiste a ' + nom + ' por 7 días.' }[r.tipo] || 'Listo.';
+      S.dest = null; await loadPlanes(); await afterYoChange('');
+      HH.toast(msg + (r.reanudado ? ' Tu perfil vuelve a verse.' : '') + (r.devueltoDestacado && cents(r.devueltoDestacado) > 0 ? ' Te devolvimos ' + fmtCr(r.devueltoDestacado) + ' créditos del Destacado.' : ''), { type: 'ok', ms: 6000 });
+    } catch (e) {
+      if (btn) btn.disabled = false;
+      HH.closeModal(); errCompra(e);
+      if (e.status === 409 || e.status === 402) { await loadPlanes(); rerender(); }
+    }
+  }
+  async function destacar(dias, desde, btn) {
+    if (btn) btn.disabled = true; S.busy.dest = true;
+    try {
+      const r = await api('POST', '/cuenta/destacado', desde ? { dias, desde } : { dias });
+      HH.closeModal(); syncSaldo(r.saldo); await loadDest(); S.busy.dest = false; await afterYoChange('');
+      const d = r.destacado || {};
+      HH.toast(d.estado === 'programado' ? 'Reservaste el Destacado desde el ' + fHora(d.desde) + '.' : 'Tu perfil está Destacado hasta el ' + fHora(d.hasta) + '.', { type: 'ok', ms: 6000 });
+    } catch (e) {
+      S.busy.dest = false; if (btn) btn.disabled = false;
+      const dd = e.data || {};
+      if (e.status === 409 && dd.codigo === 'cupo_lleno' && dd.proximaFechaLibre) {
+        HH.closeModal();
+        HH.modal({ title: 'El Destacado está completo', body: `<div class="stack"><p class="small">Los lugares destacados de tu plan en tu provincia están ocupados en esas fechas. Podés reservar la próxima fecha libre: se cobra ahora y empieza ese día.</p><div class="sp-amount"><span class="small muted">Próxima fecha libre</span><strong>${esc(fHora(dd.proximaFechaLibre))}</strong></div></div>`, actions: [{ label: 'Ahora no', cls: 'ghost', action: 'closeModal' }, { label: 'Reservar esa fecha', onClick: (b) => destacar(dias, dd.proximaFechaLibre, b) }] });
+        await loadDest(); rerender(); return;
+      }
+      HH.closeModal(); errCompra(e); await loadDest(); rerender();
+    }
   }
 
   /* ---------- Arranque ---------- */
@@ -1064,7 +1499,7 @@
 
   /* ---------- Tarjetas grandes (foto a todo el ancho, nombre y zona abajo) + clip de 5 s + favoritos ---------- */
   // Las grillas del MVP arman <a class="pcard">; acá se reemplazan por la tarjeta nueva (sin tocar el código de la demo).
-  const PREVIEW_PLANES = new Set(['C', 'B', 'A', 'S']);
+  const PREVIEW_PLANES = new Set(['D', 'C', 'S']);
   const FAV_KEY = 'sr_favs';
   const favs = () => { try { const a = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []; } catch (e) { return S.favMem || []; } };
   const setFavs = (a) => { S.favMem = a; try { localStorage.setItem(FAV_KEY, JSON.stringify(a)); } catch (e) { /* sin almacenamiento: queda en memoria */ } };
@@ -1108,12 +1543,15 @@
       ? `<video class="pc2-vid" muted loop playsinline preload="none" disablepictureinpicture tabindex="-1" aria-hidden="true" data-src="${esc(p.previewUrl)}"></video>` : '';
     const lugar = p.zone || p.city || '';
     const fav = esFav(p.userId);
+    // Destacado: variante A (arriba del nombre) o B (pastilla arriba a la izquierda). HH.BADGE_DESTACADO permite probar la otra.
+    const dest = esDest(p); const varB = (HH.BADGE_DESTACADO || BADGE_DESTACADO) === 'B';
     return `<div class="pc2" data-pc2="${esc(p.userId)}">
       <a class="pc2-link" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}" data-imp="${esc(p.userId)}" aria-label="Ver perfil de ${esc(p.displayName)}">
         <div class="pc2-media">${img}${vid}</div>
         ${p.verified === 'verified' ? `<span class="pc2-ver" title="Verificada">${icon('check')}</span>` : ''}
         ${HH.isStar(p.userId) ? `<span class="pc2-starb">${icon('star')} Star</span>` : ''}
-        <div class="pc2-info"><div class="pc2-name" data-noi18n>${esc(p.displayName)}</div>${lugar ? `<div class="pc2-loc" data-noi18n>${esc(lugar)}</div>` : ''}${tripCard(p)}</div>
+        ${dest && varB ? `<span class="pc2-destb${p.verified === 'verified' ? '' : ' sinver'}">${icon('sparkles')}<span>Destacado</span></span>` : ''}
+        <div class="pc2-info">${dest && !varB ? `<span class="pc2-dest">${icon('sparkles')}<span>Destacado</span></span>` : ''}<div class="pc2-name" data-noi18n>${esc(p.displayName)}</div>${lugar ? `<div class="pc2-loc" data-noi18n>${esc(lugar)}</div>` : ''}${tripCard(p)}</div>
       </a>
       <button type="button" class="pc2-fav${fav ? ' on' : ''}" data-action="spFav" data-id="${esc(p.userId)}" aria-pressed="${fav}" aria-label="${fav ? 'Sacar de favoritos' : 'Guardar en favoritos'}" title="Favoritos">${icon('star')}</button>
     </div>`;
@@ -1185,7 +1623,7 @@
     return r;
   };
 
-  // Panel: video de la tarjeta (5 s, sin sonido; desde Oro)
+  // Panel: video de la tarjeta (5 s, sin sonido; desde Plata)
   function panelPreview() {
     if (!S.yo || !S.yo.videosHabilitados) return '';
     const listos = (S.yo.perfil.videos || []).filter((v) => v.estado === 'listo');
@@ -1194,8 +1632,8 @@
     const titulo = `<div><div class="card-title">Video de tu tarjeta</div><div class="small muted">5 segundos sin sonido que se reproducen en tu tarjeta del inicio y de las páginas de tu ciudad.</div></div>`;
     if (!S.yo.previewHabilitado) {
       return `<div class="card stack pv-card" style="gap:12px;margin-top:14px" id="spPreview">
-        <div class="row between">${titulo}<span class="badge neutral">${icon('lock')} Disponible desde Oro</span></div>
-        <p class="small">Con el plan Oro o más alto, tu tarjeta muestra unos segundos de uno de tus videos y llama más la atención.</p>
+        <div class="row between">${titulo}<span class="badge neutral">${icon('lock')} Disponible desde Plata</span></div>
+        <p class="small">Con el plan Plata o más alto, tu tarjeta muestra unos segundos de uno de tus videos y llama más la atención.</p>
         <div><a class="btn sm" href="#panel.plan" data-go="#panel.plan">${icon('card')} Ver planes</a></div>
       </div>`;
     }
@@ -1282,8 +1720,6 @@
     'De visita': ['Visiting', 'De visita'], 'hasta el {x}': ['until {x}', 'até {x}'], 'desde el {x}': ['from {x}', 'a partir de {x}'],
     'Video de tu tarjeta': ['Your card video', 'Vídeo do seu card'],
     '5 segundos sin sonido que se reproducen en tu tarjeta del inicio y de las páginas de tu ciudad.': ['5 silent seconds that play on your card on the home page and your city pages.', '5 segundos sem som que tocam no seu card no início e nas páginas da sua cidade.'],
-    'Disponible desde Oro': ['Available from Gold', 'Disponível a partir do Ouro'],
-    'Con el plan Oro o más alto, tu tarjeta muestra unos segundos de uno de tus videos y llama más la atención.': ['With the Gold plan or higher, your card shows a few seconds of one of your videos and stands out more.', 'Com o plano Ouro ou superior, seu card mostra alguns segundos de um dos seus vídeos e chama mais atenção.'],
     'Ver planes': ['See plans', 'Ver planos'], 'Elegido por vos': ['Chosen by you', 'Escolhido por você'], 'Automático': ['Automatic', 'Automático'],
     'Así se ve ahora': ['How it looks now', 'Como aparece agora'], 'Elegí el video': ['Choose the video', 'Escolha o vídeo'], 'Desde qué segundo': ['Starting second', 'A partir de qual segundo'], 'Tu recorte': ['Your cut', 'Seu recorte'],
     'Usar este video': ['Use this video', 'Usar este vídeo'], 'Segundo de inicio': ['Start second', 'Segundo inicial'],
@@ -1292,6 +1728,185 @@
     'Estamos armando el clip de tu tarjeta.': ['We are making your card clip.', 'Estamos montando o clipe do seu card.'], 'Volvimos al clip automático.': ['Back to the automatic clip.', 'Voltamos ao clipe automático.'],
     'No se pudo armar el clip.': ['The clip could not be made.', 'Não foi possível montar o clipe.'],
   });
+  /* ---------- Planes v2: textos en inglés y portugués ---------- */
+  (function () {
+    // {P} y {Q} = nombre de un plan (se traduce: Plata → Silver/Prata); se arma una entrada por cada plan
+    const PN = { Bronce: ['Bronze', 'Bronze'], Plata: ['Silver', 'Prata'], Oro: ['Gold', 'Ouro'], Star: ['Star', 'Star'] };
+    const out = {};
+    const add = (es, en, pt) => {
+      const ps = /\{P\}/.test(es) ? Object.keys(PN) : [null]; const qs = /\{Q\}/.test(es) ? Object.keys(PN) : [null];
+      ps.forEach((p) => qs.forEach((q) => {
+        const r = (t, i) => t.replace(/\{P\}/g, p ? (i < 0 ? p : PN[p][i]) : '{P}').replace(/\{Q\}/g, q ? (i < 0 ? q : PN[q][i]) : '{Q}');
+        out[r(es, -1)] = [r(en, 0), r(pt, 1)];
+      }));
+    };
+    [
+      // Planes
+      ['Tu perfil publicado y verificado, gratis.', 'Your profile published and verified, for free.', 'Seu perfil publicado e verificado, grátis.'],
+      ['Más fotos, hasta 3 historias por día y el clip de 5 segundos en tu tarjeta.', 'More photos, up to 3 stories per day and the 5-second clip on your card.', 'Mais fotos, até 3 stories por dia e o clipe de 5 segundos no seu card.'],
+      ['Más arriba en el inicio, tarjetas más grandes, fotos e historias casi sin límite.', 'Higher on the home page, bigger cards, photos and stories with almost no limit.', 'Mais acima no início, cards maiores, fotos e stories quase sem limite.'],
+      ['Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.', 'Fixed spot at the top of the home page in your province. Only 10 per province.', 'Lugar fixo no topo do início na sua província. Só 10 por província.'],
+      ['Precio por mes, en créditos (1 crédito = 1 dólar). Oro y Star también se pueden pagar por semana. Los créditos se compran por WhatsApp.', 'Price per month, in credits (1 credit = 1 US dollar). Gold and Star can also be paid by the week. Credits are bought on WhatsApp.', 'Preço por mês, em créditos (1 crédito = 1 dólar). Ouro e Star também podem ser pagos por semana. Os créditos são comprados pelo WhatsApp.'],
+      ['Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las acompañantes pagan su plan con créditos, por mes o por semana; la renovación automática del plan mensual se apaga cuando quieran desde su panel.', 'Outings are canceled with the person you arranged them with, on WhatsApp and in advance. Companions pay their plan with credits, by the month or by the week; the monthly plan auto-renewal can be turned off anytime from their dashboard.', 'Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. As acompanhantes pagam o plano com créditos, por mês ou por semana; a renovação automática do plano mensal pode ser desligada quando quiserem no painel.'],
+      ['Tu plan', 'Your plan', 'Seu plano'], 'Plan actual', ['Gratis', 'Free', 'Grátis'],
+      ['Pagás con créditos. El plan por mes se renueva solo si te alcanzan los créditos; lo podés apagar cuando quieras. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.', 'You pay with credits. The monthly plan renews automatically if you have enough credits; you can turn that off anytime. A week of a higher plan moves you up for 7 days and then you go back to your plan automatically.', 'Você paga com créditos. O plano mensal se renova sozinho se os créditos forem suficientes; dá para desligar quando quiser. Uma semana de um plano mais alto te sobe por 7 dias e depois você volta sozinha ao seu plano.'],
+      ['por mes', 'monthly', 'mensal'], ['Hasta el {x}', 'Until {x}', 'Até {x}'], ['Del {x} al {x}', 'From {x} to {x}', 'De {x} a {x}'],
+      ['Renovación automática', 'Auto-renewal', 'Renovação automática'], ['Encendida.', 'On.', 'Ligada.'],
+      ['Se renueva el {x} por {n} créditos.', 'Renews on {x} for {n} credits.', 'Renova em {x} por {n} créditos.'],
+      ['Te faltan {n} créditos.', 'You are {n} credits short.', 'Faltam {n} créditos.'],
+      ['Apagada: el {x} pasás a Bronce.', 'Off: on {x} you move to Bronze.', 'Desligada: em {x} você passa para o Bronze.'],
+      ['El {x} pasás a Bronce (gratis).', 'On {x} you move to Bronze (free).', 'Em {x} você passa para o Bronze (grátis).'],
+      ['El {x} pasás a {P}.', 'On {x} you move to {P}.', 'Em {x} você passa para o {P}.'],
+      ['Deshacer', 'Undo', 'Desfazer'], ['Después volvés a Bronce, gratis.', 'Then you go back to Bronze, for free.', 'Depois você volta ao Bronze, grátis.'],
+      ['Tu plan actual', 'Your current plan', 'Seu plano atual'], ['Más elegido', 'Most popular', 'Mais escolhido'],
+      ['Programado para el {x}', 'Scheduled for {x}', 'Programado para {x}'], ['Pasar a Bronce al vencer', 'Move to Bronze when it ends', 'Passar para o Bronze ao terminar'],
+      ['Pasar a {P} al renovar', 'Move to {P} at renewal', 'Passar para o {P} na renovação'], ['Subir a {P}', 'Upgrade to {P}', 'Subir para o {P}'],
+      ['Sumar 30 días · {n} créditos', 'Add 30 days · {n} credits', 'Somar 30 dias · {n} créditos'],
+      ['Activar 1 mes · {n} créditos', 'Activate 1 month · {n} credits', 'Ativar 1 mês · {n} créditos'],
+      ['1 semana · {n} créditos', '1 week · {n} credits', '1 semana · {n} créditos'],
+      ['Subí a {P} por 7 días · {n} créditos', 'Upgrade to {P} for 7 days · {n} credits', 'Suba para o {P} por 7 dias · {n} créditos'],
+      ['créditos / mes', 'credits / month', 'créditos / mês'], ['o {n} créditos por semana', 'or {n} credits per week', 'ou {n} créditos por semana'],
+      ['Hasta {n} fotos y {n} videos', 'Up to {n} photos and {n} videos', 'Até {n} fotos e {n} vídeos'], ['Historias ilimitadas', 'Unlimited stories', 'Stories ilimitados'],
+      ['1 historia por día', '1 story per day', '1 story por dia'], ['Hasta {n} historias por día', 'Up to {n} stories per day', 'Até {n} stories por dia'],
+      ['Clip de 5 segundos en tu tarjeta', '5-second clip on your card', 'Clipe de 5 segundos no seu card'],
+      ['Lugar fijo arriba de todo en tu provincia', 'Fixed spot at the very top in your province', 'Lugar fixo no topo da sua província'],
+      ['Destacado: 1 crédito el día', 'Featured: 1 credit per day', 'Destaque: 1 crédito por dia'], ['Destacado: {n} créditos el día', 'Featured: {n} credits per day', 'Destaque: {n} créditos por dia'],
+      ['Historial de planes', 'Plan history', 'Histórico de planos'], ['Vigente', 'Active', 'Vigente'], ['Vencida', 'Expired', 'Vencida'], ['Cancelada', 'Canceled', 'Cancelada'],
+      ['{n} créditos', '{n} credits', '{n} créditos'],
+      ['Tu perfil está pausado.', 'Your profile is paused.', 'Seu perfil está pausado.'],
+      ['No alcanzaron los créditos para renovar {P} ({n} créditos). Cargá créditos y tu perfil vuelve a publicarse solo.', 'You did not have enough credits to renew {P} ({n} credits). Top up and your profile is published again automatically.', 'Os créditos não foram suficientes para renovar o {P} ({n} créditos). Carregue créditos e seu perfil volta a ser publicado sozinho.'],
+      ['No pudimos renovar {P}: se renueva solo apenas cargues créditos.', 'We could not renew {P}: it renews automatically as soon as you top up.', 'Não conseguimos renovar o {P}: ele renova sozinho assim que você carregar créditos.'],
+      ['Seguir gratis con Bronce', 'Continue for free with Bronze', 'Seguir grátis com o Bronze'], ['Cargar créditos', 'Top up credits', 'Carregar créditos'],
+      ['Tu plan se renueva el {x} y te faltan {n} créditos.', 'Your plan renews on {x} and you are {n} credits short.', 'Seu plano renova em {x} e faltam {n} créditos.'],
+      ['Si no alcanzan, tu perfil se pausa hasta que cargues.', 'If they are not enough, your profile is paused until you top up.', 'Se não forem suficientes, seu perfil fica pausado até você carregar.'],
+      ['Tu perfil está pausado: no alcanzaron los créditos para renovar tu plan. Cargá créditos y vuelve a publicarse solo.', 'Your profile is paused: you did not have enough credits to renew your plan. Top up and it is published again automatically.', 'Seu perfil está pausado: os créditos não foram suficientes para renovar seu plano. Carregue créditos e ele volta a ser publicado sozinho.'],
+      ['Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.', 'Your profile is not shown because you did not have enough credits to renew your plan.', 'Seu perfil não aparece porque os créditos não foram suficientes para renovar seu plano.'],
+      ['Tu saldo', 'Your balance', 'Seu saldo'], ['Tu saldo:', 'Your balance:', 'Seu saldo:'], ['Te quedan', 'Left after paying', 'Restam'], ['Te faltan', 'You are short', 'Faltam'],
+      ['Cargá créditos y volvé a intentarlo.', 'Top up credits and try again.', 'Carregue créditos e tente de novo.'],
+      ['No te alcanzan los créditos', 'Not enough credits', 'Créditos insuficientes'],
+      ['Plan nuevo', 'New plan', 'Plano novo'], ['Sumás 30 días', 'You add 30 days', 'Você soma 30 dias'], ['Subida de plan', 'Plan upgrade', 'Upgrade de plano'], ['Semana', 'Week', 'Semana'], ['Subida por 7 días', '7-day upgrade', 'Upgrade por 7 dias'],
+      ['Plan nuevo: {P}', 'New plan: {P}', 'Plano novo: {P}'], ['Sumás 30 días: {P}', 'You add 30 days: {P}', 'Você soma 30 dias: {P}'], ['Subida de plan: {P}', 'Plan upgrade: {P}', 'Upgrade de plano: {P}'], ['Semana: {P}', 'Week: {P}', 'Semana: {P}'], ['Subida por 7 días: {P}', '7-day upgrade: {P}', 'Upgrade por 7 dias: {P}'],
+      ['Pagás solo la diferencia por los {n} días que le quedan a tu plan. Termina el mismo día que tu plan actual y después se renueva como {P}.', 'You only pay the difference for the {n} days left on your plan. It ends on the same day as your current plan and then renews as {P}.', 'Você paga só a diferença pelos {n} dias que restam do seu plano. Termina no mesmo dia do seu plano atual e depois renova como {P}.'],
+      ['Son 7 días. Después volvés solo a tu plan.', 'It is 7 days. Then you go back to your plan automatically.', 'São 7 dias. Depois você volta sozinha ao seu plano.'],
+      ['Son 30 días con renovación automática (la podés apagar cuando quieras).', 'It is 30 days with auto-renewal (you can turn it off anytime).', 'São 30 dias com renovação automática (dá para desligar quando quiser).'],
+      ['Pagar {n} créditos', 'Pay {n} credits', 'Pagar {n} créditos'], ['Cerrar', 'Close', 'Fechar'], ['Programar', 'Schedule', 'Programar'], ['Apagar', 'Turn off', 'Desligar'],
+      ['Apagar la renovación automática', 'Turn off auto-renewal', 'Desligar a renovação automática'],
+      ['Tu plan sigue hasta el {x}. Después pasás a Bronce, gratis.', 'Your plan continues until {x}. Then you move to Bronze, for free.', 'Seu plano continua até {x}. Depois você passa para o Bronze, grátis.'],
+      ['Pasás a Bronce, gratis.', 'You move to Bronze, for free.', 'Você passa para o Bronze, grátis.'], ['Pasar a {P}', 'Move to {P}', 'Passar para o {P}'],
+      ['Tu plan {P} sigue hasta el {x}. Después pasás a Bronce, gratis, y no se cobra nada más.', 'Your {P} plan continues until {x}. Then you move to Bronze, for free, and nothing else is charged.', 'Seu plano {P} continua até {x}. Depois você passa para o Bronze, grátis, e nada mais é cobrado.'],
+      ['Tu plan {P} sigue hasta el {x}. Desde ese día se renueva como {Q}, por {n} créditos por mes.', 'Your {P} plan continues until {x}. From that day it renews as {Q}, for {n} credits per month.', 'Seu plano {P} continua até {x}. A partir desse dia renova como {Q}, por {n} créditos por mês.'],
+      ['Renovación automática encendida.', 'Auto-renewal turned on.', 'Renovação automática ligada.'], ['Renovación automática apagada.', 'Auto-renewal turned off.', 'Renovação automática desligada.'],
+      ['Listo: seguís con Bronce y tu perfil vuelve a verse.', 'Done: you continue with Bronze and your profile is visible again.', 'Pronto: você segue com o Bronze e seu perfil volta a aparecer.'],
+      ['Cambio programado.', 'Change scheduled.', 'Mudança programada.'], ['Listo, se renueva el mismo plan.', 'Done, the same plan will renew.', 'Pronto, o mesmo plano será renovado.'],
+      ['Listo: activaste {P}.', 'Done: you activated {P}.', 'Pronto: você ativou o {P}.'], ['Listo: sumaste 30 días de {P}.', 'Done: you added 30 days of {P}.', 'Pronto: você somou 30 dias de {P}.'],
+      ['Listo: pasaste a {P}.', 'Done: you moved to {P}.', 'Pronto: você passou para o {P}.'], ['Listo: activaste una semana de {P}.', 'Done: you activated a week of {P}.', 'Pronto: você ativou uma semana de {P}.'],
+      ['Listo: subiste a {P} por 7 días.', 'Done: you moved up to {P} for 7 days.', 'Pronto: você subiu para o {P} por 7 dias.'],
+      ['Listo: activaste {P}. Tu perfil vuelve a verse.', 'Done: you activated {P}. Your profile is visible again.', 'Pronto: você ativou o {P}. Seu perfil volta a aparecer.'],
+      ['Listo: sumaste 30 días de {P}. Tu perfil vuelve a verse.', 'Done: you added 30 days of {P}. Your profile is visible again.', 'Pronto: você somou 30 dias de {P}. Seu perfil volta a aparecer.'],
+      ['Listo: pasaste a {P}. Te devolvimos {n} créditos del Destacado.', 'Done: you moved to {P}. We refunded {n} credits from your Featured spot.', 'Pronto: você passou para o {P}. Devolvemos {n} créditos do Destaque.'],
+      // Créditos
+      ['Créditos', 'Credits', 'Créditos'], ['créditos', 'credits', 'créditos'], ['Tus créditos', 'Your credits', 'Seus créditos'],
+      ['Con créditos pagás tu plan, las semanas y el Destacado. 1 crédito = 1 dólar.', 'With credits you pay for your plan, weeks and Featured. 1 credit = 1 US dollar.', 'Com créditos você paga seu plano, as semanas e o Destaque. 1 crédito = 1 dólar.'],
+      ['Saldo disponible', 'Available balance', 'Saldo disponível'], ['Pagar mi plan', 'Pay my plan', 'Pagar meu plano'],
+      ['Comprar créditos', 'Buy credits', 'Comprar créditos'],
+      ['Elegí un pack: te abrimos WhatsApp con el pedido armado y te respondemos con el monto en pesos y cómo pagar. Cuando confirmamos el pago, los créditos se acreditan en tu cuenta.', 'Choose a pack: we open WhatsApp with your order ready and reply with the amount in pesos and how to pay. Once we confirm the payment, the credits are added to your account.', 'Escolha um pacote: abrimos o WhatsApp com o pedido pronto e respondemos com o valor em pesos e como pagar. Quando confirmamos o pagamento, os créditos entram na sua conta.'],
+      ['Comprar por WhatsApp', 'Buy on WhatsApp', 'Comprar pelo WhatsApp'], ['Comprar por Telegram', 'Buy on Telegram', 'Comprar pelo Telegram'], ['Muy pronto', 'Coming soon', 'Em breve'],
+      ['Pagás {x}', 'You pay {x}', 'Você paga {x}'], ['Recibís {n} créditos', 'You get {n} credits', 'Você recebe {n} créditos'], ['+{n} de regalo', '+{n} bonus', '+{n} de bônus'],
+      ['Alcanza para', 'Enough for', 'Dá para'], ['Destacados sueltos', 'a few Featured days', 'alguns Destaques avulsos'],
+      ['{n} mes de {P}', '{n} month of {P}', '{n} mês de {P}'], ['{n} meses de {P}', '{n} months of {P}', '{n} meses de {P}'],
+      ['{n} mes de {P} + {n}', '{n} month of {P} + {n}', '{n} mês de {P} + {n}'], ['{n} meses de {P} + {n}', '{n} months of {P} + {n}', '{n} meses de {P} + {n}'],
+      ['{n} meses de {P}, o {n} de {Q} + {n}', '{n} months of {P}, or {n} of {Q} + {n}', '{n} meses de {P}, ou {n} de {Q} + {n}'],
+      ['Inicial', 'Starter', 'Inicial'], ['Mes {P}', '{P} Month', 'Mês {P}'], ['Trimestre {P}', '{P} Quarter', 'Trimestre {P}'], ['Carga a medida', 'Custom top-up', 'Recarga personalizada'],
+      ['De {n} a {n} créditos, sin bonificación.', 'From {n} to {n} credits, no bonus.', 'De {n} a {n} créditos, sem bônus.'], ['Pedir', 'Order', 'Pedir'],
+      ['Tenés 3 pedidos esperando pago. Pagá o cancelá alguno antes de pedir otro.', 'You have 3 orders waiting for payment. Pay or cancel one before placing another.', 'Você tem 3 pedidos aguardando pagamento. Pague ou cancele algum antes de pedir outro.'],
+      ['Pedido en curso', 'Order in progress', 'Pedido em andamento'], ['Esperando pago', 'Waiting for payment', 'Aguardando pagamento'], ['Acreditado', 'Credited', 'Creditado'],
+      ['Código del pedido', 'Order code', 'Código do pedido'], ['Copiar', 'Copy', 'Copiar'], ['Copiar código', 'Copy code', 'Copiar código'], ['Código copiado.', 'Code copied.', 'Código copiado.'],
+      ['Mandanos el mensaje por WhatsApp con este código: te respondemos con el monto y cómo pagar.', 'Send us the WhatsApp message with this code: we reply with the amount and how to pay.', 'Mande a mensagem pelo WhatsApp com este código: respondemos com o valor e como pagar.'],
+      ['El pedido espera el pago hasta el {x}.', 'The order waits for payment until {x}.', 'O pedido aguarda o pagamento até {x}.'],
+      ['Recibimos tu comprobante. Te avisamos cuando acreditemos los créditos.', 'We received your receipt. We will let you know when the credits are added.', 'Recebemos seu comprovante. Avisamos quando os créditos entrarem.'],
+      ['Abrir WhatsApp', 'Open WhatsApp', 'Abrir WhatsApp'], ['Muy pronto vas a poder escribirnos desde acá.', 'Soon you will be able to message us from here.', 'Em breve você vai poder nos escrever daqui.'],
+      ['Adjuntar comprobante', 'Attach receipt', 'Anexar comprovante'], ['Mandar otro comprobante', 'Send another receipt', 'Enviar outro comprovante'], ['Cancelar pedido', 'Cancel order', 'Cancelar pedido'],
+      ['Si ya pagaste, mandanos el comprobante: así lo confirmamos más rápido. También podés mandarlo por WhatsApp.', 'If you already paid, send us the receipt: that way we confirm it faster. You can also send it on WhatsApp.', 'Se você já pagou, mande o comprovante: assim confirmamos mais rápido. Também dá para mandar pelo WhatsApp.'],
+      ['(foto o PDF, hasta 8 MB)', '(photo or PDF, up to 8 MB)', '(foto ou PDF, até 8 MB)'], ['Pagué desde la cuenta de…', 'I paid from the account of…', 'Paguei da conta de…'], ['Enviar', 'Send', 'Enviar'],
+      ['¿Querés cancelar este pedido? Si ya pagaste, no lo canceles: mandanos el comprobante.', 'Cancel this order? If you already paid, do not cancel it: send us the receipt.', 'Cancelar este pedido? Se você já pagou, não cancele: mande o comprovante.'],
+      ['Pedido {x} creado. Mandanos el mensaje por WhatsApp para pagarlo.', 'Order {x} created. Send us the WhatsApp message to pay for it.', 'Pedido {x} criado. Mande a mensagem pelo WhatsApp para pagar.'],
+      ['La carga a medida es de {n} a {n} créditos (números enteros).', 'Custom top-ups are from {n} to {n} credits (whole numbers).', 'A recarga personalizada é de {n} a {n} créditos (números inteiros).'],
+      ['Tus pedidos', 'Your orders', 'Seus pedidos'], ['Movimientos', 'Transactions', 'Movimentações'], ['Todavía no tenés movimientos.', 'You have no transactions yet.', 'Você ainda não tem movimentações.'], ['Ver más', 'See more', 'Ver mais'],
+      ['Saldo: {n}', 'Balance: {n}', 'Saldo: {n}'], ['Compra de créditos', 'Credit purchase', 'Compra de créditos'], ['Regalo del pack', 'Pack bonus', 'Bônus do pacote'],
+      ['Subida temporal', 'Temporary upgrade', 'Upgrade temporário'], ['Ajuste', 'Adjustment', 'Ajuste'], ['Comisión', 'Commission', 'Comissão'], ['Plan', 'Plan', 'Plano'],
+      ['Cómo funcionan', 'How they work', 'Como funcionam'], ['Los créditos no vencen.', 'Credits do not expire.', 'Os créditos não vencem.'],
+      ['No se devuelven en dinero ni se pueden pasar a otra cuenta.', 'They are not refunded in cash and cannot be transferred to another account.', 'Não são devolvidos em dinheiro nem podem ser passados para outra conta.'],
+      ['Un pedido espera el pago {n} horas; después se cancela solo.', 'An order waits {n} hours for payment; after that it is canceled automatically.', 'Um pedido aguarda o pagamento {n} horas; depois é cancelado sozinho.'],
+      ['Nunca te vamos a pedir datos de tu tarjeta ni de tu banco en la web.', 'We will never ask for your card or bank details on the website.', 'Nunca vamos pedir dados do seu cartão ou banco no site.'],
+      ['Reintentar', 'Retry', 'Tentar de novo'],
+      // Movimientos (motivos del servidor)
+      ['Plan {P} · 30 días', '{P} plan · 30 days', 'Plano {P} · 30 dias'], ['Plan {P} · 30 días más (desde el {x})', '{P} plan · 30 more days (from {x})', 'Plano {P} · mais 30 dias (a partir de {x})'],
+      ['Subida de {P} a {Q}: {n} días (se paga la diferencia)', 'Upgrade from {P} to {Q}: {n} days (you pay the difference)', 'Upgrade de {P} para {Q}: {n} dias (paga-se a diferença)'],
+      ['Semana de {P} (7 días)', '{P} week (7 days)', 'Semana de {P} (7 dias)'], ['Subida temporal a {P} (7 días)', 'Temporary upgrade to {P} (7 days)', 'Upgrade temporário para {P} (7 dias)'],
+      ['Renovación automática: {P} · 30 días', 'Auto-renewal: {P} · 30 days', 'Renovação automática: {P} · 30 dias'], ['Renovación: {P} · 30 días', 'Renewal: {P} · 30 days', 'Renovação: {P} · 30 dias'],
+      ['Destacado 1 día ({P}) desde el {x}', 'Featured 1 day ({P}) from {x}', 'Destaque 1 dia ({P}) a partir de {x}'], ['Destacado 7 días ({P}) desde el {x}', 'Featured 7 days ({P}) from {x}', 'Destaque 7 dias ({P}) a partir de {x}'],
+      ['Devolución: Destacado de {P} ({x})', 'Refund: {P} Featured ({x})', 'Devolução: Destaque de {P} ({x})'], ['Devolución: Destacado cancelado por el admin', 'Refund: Featured canceled by the admin', 'Devolução: Destaque cancelado pelo admin'],
+      ['Regalo del pack {x}', 'Pack bonus: {x}', 'Bônus do pacote {x}'],
+      // Destacado
+      ['Verificación:', 'Verification:', 'Verificação:'],
+      ['Destacado', 'Featured', 'Destaque'], ['Destacá tu perfil', 'Feature your profile', 'Destaque seu perfil'],
+      ['Tu tarjeta aparece primero dentro de tu plan en tu provincia, con la etiqueta Destacado. Si hay varias destacadas, el orden cambia en cada visita.', 'Your card shows first within your plan in your province, with the Featured label. If several profiles are featured, the order changes on every visit.', 'Seu card aparece primeiro dentro do seu plano na sua província, com a etiqueta Destaque. Se houver vários destaques, a ordem muda a cada visita.'],
+      ['Con tu plan', 'With your plan', 'Com seu plano'], ['1 día', '1 day', '1 dia'], ['7 días', '7 days', '7 dias'], ['Ahorrás {n} créditos', 'You save {n} credits', 'Você economiza {n} créditos'],
+      ['Próxima fecha libre: {x}', 'Next available date: {x}', 'Próxima data livre: {x}'], ['Próxima fecha libre', 'Next available date', 'Próxima data livre'],
+      ['Destacar 1 día', 'Feature for 1 day', 'Destacar por 1 dia'], ['Destacar 7 días', 'Feature for 7 days', 'Destacar por 7 dias'], ['Reservar 1 día', 'Book 1 day', 'Reservar 1 dia'], ['Reservar 7 días', 'Book 7 days', 'Reservar 7 dias'],
+      ['Lugares en tu provincia', 'Spots in your province', 'Vagas na sua província'], ['de', 'of', 'de'], ['ocupados ahora', 'taken now', 'ocupadas agora'],
+      ['Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia.', 'There is one featured spot for every 5 profiles of your plan in your province.', 'Há uma vaga de destaque a cada 5 perfis do seu plano na sua província.'],
+      ['Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia. Ahora está completo: podés reservar la próxima fecha libre.', 'There is one featured spot for every 5 profiles of your plan in your province. It is full right now: you can book the next available date.', 'Há uma vaga de destaque a cada 5 perfis do seu plano na sua província. Agora está completo: você pode reservar a próxima data livre.'],
+      ['El Destacado vale para el plan con el que lo comprás. Si subís de plan por mes, te devolvemos en créditos lo que no usaste.', 'Featured applies to the plan you buy it with. If you upgrade your monthly plan, we refund the unused part in credits.', 'O Destaque vale para o plano com que você compra. Se você subir de plano mensal, devolvemos em créditos o que não usou.'],
+      ['Tus Destacados', 'Your Featured spots', 'Seus Destaques'], ['Precios por plan', 'Prices by plan', 'Preços por plano'],
+      ['En créditos. Star no necesita Destacado: ya aparece arriba de todo.', 'In credits. Star does not need Featured: it already shows at the very top.', 'Em créditos. O Star não precisa de Destaque: já aparece no topo.'],
+      ['Anteriores', 'Previous', 'Anteriores'], ['Activo', 'Active', 'Ativo'], ['Programado', 'Scheduled', 'Programado'], ['Terminado', 'Ended', 'Encerrado'],
+      ['El Destacado no está disponible para tu perfil por ahora.', 'Featured is not available for your profile right now.', 'O Destaque não está disponível para o seu perfil por enquanto.'],
+      ['Destacar mi perfil · 1 día', 'Feature my profile · 1 day', 'Destacar meu perfil · 1 dia'], ['Destacar mi perfil · 7 días', 'Feature my profile · 7 days', 'Destacar meu perfil · 7 dias'],
+      ['Reservar Destacado · 1 día', 'Book Featured · 1 day', 'Reservar Destaque · 1 dia'], ['Reservar Destacado · 7 días', 'Book Featured · 7 days', 'Reservar Destaque · 7 dias'],
+      ['Empieza ahora', 'Starts now', 'Começa agora'], ['Desde el {x}', 'From {x}', 'A partir de {x}'],
+      ['El Destacado está completo', 'Featured is full', 'O Destaque está completo'],
+      ['Los lugares destacados de tu plan en tu provincia están ocupados en esas fechas. Podés reservar la próxima fecha libre: se cobra ahora y empieza ese día.', 'The featured spots for your plan in your province are taken on those dates. You can book the next available date: it is charged now and starts that day.', 'As vagas de destaque do seu plano na sua província estão ocupadas nessas datas. Você pode reservar a próxima data livre: é cobrado agora e começa nesse dia.'], ['Ahora no', 'Not now', 'Agora não'], ['Reservar esa fecha', 'Book that date', 'Reservar essa data'],
+      ['Reservaste el Destacado desde el {x}.', 'You booked Featured from {x}.', 'Você reservou o Destaque a partir de {x}.'],
+      ['Tu perfil está Destacado hasta el {x}.', 'Your profile is Featured until {x}.', 'Seu perfil está em Destaque até {x}.'],
+      // Avisos
+      ['Avisos', 'Notifications', 'Avisos'], ['Tus avisos', 'Your notifications', 'Seus avisos'], ['Pagos, renovaciones de tu plan y Destacado.', 'Payments, plan renewals and Featured.', 'Pagamentos, renovações do plano e Destaque.'],
+      ['Marcar todo como leído', 'Mark all as read', 'Marcar tudo como lido'], ['Sin leer', 'Unread', 'Não lido'], ['Tenés avisos sin leer', 'You have unread notifications', 'Você tem avisos não lidos'],
+      ['No tenés avisos', 'You have no notifications', 'Você não tem avisos'],
+      ['Acá te avisamos cuando acreditamos tus créditos, se renueva tu plan o empieza tu Destacado.', 'We let you know here when your credits are added, your plan renews or your Featured spot starts.', 'Aqui avisamos quando seus créditos entram, seu plano renova ou seu Destaque começa.'],
+      ['Créditos acreditados', 'Credits added', 'Créditos creditados'], ['Pedido rechazado', 'Order rejected', 'Pedido recusado'], ['Plan activado', 'Plan activated', 'Plano ativado'], ['Plan renovado', 'Plan renewed', 'Plano renovado'],
+      ['Plan asignado', 'Plan assigned', 'Plano atribuído'], ['Tu plan está por terminar', 'Your plan is ending soon', 'Seu plano está terminando'], ['Tu plan terminó', 'Your plan ended', 'Seu plano terminou'],
+      ['Faltan créditos para renovar', 'Not enough credits to renew', 'Faltam créditos para renovar'], ['Perfil pausado', 'Profile paused', 'Perfil pausado'], ['Renovación pendiente', 'Renewal pending', 'Renovação pendente'], ['Aviso', 'Notice', 'Aviso'],
+      // Avisos (textos del servidor)
+      ['Acreditamos {n} créditos (pedido {x}).', 'We added {n} credits (order {x}).', 'Creditamos {n} créditos (pedido {x}).'],
+      ['El pedido {x} no se pudo confirmar.', 'Order {x} could not be confirmed.', 'O pedido {x} não pôde ser confirmado.'],
+      ['El pedido {x} no se pudo confirmar. Motivo: {x}', 'Order {x} could not be confirmed. Reason: {x}', 'O pedido {x} não pôde ser confirmado. Motivo: {x}'],
+      ['Activaste {P} hasta el {x}. Se descontaron {n} créditos.', 'You activated {P} until {x}. {n} credits were deducted.', 'Você ativou o {P} até {x}. Foram descontados {n} créditos.'],
+      ['Sumaste 30 días de {P}: ahora llega hasta el {x}. Se descontaron {n} créditos.', 'You added 30 days of {P}: it now lasts until {x}. {n} credits were deducted.', 'Você somou 30 dias de {P}: agora vai até {x}. Foram descontados {n} créditos.'],
+      ['Pasaste a {P} hasta el {x}. Se descontaron {n} créditos.', 'You moved to {P} until {x}. {n} credits were deducted.', 'Você passou para o {P} até {x}. Foram descontados {n} créditos.'],
+      ['Pasaste a {P} hasta el {x}. Se descontaron {n} créditos. Te devolvimos {n} créditos del Destacado de tu plan anterior.', 'You moved to {P} until {x}. {n} credits were deducted. We refunded {n} credits from the Featured spot of your previous plan.', 'Você passou para o {P} até {x}. Foram descontados {n} créditos. Devolvemos {n} créditos do Destaque do seu plano anterior.'],
+      ['Activaste una semana de {P}: del {x} al {x}. Se descontaron {n} créditos.', 'You activated a week of {P}: from {x} to {x}. {n} credits were deducted.', 'Você ativou uma semana de {P}: de {x} a {x}. Foram descontados {n} créditos.'],
+      ['Subiste a {P} por 7 días: del {x} al {x}. Se descontaron {n} créditos.', 'You moved up to {P} for 7 days: from {x} to {x}. {n} credits were deducted.', 'Você subiu para o {P} por 7 dias: de {x} a {x}. Foram descontados {n} créditos.'],
+      ['Renovamos tu plan {P} hasta el {x}. Se descontaron {n} créditos; te quedan {n}.', 'We renewed your {P} plan until {x}. {n} credits were deducted; you have {n} left.', 'Renovamos seu plano {P} até {x}. Foram descontados {n} créditos; restam {n}.'],
+      ['Renovamos tu plan {P} hasta el {x} ({n} créditos).', 'We renewed your {P} plan until {x} ({n} credits).', 'Renovamos seu plano {P} até {x} ({n} créditos).'],
+      ['No pudimos renovar tu plan {P}: cuesta {n} créditos y tenés {n}. Tu perfil quedó pausado y vuelve a verse solo apenas cargues créditos.', 'We could not renew your {P} plan: it costs {n} credits and you have {n}. Your profile was paused and becomes visible again as soon as you top up.', 'Não conseguimos renovar seu plano {P}: custa {n} créditos e você tem {n}. Seu perfil ficou pausado e volta a aparecer assim que você carregar créditos.'],
+      ['No pudimos renovar tu plan {P}: cuesta {n} créditos y tenés {n}. Se renueva solo apenas cargues créditos.', 'We could not renew your {P} plan: it costs {n} credits and you have {n}. It renews automatically as soon as you top up.', 'Não conseguimos renovar seu plano {P}: custa {n} créditos e você tem {n}. Renova sozinho assim que você carregar créditos.'],
+      ['Todavía faltan {n} créditos para renovar {P} ({n}).', 'You are still {n} credits short to renew {P} ({n}).', 'Ainda faltam {n} créditos para renovar o {P} ({n}).'],
+      ['No quedan lugares Star libres en tu provincia. Elegí otro plan desde tu panel para que tu perfil vuelva a verse.', 'There are no free Star spots in your province. Choose another plan from your dashboard so your profile is visible again.', 'Não há vagas Star livres na sua província. Escolha outro plano no painel para seu perfil voltar a aparecer.'],
+      ['Reservaste Destacado del {x} al {x}.', 'You booked Featured from {x} to {x}.', 'Você reservou Destaque de {x} a {x}.'],
+      ['Cancelamos tu Destacado.', 'We canceled your Featured spot.', 'Cancelamos seu Destaque.'], ['Cancelamos tu Destacado. Te devolvimos {n} créditos.', 'We canceled your Featured spot. We refunded {n} credits.', 'Cancelamos seu Destaque. Devolvemos {n} créditos.'],
+      ['Te activamos el plan {P} hasta el {x}.', 'We activated the {P} plan for you until {x}.', 'Ativamos o plano {P} para você até {x}.'],
+      ['Tu plan {P} se renueva el {x} y cuesta {n} créditos: te faltan {n}. Si no cargás, tu perfil se pausa.', 'Your {P} plan renews on {x} and costs {n} credits: you are {n} short. If you do not top up, your profile is paused.', 'Seu plano {P} renova em {x} e custa {n} créditos: faltam {n}. Se você não carregar, seu perfil fica pausado.'],
+      ['Tu plan {P} termina el {x}.', 'Your {P} plan ends on {x}.', 'Seu plano {P} termina em {x}.'], ['Tu semana de {P} termina el {x}.', 'Your {P} week ends on {x}.', 'Sua semana de {P} termina em {x}.'],
+      ['Tu plan {P} terminó. Ahora tu perfil está en {Q}.', 'Your {P} plan ended. Your profile is now on {Q}.', 'Seu plano {P} terminou. Agora seu perfil está no {Q}.'],
+      ['Tu semana de {P} terminó. Ahora tu perfil está en {Q}.', 'Your {P} week ended. Your profile is now on {Q}.', 'Sua semana de {P} terminou. Agora seu perfil está no {Q}.'],
+      // Tarjetas, panel, registro
+      ['Disponible desde Plata', 'Available from Silver', 'Disponível a partir do Prata'],
+      ['Con el plan Plata o más alto, tu tarjeta muestra unos segundos de uno de tus videos y llama más la atención.', 'With the Silver plan or higher, your card shows a few seconds of one of your videos and stands out more.', 'Com o plano Prata ou superior, seu card mostra alguns segundos de um dos seus vídeos e chama mais atenção.'],
+    ].forEach((x) => (typeof x === 'string' ? null : add(x[0], x[1], x[2])));
+    add('Plan actual', 'Current plan', 'Plano atual');
+    Object.assign(HH.I18N, out);
+  })();
   const st2 = document.createElement('style');
   st2.textContent = `
 .pc2{position:relative;min-width:0;border-radius:14px;overflow:hidden;background:var(--surface);isolation:isolate;box-shadow:0 1px 0 var(--line);container-type:inline-size}
@@ -1307,6 +1922,11 @@
 .pc2-ver svg{width:12px;height:12px;stroke-width:3}
 .pc2-starb{position:absolute;top:8px;right:8px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:linear-gradient(135deg,#F7D27A,#E3A93B);color:#2a1d00;font-size:11px;font-weight:800}
 .pc2-starb svg{width:11px;height:11px;fill:currentColor}
+/* Destacado: A = etiqueta arriba del nombre; B = pastilla arriba a la izquierda, al lado del tilde de verificada */
+.pc2-dest{display:inline-flex;align-items:center;gap:4px;max-width:100%;margin-bottom:4px;padding:2px 9px 2px 7px;border-radius:99px;background:linear-gradient(135deg,var(--berry),#B4236A);color:#fff;font-size:clamp(9.5px,4cqi + 3px,11.5px);font-weight:800;letter-spacing:.04em;text-transform:uppercase;box-shadow:0 2px 10px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden}
+.pc2-dest svg{width:11px;height:11px;flex:none}.pc2-dest>span{overflow:hidden;text-overflow:ellipsis}
+.pc2-destb{position:absolute;top:8px;left:36px;z-index:2;display:inline-flex;align-items:center;gap:4px;max-width:calc(100% - 44px);padding:3px 9px 3px 7px;border-radius:99px;background:linear-gradient(135deg,var(--berry),#B4236A);color:#fff;font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;box-shadow:0 2px 10px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden}
+.pc2-destb.sinver{left:8px}.pc2-destb svg{width:11px;height:11px;flex:none}.pc2-destb>span{overflow:hidden;text-overflow:ellipsis}
 /* Nombre y zona centrados abajo; la estrella de favoritos queda en la esquina inferior derecha */
 .pc2-info{position:absolute;left:0;right:0;bottom:0;z-index:2;display:grid;justify-items:center;gap:1px;padding:0 34px 12px;text-align:center;min-width:0}
 .pc2-name{max-width:100%;font-family:var(--font-display,inherit);font-weight:800;font-size:clamp(12px,8.5cqi + 2px,20px);line-height:1.12;text-transform:uppercase;letter-spacing:.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 6px rgba(0,0,0,.55)}
@@ -1324,6 +1944,8 @@
   .pc2-fav{right:1px;bottom:0;width:30px;height:30px}.pc2-fav svg{width:18px;height:18px}
   .pc2-ver{top:6px;left:6px;width:19px;height:19px}.pc2-ver svg{width:10px;height:10px}
   .pc2-starb{top:6px;right:6px;font-size:0;gap:0;padding:4px}
+  .pc2-destb{top:6px;left:30px;padding:3px 6px;font-size:9px;gap:3px}.pc2-destb.sinver{left:6px}.pc2-destb svg{width:9px;height:9px}
+  .pc2-dest{padding:2px 6px;gap:3px;margin-bottom:3px}.pc2-dest svg{width:9px;height:9px}
 }
 .pub-stars-row>.pc2{flex:0 0 44%!important;scroll-snap-align:start}
 @media(min-width:720px){.pub-stars-row>.pc2{flex:0 0 200px!important}}

@@ -10,7 +10,7 @@ import { cargarCatalogos } from '../lib/catalogos.js';
 import { ImagenInvalida, MAX_BYTES, procesarFoto, procesarPrivada } from '../lib/imagenes.js';
 import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
 import { GENEROS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesDe, linea, slugify, validarDatos } from '../lib/perfiles.js';
-import { limitesDe, planEfectivo, resumenPlan } from '../lib/planes-ref.js';
+import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_V2 } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
 import { invalidarSitio } from './sitio.js';
@@ -19,8 +19,8 @@ const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TZ = 'America/Argentina/Buenos_Aires';
-// Video de 5 s en la tarjeta: desde Oro (C) en adelante.
-export const PLANES_PREVIEW = new Set(['C', 'B', 'A', 'S']);
+// Video de 5 s en la tarjeta: desde Plata (D) en adelante (Planes v2).
+export const PLANES_PREVIEW = PLANES_PREVIEW_V2;
 
 const normEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 const validEmail = (s) => s.length <= 254 && EMAIL_RE.test(s);
@@ -105,10 +105,18 @@ export function createCuentaRouter(ctx) {
     segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto, error: v.error || null, creado: v.creado,
   });
 
+  // Planes v2: saldo de créditos y notificaciones sin leer (si hay instancia de planes con créditos).
+  const creditosYo = async (cuentaId) => {
+    const cr = planes() && planes().creditos;
+    if (!cr) return { creditos: { saldo: { centavos: 0, creditos: '0.00' } }, notificaciones: { noLeidas: 0 } };
+    const [saldo, noLeidas] = await Promise.all([cr.saldo(cuentaId), cr.noLeidas(cuentaId)]);
+    return { creditos: { saldo: { centavos: saldo, creditos: (saldo / 100).toFixed(2) } }, notificaciones: { noLeidas } };
+  };
+
   const construirYo = async (cuentaId) => {
     const [{ rows: cs }, { rows: ps }, { rows: fs }, { rows: hs }, { rows: vs }] = await Promise.all([
       pool.query('SELECT id, email, email_verificado, estado, creado FROM cuentas WHERE id = $1', [cuentaId]),
-      pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
+      pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
       pool.query('SELECT id, url, url_mini, orden, ancho, alto FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]),
       pool.query('SELECT id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = $1 AND expira > now() ORDER BY creado DESC', [cuentaId]),
       pool.query('SELECT estado, motivo, creado, revisado FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
@@ -133,6 +141,7 @@ export function createCuentaRouter(ctx) {
       perfil: {
         slug: p.slug,
         estado: p.estado,
+        pausadoPorSaldo: p.estado === 'pausado' && p.pausado_por === 'sin_saldo',
         motivoRechazo: p.motivo_rechazo || null,
         verificacion: p.verificacion,
         ultimaVerificacion: vs[0] ? { estado: vs[0].estado, motivo: vs[0].motivo || null, creado: vs[0].creado, revisado: vs[0].revisado } : null,
@@ -147,7 +156,8 @@ export function createCuentaRouter(ctx) {
         faltantes,
       },
       plan: plan || { efectivo: 'E', suscripciones: [], pedidos: [] },
-      limites: { fotos: lim.fotos, videos: lim.videos, historiasDia: lim.historiasDia, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
+      limites: { fotos: lim.fotos, videos: lim.videos, historiasDia: lim.historiasDia, destacadas: lim.destacadas, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
+      ...(await creditosYo(cuentaId)),
       videosHabilitados: storage.videosHabilitados(),
       previewHabilitado: storage.videosHabilitados() && PLANES_PREVIEW.has(efectivo),
       historias: hs.map((h) => ({ id: h.id, url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira })),
@@ -332,6 +342,7 @@ export function createCuentaRouter(ctx) {
     const p = yo.perfil;
     if (p.estado === 'suspendido') return fail(res, 403, 'Tu perfil está suspendido. Escribinos a contacto@sexyrose.net.');
     if (p.estado === 'publicado' || p.estado === 'en_revision') return res.json({ ok: true, cuenta: yo });
+    if (p.pausadoPorSaldo) return fail(res, 409, 'Tu perfil está pausado porque no alcanzaron los créditos para renovar tu plan. Cargá créditos (se reanuda solo) o desactivá la renovación automática para seguir con Bronce.');
     if (!p.completo) return fail(res, 400, 'Todavía falta completar algunas cosas.', { faltantes: p.faltantes });
     await pool.query("UPDATE perfiles SET estado = 'en_revision', motivo_rechazo = NULL, actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
     if (ctx.notify) ctx.notify('Hay un perfil nuevo para revisar en el admin.');
@@ -522,11 +533,11 @@ export function createCuentaRouter(ctx) {
     res.json({ ok: true });
   }));
 
-  // --- Video de la tarjeta (5 s, sin audio; planes Oro en adelante) -----------
+  // --- Video de la tarjeta (5 s, sin audio; planes Plata en adelante) --------
   // PUT {videoId, inicio}: ella elige el video y el segundo desde donde arranca. DELETE: vuelve al automático.
   const conPreview = ah(async (req, res, next) => {
     const plan = await planEfectivo(req.cuenta.id, planes());
-    if (!PLANES_PREVIEW.has(plan)) return fail(res, 403, 'Disponible desde Oro.');
+    if (!PLANES_PREVIEW.has(plan)) return fail(res, 403, 'Disponible desde Plata.');
     next();
   });
   r.put('/preview', conCuentaActiva, videosActivos, conPreview,

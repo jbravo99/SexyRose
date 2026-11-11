@@ -63,9 +63,15 @@ RUN set -e; \
 # esbuild minimiza el JS y el CSS (versión fija; solo en esta etapa, no queda en la imagen final).
 ARG ESBUILD_VERSION=0.24.2
 RUN npm install -g --no-audit --no-fund "esbuild@${ESBUILD_VERSION}" && esbuild --version
-RUN python3 app/scripts/build-sitio.py \
+# Fuentes del sitio (Poppins y Manrope) servidas desde el propio dominio: se copian los .woff2 de @fontsource
+# (versión fija; solo en esta etapa). build-sitio.py falla si no las encuentra (REQUIRE_FONTS=1).
+ARG FONTSOURCE_VERSION=5.3.0
+RUN npm install --prefix /fuentes --no-audit --no-fund --no-save \
+      "@fontsource/poppins@${FONTSOURCE_VERSION}" "@fontsource/manrope@${FONTSOURCE_VERSION}"
+RUN FONTSOURCE_DIR=/fuentes/node_modules/@fontsource REQUIRE_FONTS=1 python3 app/scripts/build-sitio.py \
     && test -s app/sitio-spa/index.html \
-    && ls app/sitio-spa/assets/app.*.js app/sitio-spa/assets/app.*.css app/sitio-spa/assets/i18n.*.js \
+    && test -s app/sitio-spa/seo-datos.json \
+    && ls app/sitio-spa/assets/app.*.js app/sitio-spa/assets/app.*.css app/sitio-spa/assets/i18n.*.js app/sitio-spa/assets/fonts/*.woff2 \
     && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
 # ---------- Etapa 2: runtime ----------

@@ -7,13 +7,13 @@ import zlib from 'node:zlib';
 const MIN = 1024; // por debajo de 1 KB no vale la pena comprimir
 
 // Mejor codificación aceptada por el navegador: br > gzip > sin comprimir
+const acepta = (req, n) => new RegExp(`(^|[\\s,])${n}(;q=(?!0(\\.0*)?(\\s|,|$))[0-9.]+)?(\\s*(,|$))`).test(String(req.headers['accept-encoding'] || '').toLowerCase());
 export function codificacion(req) {
-  const ae = String(req.headers['accept-encoding'] || '').toLowerCase();
-  const acepta = (n) => new RegExp(`(^|[\\s,])${n}(;q=(?!0(\\.0*)?(\\s|,|$))[0-9.]+)?(\\s*(,|$))`).test(ae);
-  if (acepta('br')) return 'br';
-  if (acepta('gzip')) return 'gzip';
+  if (acepta(req, 'br')) return 'br';
+  if (acepta(req, 'gzip')) return 'gzip';
   return null;
 }
+const MAX_BR_SYNC = 512 * 1024; // brotli en el momento solo hasta acá (más grande espera al de segundo plano)
 
 export const etagDe = (buf) => '"' + crypto.createHash('sha256').update(buf).digest('base64url').slice(0, 27) + '"';
 
@@ -31,7 +31,9 @@ export function paquete(buf, { calidadBr = 11 } = {}) {
   p.cod = (enc) => {
     if (!enc || b.length < MIN) return null;
     if (enc === 'br' && p.br) return p.br;
-    if (enc === 'br' && b.length <= 512 * 1024) return (p.br = zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: Math.min(calidadBr, 5), [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } }));
+    if (enc === 'br' && b.length <= MAX_BR_SYNC) return (p.br = zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: Math.min(calidadBr, 5), [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } }));
+    // Pidió brotli de un archivo grande que todavía no está listo: nada (nunca gzip con la cabecera de brotli)
+    if (enc !== 'gzip') return null;
     if (p.gzip) return p.gzip;
     return (p.gzip = zlib.gzipSync(b, { level: 6 }));
   };
@@ -46,16 +48,19 @@ export function fresco(req, etag) {
 }
 
 // Envía un paquete con ETag, 304 y la mejor codificación. headers: Content-Type, Cache-Control, etc.
-export function enviar(req, res, p, headers = {}) {
+// status: 200 por defecto; con otro (404 de una página que no existe) no hay 304.
+export function enviar(req, res, p, headers = {}, status = 200) {
   for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
   res.setHeader('ETag', p.etag);
   res.setHeader('Vary', 'Accept-Encoding');
-  if (fresco(req, p.etag)) return res.status(304).end();
-  const enc = codificacion(req);
+  if (status === 200 && fresco(req, p.etag)) return res.status(304).end();
+  let enc = codificacion(req);
+  // Archivo grande con el brotli todavía en preparación (recién arrancado o recién publicado): gzip si lo acepta
+  if (enc === 'br' && !p.br && p.buf.length > MAX_BR_SYNC) enc = acepta(req, 'gzip') ? 'gzip' : null;
   const cuerpo = p.cod(enc);
   if (cuerpo) res.setHeader('Content-Encoding', enc);
   const out = cuerpo || p.buf;
   res.setHeader('Content-Length', out.length);
-  if (req.method === 'HEAD') return res.status(200).end();
-  return res.status(200).end(out);
+  if (req.method === 'HEAD') return res.status(status).end();
+  return res.status(status).end(out);
 }
