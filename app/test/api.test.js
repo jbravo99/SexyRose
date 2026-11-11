@@ -230,7 +230,7 @@ describe('páginas estáticas', { skip: EXTERNAL && 'usa la carpeta public/ de p
     const t = await r.text();
     assert.ok(t.includes('Operado por Operadora &amp; &lt;Prueba&gt;'), t);
     assert.ok(t.includes('contacto@sexyrose.net'));
-    assert.ok(t.includes('4 de noviembre de 2026'));
+    assert.ok(t.includes('11 de noviembre de 2026'));
     assert.ok(t.includes('{{DESCONOCIDO}}'), 'los marcadores desconocidos no se tocan');
   });
 
@@ -661,7 +661,7 @@ describe('textos editables (marcadores y editor del admin)', { skip: EXTERNAL &&
     const t = await pagina('/');
     const esperado = INDEX_PRUEBA.replace(/<!--\/?[et](:[^>]*)?-->/g, '')
       .replace('{{OPERADOR}}', 'Operadora &amp; &lt;Prueba&gt;').replace('{{ CONTACT_EMAIL }}', 'contacto@sexyrose.net')
-      .replace('{{FECHA_LEGAL}}', '4 de noviembre de 2026');
+      .replace('{{FECHA_LEGAL}}', '11 de noviembre de 2026');
     assert.equal(t, esperado);
     assert.ok(!t.includes('<!--'));
   });

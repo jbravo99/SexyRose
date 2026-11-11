@@ -13,7 +13,8 @@
   if (window.HH_PROD !== 'sitio') return;
   HH.PROD = 'sitio';
   const esc = HH.esc, icon = HH.icon;
-  // Nombre comercial de la subida temporal de plan (Juan todavía no eligió el nombre: se cambia acá)
+  // Subida temporal (Juan, 11/11/2026): "Subí a X por 7 días", un botón por cada plan más alto que el actual
+  // (Bronce → Oro y Star; Plata → Oro y Star; Oro → Star; Star → ninguno). Plata no tiene semana.
   const UPGRADE_LABEL = (planNombre) => 'Subí a ' + planNombre + ' por 7 días';
   const GENEROS = [['mujer', 'Mujer'], ['trans', 'Trans'], ['hombre', 'Hombre']];
   const ESTADO_PERFIL = {
@@ -1041,7 +1042,7 @@
         else if (r > baseRank) btns.push(`<button type="button" class="btn ${isStar ? '' : 'secondary'} block" data-action="spCotizar" data-plan="${k}" data-per="mes"${sinCupo || S.busy.cot ? ' disabled' : ''}>${base ? 'Subir a ' + esc(x.nombre) : 'Activar 1 mes · ' + fmtCr(x.mes) + ' créditos'}</button>`);
         else if (esCambio) btns.push(`<span class="badge neutral block-badge">Programado para el ${esc(fLarga(base.hasta))}</span>`);
         else btns.push(`<button type="button" class="btn ghost block" data-action="spCambio" data-plan="${k}">Pasar a ${esc(x.nombre)} al renovar</button>`);
-        if (x.semana != null && r > baseRank) btns.push(`<button type="button" class="btn ghost block" data-action="spCotizar" data-plan="${k}" data-per="semana"${sinCupo || S.busy.cot ? ' disabled' : ''}>${esc(base ? UPGRADE_LABEL(x.nombre) : '1 semana')} · ${fmtCr(x.semana)} créditos</button>`);
+        if (x.semana != null && r > baseRank) btns.push(`<button type="button" class="btn ghost block" data-action="spCotizar" data-plan="${k}" data-per="semana"${sinCupo || S.busy.cot ? ' disabled' : ''}>${esc(UPGRADE_LABEL(x.nombre))} · ${fmtCr(x.semana)} créditos</button>`);
       }
       const feat = [
         `Hasta ${lim.fotos} fotos y ${lim.videos} videos`,
@@ -1500,7 +1501,8 @@
   /* ---------- Tarjetas grandes (foto a todo el ancho, nombre y zona abajo) + clip de 5 s + favoritos ---------- */
   // Las grillas del MVP arman <a class="pcard">; acá se reemplazan por la tarjeta nueva (sin tocar el código de la demo).
   const PREVIEW_PLANES = new Set(['D', 'C', 'S']);
-  const FAV_KEY = 'sr_favs';
+  // La demo (/demo/) comparte el dominio: sus favoritos (perfiles ficticios) van aparte
+  const FAV_KEY = window.HH_DEMO ? 'sr_demo_favs' : 'sr_favs';
   const favs = () => { try { const a = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []; } catch (e) { return S.favMem || []; } };
   const setFavs = (a) => { S.favMem = a; try { localStorage.setItem(FAV_KEY, JSON.stringify(a)); } catch (e) { /* sin almacenamiento: queda en memoria */ } };
   const esFav = (id) => favs().includes(id);

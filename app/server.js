@@ -26,6 +26,7 @@ import { createAdminCreditosRouter } from './routes/admin-creditos.js';
 import { createCotizacion } from './lib/cotizacion.js';
 import { createAdminCotizacionRouter } from './routes/admin-cotizacion.js';
 import { createSpaSitioRouter } from './routes/spa-sitio.js';
+import { createDemoSitioRouter } from './routes/demo-sitio.js';
 // ---- fin Fase 1 (agente B): imports ----
 import { createAdminTextosSitioRouter } from './routes/admin-textos-sitio.js';
 import { createAdminVideosRouter } from './routes/admin-videos.js';
@@ -81,7 +82,7 @@ export function loadConfig(env = process.env) {
     cookieSecure: str(env.COOKIE_SECURE) === '' ? undefined : str(env.COOKIE_SECURE) === '1',
     // Panel de administración (SPA del MVP) generado por app/scripts/build-admin.py.
     adminSpaPath: path.resolve(str(env.ADMIN_SPA_PATH) || path.join(HERE, 'admin-spa', 'index.html')),
-    fechaLegal: '4 de noviembre de 2026',
+    fechaLegal: '11 de noviembre de 2026',
     log: (...a) => console.log(new Date().toISOString(), ...a),
   };
 }
@@ -855,7 +856,7 @@ ${FORMATO_AYUDA}
 <ul class="pages">
 ${items || '<li class="muted">No se encontraron páginas con textos editables.</li>'}
 </ul>
-<p class="muted small">La demostración (/demo/) no se edita desde acá: sus perfiles y textos ficticios vienen del MVP.</p>
+<p class="muted small">La demostración (/demo/) no se edita desde acá: sus perfiles ficticios vienen de app/scripts/demo/perfiles.json y el resto es el mismo sitio.</p>
 <p class="muted small">Los mensajes de error que arma el servidor al validar un envío (por ejemplo, «El email no es válido») tampoco se editan acá.</p>`);
   }));
 
@@ -1197,6 +1198,8 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // --- Sitio público real (SPA del MVP, HH_PROD='sitio'). Sin build, sigue la portada vieja. ---
   spaSitio = createSpaSitioRouter({ config, log, pool, planes });
   app.use(spaSitio);
+  // --- Demostración (/demo/): el mismo SPA en modo demo con perfiles ficticios (scripts/build-demo.py). Sin build nuevo, la vieja. ---
+  app.use(createDemoSitioRouter({ config, log }));
 
   // --- Páginas HTML (rutas limpias + placeholders) ---------------------------
   const PAGE = /^\/([a-z0-9][a-z0-9-]{0,63})(\.html|\/)?$/;

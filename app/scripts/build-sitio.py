@@ -25,6 +25,13 @@ Variables opcionales:
   FONTSOURCE_DIR  carpeta con los paquetes @fontsource/poppins y @fontsource/manrope (por defecto se buscan en
                   node_modules/@fontsource del repo, de app/ y de mvp/). Sin ellos el sitio usa las fuentes del sistema.
   REQUIRE_FONTS=1 fallar si no encuentra las fuentes (el Dockerfile lo usa)
+
+Modo demostración (python3 app/scripts/build-sitio.py --demo, o SITIO_DEMO=1; lo llama app/scripts/build-demo.py):
+el mismo sitio con perfiles ficticios para /demo/ (lo sirve app/routes/demo-sitio.js). Suma mvp/src/prod-demo.js,
+usa direcciones con # (/demo/#/perfil/valentina), los datos de app/scripts/demo_datos.py (estado.<hash>.json e
+imágenes abstractas en media/), el cartel "Demostración: perfiles ficticios", noindex y canonical al sitio real.
+  DEMO_OUT       archivo HTML de salida (por defecto: <REPO_ROOT>/app/public/demo/index.html); todo va al lado
+  DEMO_REAL_URL  dirección del sitio real (por defecto: https://sexyrose.net)
 """
 import hashlib
 import json
@@ -36,7 +43,14 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(os.environ.get('REPO_ROOT') or pathlib.Path(__file__).resolve().parents[2]).resolve()
-OUT = pathlib.Path(os.environ.get('SITIO_OUT') or ROOT / 'app' / 'sitio-spa' / 'index.html')
+DEMO = '--demo' in sys.argv[1:] or os.environ.get('SITIO_DEMO') == '1'
+if DEMO:
+    OUT = pathlib.Path(os.environ.get('DEMO_OUT') or ROOT / 'app' / 'public' / 'demo' / 'index.html')
+else:
+    OUT = pathlib.Path(os.environ.get('SITIO_OUT') or ROOT / 'app' / 'sitio-spa' / 'index.html')
+# Las direcciones de los archivos: /assets/… en el sitio real, /demo/assets/… en la demo
+PFX = '/demo/' if DEMO else '/'
+REAL_URL = (os.environ.get('DEMO_REAL_URL') or 'https://sexyrose.net').rstrip('/')
 BUILD = ROOT / 'mvp' / 'build.py'
 SRC = ROOT / 'mvp' / 'build' / 'sitio.html'
 # Fuentes propias (antes Google Fonts): (paquete de @fontsource, familia, pesos). Solo latin y latin-ext.
@@ -44,6 +58,19 @@ FUENTES = [('poppins', 'Poppins', [500, 600, 700]), ('manrope', 'Manrope', [400,
 SUBSETS = ['latin-ext', 'latin']
 # Las dos que se usan apenas carga la página: el cuerpo (Manrope 400) y los títulos (Poppins 600)
 PRECARGA = [('manrope', 'latin', 400), ('poppins', 'latin', 600)]
+
+
+# Demo: cabecera, cartel fijo arriba (en el flujo de la página: el encabezado sticky queda debajo) y su CSS.
+# prod-demo.js cambia el texto del cartel al idioma elegido.
+DEMO_HEAD = ('<meta name="robots" content="noindex,nofollow">'
+             '<link rel="canonical" href="{REAL}/">')
+DEMO_BANNER = ('<div id="srDemoBanner" class="sr-demo" role="note" data-noi18n><span data-k="banner">Demostración: perfiles ficticios.</span> '
+               '<a href="{REAL}/">Ver el sitio real</a></div>')
+DEMO_CSS = ('.sr-demo{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 10px;margin:0;padding:7px 14px;'
+            'background:#FF5C8A;color:#15131A;font:600 13px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center}'
+            '.sr-demo a{color:#15131A;font-weight:800;text-decoration:underline;white-space:nowrap}'
+            '.sr-demo a:focus-visible{outline:2px solid #15131A;outline-offset:2px;border-radius:4px}'
+            '.sr-demo-card .btn{justify-content:center}')
 
 
 def fontsource_dir():
@@ -74,7 +101,7 @@ def fuentes(fonts_out: pathlib.Path, h):
                 data = (base / pkg / 'files' / f'{nombre}.woff2').read_bytes()
                 dest = f'{pkg}-{sub}-{w}.{hashlib.sha256(data).hexdigest()[:12]}.woff2'
                 (fonts_out / dest).write_bytes(data)
-                urls[(pkg, sub, w)] = f'/assets/fonts/{dest}'
+                urls[(pkg, sub, w)] = f'{PFX}assets/fonts/{dest}'
                 css.append(f"@font-face{{font-family:'{familia}';font-style:normal;font-display:swap;font-weight:{w};"
                            f"src:url({urls[(pkg, sub, w)]}) format('woff2');unicode-range:{m.group(1).strip()}}}")
     return '\n'.join(css), [urls[k] for k in PRECARGA]
@@ -151,12 +178,31 @@ def main() -> int:
         return 1
     env = dict(os.environ, HH_TARGET='sitio')
     env.pop('HH_ONLY', None)
+    if DEMO:
+        env['HH_SITIO_DEMO'] = '1'
+    else:
+        env.pop('HH_SITIO_DEMO', None)
     subprocess.run([sys.executable, str(BUILD)], cwd=str(ROOT), check=True, env=env)
     html = SRC.read_text(encoding='utf-8')
     if "window.HH_PROD = 'sitio'" not in html or '/* ===== prod-sitio.js ===== */' not in html or 'data-routing="path"' not in html:
         print('error: el build no es el paquete sitio (falta HH_PROD, prod-sitio.js o data-routing)', file=sys.stderr)
         return 1
+    if DEMO != ('/* ===== prod-demo.js ===== */' in html):
+        print('error: prod-demo.js tiene que estar solo en la demo', file=sys.stderr)
+        return 1
     html = re.sub(r'<meta name="claude:[^"]*"[^>]*>\s*', '', html)
+    if DEMO:
+        # Direcciones con # (un solo archivo en /demo/), título propio, noindex y canonical al sitio real
+        html = html.replace('data-routing="path"', 'data-routing="hash" data-demo="1"', 1)
+        html, n = re.subn(r'<title>[^<]*</title>', '<title>SexyRose — Demostración</title>', html, count=1)
+        if n != 1:
+            print('error: el build del sitio no tiene <title>', file=sys.stderr)
+            return 1
+        html = html.replace('<meta charset="utf-8">', '<meta charset="utf-8">' + DEMO_HEAD.replace('{REAL}', REAL_URL), 1)
+        html, n = re.subn(r'<body>', lambda m: m.group(0) + '\n' + DEMO_BANNER.replace('{REAL}', REAL_URL), html, count=1)
+        if n != 1:
+            print('error: el build del sitio no tiene <body>', file=sys.stderr)
+            return 1
 
     head_end = html.index('</head>')
     head, body = html[:head_end], html[head_end:]
@@ -196,11 +242,26 @@ def main() -> int:
 
     dic_min, _ = minify(dic, 'js', exe)
     dic_name = f'i18n.{h(dic_min)}.js'
-    js = scripts[0].strip() + '\n' + f'window.HH_I18N_SRC="/assets/{dic_name}";\n' + app
     assets = OUT.parent / 'assets'
     if assets.exists():
         shutil.rmtree(assets)
     assets.mkdir(parents=True)
+    demo_cfg = ''
+    if DEMO:
+        # Datos ficticios e imágenes de la demo (lo viejo se borra: los nombres llevan hash)
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import demo_datos
+        media = OUT.parent / 'media'
+        if media.exists():
+            shutil.rmtree(media)
+        for viejo in OUT.parent.glob('estado.*.json'):
+            viejo.unlink()
+        estado = json.dumps(demo_datos.armar(ROOT, media, PFX), ensure_ascii=False, separators=(',', ':'))
+        estado_name = f'estado.{h(estado)}.json'
+        (OUT.parent / estado_name).write_text(estado, encoding='utf-8')
+        demo_cfg = 'window.HH_DEMO=' + json.dumps({'estado': PFX + estado_name, 'real': REAL_URL}) + ';\n'
+        css += '\n' + DEMO_CSS
+    js = scripts[0].strip() + '\n' + f'window.HH_I18N_SRC="{PFX}assets/{dic_name}";\n' + demo_cfg + app
     css_fuentes, precarga = fuentes(assets / 'fonts', h)
     if css_fuentes is None:
         if os.environ.get('REQUIRE_FONTS') == '1':
@@ -223,24 +284,33 @@ def main() -> int:
     (assets / css_name).write_text(css_min, encoding='utf-8')
     (assets / dic_name).write_text(dic_min, encoding='utf-8')
 
-    links = (
-        f'<!--SR:SEO-->\n'
-        f'<!--SR:PRECONNECT-->\n'
-        f'<!--SR:I18N /assets/{dic_name}-->\n'
-        f'<link rel="preload" href="/assets/{js_name}" as="script">\n'
-        f'<link rel="preload" href="/api/sitio/estado" as="fetch" crossorigin="anonymous">\n'
-        + ''.join(f'<link rel="preload" href="{u}" as="font" type="font/woff2" crossorigin>\n' for u in precarga)
-        + f'<link rel="stylesheet" href="/assets/{css_name}">\n'
-    )
-    shell = head + links + body.replace('</body>', f'<script src="/assets/{js_name}" defer></script>\n</body>', 1)
+    if DEMO:
+        # Sin SEO del servidor: la demo no se indexa. El estado es un archivo más (con hash).
+        links = (
+            '<!--SR:DEMO-->\n'
+            f'<link rel="preload" href="{PFX}assets/{js_name}" as="script">\n'
+            f'<link rel="preload" href="{PFX}{estado_name}" as="fetch" crossorigin="anonymous">\n'
+        )
+    else:
+        links = (
+            f'<!--SR:SEO-->\n'
+            f'<!--SR:PRECONNECT-->\n'
+            f'<!--SR:I18N /assets/{dic_name}-->\n'
+            f'<link rel="preload" href="/assets/{js_name}" as="script">\n'
+            f'<link rel="preload" href="/api/sitio/estado" as="fetch" crossorigin="anonymous">\n'
+        )
+    links += (''.join(f'<link rel="preload" href="{u}" as="font" type="font/woff2" crossorigin>\n' for u in precarga)
+              + f'<link rel="stylesheet" href="{PFX}assets/{css_name}">\n')
+    shell = head + links + body.replace('</body>', f'<script src="{PFX}assets/{js_name}" defer></script>\n</body>', 1)
     bad = re.findall(r'<[a-z][^>]*\son[a-z]+\s*=', shell, flags=re.I) + re.findall(r'javascript:', shell, flags=re.I) + re.findall(r'<script>', shell)
     if bad:
         print(f'error: la cáscara tiene JS en línea o manejadores ({len(bad)}): {bad[:3]}', file=sys.stderr)
         return 1
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(shell, encoding='utf-8')
-    (OUT.parent / 'seo-datos.json').write_text(json.dumps(seo_datos(dic_literal), ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-    print(f'ok sitio: {OUT} ({OUT.stat().st_size} bytes) + assets/{js_name} ({len(js_min.encode())} bytes{", minimizado" if ok_js else ""}) '
+    if not DEMO:
+        (OUT.parent / 'seo-datos.json').write_text(json.dumps(seo_datos(dic_literal), ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f'ok {"demo" if DEMO else "sitio"}: {OUT} ({OUT.stat().st_size} bytes) + assets/{js_name} ({len(js_min.encode())} bytes{", minimizado" if ok_js else ""}) '
           f'+ assets/{css_name} ({len(css_min.encode())} bytes{", minimizado" if ok_css else ""}) '
           f'+ assets/{dic_name} ({len(dic_min.encode())} bytes)')
     return 0

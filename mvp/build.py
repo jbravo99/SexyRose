@@ -19,6 +19,10 @@ elif TARGET == 'sitio':
     # prod-sitio.js trae su propio panel. Todos sus usos desde otros módulos están protegidos (if (HH.adminTabs) …).
     SIN_SITIO = {'views-dashboard.js', 'views-admin.js', 'views-client.js', 'ops.js'}
     JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio-errores.js', 'prod-sitio.js', 'boot.js']
+    # HH_SITIO_DEMO=1 → el mismo sitio en modo demostración (/demo/, perfiles ficticios): suma prod-demo.js.
+    # Lo usa app/scripts/build-sitio.py --demo (no cambia nada del sitio real).
+    if os.environ.get('HH_SITIO_DEMO') == '1':
+        JS_ORDER.insert(JS_ORDER.index('boot.js'), 'prod-demo.js')
 elif TARGET:
     sys.exit('HH_TARGET desconocido: ' + TARGET)
 parts = []

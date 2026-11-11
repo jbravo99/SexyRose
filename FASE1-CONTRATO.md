@@ -240,3 +240,12 @@ Mismo Basic Auth; POST con `X-SR-Admin: 1` + mismo origen + JSON. `adminUser` qu
 ### Venta de contenido (solo preparado, sin UI)
 
 `creditos.registrarComisionVenta(cuentaId, ventaCentavos, ref)` descuenta `ajustes.comision.porcentaje` % de la venta como movimiento `comision_venta`; puede dejar el saldo hasta −`saldoNegativoMax`; más allá responde 402 (a definir con el procesador: pausar la venta o cobrar al liquidar).
+
+## Demo pública (/demo/) — desde el 11/11/2026
+
+- La demo es el MISMO SPA del sitio real (`HH_TARGET=sitio`) en modo demostración: todo cambio del sitio se ve también en la demo (QR de los folletos). La vieja (MVP de un solo archivo) ya no se genera.
+- Build: `python3 app/scripts/build-demo.py` → llama a `build-sitio.py --demo` → `app/public/demo/` con `index.html` (cáscara con `<!--SR:DEMO-->`), `assets/` (JS/CSS/diccionario/fuentes con hash), `estado.<hash>.json` y `media/<hash>.svg`. Suma `mvp/src/prod-demo.js` (solo en la demo; `build.py` lo agrega con `HH_SITIO_DEMO=1`).
+- Datos: `app/scripts/demo/perfiles.json` (16 perfiles ficticios, basados en la semilla del MVP, en ciudades de Argentina) + catálogos y precios de las semillas `app/db/010-cuentas.sql` y `060-creditos.sql` (`app/scripts/demo_datos.py`). Imágenes abstractas (rosa de línea), sin personas. Las fechas se corren a la hora de la visita.
+- Sin `/api`: `prod-demo.js` reemplaza `fetch` (el estado sale del JSON; el resto responde 403 sin salir). Publicar/Ingresar/Panel muestran una tarjeta con botón al sitio real (`/registro`, `/ingresar` y sus versiones en/pt). WhatsApp/Telegram y Reportar solo avisan que es una demostración. Favoritos aparte (`sr_demo_favs`).
+- Direcciones con `#` (`/demo/#/perfil/valentina`, `/demo/#/en/`); el servidor (`routes/demo-sitio.js`) solo entrega `/demo/` (no-cache, CSP `script-src 'self'`, noindex) y los archivos con hash (un año, immutable; los SVG con CSP `sandbox`). Si en la carpeta queda la demo vieja, sigue sirviéndola `server.js`.
+- Cartel arriba "Demostración: perfiles ficticios." + "Ver el sitio real" (es/en/pt), `noindex,nofollow`, canonical a `https://sexyrose.net/` (`DEMO_REAL_URL` para cambiarlo).
