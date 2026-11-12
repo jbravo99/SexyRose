@@ -13,7 +13,7 @@ import { configurarMail, emailBasico, sendMail as enviarMail } from './lib/mail.
 import { invalidarCatalogos } from './lib/catalogos.js';
 import * as storage from './lib/storage.js';
 import { createCuentaRouter } from './routes/cuenta.js';
-import { createSitioRouter, invalidarSitio } from './routes/sitio.js';
+import { createSitioRouter, invalidarSitio, configurarDestacadas } from './routes/sitio.js';
 import { createVideos } from './lib/videos.js';
 
 // ---- Fase 1 (agente B): imports ----
@@ -21,6 +21,10 @@ import { createPlanes } from './lib/planes.js';
 import { createCreditos } from './lib/creditos.js';
 import { createPrivado } from './lib/privado.js';
 import { createAdminFase1Router } from './routes/admin-fase1.js';
+import { createHistorias } from './lib/historias.js';
+import { createDestacadas } from './lib/destacadas.js';
+import { planEfectivo } from './lib/planes-ref.js';
+import { createRetencionVerif } from './lib/verificaciones.js';
 import { createCuentaPlanesRouter } from './routes/cuenta-planes.js';
 import { createAdminCreditosRouter } from './routes/admin-creditos.js';
 import { createCotizacion } from './lib/cotizacion.js';
@@ -30,6 +34,17 @@ import { createDemoSitioRouter } from './routes/demo-sitio.js';
 // ---- fin Fase 1 (agente B): imports ----
 import { createAdminTextosSitioRouter } from './routes/admin-textos-sitio.js';
 import { createAdminVideosRouter } from './routes/admin-videos.js';
+// Venta de contenido con Mercado Pago (marketplace)
+import { createMercadoPago, cuentasDesdeEnv } from './lib/mercadopago.js';
+import { createContenido } from './lib/contenido.js';
+import { createCuentaContenidoRouter } from './routes/cuenta-contenido.js';
+import { createContenidoSitioRouter, createMpWebhookRouter } from './routes/contenido.js';
+import { createAdminContenidoRouter } from './routes/admin-contenido.js';
+// Cuentas de interesados (clientes) y pedidos personalizados con chat
+import { createAuthClientes } from './lib/clientes.js';
+import { createSolicitudes } from './lib/solicitudes.js';
+import { createClienteRouter } from './routes/cliente.js';
+import { createCuentaSolicitudesRouter } from './routes/cuenta-solicitudes.js';
 export { escapeHtml };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -60,6 +75,8 @@ export function loadConfig(env = process.env) {
     // Cotización del dólar blue (opcional, para pruebas): por defecto DolarApi y Bluelytics.
     cotizacionUrl: str(env.COTIZACION_URL) || undefined,
     cotizacionFallbackUrl: str(env.COTIZACION_FALLBACK_URL) || undefined,
+    // Venta de contenido: cuentas de comisión (aplicaciones de Mercado Pago) MP_CUENTA_<n>_NOMBRE/_CLIENT_ID/_CLIENT_SECRET/_WEBHOOK_SECRET
+    mpCuentas: cuentasDesdeEnv(env),
     publicDir: path.resolve(str(env.PUBLIC_DIR) || path.join(HERE, 'public')),
     schemaPath: path.join(HERE, 'db', 'schema.sql'),
     // Todos los .sql de esta carpeta se aplican en orden alfabético en cada arranque (son idempotentes).
@@ -277,8 +294,8 @@ function createRateLimiter() {
 const CSP_SITE = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self'",
+  "font-src 'self'",
   "img-src 'self' data:",
   "connect-src 'self'",
   "form-action 'self'",
@@ -427,12 +444,15 @@ export function createApp(config) {
     if (!st.isFile()) return null;
     const hit = htmlCache.get(file);
     const sameFile = hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size;
-    if (sameFile && hit.ver === textos.ver) return hit.html;
+    // Fuentes propias (las mismas del sitio, assets/fuentes.<hash>.css); sin build, las del sistema
+    const fh = spaSitio && spaSitio.fuentesHref ? await spaSitio.fuentesHref() : null;
+    if (sameFile && hit.ver === textos.ver && hit.fh === fh) return hit.html;
     const raw = sameFile ? hit.raw : await fs.readFile(file, 'utf8');
     const ver = textos.ver;
     // Primero los textos (escapados) y después los {{...}}, así los marcadores funcionan también dentro de los valores.
-    const html = aplicarTextos(raw, textos.valores).replace(PH_RE, (_, k) => escapeHtml(placeholders[k]));
-    htmlCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, raw, ver, html });
+    const html = aplicarTextos(raw, textos.valores).replace(PH_RE, (_, k) => escapeHtml(placeholders[k]))
+      .replace(/<!--sr:fuentes-->\n?/, fh ? `<link rel="stylesheet" href="${escapeHtml(fh)}">\n` : '');
+    htmlCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, raw, ver, html, fh });
     return html;
   };
   const exists = async (rel) => { try { return (await fs.stat(path.join(config.publicDir, rel))).isFile(); } catch { return false; } };
@@ -469,7 +489,23 @@ export function createApp(config) {
     pool, storage, log, invalidar: () => invalidarSitio(), tmpDir: path.join(storage.dataDir(), 'tmp', 'videos'),
     ffmpeg: config.ffmpegPath || 'ffmpeg', ffprobe: config.ffprobePath || 'ffprobe', marca: config.marcaVideos !== false,
   });
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos };
+  // Historias: el admin puede borrarlas y las vencidas se borran solas (archivos + fila).
+  const historias = createHistorias({ pool, storage, videos, log, invalidar: () => invalidarSitio() });
+  // Historias destacadas: las sube la acompañante desde su dispositivo; no vencen (lib/destacadas.js).
+  const destacadas = createDestacadas({ pool, storage, videos, planes: () => planes, invalidar: () => invalidarSitio(), log });
+  configurarDestacadas(destacadas);
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas };
+  // Venta de contenido (Mercado Pago). En las pruebas se inyecta mpFetch: nunca se sale a la red.
+  const mp = createMercadoPago({
+    fetchImpl: config.mpFetch !== undefined ? config.mpFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
+    authUrl: config.mpAuthUrl, apiBase: config.mpApiBase,
+  });
+  const contenido = createContenido({ pool, mp, cuentas: config.mpCuentas || [], siteUrl: config.siteUrl, log, invalidar: () => invalidarSitio(), now: config.contenidoNow, planDe: (id) => planEfectivo(id, planes) });
+  ctx.contenido = contenido;
+  // Interesados (clientes): sesión propia (cookie sr_cliente). Pedidos personalizados con chat y contenido bloqueado.
+  const authCli = createAuthClientes({ pool, config });
+  const solicitudes = createSolicitudes({ pool, storage, contenido, videos, log, tmpDir: videos.tmpDir });
+  ctx.solicitudes = solicitudes;
 
   const app = express();
   app.disable('x-powered-by');
@@ -587,8 +623,19 @@ export function createApp(config) {
     // config.requireCuenta solo existe en pruebas (se pasa por código, nunca por variables de entorno).
     requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
   }));
+  app.use('/api/cuenta', createCuentaContenidoRouter({
+    contenido, sameOrigin: mismoOrigen, log,
+    requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
+  }));
+  app.use('/api/cuenta', createCuentaSolicitudesRouter({
+    solicitudes, sameOrigin: mismoOrigen, rl, tmpDir: videos.tmpDir, log,
+    requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
+  }));
   app.use('/api/cuenta', createCuentaRouter(ctx));
+  app.use('/api/cliente', createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log }));
+  app.use('/api/sitio', createContenidoSitioRouter({ contenido, authCli, rl, ipHash, state, log }));
   app.use('/api/sitio', createSitioRouter(ctx));
+  app.use('/api/mp', createMpWebhookRouter({ contenido, log }));
   app.use('/api', api);
 
   // Archivos públicos subidos (STORAGE=local). Nombres aleatorios e inmutables: caché larga. Sin listado de carpetas.
@@ -675,13 +722,13 @@ export function createApp(config) {
 <meta name="robots" content="noindex,nofollow"><title>SexyRose — Admin</title>
 <style nonce="${nonce}">
 :root{color-scheme:dark}body{margin:0;padding:16px;background:#15131A;color:#F7F3F6;font:14px/1.45 system-ui,sans-serif}
-h1{font-size:20px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px;color:#FF5C8A}a{color:#FF5C8A}.muted{color:#b9b1bd}
+h1{font-size:20px;margin:0 0 4px}h1 img{vertical-align:-5px;margin-right:6px}h2{font-size:17px;margin:28px 0 8px;color:#FF5C8A}a{color:#FF5C8A}.muted{color:#b9b1bd}
 .wrap{overflow-x:auto;border:1px solid #3a3541;border-radius:10px}table{border-collapse:collapse;width:100%;min-width:900px}
 th,td{padding:7px 9px;border-bottom:1px solid #2d2934;text-align:left;vertical-align:top}th{background:#221F28;position:sticky;top:0}
 .nw{white-space:nowrap}.desc{white-space:pre-wrap;max-width:420px;overflow-wrap:anywhere}.url{max-width:220px;overflow-wrap:anywhere}.id{font:11px ui-monospace,monospace;color:#8f8796}
 tr.urg td{background:#3a1424}button{background:#FF5C8A;color:#15131A;border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer}
 </style></head><body>
-<h1>SexyRose — Admin</h1>
+<h1><img src="/favicon.svg" alt="" width="26" height="26">SexyRose — Admin</h1>
 <p><a href="${A}">Ir al panel nuevo</a> · <a href="${C}/textos">Editar los textos del sitio</a></p>
 <p class="muted">Pre-registros: ${preN.rows[0].n} · Denuncias: ${denN.rows[0].n} (abiertas: ${denN.rows[0].abiertas}) · Hora Argentina</p>
 <h2 id="denuncias">Denuncias</h2>
@@ -1031,7 +1078,10 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   ctx.cotizacion = cotizacion;
   admin.use('/api', createAdminCotizacionRouter({ cotizacion, apiPost, log }));
   if (config.tareaCotizacion !== false) cotizacion.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
-  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
+  // Selfie y documento: se recomprimen al decidir y se borran a los 3 meses de la decisión.
+  const retencionVerif = createRetencionVerif({ pool, storage, log });
+  ctx.retencionVerif = retencionVerif;
+  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log, retencionVerif, historias });
   admin.use('/api', fase1Admin.router);
   // Planes v2: créditos, pedidos de créditos, vencimientos, pausadas por saldo y Destacados.
   const creditosAdmin = createAdminCreditosRouter({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
@@ -1039,6 +1089,8 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   if (config.tareaPlanes !== false) planes.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
   // ---- fin Fase 1 (agente B) ----
   admin.use('/api', createAdminTextosSitioRouter({ pool, apiPost }), createAdminVideosRouter({ pool })); // Ajustes → Textos del inicio; videos en la ficha
+  admin.use('/api', createAdminContenidoRouter({ contenido, apiPost, log })); // venta de contenido: cuenta de comisión y ventas
+  if (config.tareaContenido !== false) contenido.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
 
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
@@ -1301,9 +1353,13 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
           log('no se pudieron cargar los textos editados (se usan los del archivo):', e.code || e.message);
         }
         await purgeIpHashes();
+        await retencionVerif.purgar();
+        await historiasVencidas();
+        await pedidosVencidos();
         try {
           const n = await videos.recuperar();
           if (n) log(`videos pendientes al arrancar: ${n}`);
+          await solicitudes.recuperar();
         } catch (e) { log('no se pudo revisar la cola de videos:', e.code || e.message); }
         return;
       } catch (e) {
@@ -1316,17 +1372,32 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     }
   };
 
+  // Historias vencidas: se borran (archivos + fila) al arrancar y cada hora.
+  const historiasVencidas = async () => {
+    if (!state.dbReady || state.stopping) return;
+    try { await historias.borrarVencidas(); } catch (e) { log('borrado de historias vencidas falló:', e.code || e.message); }
+  };
+  // Contenido de los pedidos personalizados: se borra a 1 mes del pago (o de enviado, si no se pagó). Cada hora.
+  const pedidosVencidos = async () => {
+    if (!state.dbReady || state.stopping) return;
+    try { await solicitudes.vencer(); } catch (e) { log('borrado de contenido vencido de pedidos falló:', e.code || e.message); }
+  };
   // Sesiones vencidas y tokens de email viejos.
   const limpiarSesiones = async () => {
     if (!state.dbReady) return;
     try {
       await pool.query('DELETE FROM sesiones WHERE expira < now()');
       await pool.query("DELETE FROM tokens_email WHERE expira < now() - interval '7 days'");
+      await pool.query('DELETE FROM sesiones_clientes WHERE expira < now()');
+      await pool.query("DELETE FROM tokens_email_clientes WHERE expira < now() - interval '7 days'");
     } catch (e) { log('limpieza de sesiones falló:', e.code || e.message); }
   };
   const timers = [
     setInterval(purgeIpHashes, DAY),
+    setInterval(() => { if (state.dbReady && !state.stopping) retencionVerif.purgar(); }, 6 * HOUR),
     setInterval(limpiarSesiones, 6 * HOUR),
+    setInterval(historiasVencidas, HOUR),
+    setInterval(pedidosVencidos, HOUR),
     setInterval(() => rl.sweep(HOUR), 10 * 60 * 1000),
   ];
   timers.forEach((t) => t.unref());
@@ -1334,6 +1405,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const shutdown = async () => {
     planes.detenerTarea();
     cotizacion.detenerTarea();
+    contenido.detenerTarea();
     videos.detener();
     state.stopping = true;
     timers.forEach(clearInterval);

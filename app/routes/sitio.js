@@ -1,5 +1,5 @@
 // API pública del sitio: /api/sitio/...
-//   GET  estado         → todo lo que el sitio público necesita (perfiles publicados, historias activas, catálogos).
+//   GET  estado         → todo lo que el sitio público necesita (perfiles publicados con sus destacadas, historias activas, catálogos).
 //   GET  perfil/:slug   → un perfil publicado.
 //   POST reporte        → denuncia sobre un perfil (misma tabla que /api/denuncia).
 // El estado se arma una vez cada 30 s como máximo; invalidarSitio() fuerza recalcularlo (lo llaman cuenta y admin).
@@ -18,6 +18,10 @@ let pending = null;
 
 export function invalidarSitio() { cache = null; }
 
+// Historias destacadas (lib/destacadas.js): server.js pasa la instancia al arrancar.
+let destacadasInst = null;
+export function configurarDestacadas(d) { destacadasInst = d; }
+
 export async function armarEstado(pool, planesInst) {
   const cat = await cargarCatalogos(pool);
   const { rows: perfiles } = await pool.query(
@@ -30,17 +34,19 @@ export async function armarEstado(pool, planesInst) {
   const [fotos, historias, planes, videos, previews, destacados] = await Promise.all([
     ids.length ? pool.query('SELECT cuenta_id, url, url_mini, ancho, alto FROM fotos WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, orden, creado', [ids]) : { rows: [] },
     ids.length ? pool.query(
-      'SELECT id, cuenta_id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = ANY($1) AND expira > now() ORDER BY creado',
+      "SELECT id, cuenta_id, tipo, url, url_mini, texto, segundos, ancho, alto, creado, expira FROM historias WHERE cuenta_id = ANY($1) AND estado = 'listo' AND expira > now() ORDER BY creado",
       [ids],
     ) : { rows: [] },
     planesEfectivos(ids, planesInst),
     ids.length ? pool.query(
-      "SELECT id, cuenta_id, url, url_poster, segundos, ancho, alto FROM videos WHERE cuenta_id = ANY($1) AND estado = 'listo' ORDER BY cuenta_id, orden, creado",
+      "SELECT id, cuenta_id, url, url_poster, segundos, ancho, alto, creado FROM videos WHERE cuenta_id = ANY($1) AND estado = 'listo' ORDER BY cuenta_id, orden, creado",
       [ids],
     ) : { rows: [] },
     ids.length ? pool.query("SELECT cuenta_id, url FROM previews WHERE cuenta_id = ANY($1) AND estado = 'listo' AND url IS NOT NULL", [ids]) : { rows: [] },
     destacadosVigentes(ids, planesInst),
   ]);
+  // Destacadas: solo las que entran en el plan de cada una y con fotos o videos listos.
+  const destacadasDe = destacadasInst ? await destacadasInst.publicas(ids, planes) : new Map();
   const previewDe = new Map(previews.rows.map((x) => [x.cuenta_id, x.url]));
   const videosDe = new Map();
   for (const v of videos.rows) { if (!videosDe.has(v.cuenta_id)) videosDe.set(v.cuenta_id, []); videosDe.get(v.cuenta_id).push(v); }
@@ -56,7 +62,9 @@ export async function armarEstado(pool, planesInst) {
     // Destacado: atado al plan con el que se compró y a la provincia actual del perfil.
     const prov = String((p.datos && p.datos.provincia) || '').trim().toLowerCase();
     const destacado = (destacados.get(p.cuenta_id) || []).some((d) => d.plan === plan && String(d.provincia).trim().toLowerCase() === prov);
-    return perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, videos: vs, preview, plan, destacado, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
+    const pub = perfilPublico({ cuentaId: p.cuenta_id, slug: p.slug, datos: p.datos, fotos: fs, videos: vs, preview, plan, destacado, actualizado: p.actualizado, publicadoEn: p.publicado_en }, cat.ubic);
+    const hl = destacadasDe.get(p.cuenta_id);
+    return hl ? { ...pub, destacadas: hl } : pub;
   });
   const aj = cat.ajustes;
   return {
@@ -66,7 +74,11 @@ export async function armarEstado(pool, planesInst) {
     categorias: cat.categoriasLista.filter((c) => c.activa).map((c) => ({ id: c.id, nombre: c.nombre, icono: c.icono, orden: c.orden })),
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),
     perfiles: lista,
-    historias: historias.rows.map((h) => ({ id: h.id, cuentaId: h.cuenta_id, url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira })),
+    historias: historias.rows.map((h) => ({
+      id: h.id, cuentaId: h.cuenta_id, tipo: h.tipo || 'foto', url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira,
+      // Video: url = MP4, urlMini = portada
+      ...(h.tipo === 'video' ? { segundos: h.segundos == null ? null : Number(h.segundos), ancho: h.ancho, alto: h.alto } : {}),
+    })),
   };
 }
 

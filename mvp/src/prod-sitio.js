@@ -5,7 +5,7 @@
    - Las acompañantes crean su cuenta, arman su perfil, suben fotos, verificación e historias y piden
      su plan por transferencia contra /api/cuenta/… (cookie de sesión del servidor).
    - Fuera del lanzamiento del 15/11 (no se muestra nada de esto): cuentas de clientes, compras,
-     contenido exclusivo, packs, pedidos a medida, chat en vivo, reservas, shorts y videos.
+     contenido exclusivo, packs, pedidos a medida, reservas, shorts y videos (el chat en vivo no existe en la web).
    - En el navegador solo se guardan preferencias de la interfaz (idioma, géneros, historias vistas).
    ============================================================ */
 (function () {
@@ -41,13 +41,15 @@
     { id: 'plan', label: 'Plan', icon: 'card' },
     { id: 'creditos', label: 'Créditos', icon: 'wallet' },
     { id: 'destacado', label: 'Destacado', icon: 'sparkles' },
+    { id: 'contenido', label: 'Contenido', icon: 'bag' }, // venta de contenido (prod-contenido.js)
+    { id: 'pedidos', label: 'Pedidos', icon: 'chat' }, // pedidos personalizados con chat (prod-clientes.js)
     { id: 'avisos', label: 'Avisos', icon: 'bell' },
     { id: 'cuenta', label: 'Cuenta', icon: 'settings' },
   ];
 
   /* ---------- Textos del sitio real en inglés y portugués (no tocan el diccionario de la demo) ---------- */
   Object.assign(HH.I18N = HH.I18N || {}, {"Videos · {n} / {n}": ["Videos · {n} / {n}", "Vídeos · {n} / {n}"], "Hasta 30 segundos y 95 MB. Les agregamos la marca de agua y les sacamos los datos de ubicación.": ["Up to 30 seconds and 95 MB. We add the watermark and remove location data.", "Até 30 segundos e 95 MB. Adicionamos a marca d’água e removemos os dados de localização."], "Subir video": ["Upload video", "Enviar vídeo"], "Subiendo video…": ["Uploading video…", "Enviando vídeo…"], "Procesando…": ["Processing…", "Processando…"], "No se pudo procesar.": ["Could not be processed.", "Não foi possível processar."], "Todavía no subiste videos": ["You have not uploaded videos yet", "Você ainda não enviou vídeos"], "Videos cortos de tus salidas, con la cara visible. Sin desnudos.": ["Short videos of your outings, with your face visible. No nudity.", "Vídeos curtos dos seus passeios, com o rosto visível. Sem nudez."], "Recibimos el video. Lo estamos procesando.": ["We received the video. We are processing it.", "Recebemos o vídeo. Estamos processando."], "Borrar video": ["Delete video", "Apagar vídeo"], "¿Querés borrar este video? No se puede deshacer.": ["Delete this video? This cannot be undone.", "Apagar este vídeo? Não dá para desfazer."], "Video borrado.": ["Video deleted.", "Vídeo apagado."], "El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.": ["The video is larger than 95 MB. Trim it or record it in lower quality.", "O vídeo tem mais de 95 MB. Corte ou grave em qualidade menor."], "Video": ["Video", "Vídeo"], "Videos": ["Videos", "Vídeos"]});
-  Object.assign(HH.I18N = HH.I18N || {}, { "1 mes": ["1 month", "1 mês"], "1 semana": ["1 week", "1 semana"], "asignado": ["assigned", "atribuído"], "Te mostramos los datos para transferir.": ["We will show you the transfer details.", "Mostramos os dados para transferência."], "Del {x} al {x}": ["From {x} to {x}", "De {x} a {x}"], "(hasta 4, con https://)": [ "(up to 4, with https://)", "(até 4, com https://)" ], "(opcional, para clientes de afuera)": [ "(optional, for clients from abroad)", "(opcional, para clientes de fora)" ], "A convenir": [ "To be agreed", "A combinar" ], "Acepto los": [ "I accept the", "Aceito os" ], "Acompañantes": [ "Companions", "Acompanhantes" ], "Activas": [ "Active", "Ativas" ], "Aprobamos tu perfil y aparece en el sitio. Los clientes te escriben directo por WhatsApp o Telegram.": [ "We approve your profile and it shows on the site. Clients write to you directly on WhatsApp or Telegram.", "Aprovamos seu perfil e ele aparece no site. Os clientes escrevem direto pelo WhatsApp ou Telegram." ], "Avisar que transferí": [ "Let you know I paid", "Avisar que transferi" ], "Barrio o zona": [ "Neighborhood or area", "Bairro ou região" ], "Borrador": [ "Draft", "Rascunho" ], "Borrar foto": [ "Delete photo", "Apagar foto" ], "Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.": [ "Each companion sends a selfie holding her ID and a photo of the ID, reviewed by the SexyRose team: we confirm she is of legal age and the person in the photos. Only verified profiles are published.", "Cada acompanhante envia uma selfie com o documento e uma foto do documento, que a equipe da SexyRose revisa: confirmamos que é maior de idade e que é a pessoa das fotos. Só os perfis verificados são publicados." ], "Cancelado": [ "Canceled", "Cancelado" ], "Completá tu perfil y envialo a revisión. Nadie lo ve todavía.": [ "Complete your profile and send it for review. Nobody can see it yet.", "Complete seu perfil e envie para revisão. Ninguém o vê ainda." ], "Completá tu perfil y subí al menos 3 fotos.": [ "Complete your profile and upload at least 3 photos.", "Complete seu perfil e envie pelo menos 3 fotos." ], "Comprobante": [ "Receipt", "Comprovante" ], "Con código de país. Es el número al que te escriben.": [ "With country code. It is the number clients write to.", "Com código do país. É o número para o qual escrevem." ], "Confirmado": [ "Confirmed", "Confirmado" ], "Confirmando tu email…": [ "Confirming your email…", "Confirmando seu e-mail…" ], "Confirmar email": [ "Confirm email", "Confirmar e-mail" ], "Confirmá tu email: te mandamos un link a": [ "Confirm your email: we sent a link to", "Confirme seu e-mail: enviamos um link para" ], "Contacto y tarifa": [ "Contact and rate", "Contato e tarifa" ], "Contanos qué pasó. Revisamos cada reporte y podemos suspender el perfil.": [ "Tell us what happened. We review every report and can suspend the profile.", "Conte o que aconteceu. Revisamos cada denúncia e podemos suspender o perfil." ], "Contraseña cambiada.": [ "Password changed.", "Senha alterada." ], "Contraseña nueva": [ "New password", "Nova senha" ], "Creá tu cuenta": [ "Create your account", "Crie sua conta" ], "Creá tu cuenta y confirmá tu email.": [ "Create your account and confirm your email.", "Crie sua conta e confirme seu e-mail." ], "Cuando transfieras, tocá \"Ya transferí\" en tus pedidos. Confirmamos el pago y se activa el plan.": [ "Once you transfer, tap \"I already paid\" in your orders. We confirm the payment and the plan is activated.", "Quando transferir, toque em \"Já transferi\" nos seus pedidos. Confirmamos o pagamento e o plano é ativado." ], "Cuenta creada. Te mandamos un email para confirmarlo.": [ "Account created. We sent you an email to confirm it.", "Conta criada. Enviamos um e-mail para confirmá-lo." ], "Cómo funciona": [ "How it works", "Como funciona" ], "Datos para transferir": [ "Transfer details", "Dados para transferência" ], "Demasiados intentos. Probá de nuevo en un rato.": [ "Too many attempts. Try again in a while.", "Muitas tentativas. Tente de novo daqui a pouco." ], "Denunciar": [ "Report", "Denunciar" ], "Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.": [ "They last 24 hours and appear on the home page with your ring. The best way to show your day.", "Duram 24 horas e aparecem no início com o seu anel. O melhor jeito de mostrar seu dia." ], "Dónde estás": [ "Where you are", "Onde você está" ], "El archivo es demasiado grande.": [ "The file is too large.", "O arquivo é grande demais." ], "El link no es válido o ya venció.": [ "The link is not valid or has expired.", "O link não é válido ou já expirou." ], "El link no tiene el código de confirmación.": [ "The link is missing the confirmation code.", "O link não tem o código de confirmação." ], "El link no tiene el código. Pedí uno nuevo desde \"¿Olvidaste tu contraseña?\".": [ "The link is missing the code. Request a new one from \"Forgot your password?\".", "O link não tem o código. Peça um novo em \"Esqueceu sua senha?\"." ], "Elegí las dos fotos: la selfie con el documento y el frente del documento.": [ "Choose both photos: the selfie with your ID and the front of your ID.", "Escolha as duas fotos: a selfie com o documento e a frente do documento." ], "Elegí primero la provincia": [ "Choose the province first", "Escolha primeiro a província" ], "Elegí tu provincia": [ "Choose your province", "Escolha sua província" ], "Elegí tu provincia en Mi perfil para ver el cupo.": [ "Choose your province in My profile to see availability.", "Escolha sua província em Meu perfil para ver as vagas." ], "Elegí una contraseña nueva de al menos 10 caracteres. Se cierran las sesiones abiertas en otros dispositivos.": [ "Choose a new password of at least 10 characters. Sessions open on other devices will be closed.", "Escolha uma nova senha com pelo menos 10 caracteres. As sessões abertas em outros dispositivos serão encerradas." ], "Elegí una foto.": [ "Choose a photo.", "Escolha uma foto." ], "Email confirmado": [ "Email confirmed", "E-mail confirmado" ], "Email sin confirmar": [ "Email not confirmed", "E-mail não confirmado" ], "Error del servidor. Probá de nuevo en unos minutos.": [ "Server error. Try again in a few minutes.", "Erro do servidor. Tente de novo em alguns minutos." ], "Es el nombre que se ve en el sitio. No uses tu nombre completo.": [ "It is the name shown on the site. Do not use your full name.", "É o nome que aparece no site. Não use seu nome completo." ], "Escribinos a": [ "Write to us at", "Escreva para" ], "Escribí el email de tu cuenta y te mandamos un link para crear una nueva.": [ "Enter your account email and we will send you a link to create a new one.", "Digite o e-mail da sua conta e enviamos um link para criar uma nova." ], "Esperando tu transferencia": [ "Waiting for your transfer", "Aguardando sua transferência" ], "Estado": [ "Status", "Status" ], "Estado de tu perfil": [ "Your profile status", "Status do seu perfil" ], "Estamos revisando tu perfil y tu verificación. Te avisamos por email.": [ "We are reviewing your profile and your verification. We will let you know by email.", "Estamos revisando seu perfil e sua verificação. Avisamos por e-mail." ], "Estás en Bronce, gratis.": [ "You are on Bronze, free.", "Você está no Bronze, grátis." ], "Estás en Bronce, gratis. Con un plan más alto aparecés más arriba y podés subir más fotos e historias.": [ "You are on Bronze, free. With a higher plan you appear higher up and can upload more photos and stories.", "Você está no Bronze, grátis. Com um plano mais alto você aparece mais acima e pode enviar mais fotos e stories." ], "Fecha de nacimiento": [ "Date of birth", "Data de nascimento" ], "Foto borrada.": [ "Photo deleted.", "Foto apagada." ], "Fotos reales, con la cara visible y en lugares públicos. Sin desnudos.": [ "Real photos, with your face visible and in public places. No nudity.", "Fotos reais, com o rosto visível e em lugares públicos. Sem nudez." ], "Fotos subidas.": [ "Photos uploaded.", "Fotos enviadas." ], "Frente del documento": [ "Front of your ID", "Frente do documento" ], "Gracias. Recibimos tu reporte.": [ "Thank you. We received your report.", "Obrigado. Recebemos sua denúncia." ], "Guardado.": [ "Saved.", "Salvo." ], "Guardar contraseña": [ "Save password", "Salvar senha" ], "Género": [ "Gender", "Gênero" ], "Hasta {n} fotos": [ "Up to {n} photos", "Até {n} fotos" ], "Historia borrada.": [ "Story deleted.", "Story apagado." ], "Historia publicada por 24 horas.": [ "Story posted for 24 hours.", "Story publicado por 24 horas." ], "Historias ilimitadas con tu plan": [ "Unlimited stories with your plan", "Stories ilimitados com seu plano" ], "Imágenes sin consentimiento": [ "Images without consent", "Imagens sem consentimento" ], "Ingresar": [ "Log in", "Entrar" ], "Ingresá": [ "Log in", "Entre" ], "La contraseña tiene que tener al menos 10 caracteres.": [ "The password must be at least 10 characters long.", "A senha precisa ter pelo menos 10 caracteres." ], "Las dos contraseñas no coinciden.": [ "The two passwords do not match.", "As duas senhas não coincidem." ], "Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.": [ "Outings are canceled with the person you arranged them with, on WhatsApp and in advance. Companion plans are paid by month or by week and do not renew automatically.", "Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. Os planos das acompanhantes são pagos por mês ou por semana e não se renovam sozinhos." ], "Link incompleto": [ "Incomplete link", "Link incompleto" ], "Listo, avisamos que transferiste. Te confirmamos por email.": [ "Done, we noted your transfer. We will confirm by email.", "Pronto, avisamos que você transferiu. Confirmamos por e-mail." ], "Listo, confirmaste tu email.": [ "Done, your email is confirmed.", "Pronto, você confirmou seu e-mail." ], "Listo, tu perfil está en revisión.": [ "Done, your profile is under review.", "Pronto, seu perfil está em revisão." ], "Listo, ya podés entrar con tu contraseña nueva.": [ "Done, you can now log in with your new password.", "Pronto, você já pode entrar com sua nova senha." ], "Llegaste al límite de tu plan": [ "You reached your plan limit", "Você atingiu o limite do seu plano" ], "Lo hago después": [ "I will do it later", "Faço depois" ], "Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.": [ "What you see here is what gets published. Your email, your ID and your date of birth are never shown.", "O que você vê aqui é o que é publicado. Seu e-mail, seu documento e sua data de nascimento não aparecem." ], "Lo revisamos a mano para confirmar que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten.": [ "We review it by hand to confirm it is you and that you are over 18. The selfie and the ID are never published or shared.", "Revisamos manualmente para confirmar que é você e que você é maior de 18. A selfie e o documento nunca são publicados nem compartilhados." ], "Lo sacás del sitio cuando quieras, sin perder nada.": [ "Take it off the site whenever you want, without losing anything.", "Tire do site quando quiser, sem perder nada." ], "Los cambios se ven en el sitio apenas guardás (si tu perfil está publicado).": [ "Changes show on the site as soon as you save (if your profile is published).", "As mudanças aparecem no site assim que você salva (se seu perfil estiver publicado)." ], "Los datos para transferir te llegan por email.": [ "You will receive the transfer details by email.", "Os dados para transferência chegam por e-mail." ], "Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.": [ "Fixed spot at the top of the home page in your province. Only 10 per province.", "Lugar fixo no topo do início na sua província. Só 10 por província." ], "Mandar de nuevo": [ "Send again", "Enviar de novo" ], "Mandar verificación": [ "Send verification", "Enviar verificação" ], "Mandarme el link": [ "Send me the link", "Me enviar o link" ], "Mandá una selfie y tu documento: los revisamos y nunca se publican.": [ "Send a selfie and your ID: we review them and they are never published.", "Envie uma selfie e seu documento: revisamos e nunca são publicados." ], "Mover antes": [ "Move earlier", "Mover para antes" ], "Mover después": [ "Move later", "Mover para depois" ], "Más arriba en el inicio, más fotos e historias ilimitadas.": [ "Higher on the home page, more photos and unlimited stories.", "Mais acima no início, mais fotos e stories ilimitados." ], "Más fotos y hasta 3 historias por día.": [ "More photos and up to 3 stories per day.", "Mais fotos e até 3 stories por dia." ], "No hay conexión. Revisá internet y probá de nuevo.": [ "No connection. Check your internet and try again.", "Sem conexão. Verifique a internet e tente de novo." ], "No quedan lugares Star en tu provincia.": [ "No Star spots left in your province.", "Não há mais vagas Star na sua província." ], "No tenés historias activas.": [ "You have no active stories.", "Você não tem stories ativos." ], "Nombre artístico": [ "Stage name", "Nome artístico" ], "Nota": [ "Note", "Nota" ], "Ocultar mi perfil": [ "Hide my profile", "Ocultar meu perfil" ], "Pagás por transferencia. Cuando la confirmamos, el plan se activa. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.": [ "You pay by bank transfer. Once we confirm it, the plan is activated. A week of a higher plan moves you up for 7 days and then you go back to your plan automatically.", "Você paga por transferência. Quando confirmamos, o plano é ativado. Uma semana de um plano mais alto te sobe por 7 dias e depois você volta sozinha ao seu plano." ], "Para mirar perfiles y escribir por WhatsApp no hace falta cuenta.": [ "You do not need an account to browse profiles and write on WhatsApp.", "Não é preciso conta para ver perfis e escrever pelo WhatsApp." ], "Para publicar te falta": [ "To publish you still need", "Para publicar falta" ], "Pausado": [ "Paused", "Pausado" ], "Pedido cancelado.": [ "Order canceled.", "Pedido cancelado." ], "Pedido en curso": [ "Order in progress", "Pedido em andamento" ], "Pedir": [ "Order", "Pedir" ], "Pedir 1 mes · {x}": [ "Order 1 month · {x}", "Pedir 1 mês · {x}" ], "1 semana · {x}": [ "1 week · {x}", "1 semana · {x}" ], "Subí a {x} por 7 días · {x}": [ "Upgrade to {x} for 7 days · {x}", "Suba para {x} por 7 dias · {x}" ], "Perfil falso, engaño u otro": [ "Fake profile, scam or other", "Perfil falso, golpe ou outro" ], "Podés elegir hasta 6 intereses.": [ "You can choose up to 6 interests.", "Você pode escolher até 6 interesses." ], "Podés pedir un link nuevo desde tu panel.": [ "You can request a new link from your dashboard.", "Você pode pedir um novo link no seu painel." ], "Política de contenido": [ "Content policy", "Política de conteúdo" ], "Política de privacidad": [ "Privacy policy", "Política de privacidade" ], "Poné esta referencia en la transferencia": [ "Put this reference in the transfer", "Coloque esta referência na transferência" ], "Posible menor de edad": [ "Possible minor", "Possível menor de idade" ], "Posible trata o explotación": [ "Possible trafficking or exploitation", "Possível tráfico ou exploração" ], "Provincia": [ "Province", "Província" ], "Publicado": [ "Published", "Publicado" ], "Publicá tu perfil": [ "Publish your profile", "Publique seu perfil" ], "Rechazado": [ "Rejected", "Rejeitado" ], "Recibimos tu verificación.": [ "We received your verification.", "Recebemos sua verificação." ], "Recibimos tu verificación. Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.": [ "We received your verification. We will email you when we review it. If you sent the wrong file, you can send it again.", "Recebemos sua verificação. Avisamos por e-mail quando revisarmos. Se você errou o arquivo, pode enviar de novo." ], "Recuperar contraseña": [ "Recover password", "Recuperar senha" ], "Reenviar": [ "Resend", "Reenviar" ], "Referencia": [ "Reference", "Referência" ], "Repetila": [ "Repeat it", "Repita" ], "Revisá el motivo, corregí lo necesario y volvé a enviarlo.": [ "Check the reason, fix what is needed and send it again.", "Veja o motivo, corrija o necessário e envie de novo." ], "Salidas que te gustan": [ "Outings you like", "Passeios de que você gosta" ], "Se publica solo tu edad.": [ "Only your age is published.", "Só sua idade é publicada." ], "Selfie con el documento": [ "Selfie with your ID", "Selfie com o documento" ], "Separalos con comas.": [ "Separate them with commas.", "Separe com vírgulas." ], "Si hay una cuenta con ese email, te mandamos un link para crear una contraseña nueva. Revisá también la carpeta de spam.": [ "If there is an account with that email, we sent you a link to create a new password. Also check your spam folder.", "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Verifique também a pasta de spam." ], "Si querés, adjuntá el comprobante. Así lo confirmamos más rápido.": [ "If you want, attach the receipt. That way we confirm it faster.", "Se quiser, anexe o comprovante. Assim confirmamos mais rápido." ], "Sin confirmar": [ "Not confirmed", "Não confirmado" ], "Sin enviar": [ "Not sent", "Não enviada" ], "Sobre vos": [ "About you", "Sobre você" ], "Sobre vos en inglés": [ "About you in English", "Sobre você em inglês" ], "Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.": [ "Only for companions over 18. With the Bronze plan you publish for free.", "Só para acompanhantes maiores de 18. Com o plano Bronze você publica grátis." ], "Soy mayor de 18 años.": [ "I am over 18 years old.", "Sou maior de 18 anos." ], "Subiendo {n} de {n}…": [ "Uploading {n} of {n}…", "Enviando {n} de {n}…" ], "Suspendido": [ "Suspended", "Suspenso" ], "Tarifa desde (USD por hora)": [ "Rate from (USD per hour)", "Tarifa a partir de (USD por hora)" ], "Te mandamos el email de nuevo.": [ "We sent the email again.", "Enviamos o e-mail de novo." ], "Te mandamos un link para confirmarlo. No se publica.": [ "We will send you a link to confirm it. It is not published.", "Enviamos um link para confirmá-lo. Não é publicado." ], "Tenés que aceptar los Términos y las políticas.": [ "You must accept the Terms and policies.", "Você precisa aceitar os Termos e as políticas." ], "Tenés que confirmar que sos mayor de 18 años.": [ "You must confirm that you are over 18.", "Você precisa confirmar que é maior de 18 anos." ], "Texto": [ "Text", "Texto" ], "Titular": [ "Headline", "Título" ], "Todavía no subiste fotos": [ "You have not uploaded photos yet", "Você ainda não enviou fotos" ], "Transferencia informada": [ "Transfer reported", "Transferência informada" ], "Transferí desde la cuenta de…": [ "I transferred from the account of…", "Transferi da conta de…" ], "Transferí para activar tu plan": [ "Transfer to activate your plan", "Transfira para ativar seu plano" ], "Tu email": [ "Your email", "Seu e-mail" ], "Tu identidad está verificada.": [ "Your identity is verified.", "Sua identidade está verificada." ], "Tu perfil está completo.": [ "Your profile is complete.", "Seu perfil está completo." ], "Tu perfil está oculto.": [ "Your profile is hidden.", "Seu perfil está oculto." ], "Tu perfil está oculto: nadie lo ve en el sitio.": [ "Your profile is hidden: nobody sees it on the site.", "Seu perfil está oculto: ninguém o vê no site." ], "Tu perfil fue suspendido. Escribinos a contacto@sexyrose.net.": [ "Your profile was suspended. Write to us at contacto@sexyrose.net.", "Seu perfil foi suspenso. Escreva para contacto@sexyrose.net." ], "Tu perfil no se ve en el sitio por ahora.": [ "Your profile is not shown on the site for now.", "Seu perfil não aparece no site por enquanto." ], "Tu perfil se ve de nuevo.": [ "Your profile is visible again.", "Seu perfil aparece de novo." ], "Tu perfil se ve en el sitio.": [ "Your profile is shown on the site.", "Seu perfil aparece no site." ], "Tus fotos": [ "Your photos", "Suas fotos" ], "Tus historias": [ "Your stories", "Seus stories" ], "Tus historias se ven en el sitio cuando tu perfil esté publicado.": [ "Your stories show on the site once your profile is published.", "Seus stories aparecem no site quando seu perfil estiver publicado." ], "Tus pedidos": [ "Your orders", "Seus pedidos" ], "Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.": [ "A photo of the front of your ID (national ID or passport), with the name and date of birth readable.", "Uma foto da frente do seu documento (RG ou passaporte), com o nome e a data de nascimento legíveis." ], "Una selfie sosteniendo tu documento al lado de la cara, con buena luz.": [ "A selfie holding your ID next to your face, in good light.", "Uma selfie segurando seu documento ao lado do rosto, com boa luz." ], "Ver mi perfil": [ "View my profile", "Ver meu perfil" ], "Verificación: {x}": [ "Verification: {x}", "Verificação: {x}" ], "Vigente hasta el {x}.": [ "Valid until {x}.", "Válido até {x}." ], "Volver a ingresar": [ "Back to log in", "Voltar para entrar" ], "WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar.": [ "WhatsApp opens with an introduction message you can edit before sending.", "O WhatsApp abre com uma mensagem de apresentação que você pode editar antes de enviar." ], "Ya fue verificada con tu documento.": [ "Already verified with your ID.", "Já foi verificada com seu documento." ], "Ya transferí": [ "I already paid", "Já transferi" ], "Enviar a revisión": [ "Send for review", "Enviar para revisão" ], "Enviar verificación": [ "Send verification", "Enviar verificação" ], "Subir fotos": [ "Upload photos", "Enviar fotos" ], "¿Olvidaste tu contraseña?": [ "Forgot your password?", "Esqueceu sua senha?" ], "¿Todavía no publicaste?": [ "Not published yet?", "Ainda não publicou?" ], "Dónde": [ "Where", "Onde" ], "Quedan {n} de {n} lugares en tu provincia.": [ "{n} of {n} spots left in your province.", "Restam {n} de {n} vagas na sua província." ], "Te quedan {n} hoy": [ "{n} left today", "Restam {n} hoje" ], "Pedir {x}": [ "Order {x}", "Pedir {x}" ], "¿Querés borrar esta foto? No se puede deshacer.": [ "Delete this photo? This cannot be undone.", "Apagar esta foto? Não dá para desfazer." ], "¿Querés cancelar este pedido? Si ya transferiste, no lo canceles: tocá \"Ya transferí\".": [ "Cancel this order? If you already transferred, do not cancel it: tap \"I already paid\".", "Cancelar este pedido? Se você já transferiu, não cancele: toque em \"Já transferi\"." ], "Mínimo {n}, hasta {n} con tu plan. La primera es la principal (la del swipe y las historias). Les agregamos la marca de agua de SexyRose y les sacamos los datos de ubicación.": [ "At least {n}, up to {n} with your plan. The first one is the main photo (used in swipe and stories). We add the SexyRose watermark and remove location data.", "Mínimo {n}, até {n} com seu plano. A primeira é a principal (a do swipe e dos stories). Adicionamos a marca d’água da SexyRose e removemos os dados de localização." ], "(hasta 6)": [ "(up to 6)", "(até 6)" ], "En inglés": [ "In English", "Em inglês" ], "Agregá tu WhatsApp o tu usuario de Telegram.": [ "Add your WhatsApp or your Telegram username.", "Adicione seu WhatsApp ou seu usuário do Telegram." ], "Confirmá tu email (te mandamos un link).": [ "Confirm your email (we sent you a link).", "Confirme seu e-mail (enviamos um link)." ], "Elegí tu provincia y tu ciudad.": [ "Choose your province and your city.", "Escolha sua província e sua cidade." ], "Enviá tu verificación de identidad (selfie y documento).": [ "Send your identity verification (selfie and ID).", "Envie sua verificação de identidade (selfie e documento)." ], "Subí al menos 3 fotos (tenés {n}).": [ "Upload at least 3 photos (you have {n}).", "Envie pelo menos 3 fotos (você tem {n})." ], "Completá tu nombre artístico.": [ "Fill in your stage name.", "Preencha seu nome artístico." ], "Elegí tu género.": [ "Choose your gender.", "Escolha seu gênero." ], "Cargá tu fecha de nacimiento.": [ "Enter your date of birth.", "Informe sua data de nascimento." ], ", la": [ ", the", ", a" ], "y la": [ "and the", "e a" ], "Provincia de {x}": [ "Province of {x}", "Província de {x}" ], "tu_usuario": [ "your_username", "seu_usuario" ], "Cafés de especialidad, museos y charlas largas": [ "Specialty coffee, museums and long talks", "Cafés especiais, museus e longas conversas" ] });
+  Object.assign(HH.I18N = HH.I18N || {}, { "1 mes": ["1 month", "1 mês"], "1 semana": ["1 week", "1 semana"], "asignado": ["assigned", "atribuído"], "Te mostramos los datos para transferir.": ["We will show you the transfer details.", "Mostramos os dados para transferência."], "Del {x} al {x}": ["From {x} to {x}", "De {x} a {x}"], "(hasta 4, con https://)": [ "(up to 4, with https://)", "(até 4, com https://)" ], "(opcional, para clientes de afuera)": [ "(optional, for clients from abroad)", "(opcional, para clientes de fora)" ], "A convenir": [ "To be agreed", "A combinar" ], "Acepto los": [ "I accept the", "Aceito os" ], "Acompañantes": [ "Companions", "Acompanhantes" ], "Activas": [ "Active", "Ativas" ], "Aprobamos tu perfil y aparece en el sitio. Los clientes te escriben directo por WhatsApp o Telegram.": [ "We approve your profile and it shows on the site. Clients write to you directly on WhatsApp or Telegram.", "Aprovamos seu perfil e ele aparece no site. Os clientes escrevem direto pelo WhatsApp ou Telegram." ], "Avisar que transferí": [ "Let you know I paid", "Avisar que transferi" ], "Barrio o zona": [ "Neighborhood or area", "Bairro ou região" ], "Borrador": [ "Draft", "Rascunho" ], "Borrar foto": [ "Delete photo", "Apagar foto" ], "Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.": [ "Each companion sends a selfie holding her ID and a photo of the ID, reviewed by the SexyRose team: we confirm she is of legal age and the person in the photos. Only verified profiles are published.", "Cada acompanhante envia uma selfie com o documento e uma foto do documento, que a equipe da SexyRose revisa: confirmamos que é maior de idade e que é a pessoa das fotos. Só os perfis verificados são publicados." ], "Cancelado": [ "Canceled", "Cancelado" ], "Completá tu perfil y envialo a revisión. Nadie lo ve todavía.": [ "Complete your profile and send it for review. Nobody can see it yet.", "Complete seu perfil e envie para revisão. Ninguém o vê ainda." ], "Completá tu perfil y subí al menos 3 fotos.": [ "Complete your profile and upload at least 3 photos.", "Complete seu perfil e envie pelo menos 3 fotos." ], "Comprobante": [ "Receipt", "Comprovante" ], "Con código de país. Es el número al que te escriben.": [ "With country code. It is the number clients write to.", "Com código do país. É o número para o qual escrevem." ], "Confirmado": [ "Confirmed", "Confirmado" ], "Confirmando tu email…": [ "Confirming your email…", "Confirmando seu e-mail…" ], "Confirmar email": [ "Confirm email", "Confirmar e-mail" ], "Confirmá tu email: te mandamos un link a": [ "Confirm your email: we sent a link to", "Confirme seu e-mail: enviamos um link para" ], "Contacto y tarifa": [ "Contact and rate", "Contato e tarifa" ], "Contanos qué pasó. Revisamos cada reporte y podemos suspender el perfil.": [ "Tell us what happened. We review every report and can suspend the profile.", "Conte o que aconteceu. Revisamos cada denúncia e podemos suspender o perfil." ], "Contraseña cambiada.": [ "Password changed.", "Senha alterada." ], "Contraseña nueva": [ "New password", "Nova senha" ], "Creá tu cuenta": [ "Create your account", "Crie sua conta" ], "Creá tu cuenta y confirmá tu email.": [ "Create your account and confirm your email.", "Crie sua conta e confirme seu e-mail." ], "Cuando transfieras, tocá \"Ya transferí\" en tus pedidos. Confirmamos el pago y se activa el plan.": [ "Once you transfer, tap \"I already paid\" in your orders. We confirm the payment and the plan is activated.", "Quando transferir, toque em \"Já transferi\" nos seus pedidos. Confirmamos o pagamento e o plano é ativado." ], "Cuenta creada. Te mandamos un email para confirmarlo.": [ "Account created. We sent you an email to confirm it.", "Conta criada. Enviamos um e-mail para confirmá-lo." ], "Cómo funciona": [ "How it works", "Como funciona" ], "Datos para transferir": [ "Transfer details", "Dados para transferência" ], "Demasiados intentos. Probá de nuevo en un rato.": [ "Too many attempts. Try again in a while.", "Muitas tentativas. Tente de novo daqui a pouco." ], "Denunciar": [ "Report", "Denunciar" ], "Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.": [ "They last 24 hours and appear on the home page with your ring. The best way to show your day.", "Duram 24 horas e aparecem no início com o seu anel. O melhor jeito de mostrar seu dia." ], "Dónde estás": [ "Where you are", "Onde você está" ], "El archivo es demasiado grande.": [ "The file is too large.", "O arquivo é grande demais." ], "El link no es válido o ya venció.": [ "The link is not valid or has expired.", "O link não é válido ou já expirou." ], "El link no tiene el código de confirmación.": [ "The link is missing the confirmation code.", "O link não tem o código de confirmação." ], "El link no tiene el código. Pedí uno nuevo desde \"¿Olvidaste tu contraseña?\".": [ "The link is missing the code. Request a new one from \"Forgot your password?\".", "O link não tem o código. Peça um novo em \"Esqueceu sua senha?\"." ], "Elegí las dos fotos: la selfie con el documento y el frente del documento.": [ "Choose both photos: the selfie with your ID and the front of your ID.", "Escolha as duas fotos: a selfie com o documento e a frente do documento." ], "Elegí primero la provincia": [ "Choose the province first", "Escolha primeiro a província" ], "Elegí tu provincia": [ "Choose your province", "Escolha sua província" ], "Elegí tu provincia en Mi perfil para ver el cupo.": [ "Choose your province in My profile to see availability.", "Escolha sua província em Meu perfil para ver as vagas." ], "Elegí una contraseña nueva de al menos 10 caracteres. Se cierran las sesiones abiertas en otros dispositivos.": [ "Choose a new password of at least 10 characters. Sessions open on other devices will be closed.", "Escolha uma nova senha com pelo menos 10 caracteres. As sessões abertas em outros dispositivos serão encerradas." ], "Elegí una foto.": [ "Choose a photo.", "Escolha uma foto." ], "Email confirmado": [ "Email confirmed", "E-mail confirmado" ], "Email sin confirmar": [ "Email not confirmed", "E-mail não confirmado" ], "Error del servidor. Probá de nuevo en unos minutos.": [ "Server error. Try again in a few minutes.", "Erro do servidor. Tente de novo em alguns minutos." ], "Es el nombre que se ve en el sitio. No uses tu nombre completo.": [ "It is the name shown on the site. Do not use your full name.", "É o nome que aparece no site. Não use seu nome completo." ], "Escribinos a": [ "Write to us at", "Escreva para" ], "Escribí el email de tu cuenta y te mandamos un link para crear una nueva.": [ "Enter your account email and we will send you a link to create a new one.", "Digite o e-mail da sua conta e enviamos um link para criar uma nova." ], "Esperando tu transferencia": [ "Waiting for your transfer", "Aguardando sua transferência" ], "Estado": [ "Status", "Status" ], "Estado de tu perfil": [ "Your profile status", "Status do seu perfil" ], "Estamos revisando tu perfil y tu verificación. Te avisamos por email.": [ "We are reviewing your profile and your verification. We will let you know by email.", "Estamos revisando seu perfil e sua verificação. Avisamos por e-mail." ], "Estás en Bronce, gratis.": [ "You are on Bronze, free.", "Você está no Bronze, grátis." ], "Estás en Bronce, gratis. Con un plan más alto aparecés más arriba y podés subir más fotos e historias.": [ "You are on Bronze, free. With a higher plan you appear higher up and can upload more photos and stories.", "Você está no Bronze, grátis. Com um plano mais alto você aparece mais acima e pode enviar mais fotos e stories." ], "Fecha de nacimiento": [ "Date of birth", "Data de nascimento" ], "Foto borrada.": [ "Photo deleted.", "Foto apagada." ], "Fotos reales, con la cara visible y en lugares públicos. Sin desnudos.": [ "Real photos, with your face visible and in public places. No nudity.", "Fotos reais, com o rosto visível e em lugares públicos. Sem nudez." ], "Fotos subidas.": [ "Photos uploaded.", "Fotos enviadas." ], "Frente del documento": [ "Front of your ID", "Frente do documento" ], "Gracias. Recibimos tu reporte.": [ "Thank you. We received your report.", "Obrigado. Recebemos sua denúncia." ], "Guardado.": [ "Saved.", "Salvo." ], "Guardar contraseña": [ "Save password", "Salvar senha" ], "Género": [ "Gender", "Gênero" ], "Hasta {n} fotos": [ "Up to {n} photos", "Até {n} fotos" ], "Historia borrada.": [ "Story deleted.", "Story apagado." ], "Historia publicada por 24 horas.": [ "Story posted for 24 hours.", "Story publicado por 24 horas." ], "Historias ilimitadas con tu plan": [ "Unlimited stories with your plan", "Stories ilimitados com seu plano" ], "Imágenes sin consentimiento": [ "Images without consent", "Imagens sem consentimento" ], "Ingresar": [ "Log in", "Entrar" ], "Ingresá": [ "Log in", "Entre" ], "La contraseña tiene que tener al menos 10 caracteres.": [ "The password must be at least 10 characters long.", "A senha precisa ter pelo menos 10 caracteres." ], "Las dos contraseñas no coinciden.": [ "The two passwords do not match.", "As duas senhas não coincidem." ], "Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.": [ "Outings are canceled with the person you arranged them with, on WhatsApp and in advance. Companion plans are paid by month or by week and do not renew automatically.", "Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. Os planos das acompanhantes são pagos por mês ou por semana e não se renovam sozinhos." ], "Link incompleto": [ "Incomplete link", "Link incompleto" ], "Listo, avisamos que transferiste. Te confirmamos por email.": [ "Done, we noted your transfer. We will confirm by email.", "Pronto, avisamos que você transferiu. Confirmamos por e-mail." ], "Listo, confirmaste tu email.": [ "Done, your email is confirmed.", "Pronto, você confirmou seu e-mail." ], "Listo, tu perfil está en revisión.": [ "Done, your profile is under review.", "Pronto, seu perfil está em revisão." ], "Listo, ya podés entrar con tu contraseña nueva.": [ "Done, you can now log in with your new password.", "Pronto, você já pode entrar com sua nova senha." ], "Llegaste al límite de tu plan": [ "You reached your plan limit", "Você atingiu o limite do seu plano" ], "Lo hago después": [ "I will do it later", "Faço depois" ], "Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.": [ "What you see here is what gets published. Your email, your ID and your date of birth are never shown.", "O que você vê aqui é o que é publicado. Seu e-mail, seu documento e sua data de nascimento não aparecem." ], "Lo revisamos a mano para confirmar que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten.": [ "We review it by hand to confirm it is you and that you are over 18. The selfie and the ID are never published or shared.", "Revisamos manualmente para confirmar que é você e que você é maior de 18. A selfie e o documento nunca são publicados nem compartilhados." ], "Lo sacás del sitio cuando quieras, sin perder nada.": [ "Take it off the site whenever you want, without losing anything.", "Tire do site quando quiser, sem perder nada." ], "Los cambios se ven en el sitio apenas guardás (si tu perfil está publicado).": [ "Changes show on the site as soon as you save (if your profile is published).", "As mudanças aparecem no site assim que você salva (se seu perfil estiver publicado)." ], "Los datos para transferir te llegan por email.": [ "You will receive the transfer details by email.", "Os dados para transferência chegam por e-mail." ], "Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.": [ "Fixed spot at the top of the home page in your province. Only 10 per province.", "Lugar fixo no topo do início na sua província. Só 10 por província." ], "Mandar de nuevo": [ "Send again", "Enviar de novo" ], "Mandar verificación": [ "Send verification", "Enviar verificação" ], "Mandarme el link": [ "Send me the link", "Me enviar o link" ], "Mandá una selfie y tu documento: los revisamos y nunca se publican.": [ "Send a selfie and your ID: we review them and they are never published.", "Envie uma selfie e seu documento: revisamos e nunca são publicados." ], "Mover antes": [ "Move earlier", "Mover para antes" ], "Mover después": [ "Move later", "Mover para depois" ], "Más arriba en el inicio, más fotos e historias ilimitadas.": [ "Higher on the home page, more photos and unlimited stories.", "Mais acima no início, mais fotos e stories ilimitados." ], "Más fotos y hasta 3 historias por día.": [ "More photos and up to 3 stories per day.", "Mais fotos e até 3 stories por dia." ], "No hay conexión. Revisá internet y probá de nuevo.": [ "No connection. Check your internet and try again.", "Sem conexão. Verifique a internet e tente de novo." ], "No quedan lugares Star en tu provincia.": [ "No Star spots left in your province.", "Não há mais vagas Star na sua província." ], "No tenés historias activas.": [ "You have no active stories.", "Você não tem stories ativos." ], "Nombre artístico": [ "Stage name", "Nome artístico" ], "Nota": [ "Note", "Nota" ], "Ocultar mi perfil": [ "Hide my profile", "Ocultar meu perfil" ], "Pagás por transferencia. Cuando la confirmamos, el plan se activa. Una semana de un plan más alto te sube 7 días y después volvés solo a tu plan.": [ "You pay by bank transfer. Once we confirm it, the plan is activated. A week of a higher plan moves you up for 7 days and then you go back to your plan automatically.", "Você paga por transferência. Quando confirmamos, o plano é ativado. Uma semana de um plano mais alto te sobe por 7 dias e depois você volta sozinha ao seu plano." ], "Para mirar perfiles y escribir por WhatsApp no hace falta cuenta.": [ "You do not need an account to browse profiles and write on WhatsApp.", "Não é preciso conta para ver perfis e escrever pelo WhatsApp." ], "Para publicar te falta": [ "To publish you still need", "Para publicar falta" ], "Pausado": [ "Paused", "Pausado" ], "Pedido cancelado.": [ "Order canceled.", "Pedido cancelado." ], "Pedido en curso": [ "Order in progress", "Pedido em andamento" ], "Pedir": [ "Order", "Pedir" ], "Pedir 1 mes · {x}": [ "Order 1 month · {x}", "Pedir 1 mês · {x}" ], "1 semana · {x}": [ "1 week · {x}", "1 semana · {x}" ], "Subí a {x} por 7 días · {x}": [ "Upgrade to {x} for 7 days · {x}", "Suba para {x} por 7 dias · {x}" ], "Perfil falso, engaño u otro": [ "Fake profile, scam or other", "Perfil falso, golpe ou outro" ], "Podés elegir hasta 6 intereses.": [ "You can choose up to 6 interests.", "Você pode escolher até 6 interesses." ], "Podés pedir un link nuevo desde tu panel.": [ "You can request a new link from your dashboard.", "Você pode pedir um novo link no seu painel." ], "Política de contenido": [ "Content policy", "Política de conteúdo" ], "Política de privacidad": [ "Privacy policy", "Política de privacidade" ], "Poné esta referencia en la transferencia": [ "Put this reference in the transfer", "Coloque esta referência na transferência" ], "Posible menor de edad": [ "Possible minor", "Possível menor de idade" ], "Posible trata o explotación": [ "Possible trafficking or exploitation", "Possível tráfico ou exploração" ], "Provincia": [ "Province", "Província" ], "Publicado": [ "Published", "Publicado" ], "Publicá tu perfil": [ "Publish your profile", "Publique seu perfil" ], "Rechazado": [ "Rejected", "Rejeitado" ], "Recibimos tu verificación.": [ "We received your verification.", "Recebemos sua verificação." ], "Recibimos tu verificación. Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.": [ "We received your verification. We will email you when we review it. If you sent the wrong file, you can send it again.", "Recebemos sua verificação. Avisamos por e-mail quando revisarmos. Se você errou o arquivo, pode enviar de novo." ], "Recuperar contraseña": [ "Recover password", "Recuperar senha" ], "Reenviar": [ "Resend", "Reenviar" ], "Referencia": [ "Reference", "Referência" ], "Repetila": [ "Repeat it", "Repita" ], "Revisá el motivo, corregí lo necesario y volvé a enviarlo.": [ "Check the reason, fix what is needed and send it again.", "Veja o motivo, corrija o necessário e envie de novo." ], "Salidas que te gustan": [ "Outings you like", "Passeios de que você gosta" ], "Se publica solo tu edad.": [ "Only your age is published.", "Só sua idade é publicada." ], "Selfie con el documento": [ "Selfie with your ID", "Selfie com o documento" ], "Separalos con comas.": [ "Separate them with commas.", "Separe com vírgulas." ], "Si hay una cuenta con ese email, te mandamos un link para crear una contraseña nueva. Revisá también la carpeta de spam.": [ "If there is an account with that email, we sent you a link to create a new password. Also check your spam folder.", "Se houver uma conta com esse e-mail, enviamos um link para criar uma nova senha. Verifique também a pasta de spam." ], "Si querés, adjuntá el comprobante. Así lo confirmamos más rápido.": [ "If you want, attach the receipt. That way we confirm it faster.", "Se quiser, anexe o comprovante. Assim confirmamos mais rápido." ], "Sin confirmar": [ "Not confirmed", "Não confirmado" ], "Sin enviar": [ "Not sent", "Não enviada" ], "Sobre vos": [ "About you", "Sobre você" ], "Sobre vos en inglés": [ "About you in English", "Sobre você em inglês" ], "Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.": [ "Only for companions over 18. With the Bronze plan you publish for free.", "Só para acompanhantes maiores de 18. Com o plano Bronze você publica grátis." ], "Soy mayor de 18 años.": [ "I am over 18 years old.", "Sou maior de 18 anos." ], "Subiendo {n} de {n}…": [ "Uploading {n} of {n}…", "Enviando {n} de {n}…" ], "Suspendido": [ "Suspended", "Suspenso" ], "Tarifa desde (USD por hora)": [ "Rate from (USD per hour)", "Tarifa a partir de (USD por hora)" ], "Te mandamos el email de nuevo.": [ "We sent the email again.", "Enviamos o e-mail de novo." ], "Te mandamos un link para confirmarlo. No se publica.": [ "We will send you a link to confirm it. It is not published.", "Enviamos um link para confirmá-lo. Não é publicado." ], "Tenés que aceptar los Términos y las políticas.": [ "You must accept the Terms and policies.", "Você precisa aceitar os Termos e as políticas." ], "Tenés que confirmar que sos mayor de 18 años.": [ "You must confirm that you are over 18.", "Você precisa confirmar que é maior de 18 anos." ], "Texto": [ "Text", "Texto" ], "Titular": [ "Headline", "Título" ], "Todavía no subiste fotos": [ "You have not uploaded photos yet", "Você ainda não enviou fotos" ], "Transferencia informada": [ "Transfer reported", "Transferência informada" ], "Transferí desde la cuenta de…": [ "I transferred from the account of…", "Transferi da conta de…" ], "Transferí para activar tu plan": [ "Transfer to activate your plan", "Transfira para ativar seu plano" ], "Tu email": [ "Your email", "Seu e-mail" ], "Tu identidad está verificada.": [ "Your identity is verified.", "Sua identidade está verificada." ], "Tu perfil está completo.": [ "Your profile is complete.", "Seu perfil está completo." ], "Tu perfil está oculto.": [ "Your profile is hidden.", "Seu perfil está oculto." ], "Tu perfil está oculto: nadie lo ve en el sitio.": [ "Your profile is hidden: nobody sees it on the site.", "Seu perfil está oculto: ninguém o vê no site." ], "Tu perfil fue suspendido. Escribinos a contacto@sexyrose.net.": [ "Your profile was suspended. Write to us at contacto@sexyrose.net.", "Seu perfil foi suspenso. Escreva para contacto@sexyrose.net." ], "Tu perfil no se ve en el sitio por ahora.": [ "Your profile is not shown on the site for now.", "Seu perfil não aparece no site por enquanto." ], "Tu perfil se ve de nuevo.": [ "Your profile is visible again.", "Seu perfil aparece de novo." ], "Tu perfil se ve en el sitio.": [ "Your profile is shown on the site.", "Seu perfil aparece no site." ], "Tus fotos": [ "Your photos", "Suas fotos" ], "Tus historias": [ "Your stories", "Seus stories" ], "Tus historias se ven en el sitio cuando tu perfil esté publicado.": [ "Your stories show on the site once your profile is published.", "Seus stories aparecem no site quando seu perfil estiver publicado." ], "Tus pedidos": [ "Your orders", "Seus pedidos" ], "Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.": [ "A photo of the front of your ID (national ID or passport), with the name and date of birth readable.", "Uma foto da frente do seu documento (RG ou passaporte), com o nome e a data de nascimento legíveis." ], "Una selfie sosteniendo tu documento al lado de la cara, con buena luz.": [ "A selfie holding your ID next to your face, in good light.", "Uma selfie segurando seu documento ao lado do rosto, com boa luz." ], "Ver mi perfil": [ "View my profile", "Ver meu perfil" ], "Verificación: {x}": [ "Verification: {x}", "Verificação: {x}" ], "Vigente hasta el {x}.": [ "Valid until {x}.", "Válido até {x}." ], "Volver a ingresar": [ "Back to log in", "Voltar para entrar" ], "WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar.": [ "WhatsApp opens with an introduction message you can edit before sending.", "O WhatsApp abre com uma mensagem de apresentação que você pode editar antes de enviar." ], "Ya fue verificada con tu documento.": [ "Already verified with your ID.", "Já foi verificada com seu documento." ], "Ya transferí": [ "I already paid", "Já transferi" ], "Enviar a revisión": [ "Send for review", "Enviar para revisão" ], "Enviar verificación": [ "Send verification", "Enviar verificação" ], "Subir fotos": [ "Upload photos", "Enviar fotos" ], "¿Olvidaste tu contraseña?": [ "Forgot your password?", "Esqueceu sua senha?" ], "¿Todavía no publicaste?": [ "Not published yet?", "Ainda não publicou?" ], "Dónde": [ "Where", "Onde" ], "Quedan {n} de {n} lugares en tu provincia.": [ "{n} of {n} spots left in your province.", "Restam {n} de {n} vagas na sua província." ], "Te quedan {n} hoy": [ "{n} left today", "Restam {n} hoje" ], "Pedir {x}": [ "Order {x}", "Pedir {x}" ], "¿Querés borrar esta foto? No se puede deshacer.": [ "Delete this photo? This cannot be undone.", "Apagar esta foto? Não dá para desfazer." ], "¿Querés cancelar este pedido? Si ya transferiste, no lo canceles: tocá \"Ya transferí\".": [ "Cancel this order? If you already transferred, do not cancel it: tap \"I already paid\".", "Cancelar este pedido? Se você já transferiu, não cancele: toque em \"Já transferi\"." ], "Mínimo {n}, hasta {n} con tu plan. La primera es la principal (la del swipe y las historias). Les agregamos la marca de agua de SexyRose y les sacamos los datos de ubicación.": [ "At least {n}, up to {n} with your plan. The first one is the main photo (used in swipe and stories). We add the SexyRose watermark and remove location data.", "Mínimo {n}, até {n} com seu plano. A primeira é a principal (a do swipe e dos stories). Adicionamos a marca d’água da SexyRose e removemos os dados de localização." ], "(hasta 6)": [ "(up to 6)", "(até 6)" ], "En inglés": [ "In English", "Em inglês" ], "Agregá tu WhatsApp o tu usuario de Telegram.": [ "Add your WhatsApp or your Telegram username.", "Adicione seu WhatsApp ou seu usuário do Telegram." ], "Confirmá tu email (te mandamos un link).": [ "Confirm your email (we sent you a link).", "Confirme seu e-mail (enviamos um link)." ], "Elegí tu provincia y tu ciudad.": [ "Choose your province and your city.", "Escolha sua província e sua cidade." ], "Enviá tu verificación de identidad (selfie y documento).": [ "Send your identity verification (selfie and ID).", "Envie sua verificação de identidade (selfie e documento)." ], "Subí al menos 3 fotos (tenés {n}).": [ "Upload at least 3 photos (you have {n}).", "Envie pelo menos 3 fotos (você tem {n})." ], "Completá tu nombre artístico.": [ "Fill in your stage name.", "Preencha seu nome artístico." ], "Elegí tu género.": [ "Choose your gender.", "Escolha seu gênero." ], "Cargá tu fecha de nacimiento.": [ "Enter your date of birth.", "Informe sua data de nascimento." ], ", la": [ ", the", ", a" ], "y la": [ "and the", "e a" ], "Provincia de {x}": [ "Province of {x}", "Província de {x}" ], "tu_usuario": [ "your_username", "seu_usuario" ], "Cafés de especialidad, museos y charlas largas": [ "Specialty coffee, museums and long talks", "Cafés especiais, museus e longas conversas" ], "Acepto que SexyRose trate mi documento y mi selfie solo para verificar mi identidad. Se borran a los 3 meses.": [ "I agree that SexyRose may process my ID and my selfie only to verify my identity. They are deleted after 3 months.", "Aceito que a SexyRose trate meu documento e minha selfie só para verificar minha identidade. Eles são apagados após 3 meses." ], "Tenés que aceptar el uso de tu documento y tu selfie para verificar tu identidad.": [ "You must agree to the use of your ID and your selfie to verify your identity.", "Você precisa aceitar o uso do seu documento e da sua selfie para verificar sua identidade." ] });
   /* ---------- En el navegador solo preferencias de la interfaz ---------- */
   const UI_KEY = 'sr_ui';
   HH.save = function () { try { localStorage.setItem(UI_KEY, JSON.stringify(HH.ui || {})); } catch (e) { /* sin almacenamiento */ } };
@@ -59,19 +61,38 @@
   const FUERA = new Set(['chat', 'premium_content', 'packs', 'requests', 'bookings', 'shorts', 'trips', 'stats']);
   const planFeat0 = HH.planFeat;
   HH.planFeat = (workerId, key) => (FUERA.has(key) ? false : planFeat0(workerId, key));
+  // Sin chat en vivo en la web: chat.js no entra en este build; estas funciones quedan apagadas por si algún módulo las consulta
   HH.chatEnabledFor = () => false;
   HH.chatAvailable = () => false;
+  HH.chatSessionOf = () => null;
+  HH.hasChatAccess = () => false;
+  HH.chatStatus = () => '';
+  HH.chatFrom = () => 0;
+  HH.buyChat = () => {};
   HH.canTakeBookings = () => false;
-  // Destacadas: fuera del lanzamiento (ni el "+ Nueva" de la dueña)
-  HH.highlightsRow = () => '';
+  // Historias destacadas (como Instagram): las sube la acompañante desde su panel (Historias → Destacadas) y el
+  // servidor manda en /api/sitio/estado solo las que entran en su plan, con sus fotos y videos (perfiles[].destacadas).
+  // Acá se usa el visual de highlights.js: fila de círculos debajo de la cabecera del perfil y el visor de historias.
+  // Sin "+ Nueva" ni edición desde el perfil (eso va en el panel). No vencen ni se marcan como vistas.
+  const hlRow0 = HH.highlightsRow;
+  HH.highlightItems = (h) => (h && h.items) || [];
+  // Portada: el primer elemento; si es un video, su portada como foto (no se carga el video en el círculo)
+  HH.highlightCover = (h) => { const c = HH.highlightItems(h)[0]; return c ? (c.video ? { id: c.id, src: c.poster, hue: c.hue } : c) : null; };
+  HH.highlightsOf = (workerId) => HH.highlights().filter((h) => h.workerId === workerId && HH.highlightItems(h).length);
+  HH.visibleHighlights = HH.highlightsOf;
+  HH.highlightsRow = (p) => (hlRow0 && p ? hlRow0(p, false) : '');
+  HH.openHighlight = (id) => {
+    const h = HH.highlights().find((x) => x.id === id); if (!h) return;
+    HH.openStories(h.workerId, 0, null, { items: HH.highlightItems(h), title: h.title });
+  };
   // Descripciones de los planes sin funciones que todavía no existen (chat, estadísticas, venta de contenido)
   const DESC = { E: 'Tu perfil publicado y verificado, gratis.', D: 'Más fotos, hasta 3 historias por día y el clip de 5 segundos en tu tarjeta.', C: 'Más arriba en el inicio, tarjetas más grandes, fotos e historias casi sin límite.', S: 'Lugar fijo arriba del inicio en tu provincia. Solo 10 por provincia.' };
   // Los 4 planes v2 (solo en el sitio: la demo sigue con sus 6). Precios en créditos (1 crédito = USD 1); el servidor
   // los manda en /api/sitio/estado y en /api/cuenta/planes, estos son los de arranque.
   const PLANES_V2 = {
     S: { price_usd: 350, rank: 4, photos: 1000, videos: 500, stories_per_day: null, highlights: null },
-    C: { price_usd: 90, rank: 3, photos: 500, videos: 200, stories_per_day: null, highlights: 10 },
-    D: { price_usd: 35, rank: 2, photos: 30, videos: 10, stories_per_day: 3, highlights: 4 },
+    C: { price_usd: 90, rank: 3, photos: 500, videos: 200, stories_per_day: null, highlights: 5 },
+    D: { price_usd: 35, rank: 2, photos: 30, videos: 10, stories_per_day: 3, highlights: 2 },
     E: { price_usd: 0, rank: 1, photos: 8, videos: 2, stories_per_day: 1, highlights: 1 },
   };
   // HH.seed (datos de la demo) usa Platino y Diamante: la forma vacía de HH.db se toma antes de sacarlos
@@ -205,6 +226,9 @@
   // Destacado (planes v2): dentro de cada plan, las destacadas van primero y entre ellas el orden rota en cada visita
   // (semilla nueva por carga de página). Star no se destaca: ya tiene su lugar fijo arriba.
   const ROTA = Math.floor(Math.random() * 1e9).toString(36);
+  // Hash con mezcla (prod-shorts.js, HH.hashMezcla): con el hash ×31 de siempre, cambiar la semilla solo sumaba la misma
+  // constante a todas y el orden de las destacadas casi no cambiaba entre visitas.
+  const rota = (id) => (HH.hashMezcla ? HH.hashMezcla(id + ROTA) : hash(id + ROTA));
   const esDest = (p) => !!(p && p.destacado) && HH.levelOf(p.userId) !== 'S';
   HH.spEsDestacado = esDest;
   HH.rankList = function (list) {
@@ -213,7 +237,7 @@
       let v = sc.get(p);
       if (v === undefined) {
         const base = (HH.LEVELS[HH.levelOf(p.userId)] || { rank: 0 }).rank * 100;
-        v = esDest(p) ? base + 50 + (hash(p.userId + ROTA) % 1000) / 40 : base + (p.verified === 'verified' ? 10 : 0) + ((p.stats && p.stats.views) || 0) / 1000;
+        v = esDest(p) ? base + 50 + (rota(p.userId) % 1000) / 40 : base + (p.verified === 'verified' ? 10 : 0) + ((p.stats && p.stats.views) || 0) / 1000;
         sc.set(p, v);
       }
       return v;
@@ -227,7 +251,7 @@
     const out = byDistance0(list); if (!HH.geo || !HH.geo() || (HH.current && HH.current.name !== 'inicio')) return out;
     const reg = HH.viewerRegion ? HH.viewerRegion() : '';
     const aca = (p) => esDest(p) && (!reg || HH.inCity(p, reg));
-    return out.filter(aca).sort((a, b) => hash(a.userId + ROTA) - hash(b.userId + ROTA)).concat(out.filter((p) => !aca(p)));
+    return out.filter(aca).sort((a, b) => rota(a.userId) - rota(b.userId)).concat(out.filter((p) => !aca(p)));
   };
   const rankedProfiles0 = HH.rankedProfiles;
   HH.rankedProfiles = () => {
@@ -285,7 +309,7 @@
   }
 
   /* ---------- Estado ---------- */
-  const S = { estado: null, estadoErr: null, yo: null, yoLoaded: false, planes: null, planesErr: null, cred: null, credErr: null, credMas: null, dest: null, destErr: null, notif: null, notifErr: null, busy: {}, forgot: false, verif: null, prov: null, up: null, upHist: null, upVid: null };
+  const S = { estado: null, estadoErr: null, yo: null, yoLoaded: false, planes: null, planesErr: null, cred: null, credErr: null, credMas: null, dest: null, destErr: null, notif: null, notifErr: null, busy: {}, forgot: false, verif: null, prov: null, up: null, upHist: null, upVid: null, upDest: null };
   const PANEL_IS = (key) => /^panel(\.|$)/.test(key);
   const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
 
@@ -323,7 +347,7 @@
         whatsapp: (x.contacto || {}).whatsapp || '', telegram: (x.contacto || {}).telegram || '', links: x.links || [],
         photos: (x.fotos || []).map((f) => f.url), photosMini: (x.fotos || []).map((f) => f.urlMini || f.url),
         previewUrl: x.preview && x.preview.url ? x.preview.url : '',
-        videos: (x.videos || []).filter((v) => v && v.url).map((v) => ({ id: v.id, src: v.url, poster: v.poster || '', seconds: v.segundos == null ? null : Math.round(Number(v.segundos)), name: '', w: v.ancho, h: v.alto })),
+        videos: (x.videos || []).filter((v) => v && v.url).map((v) => ({ id: v.id, src: v.url, poster: v.poster || '', seconds: v.segundos == null ? null : Math.round(Number(v.segundos)), name: '', w: v.ancho, h: v.alto, createdAt: v.creado || null })),
         verified: 'verified', emailVerified: true, whatsappVerified: true, status: 'active', hidden: false, online: false,
         lat: cityLoc && cityLoc.lat != null ? cityLoc.lat + jit(9) : null, lng: cityLoc && cityLoc.lng != null ? cityLoc.lng + jit(7) : null,
         hue: h % 360, createdAt: x.publicadoEn || x.actualizado, updatedAt: x.actualizado, stats: { views: 0, rightSwipes: 0 }, chatPriceUsd: 0,
@@ -332,8 +356,16 @@
       db.subscriptions.push({ id: 'sub_' + x.cuentaId, userId: x.cuentaId, level: plan, status: 'active', startedAt: x.publicadoEn || e.ahora, expiresAt: far, providerRef: 'sitio' });
       if (plan === 'S' || x.star) db.stars.push({ id: 'st_' + x.cuentaId, workerId: x.cuentaId, activeUntil: far, createdAt: x.publicadoEn || e.ahora });
     });
-    db.stories = (e.historias || []).map((h) => ({ id: h.id, workerId: h.cuentaId, src: h.url, caption: h.texto || '', hue: hash(h.id) % 360, views: 0, createdAt: h.creado, expiresAt: h.expira }));
+    // Historias con foto o video (video: src = MP4, poster = portada, dur = segundos)
+    db.stories = (e.historias || []).map((h) => ({ id: h.id, workerId: h.cuentaId, src: h.url, caption: h.texto || '', hue: hash(h.id) % 360, views: 0, createdAt: h.creado, expiresAt: h.expira,
+      ...(h.tipo === 'video' ? { video: true, poster: h.urlMini || '', dur: Number(h.segundos) || 0, w: h.ancho || 0, h: h.alto || 0 } : {}) }));
+    // Destacadas: cada elemento con la forma de una historia (video: src = MP4, poster = portada, dur = segundos)
     db.highlights = [];
+    (e.perfiles || []).forEach((x) => (x.destacadas || []).forEach((d) => db.highlights.push({
+      id: d.id, workerId: x.cuentaId, title: d.titulo, createdAt: d.creado,
+      items: (d.items || []).map((it) => ({ id: it.id, workerId: x.cuentaId, src: it.url, caption: '', hue: hash(it.id) % 360, createdAt: it.creado, expiresAt: far,
+        ...(it.tipo === 'video' ? { video: true, poster: it.urlMini || '', dur: Number(it.segundos) || 0, w: it.ancho || 0, h: it.alto || 0 } : {}) })),
+    })));
     const aj = e.ajustes || {};
     const pr = aj.precios && aj.precios.mes;
     if (pr) Object.keys(HH.LEVELS).forEach((k) => { if (pr[k] != null) HH.LEVELS[k].price_usd = Number(pr[k]); });
@@ -378,7 +410,7 @@
   HH.homeFor = () => '#panel';
 
   /* ---------- Limpieza: nada de lo que queda fuera del lanzamiento ---------- */
-  const OUT = ['[data-action="pubWaBook"]', '[data-action="pubWaChat"]', '[data-action="pubChat"]', '[data-action="pubBook"]', '[data-action="pubRequest"]', '[data-action="pubBuyPack"]', '[data-action="pubShortBuy"]', '[data-action="clientSignup"]', '[data-action="clientLogin"]', '[data-action="pubPasskeyLogin"]', '[data-go="#shorts"]', '#pubContent', '.pub-shorts', '[data-go^="#chat."]', '[data-go^="#cuenta"]'];
+  const OUT = ['[data-action="pubWaBook"]', '[data-action="pubWaChat"]', '[data-action="pubChat"]', '[data-action="pubBook"]', '[data-action="pubRequest"]', '[data-action="pubBuyPack"]', '[data-action="pubShortBuy"]', '[data-action="clientSignup"]', '[data-action="clientLogin"]', '[data-action="pubPasskeyLogin"]', '#pubContent', '.pub-shorts', '[data-go^="#chat."]', '[data-go^="#cuenta"]'];
   const FAQ_FIX = {
     '¿Cómo funciona la verificación?': 'Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.',
     '¿Puedo cancelar?': 'Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las acompañantes pagan su plan con créditos, por mes o por semana; la renovación automática del plan mensual se apaga cuando quieran desde su panel.',
@@ -387,7 +419,7 @@
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll(OUT.join(',')).forEach((el) => el.remove());
     root.querySelectorAll('.msg-split button.btn.tg[disabled], .msg-split button.btn.wa[disabled]').forEach((el) => el.remove());
-    root.querySelectorAll('a[href]').forEach((a) => { const h = a.getAttribute('href') || ''; if (/\/(shorts|chat)(\/|$)/.test(h) || /^#\/?(shorts|chat)/.test(h)) a.remove(); });
+    root.querySelectorAll('a[href]').forEach((a) => { const h = a.getAttribute('href') || ''; if (/\/chat(\/|$)/.test(h) || /^#\/?chat/.test(h)) a.remove(); });
     // Galería: la pestaña Videos aparece solo si el perfil tiene videos; sin videos no hacen falta pestañas Todo/Fotos/Videos
     root.querySelectorAll('.pf-gtabs').forEach((g) => { const v = g.querySelector('[data-tab="video"]'); if (v && /\(0\)\s*$/.test(v.textContent || '')) v.remove(); if (g.querySelectorAll('[role=tab]').length <= 2) g.remove(); });
     // Preguntas frecuentes del lanzamiento
@@ -452,29 +484,30 @@
     const hi = document.getElementById('headerInner'); const bn = document.getElementById('bottomNav');
     const logged = !!S.yo; const key = HH.currentHash(); const top = key.split('.')[0];
     if (hi) {
-      hi.querySelectorAll('.topnav a').forEach((a) => { const g = a.getAttribute('data-go') || ''; if (/^#(shorts|admin|cuenta)/.test(g)) a.remove(); });
+      hi.querySelectorAll('.topnav a').forEach((a) => { const g = a.getAttribute('data-go') || ''; if (/^#(admin|cuenta)/.test(g)) a.remove(); });
       const nav = hi.querySelector('.topnav');
-      if (nav && !nav.querySelector('[data-go="#favoritos"]')) nav.insertAdjacentHTML('beforeend', `<a href="#favoritos" data-go="#favoritos"${top === 'favoritos' ? ' class="active"' : ''}>Favoritos</a>`);
       if (nav && logged && !nav.querySelector('[data-go="#panel"]')) nav.insertAdjacentHTML('beforeend', `<a href="#panel" data-go="#panel"${top === 'panel' ? ' class="active"' : ''}>Mi panel${noLeidas() ? `<span class="sp-hdot" aria-label="Tenés avisos sin leer"></span>` : ''}</a>`);
       const actions = hi.querySelector('.header-actions');
       if (actions && !logged) {
         actions.querySelectorAll('a[data-go="#login"]').forEach((a) => { a.textContent = 'Ingresar'; });
         actions.querySelectorAll('a[data-go="#registro"]').forEach((a) => { a.innerHTML = `<span class="hide-mobile">${icon('user')}</span>Publicá tu perfil`; });
+        // Escritorio: el ícono de usuario lleva a "Tu espacio" (favoritos, ingreso y publicar), igual que en la barra del teléfono
+        if (!actions.querySelector('.sp-hdr-user')) actions.insertAdjacentHTML('afterbegin', `<a class="icon-btn hide-mobile sp-hdr-user${top === 'favoritos' ? ' active' : ''}" href="#favoritos" data-go="#favoritos" aria-label="Tu espacio" title="Tu espacio">${icon('user')}</a>`);
       }
       if (['panel', 'cuenta', 'login', 'registro'].includes(top)) { const g = hi.querySelector('.hdr-genders'); if (g) g.replaceWith(Object.assign(document.createElement('span'), { className: 'hdr-spacer' })); }
     }
     if (bn) {
       // Barra inferior estilo Instagram (móvil): cápsula flotante, solo íconos, burbuja suave en la sección activa.
       // El texto queda para lectores de pantalla (aria-label/title). Con sesión, el último ícono es la foto de la acompañante.
-      const plusSq = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>';
       let ultimo;
       if (logged) {
         const p = (S.yo && S.yo.perfil) || {}; const f = (p.fotos || [])[0];
         const avatar = f ? `<span class="bn-av"><img src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
         // Punto de aviso: el perfil necesita algo de ella (rechazado o verificación rechazada)
-        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 };
-      } else ultimo = { h: '#registro', l: 'Publicar', html: plusSq };
-      const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#favoritos', l: 'Favoritos', i: 'star' }, ultimo];
+        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0 };
+      } else ultimo = { h: '#favoritos', l: 'Tu espacio', i: 'user', dot: !!(HH.spClientes && HH.spClientes.noLeidos() > 0) };
+      // Shorts en lugar de Favoritos; los favoritos quedan en "Tu espacio" (el ícono de usuario)
+      const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#shorts', l: 'Shorts', html: HH.iconShorts ? HH.iconShorts() : icon('film') }, ultimo];
       bn.innerHTML = items.map((n) => {
         const on = ('#' + top) === n.h || (n.h === '#inicio' && !top);
         return `<a href="${n.h}" data-go="${n.h}" aria-label="${n.l}" title="${n.l}"${on ? ' class="active" aria-current="page"' : ''}>${n.html || icon(n.i)}<span class="sr-only">${n.l}</span>${n.dot ? '<i class="bn-dot" aria-hidden="true"></i>' : ''}</a>`;
@@ -484,13 +517,13 @@
   };
 
   /* ---------- Rutas propias (panel, ingreso, registro, cuenta) ---------- */
-  const OWN = (key) => /^(panel|login|registro|cuenta|favoritos)(\.|$)/.test(key);
+  const OWN = (key) => /^(panel|login|registro|cuenta|favoritos|shorts|compra|cliente)(\.|$)/.test(key);
   const render0 = HH.render;
   HH.render = function (forcePath) {
     if (!forcePath && HH.syncLangFromUrl) HH.syncLangFromUrl();
     const key = forcePath || HH.currentHash();
     if (!HH.db) { const app = document.getElementById('app'); if (app && !app.innerHTML) app.innerHTML = `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`; gateTemprano(key); return; }
-    if (/^(shorts|chat)(\.|$)/.test(key)) { HH.go('#inicio', { replace: true }); return; }
+    if (/^chat(\.|$)/.test(key)) { HH.go('#inicio', { replace: true }); return; }
     if (!OWN(key)) return render0.call(HH, forcePath);
     const parts = key.split('.');
     let out;
@@ -505,14 +538,14 @@
     HH.renderShell();
     document.dispatchEvent(new CustomEvent('hh:rendered', { detail: HH.current }));
     document.title = (OWN_TITLES[parts[0]] || 'Mi panel') + ' · SexyRose';
-    setRobots('noindex,nofollow');
+    setRobots(parts[0] === 'shorts' ? 'noindex,follow' : 'noindex,nofollow');
     if (HH.afterRender) { const f = HH.afterRender; HH.afterRender = null; try { f(); } catch (e) { console.error(e); } }
   };
   /* Ventana de +18: no va en el panel, la cuenta, el ingreso ni el registro (ahí entra la acompañante, no un visitante).
      agegate.js es compartido con la demo y ya excluye panel/cuenta; acá se cierra también en ingreso y registro.
      Este listener se registra después del de agegate.js, así que corre después de que la ventana se dibuja y no llega
      a pintarse. En cuanto el visitante pasa a una página pública, agegate.js la vuelve a mostrar. */
-  const SIN_GATE = /^(panel|cuenta|login|registro)(\.|$)/;
+  const SIN_GATE = /^(panel|cuenta|login|registro|cliente)(\.|$)/;
   const cerrarGate = () => { const r = document.getElementById('agRoot'); if (r) { r.remove(); document.body.style.overflow = ''; } };
   document.addEventListener('hh:rendered', () => { if (SIN_GATE.test(HH.currentHash())) cerrarGate(); });
   // La ventana se muestra ya con la cáscara (antes de que llegue /api/sitio/estado): así su texto es lo primero que
@@ -525,13 +558,17 @@
     HH.current = { path: key, params: {}, name: key.split('.')[0] };
     HH.ageGateShow();
   }
-  const OWN_TITLES = { panel: 'Mi panel', login: 'Ingresar', registro: 'Publicá tu perfil', cuenta: 'Mi cuenta', favoritos: 'Favoritos' };
+  const OWN_TITLES = { panel: 'Mi panel', login: 'Ingresar', registro: 'Publicá tu perfil', cuenta: 'Mi cuenta', favoritos: 'Tu espacio', shorts: 'Shorts', compra: 'Tu compra', cliente: 'Tu cuenta' };
   function setRobots(v) { let m = document.querySelector('meta[name="robots"]'); if (!m) { m = document.createElement('meta'); m.name = 'robots'; document.head.appendChild(m); } m.content = v; }
   const rerender = () => { if (OWN(HH.currentHash()) && !document.getElementById('modalRoot').classList.contains('open')) HH.refresh(); };
 
   function ownView(parts) {
     const [a, b] = parts;
     if (a === 'favoritos') return favView();
+    if (a === 'shorts') return HH.spShorts ? HH.spShorts.view() : (HH.go('#inicio', { replace: true }), false);
+    if (a === 'compra') return HH.spContenido ? HH.spContenido.compra(b) : (HH.go('#inicio', { replace: true }), false);
+    // Cuenta del interesado (cliente): ingreso, registro, Mis compras, Mis pedidos y el chat de cada pedido (prod-clientes.js)
+    if (a === 'cliente') return HH.spClientes ? HH.spClientes.view(parts.slice(1)) : (HH.go('#inicio', { replace: true }), false);
     if (a === 'login') { if (S.yo) { HH.go('#panel', { replace: true }); return false; } return loginView(); }
     if (a === 'registro') { if (S.yo) { HH.go('#panel', { replace: true }); return false; } return registroView(); }
     if (a === 'cuenta') {
@@ -543,8 +580,8 @@
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
     if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
     const tab = PANEL_TABS.some((t) => t.id === b) ? b : 'resumen';
-    const views = { resumen: panelResumen, perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta };
-    if (tab === 'fotos') setTimeout(vigilarVideos, 0);
+    const views = { resumen: panelResumen, perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta, contenido: () => (HH.spContenido ? HH.spContenido.panel() : ''), pedidos: () => (HH.spClientes ? HH.spClientes.panelPedidos(parts[2]) : '') };
+    if (tab === 'fotos' || tab === 'historias') setTimeout(vigilarVideos, 0);
     return panelLayout(tab, views[tab]());
   }
 
@@ -649,7 +686,7 @@
   }
   function panelLayout(tab, main) {
     const p = S.yo.perfil; const d = yoDatos();
-    const cnt = { resumen: (p.faltantes || []).length, verificacion: p.verificacion === 'sin_enviar' || p.verificacion === 'rechazada' ? 1 : 0, fotos: (p.fotos || []).length < 3 ? 1 : 0, avisos: noLeidas(), plan: p.pausadoPorSaldo ? 1 : 0 };
+    const cnt = { resumen: (p.faltantes || []).length, verificacion: p.verificacion === 'sin_enviar' || p.verificacion === 'rechazada' ? 1 : 0, fotos: (p.fotos || []).length < 3 ? 1 : 0, avisos: noLeidas(), plan: p.pausadoPorSaldo ? 1 : 0, pedidos: S.yo.pedidosNoLeidos || 0 };
     const nav = PANEL_TABS.map((t) => `<a href="#panel.${t.id}" data-go="#panel.${t.id}" class="${t.id === tab ? 'active' : ''}">${icon(t.icon)}<span>${t.label}</span>${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</a>`).join('');
     const chips = PANEL_TABS.map((t) => `<button type="button" class="chip ${t.id === tab ? 'active' : ''}" data-go="#panel.${t.id}">${t.label}${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</button>`).join('');
     const pub = p.estado === 'publicado' && !p.oculto && p.slug;
@@ -827,16 +864,31 @@
           </div>`; }).join('')}</div>` : `<div class="empty">${icon('video')}<h4>Todavía no subiste videos</h4><p class="small">Videos cortos de tus salidas, con la cara visible. Sin desnudos.</p></div>`}
       </div>${panelPreview()}`;
   }
-  // Mientras haya videos procesándose, se consulta el estado cada 3 s (solo con el panel de fotos abierto).
+  // Duración de un video elegido (en el navegador, antes de subirlo); null si no se puede leer
+  function duracionVideo(f) {
+    return new Promise((res) => {
+      let url = ''; try { url = URL.createObjectURL(f); } catch (e) { res(null); return; }
+      const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true;
+      const fin = (d) => { clearTimeout(t); try { URL.revokeObjectURL(url); } catch (e) { /* */ } v.removeAttribute('src'); res(d && isFinite(d) ? d : null); };
+      const t = setTimeout(() => fin(null), 8000);
+      v.onloadedmetadata = () => fin(v.duration); v.onerror = () => fin(null);
+      v.src = url;
+    });
+  }
+  // Mientras haya videos procesándose, se consulta el estado cada 3 s (solo con el panel de fotos o el de historias abierto).
   let pollVid = null;
+  const PANEL_VID = /^panel\.(fotos|historias)$/;
   function vigilarVideos() {
     clearTimeout(pollVid); pollVid = null;
-    const hay = S.yo && ((S.yo.perfil.videos || []).some((v) => v.estado === 'procesando') || (S.yo.perfil.preview && S.yo.perfil.preview.estado === 'procesando'));
-    if (!hay || !/^panel\.fotos$/.test(HH.currentHash())) return;
+    const hay = S.yo && ((S.yo.perfil.videos || []).some((v) => v.estado === 'procesando') || (S.yo.perfil.preview && S.yo.perfil.preview.estado === 'procesando')
+      || (S.yo.historias || []).some((h) => h.estado === 'procesando')
+      || (S.yo.destacadas || []).some((d) => (d.items || []).some((x) => x.estado === 'procesando')));
+    if (!hay || !PANEL_VID.test(HH.currentHash())) return;
     pollVid = setTimeout(async () => {
       pollVid = null;
-      if (!/^panel\.fotos$/.test(HH.currentHash())) return;
-      const firma = () => JSON.stringify([((S.yo && S.yo.perfil.videos) || []).map((v) => v.estado), S.yo && S.yo.perfil.preview && [S.yo.perfil.preview.estado, S.yo.perfil.preview.url]]);
+      if (!PANEL_VID.test(HH.currentHash())) return;
+      const firma = () => JSON.stringify([((S.yo && S.yo.perfil.videos) || []).map((v) => v.estado), S.yo && S.yo.perfil.preview && [S.yo.perfil.preview.estado, S.yo.perfil.preview.url],
+        ((S.yo && S.yo.historias) || []).map((h) => h.estado), ((S.yo && S.yo.destacadas) || []).map((d) => (d.items || []).map((x) => x.estado))]);
       const antes = firma();
       await loadYo(true, true);
       const ahora = firma();
@@ -862,6 +914,7 @@
           <div class="field"><label for="spVSelfie">Selfie con el documento</label><input class="input" id="spVSelfie" name="selfie" type="file" accept="image/*" capture="user" required></div>
           <div class="field"><label for="spVDoc">Frente del documento</label><input class="input" id="spVDoc" name="documento" type="file" accept="image/*" required></div>
         </div>
+        <label class="row nowrap small" style="gap:8px;align-items:flex-start"><input type="checkbox" name="consentimiento" style="margin-top:3px" required><span>Acepto que SexyRose trate mi documento y mi selfie solo para verificar mi identidad. Se borran a los 3 meses.</span></label>
         ${S.busy.verif ? `<div class="sp-prog"><i style="width:${Math.round((S.busy.verifP || 0) * 100)}%"></i></div>` : ''}
         ${fieldErr('spVErr')}
         <button type="submit" class="btn"${S.busy.verif ? ' disabled' : ''}>${icon('shield')} Enviar verificación</button>
@@ -872,12 +925,17 @@
     const hs = S.yo.historias || []; const lim = S.yo.limites || {}; const dia = lim.historiasDia; const hoy = lim.historiasHoy || 0;
     const quedan = dia == null ? null : Math.max(0, dia - hoy);
     const pub = S.yo.perfil.estado === 'publicado';
+    const conVideo = !!S.yo.videosHabilitados;
+    const hEst = (h) => (h.estado === 'procesando' ? `<div class="sp-vstate"><span class="sp-spin" aria-hidden="true"></span><span>Procesando…</span></div>`
+      : h.estado === 'error' ? `<div class="sp-vstate err">${icon('alert')}<span data-noi18n>${esc(h.error || 'No se pudo procesar.')}</span></div>` : '');
+    const hMini = (h) => (h.urlMini ? `<img src="${esc(h.urlMini)}" alt="" loading="lazy">` : `<div class="ph" style="background:${HH.hueGradient(hash(h.id) % 360, true)}"></div>`)
+      + (h.tipo === 'video' && h.segundos ? `<span class="pub-vbadge">${icon('play')} ${Math.round(h.segundos)}s</span>` : '') + hEst(h);
     return head('Historias', 'Tus historias', 'Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.') + `
       ${pub ? '' : `<div class="notice info">${icon('info')}<span>Tus historias se ven en el sitio cuando tu perfil esté publicado.</span></div>`}
       <form class="card stack" style="gap:12px" data-submit="spHistoria" novalidate>
         <div class="row between"><div class="card-title">Nueva historia</div><span class="small muted">${quedan == null ? 'Historias ilimitadas con tu plan' : `Te quedan ${quedan} hoy`}</span></div>
         <div class="sp-2">
-          <div class="field"><label for="spHFoto">Foto</label><input class="input" id="spHFoto" name="foto" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" required></div>
+          <div class="field"><label for="spHFoto">${conVideo ? 'Foto o video' : 'Foto'}</label><input class="input" id="spHFoto" name="foto" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif${conVideo ? ',video/mp4,video/quicktime,video/webm,video/3gpp,.mp4,.mov,.webm,.3gp' : ''}" required>${conVideo ? '<span class="hint">Videos de hasta 60 segundos y 95 MB.</span>' : ''}</div>
           <div class="field"><label for="spHText">Texto <span class="muted" style="font-weight:500">(opcional)</span></label><input class="input" id="spHText" name="texto" maxlength="120" placeholder="Café de la mañana en Palermo"></div>
         </div>
         ${S.upHist ? `<div class="sp-prog"><i style="width:${Math.round(S.upHist.p * 100)}%"></i></div>` : ''}
@@ -886,8 +944,76 @@
       </form>
       <div class="card stack" style="gap:12px">
         <div class="card-title">Activas</div>
-        ${hs.length ? `<div class="sp-hist">${hs.map((h) => `<div class="card pad-sm sp-h"><div class="media tall"><img src="${esc(h.urlMini || h.url)}" alt="" loading="lazy"></div><div class="tiny ellipsis" data-noi18n>${esc(h.texto || '')}</div><div class="row between tiny muted"><span>${esc(HH.timeAgo(h.creado))}</span><button type="button" class="btn danger sm" data-action="spHistBorrar" data-id="${esc(h.id)}">Borrar</button></div></div>`).join('')}</div>` : `<p class="small muted" style="margin:0">No tenés historias activas.</p>`}
+        ${hs.length ? `<div class="sp-hist">${hs.map((h) => `<div class="card pad-sm sp-h"><div class="media tall">${hMini(h)}</div><div class="tiny ellipsis" data-noi18n>${esc(h.texto || '')}</div><div class="row between tiny muted"><span>${h.estado === 'listo' ? esc(HH.timeAgo(h.creado)) : ''}</span><button type="button" class="btn danger sm" data-action="spHistBorrar" data-id="${esc(h.id)}">Borrar</button></div></div>`).join('')}</div>` : `<p class="small muted" style="margin:0">No tenés historias activas.</p>`}
+      </div>
+      ${panelDestacadas(hMini, conVideo)}`;
+  }
+
+  /* ---- Historias destacadas (como Instagram): las sube ella desde su dispositivo; no vencen ----
+     API: /api/cuenta/destacadas (lib/destacadas.js). Cantidad por plan en S.yo.limites.destacadas (null = ilimitadas).
+     Si bajó de plan, las que no entran quedan guardadas y se marcan "no se ve: supera el límite de tu plan". */
+  const HL_TITULO_MAX = 16;
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Destacadas': ['Highlights', 'Destaques'],
+    'Quedan fijas en tu perfil, como en Instagram. Subí directamente las fotos y videos que quieras mostrar.': ['They stay on your profile, like on Instagram. Upload the photos and videos you want to show.', 'Ficam fixos no seu perfil, como no Instagram. Envie as fotos e vídeos que quiser mostrar.'],
+    'Tu plan permite {n} destacada': ['Your plan allows {n} highlight', 'Seu plano permite {n} destaque'],
+    'Tu plan permite {n} destacadas': ['Your plan allows {n} highlights', 'Seu plano permite {n} destaques'],
+    'Destacadas ilimitadas con tu plan': ['Unlimited highlights with your plan', 'Destaques ilimitados com seu plano'],
+    'usás {n}': ['you use {n}', 'você usa {n}'],
+    'Nombre de la destacada': ['Highlight name', 'Nome do destaque'],
+    'Crear destacada': ['Create highlight', 'Criar destaque'],
+    'Llegaste al límite de destacadas de tu plan.': ['You reached your plan\'s highlight limit.', 'Você chegou ao limite de destaques do seu plano.'],
+    'no se ve: supera el límite de tu plan': ['not shown: over your plan limit', 'não aparece: passa do limite do seu plano'],
+    'Todavía no tiene fotos ni videos.': ['It has no photos or videos yet.', 'Ainda não tem fotos nem vídeos.'],
+    'Agregar foto o video': ['Add photo or video', 'Adicionar foto ou vídeo'],
+    'Agregar foto': ['Add photo', 'Adicionar foto'],
+    'Subir': ['Upload', 'Enviar'],
+    'Guardar nombre': ['Save name', 'Salvar nome'],
+    'Borrar destacada': ['Delete highlight', 'Apagar destaque'],
+    '¿Querés borrar esta destacada con todas sus fotos y videos?': ['Delete this highlight with all its photos and videos?', 'Apagar este destaque com todas as fotos e vídeos?'],
+    '¿Querés borrar este elemento de la destacada?': ['Delete this item from the highlight?', 'Apagar este item do destaque?'],
+    'Destacada creada.': ['Highlight created.', 'Destaque criado.'],
+    'Destacada borrada.': ['Highlight deleted.', 'Destaque apagado.'],
+    'Nombre guardado.': ['Name saved.', 'Nome salvo.'],
+    'Agregado a la destacada.': ['Added to the highlight.', 'Adicionado ao destaque.'],
+    'Recibimos el video. Se suma apenas termine de procesarse.': ['We got the video. It is added as soon as it finishes processing.', 'Recebemos o vídeo. Ele entra assim que terminar o processamento.'],
+    'Borrado.': ['Deleted.', 'Apagado.'],
+    'Ponele un nombre a la destacada.': ['Give the highlight a name.', 'Dê um nome ao destaque.'],
+    'Elegí una foto o un video.': ['Choose a photo or a video.', 'Escolha uma foto ou um vídeo.'],
+    'Elegí una foto.': ['Choose a photo.', 'Escolha uma foto.'],
+    'Hasta {n} caracteres.': ['Up to {n} characters.', 'Até {n} caracteres.'],
+  });
+  function panelDestacadas(hMini, conVideo) {
+    const ds = S.yo.destacadas || []; const lim = (S.yo.limites || {}).destacadas;
+    const limTxt = lim == null ? HH.t('Destacadas ilimitadas con tu plan') : HH.t(lim === 1 ? 'Tu plan permite {n} destacada' : 'Tu plan permite {n} destacadas').replace('{n}', String(lim));
+    const lleno = lim != null && ds.length >= lim;
+    const accept = 'image/jpeg,image/png,image/webp,image/heic,image/heif' + (conVideo ? ',video/mp4,video/quicktime,video/webm,video/3gpp,.mp4,.mov,.webm,.3gp' : '');
+    const up = S.upDest;
+    const card = (d) => `<div class="card stack sp-dest" style="gap:10px">
+        <form class="row sp-dest-name" style="gap:8px;flex-wrap:wrap;align-items:flex-end" data-submit="spDestRenombrar" data-id="${esc(d.id)}" novalidate>
+          <div class="field grow" style="min-width:160px;margin:0"><label for="spDN_${esc(d.id)}">Nombre de la destacada</label><input class="input" id="spDN_${esc(d.id)}" name="titulo" maxlength="${HL_TITULO_MAX}" value="${esc(d.titulo)}" data-noi18n></div>
+          <button type="submit" class="btn secondary sm">Guardar nombre</button>
+          <button type="button" class="btn danger sm" data-action="spDestBorrar" data-id="${esc(d.id)}">${icon('trash')} Borrar destacada</button>
+        </form>
+        ${d.visible === false ? `<div class="tiny" style="color:var(--warn)">${icon('alert')} <span>no se ve: supera el límite de tu plan</span></div>` : ''}
+        ${(d.items || []).length ? `<div class="sp-hist">${d.items.map((it) => `<div class="card pad-sm sp-h"><div class="media tall">${hMini(it)}</div><div class="row between tiny muted"><span></span><button type="button" class="btn danger sm" data-action="spDestItemBorrar" data-id="${esc(it.id)}">Borrar</button></div></div>`).join('')}</div>`
+          : `<p class="small muted" style="margin:0">Todavía no tiene fotos ni videos.</p>`}
+        <form class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end" data-submit="spDestSubir" data-id="${esc(d.id)}" novalidate>
+          <div class="field grow" style="min-width:180px;margin:0"><label for="spDF_${esc(d.id)}">${conVideo ? 'Agregar foto o video' : 'Agregar foto'}</label><input class="input" id="spDF_${esc(d.id)}" name="archivo" type="file" accept="${accept}"></div>
+          <button type="submit" class="btn sm"${up ? ' disabled' : ''}>${icon('upload')} Subir</button>
+        </form>
+        ${up && up.id === d.id ? `<div class="sp-prog"><i style="width:${Math.round(up.p * 100)}%"></i></div>` : ''}
+        ${fieldErr('spDErr_' + d.id)}
       </div>`;
+    return `<div class="card stack" style="gap:12px" id="spDestacadas">
+        <div class="row between" style="flex-wrap:wrap;gap:6px"><div class="card-title">${icon('star')} Destacadas</div><span class="small muted"><span>${esc(limTxt)}</span> · <span>${esc(HH.t('usás {n}').replace('{n}', String(ds.length)))}</span></span></div>
+        <p class="small muted" style="margin:0">Quedan fijas en tu perfil, como en Instagram. Subí directamente las fotos y videos que quieras mostrar.</p>
+        ${lleno ? `<div class="notice info">${icon('info')}<span>Llegaste al límite de destacadas de tu plan.</span></div>` : `<form class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end" data-submit="spDestCrear" novalidate>
+          <div class="field grow" style="min-width:180px;margin:0"><label for="spDNueva">Nombre de la destacada</label><input class="input" id="spDNueva" name="titulo" maxlength="${HL_TITULO_MAX}" placeholder="Ej.: Viajes"><span class="hint"><span>${esc(HH.t('Hasta {n} caracteres.').replace('{n}', String(HL_TITULO_MAX)))}</span></span></div>
+          <button type="submit" class="btn secondary">${icon('plus')} Crear destacada</button>
+        </form>${fieldErr('spDErr')}`}
+      </div>
+      ${ds.map(card).join('')}`;
   }
 
   /* ---------- Planes v2: créditos, plan, Destacado y avisos (contrato: FASE1-CONTRATO.md, "Planes v2, créditos y destacado") ----------
@@ -1279,17 +1405,64 @@
     async spVerif(form) {
       showErr('spVErr', ''); const s = form.selfie.files[0], d = form.documento.files[0];
       if (!s || !d) return showErr('spVErr', 'Elegí las dos fotos: la selfie con el documento y el frente del documento.');
-      const fd = new FormData(); fd.append('selfie', s); fd.append('documento', d);
+      if (!form.consentimiento.checked) return showErr('spVErr', 'Tenés que aceptar el uso de tu documento y tu selfie para verificar tu identidad.');
+      const fd = new FormData(); fd.append('selfie', s); fd.append('documento', d); fd.append('consentimiento', '1');
       S.busy.verif = true; S.busy.verifP = 0; rerender();
       try { await upload('/cuenta/verificacion', fd, (p) => { S.busy.verifP = p; const bar = document.querySelector('.sp-prog i'); if (bar) bar.style.width = Math.round(p * 100) + '%'; }); S.busy.verif = false; await afterYoChange('Recibimos tu verificación.'); }
       catch (e) { S.busy.verif = false; rerender(); showErr('spVErr', e.message); }
     },
     async spHistoria(form) {
-      showErr('spHErr', ''); const f = form.foto.files[0]; if (!f) return showErr('spHErr', 'Elegí una foto.');
-      const fd = new FormData(); fd.append('foto', f); fd.append('texto', String(form.texto.value || '').trim());
+      showErr('spHErr', ''); const f = form.foto.files[0]; if (!f) return showErr('spHErr', S.yo && S.yo.videosHabilitados ? 'Elegí una foto o un video.' : 'Elegí una foto.');
+      const esVideo = /^video\//.test(f.type || '') || /\.(mp4|mov|webm|3gp)$/i.test(f.name || '');
+      if (esVideo) {
+        if (f.size > 95 * 1024 * 1024) return showErr('spHErr', 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.');
+        const seg = await duracionVideo(f);
+        if (seg && seg > 61) return showErr('spHErr', `El video dura ${Math.round(seg)} s. Hasta 60 segundos.`);
+      }
+      const fd = new FormData(); fd.append(esVideo ? 'video' : 'foto', f); fd.append('texto', String(form.texto.value || '').trim());
       S.upHist = { p: 0 }; rerender();
-      try { await upload('/cuenta/historias', fd, (p) => { if (S.upHist) S.upHist.p = p; const bar = document.querySelector('.sp-prog i'); if (bar) bar.style.width = Math.round(p * 100) + '%'; }); S.upHist = null; await afterYoChange('Historia publicada por 24 horas.'); }
-      catch (e) { S.upHist = null; rerender(); showErr('spHErr', e.message); }
+      try {
+        await upload(esVideo ? '/cuenta/historias/video' : '/cuenta/historias', fd, (p) => { if (S.upHist) S.upHist.p = p; const bar = document.querySelector('.sp-prog i'); if (bar) bar.style.width = Math.round(p * 100) + '%'; });
+        S.upHist = null; await afterYoChange(esVideo ? 'Recibimos el video. Se publica apenas termine de procesarse.' : 'Historia publicada por 24 horas.');
+      } catch (e) { S.upHist = null; rerender(); showErr('spHErr', e.message); }
+      if (esVideo) vigilarVideos();
+    },
+    async spDestCrear(form) {
+      showErr('spDErr', ''); const t = String(form.titulo.value || '').trim();
+      if (!t) return showErr('spDErr', 'Ponele un nombre a la destacada.');
+      try { await api('POST', '/cuenta/destacadas', { titulo: t }); await afterYoChange('Destacada creada.'); } catch (e) { showErr('spDErr', e.message); }
+    },
+    async spDestRenombrar(form) {
+      const id = form.dataset.id; showErr('spDErr_' + id, ''); const t = String(form.titulo.value || '').trim();
+      if (!t) return showErr('spDErr_' + id, 'Ponele un nombre a la destacada.');
+      try { await api('PUT', '/cuenta/destacadas/' + encodeURIComponent(id), { titulo: t }); await afterYoChange('Nombre guardado.'); } catch (e) { showErr('spDErr_' + id, e.message); }
+    },
+    async spDestBorrar(el) {
+      HH.confirm({ title: 'Borrar destacada', text: '¿Querés borrar esta destacada con todas sus fotos y videos?', okLabel: 'Borrar', cls: 'danger', onOk: async () => {
+        try { await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(el.dataset.id)); await afterYoChange('Destacada borrada.'); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      } });
+    },
+    async spDestItemBorrar(el) {
+      HH.confirm({ title: 'Borrar', text: '¿Querés borrar este elemento de la destacada?', okLabel: 'Borrar', cls: 'danger', onOk: async () => {
+        try { await api('DELETE', '/cuenta/destacadas/items/' + encodeURIComponent(el.dataset.id)); await afterYoChange('Borrado.'); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      } });
+    },
+    async spDestSubir(form) {
+      const id = form.dataset.id; const errId = 'spDErr_' + id; showErr(errId, '');
+      const f = form.archivo.files[0]; if (!f) return showErr(errId, S.yo && S.yo.videosHabilitados ? 'Elegí una foto o un video.' : 'Elegí una foto.');
+      const esVideo = /^video\//.test(f.type || '') || /\.(mp4|mov|webm|3gp)$/i.test(f.name || '');
+      if (esVideo) {
+        if (f.size > 95 * 1024 * 1024) return showErr(errId, 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.');
+        const seg = await duracionVideo(f);
+        if (seg && seg > 61) return showErr(errId, `El video dura ${Math.round(seg)} s. Hasta 60 segundos.`);
+      }
+      const fd = new FormData(); fd.append(esVideo ? 'video' : 'foto', f);
+      S.upDest = { id, p: 0 }; rerender();
+      try {
+        await upload('/cuenta/destacadas/' + encodeURIComponent(id) + (esVideo ? '/videos' : '/fotos'), fd, (p) => { if (S.upDest) S.upDest.p = p; const bar = document.querySelector('.sp-dest .sp-prog i'); if (bar) bar.style.width = Math.round(p * 100) + '%'; });
+        S.upDest = null; await afterYoChange(esVideo ? 'Recibimos el video. Se suma apenas termine de procesarse.' : 'Agregado a la destacada.');
+      } catch (e) { S.upDest = null; rerender(); showErr(errId, e.message); }
+      if (esVideo) vigilarVideos();
     },
     async spHistBorrar(el) {
       HH.confirm({ title: 'Borrar historia', text: '¿Querés borrar esta historia?', okLabel: 'Borrar', cls: 'danger', onOk: async () => {
@@ -1399,6 +1572,7 @@
       const p = S.yo && S.yo.perfil; const pub = p && p.estado === 'publicado' && !p.oculto;
       HH.modal({ title: 'Mi cuenta', body: `<div class="list">
         <a class="list-item" href="#panel" data-go="#panel" data-action="closeModal">${icon('dashboard')}<span class="grow title">Mi panel</span></a>
+        <a class="list-item" href="#favoritos" data-go="#favoritos" data-action="closeModal">${icon('star')}<span class="grow title">Favoritos</span></a>
         ${pub ? `<a class="list-item" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}" data-action="closeModal">${icon('user')}<span class="grow title">Ver mi perfil</span></a>` : ''}
         <button class="list-item" data-action="spLogout" style="cursor:pointer;text-align:left;width:100%;color:var(--danger)">${icon('logout')}<span class="grow title">Cerrar sesión</span></button>
       </div>` });
@@ -1597,12 +1771,19 @@
   document.addEventListener('hh:rendered', () => { playing.forEach((v) => { if (!v.isConnected) playing.delete(v); }); upgradeCards(document.getElementById('app')); });
 
   // Favoritos (se guardan en este dispositivo; los visitantes no tienen cuenta)
+  // "Tu espacio" (/favoritos): el ícono de usuario de la barra. Favoritos del dispositivo + ingreso y publicar para acompañantes.
   function favView() {
     const ids = favs();
     const lista = (HH.publishedProfiles ? HH.publishedProfiles() : []).filter((p) => ids.includes(p.userId));
     const guardados = ids.length - lista.length;
+    const cuenta = S.yo
+      ? `<div class="sp-esp-card"><div class="grow"><strong>Mi cuenta</strong><span class="small muted">Tu perfil, tus fotos y tu plan.</span></div><a class="btn sm" href="#panel" data-go="#panel">${icon('dashboard')} Mi panel</a></div>`
+      : `<div class="sp-esp-card"><div class="grow"><strong>¿Sos acompañante?</strong><span class="small muted">Publicá tu perfil o entrá a tu cuenta.</span></div><div class="sp-esp-btns"><a class="btn sm" href="#registro" data-go="#registro">Publicá tu perfil</a><a class="btn secondary sm" href="#login" data-go="#login">Ingresar</a></div></div>`;
     return `<div class="container section">
-      <div class="row between" style="align-items:flex-end;margin-bottom:14px"><div><span class="eyebrow">Favoritos</span><h2>Tus favoritos</h2><p class="small muted" style="margin-top:4px">Se guardan en este dispositivo. Tocá la estrella de una tarjeta para sumarla o sacarla.</p></div></div>
+      <h2 style="margin-bottom:14px">Tu espacio</h2>
+      ${HH.spClientes ? HH.spClientes.espacio() : ''}
+      ${cuenta}
+      <div class="row between" style="align-items:flex-end;margin:22px 0 14px"><div><h3>${icon('star')} Tus favoritos</h3><p class="small muted" style="margin-top:4px">Se guardan en este dispositivo. Tocá la estrella de una tarjeta para sumarla o sacarla.</p></div></div>
       ${lista.length ? `<div class="tier-grid lg pc2-favgrid">${lista.map((p) => HH.pcard(p)).join('')}</div>` : `<div class="empty">${icon('star')}<h4>Todavía no guardaste favoritos</h4><p class="small">Tocá la estrella de una tarjeta para guardarla acá.</p><a class="btn" href="#inicio" data-go="#inicio">Explorar perfiles</a></div>`}
       ${guardados > 0 ? `<p class="small muted" style="margin-top:12px">${guardados === 1 ? 'Un perfil que guardaste ya no está publicado.' : `<span>${guardados}</span> <span>perfiles que guardaste ya no están publicados.</span>`}</p>` : ''}
     </div>`;
@@ -1679,7 +1860,8 @@
     spFav(el) {
       const id = el.dataset.id; const a = favs(); const on = !a.includes(id);
       setFavs(on ? a.concat([id]) : a.filter((x) => x !== id));
-      document.querySelectorAll(`.pc2-fav[data-id="${CSS.escape ? CSS.escape(id) : id}"]`).forEach((b) => {
+      const sel = CSS.escape ? CSS.escape(id) : id;
+      document.querySelectorAll(`.pc2-fav[data-id="${sel}"], .sh-fav[data-id="${sel}"]`).forEach((b) => {
         b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? 'Sacar de favoritos' : 'Guardar en favoritos');
         b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
       });
@@ -1709,7 +1891,15 @@
     },
   });
   Object.assign(HH.I18N, {
+    // Historias en video
+    'Foto o video': ['Photo or video', 'Foto ou vídeo'],
+    'Videos de hasta 60 segundos y 95 MB.': ['Videos up to 60 seconds and 95 MB.', 'Vídeos de até 60 segundos e 95 MB.'],
+    'Elegí una foto o un video.': ['Choose a photo or a video.', 'Escolha uma foto ou um vídeo.'],
+    'El video dura {n} s. Hasta 60 segundos.': ['The video is {n} s long. Up to 60 seconds.', 'O vídeo dura {n} s. Até 60 segundos.'],
+    'Recibimos el video. Se publica apenas termine de procesarse.': ['We got your video. It goes live as soon as it finishes processing.', 'Recebemos o vídeo. Ele é publicado assim que terminar de ser processado.'],
     'Favoritos': ['Favorites', 'Favoritos'], 'Tus favoritos': ['Your favorites', 'Seus favoritos'],
+    'Mi cuenta': ['My account', 'Minha conta'], 'Tu perfil, tus fotos y tu plan.': ['Your profile, your photos and your plan.', 'Seu perfil, suas fotos e seu plano.'],
+    '¿Sos acompañante?': ['Are you a companion?', 'Você é acompanhante?'], 'Publicá tu perfil o entrá a tu cuenta.': ['Publish your profile or log in to your account.', 'Publique seu perfil ou entre na sua conta.'],
     'Se guardan en este dispositivo. Tocá la estrella de una tarjeta para sumarla o sacarla.': ['They are saved on this device. Tap the star on a card to add or remove it.', 'Ficam salvos neste dispositivo. Toque na estrela de um card para adicionar ou remover.'],
     'Todavía no guardaste favoritos': ['You have not saved any favorites yet', 'Você ainda não salvou favoritos'],
     'Tocá la estrella de una tarjeta para guardarla acá.': ['Tap the star on a card to save it here.', 'Toque na estrela de um card para salvá-lo aqui.'],

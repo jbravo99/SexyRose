@@ -161,7 +161,6 @@ HH.seed = function () {
     const it = valeItems[k % valeItems.length]; const buyer = buyers[k % buyers.length]; k++;
     if (k % 5 === 0) { pay(buyer, 15, 'pack', 'Pack Buenos Aires', day, 'u_vale', 'pk_u_vale'); purchases.push({ id: HH.uid('pu'), clientId: buyer, kind: 'pack', refId: 'pk_u_vale', workerId: 'u_vale', amountUsd: 15, createdAt: d(day) }); }
     else { pay(buyer, it.priceUsd, 'one_time', it.title, day, 'u_vale', it.id); purchases.push({ id: HH.uid('pu'), clientId: buyer, kind: 'content', refId: it.id, workerId: 'u_vale', amountUsd: it.priceUsd, createdAt: d(day) }); }
-    if (k % 7 === 0) { pay(buyer, 8, 'chat', 'Chat en vivo · 7 días', day, 'u_vale', 'u_vale'); }
   }
   pay('u_c4', 15, 'request', 'Pedido a medida · video librería', 10, 'u_vale', 'rq_4');
   pay('u_c3', 15, 'request', 'Video a medida de Valentina', 3, 'u_vale', 'rq_3');
@@ -241,9 +240,6 @@ HH.seed = function () {
 
   // --- Telegram (demo)
   [['u_vale', '@sexyrose_demo_vale'], ['u_cami', '@sexyrose_demo_cami'], ['u_tomas', '+54 9 11 0000 0013']].forEach(([id, t]) => { const p = profiles.find(x => x.userId === id); if (p) p.telegram = t; });
-
-  // --- Chat en vivo: disponibles ahora (demo)
-  ['u_vale', 'u_cami', 'u_sofi', 'u_marti', 'u_isa', 'u_tomas', 'u_juli'].forEach(id => { const p = profiles.find(x => x.userId === id); if (p) p.chatOnline = true; });
 
   // --- Reservas: agenda con link de pago propio (SexyRose no cobra la seña) ---
   const wk = (from, to, days) => { const a = {}; days.forEach(k => { a[k] = [{ from, to }]; }); return a; };

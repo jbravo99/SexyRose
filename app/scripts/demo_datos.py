@@ -121,6 +121,16 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
     datos = json.loads((root / 'app' / 'scripts' / 'demo' / 'perfiles.json').read_text(encoding='utf-8'))
 
     imagenes = {}
+    # Videos de la demo (Shorts y clip de la tarjeta): degradés en movimiento, sin personas (app/scripts/demo/clips/*.mp4)
+    clips = sorted((root / 'app' / 'scripts' / 'demo' / 'clips').glob('clip*.mp4'))
+    archivos = {}
+
+    def clip(i):
+        data = clips[i % len(clips)].read_bytes()
+        nombre = hashlib.sha256(data).hexdigest()[:16] + '.mp4'
+        archivos[nombre] = data
+        return f'{prefijo}media/{nombre}'
+    n_clip = 0
 
     def imagen(tono, variante, ancho, alto):
         s = svg(tono, variante, ancho, alto)
@@ -153,6 +163,29 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
             fotos.append({'url': url, 'urlMini': url, 'ancho': ancho, 'alto': alto})
         publicado = AHORA - timedelta(days=int(p.get('dias', 30)))
         plan = p.get('plan', 'E')
+        # Desde Plata: 1 o 2 videos (Star y Oro 2), con portada abstracta; el primero también es el clip de la tarjeta
+        videos = []
+        if clips and plan in ('D', 'C', 'S'):
+            for k in range(2 if plan in ('C', 'S') else 1):
+                videos.append({'id': f"{p['id']}-v{k + 1}", 'url': clip(n_clip), 'poster': imagen(tono + 40 + k * 7, k + 5, 540, 960),
+                               'segundos': 6, 'ancho': 540, 'alto': 960,
+                               'creado': _iso(AHORA - timedelta(hours=6 + (n_clip * 7) % 90))})
+                n_clip += 1
+        # Historias destacadas (como Instagram): imágenes abstractas y los clips de la demo (sin personas); no vencen
+        destacadas = []
+        for di, dd in enumerate(p.get('destacadas', [])):
+            its = []
+            for ii, tipo in enumerate(dd.get('items', [])):
+                it_id = f"{p['id']}-d{di + 1}-{ii + 1}"
+                poster = imagen(tono + 60 + di * 11 + ii * 5, di + ii + 3, 1080, 1920)
+                creado = _iso(publicado + timedelta(days=1 + di, hours=ii))
+                if tipo == 'video' and clips:
+                    its.append({'id': it_id, 'tipo': 'video', 'url': clip(n_clip), 'urlMini': poster, 'segundos': 6, 'ancho': 540, 'alto': 960, 'creado': creado})
+                    n_clip += 1
+                else:
+                    its.append({'id': it_id, 'tipo': 'foto', 'url': poster, 'urlMini': poster, 'creado': creado})
+            if its:
+                destacadas.append({'id': f"{p['id']}-d{di + 1}", 'titulo': dd['titulo'][:16], 'creado': _iso(publicado + timedelta(days=1 + di)), 'items': its})
         perfiles.append({
             'cuentaId': p['id'], 'slug': slug, 'displayName': p['nombre'], 'edad': p['edad'], 'genero': p.get('genero', 'mujer'),
             'nacionalidad': p.get('nacionalidad', ''), 'pais': por_id['argentina']['nombre'],
@@ -162,16 +195,22 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
             'titular': p.get('titular', ''), 'bio': p.get('bio', ''), 'titularEn': p.get('titularEn', ''), 'bioEn': p.get('bioEn', ''),
             'idiomas': p.get('idiomas', []), 'alturaCm': p.get('altura'), 'contextura': None,
             'intereses': p.get('intereses', []), 'salidas': p.get('salidas', []), 'tarifaDesde': p.get('tarifa'),
-            'fotos': fotos, 'videos': [], 'preview': None, 'plan': plan, 'star': plan == 'S',
+            'fotos': fotos, 'videos': videos, 'preview': {'url': videos[0]['url']} if videos else None, 'plan': plan, 'star': plan == 'S',
             'destacado': plan != 'S' and bool(p.get('destacado')), 'verificada': True,
             'actualizado': _iso(publicado + timedelta(days=min(5, int(p.get('dias', 30)) // 2))), 'publicadoEn': _iso(publicado),
             'contacto': {'whatsapp': p.get('whatsapp', ''), 'telegram': p.get('telegram', '')}, 'links': [],
+            **({'destacadas': destacadas} if destacadas else {}),
         })
         for j, hst in enumerate(p.get('historias', [])):
             creado = AHORA - timedelta(hours=float(hst.get('horas', 2)))
             url = imagen(tono + 15 + j * 9, j + 2, 1080, 1920)
-            historias.append({'id': f"{p['id']}-h{j + 1}", 'cuentaId': p['id'], 'url': url, 'urlMini': url, 'texto': hst.get('texto', ''),
-                              'creado': _iso(creado), 'expira': _iso(creado + timedelta(hours=24))})
+            h = {'id': f"{p['id']}-h{j + 1}", 'cuentaId': p['id'], 'tipo': 'foto', 'url': url, 'urlMini': url, 'texto': hst.get('texto', ''),
+                 'creado': _iso(creado), 'expira': _iso(creado + timedelta(hours=24))}
+            # Historias en video: los mismos clips abstractos de la demo (sin personas); urlMini = portada
+            if hst.get('video') and clips:
+                h.update({'tipo': 'video', 'url': clip(n_clip), 'segundos': 6, 'ancho': 540, 'alto': 960})
+                n_clip += 1
+            historias.append(h)
     perfiles.sort(key=lambda x: (x['publicadoEn'], x['cuentaId']), reverse=True)
     historias.sort(key=lambda x: x['creado'])
 
@@ -193,6 +232,8 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
         media_out.mkdir(parents=True, exist_ok=True)
         for nombre, s in imagenes.items():
             (media_out / nombre).write_text(s, encoding='utf-8')
+        for nombre, data in archivos.items():
+            (media_out / nombre).write_bytes(data)
     return estado
 
 

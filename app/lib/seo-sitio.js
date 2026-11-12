@@ -15,10 +15,10 @@ const WORDS = {
   registro: { es: 'registro', en: 'sign-up', pt: 'cadastro' },
   login: { es: 'ingresar', en: 'login', pt: 'entrar' },
 };
-const STATIC = ['inicio', 'swipe', 'shorts', 'stars', 'links', 'panel', 'admin', 'cuenta', 'chat', '404', 'favoritos'];
+const STATIC = ['inicio', 'swipe', 'shorts', 'stars', 'links', 'panel', 'admin', 'cuenta', 'chat', '404', 'favoritos', 'compra', 'cliente'];
 const GENDER = { key: 'hombres', gender: 'hombre', words: { es: 'hombres', en: 'men', pt: 'homens' } };
 const VISIBLES = new Set(['mujer', 'trans']); // lo que ve un visitante nuevo (y Google) sin elegir nada
-const NO_INDEX_NO_FOLLOW = new Set(['panel', 'admin', 'cuenta', 'chat', 'favoritos', 'registro', 'login']);
+const NO_INDEX_NO_FOLLOW = new Set(['panel', 'admin', 'cuenta', 'chat', 'favoritos', 'registro', 'login', 'compra', 'cliente']);
 const NO_INDEX = new Set(['swipe', 'shorts', 'cerca', 'links', '404']);
 const LOCALE = { es: 'es_AR', en: 'en_US', pt: 'pt_BR' };
 const HTML_LANG = { es: 'es-AR', en: 'en', pt: 'pt-BR' };
@@ -210,6 +210,7 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
     } else if (NO_INDEX.has(top)) {
       r.robots = 'noindex,follow';
       if (top === 'swipe') r.title = 'Swipe | SexyRose';
+      if (top === 'shorts') r.title = 'Shorts | SexyRose';
     }
     return r;
   }

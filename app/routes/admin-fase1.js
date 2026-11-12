@@ -32,7 +32,7 @@ const bool = (v, def) => (typeof v === 'boolean' ? v : def);
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; this.expose = true; } }
 const he = (s, m) => new HttpError(s, m);
 
-export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {} }) {
+export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {}, retencionVerif = null, historias = null }) {
   const r = express.Router();
   r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -81,16 +81,16 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!x) throw he(404, 'Acompañante no encontrada.');
     const [fotos, verifs, hist, resumen] = await Promise.all([
       pool.query('SELECT id, orden, url, url_mini, ancho, alto, creado FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [id]),
-      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
-      pool.query('SELECT id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 50', [id]),
+      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d, consentimiento_at, archivos_borrados FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
+      pool.query('SELECT id, tipo, estado, url, url_mini, texto, segundos, error, creado, expira FROM historias WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 50', [id]),
       planes.resumenPlan(id),
     ]);
     res.json({
       cuenta: { id: x.id, email: x.email, emailVerificado: x.email_verificado, estado: x.cuenta_estado, creado: x.creado, ultimoLogin: x.ultimo_login, aceptoTerminos: x.acepto_terminos, mayorEdadDeclarada: x.mayor_edad_declarada },
       perfil: { slug: x.slug, datos: x.datos || {}, estado: x.estado, motivoRechazo: x.motivo_rechazo, verificacion: x.verificacion, oculto: x.oculto, creado: x.p_creado, actualizado: x.actualizado, publicadoEn: x.publicado_en },
       fotos: fotos.rows.map((f) => ({ id: f.id, orden: f.orden, url: f.url, urlMini: f.url_mini, ancho: f.ancho, alto: f.alto, creado: f.creado })),
-      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d })),
-      historias: hist.rows.map((h) => ({ id: h.id, url: h.url, urlMini: h.url_mini, texto: h.texto, creado: h.creado, expira: h.expira })),
+      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d, consentimiento: v.consentimiento_at, archivosBorrados: v.archivos_borrados })),
+      historias: hist.rows.map((h) => ({ id: h.id, tipo: h.tipo || 'foto', estado: h.estado || 'listo', url: h.url, urlMini: h.url_mini, texto: h.texto, segundos: h.segundos == null ? null : Number(h.segundos), error: h.error || null, creado: h.creado, expira: h.expira })),
       plan: resumen.efectivo,
       suscripciones: resumen.suscripciones,
       pedidos: resumen.pedidos,
@@ -126,11 +126,12 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const motivo = str(b.motivo, 500);
     if (b.decision === 'rechazar' && !motivo) throw he(400, 'Escribí el motivo del rechazo: se lo mandamos a la acompañante.');
     const client = await pool.connect();
-    let perfil;
+    let perfil; let verifId;
     try {
       await client.query('BEGIN');
       const v = await client.query("SELECT id FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' ORDER BY creado DESC LIMIT 1 FOR UPDATE", [id]);
       if (!v.rows[0]) throw he(409, 'No hay una verificación pendiente para revisar.');
+      verifId = v.rows[0].id;
       const aprobar = b.decision === 'aprobar';
       await client.query('UPDATE verificaciones SET estado = $2, motivo = $3, revisado = now(), revisado_por = $4 WHERE id = $1',
         [v.rows[0].id, aprobar ? 'aprobada' : 'rechazada', motivo || null, adminUser]);
@@ -151,6 +152,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       client.release();
     }
     invalidar();
+    if (retencionVerif) await retencionVerif.comprimir(verifId);
     if (b.decision === 'aprobar') {
       await planes.mail(id, perfil.estado === 'publicado' ? 'Tu perfil está publicado en SexyRose' : 'Verificamos tu identidad',
         perfil.estado === 'publicado'
@@ -187,6 +189,17 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     };
     if (cur.rows[0].estado !== b.estado) await planes.mail(id, ...textos[b.estado]);
     res.json({ ok: true, perfil: rows[0] });
+  }));
+
+  // Borrar una historia (foto o video): fila + archivos. Sin aviso a la acompañante.
+  r.delete('/acompanantes/:id/historias/:hid', apiPost, ah(async (req, res) => {
+    const id = uuid(req);
+    if (!UUID_RE.test(req.params.hid)) throw he(404, 'Historia no encontrada.');
+    if (!historias) throw he(503, 'No disponible.');
+    const h = await historias.borrar(req.params.hid, { cuentaId: id });
+    if (!h) throw he(404, 'Historia no encontrada.');
+    log('admin: historia borrada', req.params.hid, 'de', id, 'por', adminUser);
+    res.json({ ok: true });
   }));
 
   r.post('/acompanantes/:id/plan', apiPost, ah(async (req, res) => {

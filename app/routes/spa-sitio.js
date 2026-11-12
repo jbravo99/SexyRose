@@ -27,13 +27,13 @@ import { estadoSitio } from './sitio.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
 
-// Primera palabra de cada sección del SPA (es / en / pt). Shorts y chat no existen en el lanzamiento.
+// Primera palabra de cada sección del SPA (es / en / pt). El chat no existe en el lanzamiento.
 const WORDS = new Set([
   'perfil', 'profile', 'cerca', 'near-me', 'perto-de-mim', 'registro', 'sign-up', 'cadastro', 'ingresar', 'login', 'entrar',
-  'swipe', 'stars', 'links', 'panel', 'cuenta', 'favoritos', 'favorites',
+  'swipe', 'shorts', 'stars', 'links', 'panel', 'cuenta', 'favoritos', 'favorites', 'compra', 'cliente',
 ]);
 // Secciones privadas: no se indexan
-const PRIVATE = new Set(['favoritos', 'favorites', 'panel', 'cuenta', 'ingresar', 'login', 'entrar', 'registro', 'sign-up', 'cadastro']);
+const PRIVATE = new Set(['favoritos', 'favorites', 'panel', 'cuenta', 'ingresar', 'login', 'entrar', 'registro', 'sign-up', 'cadastro', 'compra', 'cliente']);
 
 export const slugify = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -70,7 +70,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   // JS y CSS del sitio (app/sitio-spa/assets/app.<hash>.js|css): el nombre cambia con el contenido, así que se
   // guardan en caché un año. Se leen una vez y se comprimen en segundo plano (brotli/gzip).
   const assetsDir = path.join(path.dirname(file), 'assets');
-  const ASSET_RE = /^(?:(app|i18n)\.[0-9a-f]{8,64}\.(js|css)|fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2)$/;
+  const ASSET_RE = /^(?:(app|i18n|fuentes)\.[0-9a-f]{8,64}\.(js|css)|fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2)$/;
   const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2' };
   const assets = new Map();
   async function leerAsset(name) {
@@ -85,6 +85,16 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   }
   // Al arrancar, dejar comprimidos los assets que haya (sin bloquear)
   fs.readdir(assetsDir).then((ls) => ls.filter((n) => ASSET_RE.test(n)).forEach((n) => { leerAsset(n).catch(() => {}); })).catch(() => {});
+
+  // Hoja de fuentes propias para las páginas del servidor (/terminos, /privacidad…): assets/fuentes.<hash>.css.
+  // Se busca una vez por minuto; sin build no hay hoja y esas páginas usan las fuentes del sistema.
+  const fuentes = { href: null, at: 0 };
+  async function fuentesHref() {
+    if (Date.now() - fuentes.at < 60 * 1000) return fuentes.href;
+    fuentes.at = Date.now();
+    try { const n = (await fs.readdir(assetsDir)).find((x) => /^fuentes\.[0-9a-f]{8,64}\.css$/.test(x)); fuentes.href = n ? '/assets/' + n : null; } catch { fuentes.href = null; }
+    return fuentes.href;
+  }
 
   async function leerSpa() {
     let st;
@@ -194,5 +204,6 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   });
   // Mapa del sitio con los datos reales (lo sirve server.js en /sitemap.xml; extras = páginas legales ya armadas)
   r.sitemap = (extras) => (seo ? seo.sitemap(extras) : Promise.resolve(null));
+  r.fuentesHref = fuentesHref;
   return r;
 }

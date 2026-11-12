@@ -727,10 +727,6 @@
       ", te vi en SexyRose y me gustaría proponerte una salida.";
     const href = HH.whatsappLink(p.whatsapp, msg);
     const hasPhone = String(p.whatsapp || "").replace(/\D/g, "").length >= 8;
-    // Con el match ya abre WhatsApp: en lugar de mostrar el número, se ofrece el chat en vivo
-    const chatBtn = HH.chatEnabledFor(p.userId)
-      ? `<button type="button" class="btn secondary lg block" data-action="pubWaChat" data-id="${p.userId}"${HH.chatAvailable(p) || HH.chatSessionOf(HH.viewerId(), p.userId) ? "" : " disabled"}>${HH.icon("chat")} ${HH.chatSessionOf(HH.viewerId(), p.userId) ? "Abrir chat en vivo" : HH.chatAvailable(p) ? "Chat en vivo · desde " + HH.money(HH.chatFrom(p)) : "Chat en vivo · no disponible ahora"}</button>`
-      : "";
     const tgHref = HH.telegramLink(p.telegram);
     const bookOk = HH.canTakeBookings(p);
     const bookBtn = `<button type="button" class="btn lg block" data-action="pubWaBook" data-id="${p.userId}"${bookOk ? "" : ' disabled title="Todavía no toma reservas por la agenda"'}>${HH.icon("calendar")} Coordinar encuentro${bookOk ? "" : '<span class="small" style="font-weight:600;opacity:.8"> · sin agenda</span>'}</button>`;
@@ -741,7 +737,6 @@
         ${tgHref ? `<a class="btn tg lg" id="pubTgLink" target="_blank" rel="noopener" href="${tgHref}" data-track="tg" data-track-id="${p.userId}">${HH.icon("send")} Telegram</a>` : `<button type="button" class="btn tg lg" disabled title="No cargó su Telegram">${HH.icon("send")} Telegram</button>`}
       </div>
       ${bookBtn}
-      ${chatBtn}
       <p class="small muted">WhatsApp se abre con un mensaje de presentación que podés editar antes de enviar. Coordiná el plan, el lugar público y la tarifa por ahí, o reservá el encuentro en su agenda.</p>
     </div>`;
     const actions = opts.fromProfile
@@ -779,7 +774,6 @@
           ${HH.highlightLimitText ? li(HH.highlightLimitText(L.highlights), true) : ""}
           ${li("Venta de fotos y videos", L.premium_content)}
           ${li("Packs, pedidos a medida y agenda", L.packs)}
-          ${li("Chat en vivo por sesiones", L.chat)}
           ${li("Viajes", L.trips)}
         </ul>
         <button type="button" class="btn ${k === "B" ? "" : "secondary"} block" data-go="${go}">${k === "S" ? "Quiero ser Star" : "Elegir " + L.label}</button>
@@ -1206,18 +1200,13 @@
   }
   // Todo el contacto vive en la tarjeta principal del perfil
   function contactHtml(p) {
-    const me = HH.viewer();
     const liked = swipedRight(p.userId);
-    const chatOk = !!HH.chatSessionOf(me.id, p.userId);
-    const chatOn = HH.chatAvailable(p);
-    const chatEnabled = HH.chatEnabledFor(p.userId);
     const book = HH.canTakeBookings(p);
     // Contacto minimalista: fila de botones redondos con su nombre debajo + acciones secundarias chicas
     const act = (cls, action, icon, label, extra = "") => `<button type="button" class="pf-act ${cls}" data-action="${action}" data-id="${p.userId}"${extra}><span class="pf-ab">${HH.icon(icon)}</span><span class="pf-al">${label}</span></button>`;
     return `
       <div class="pf-acts">
         ${act("wa", liked ? "pubOpenWa" : "pubInterest", "whatsapp", "WhatsApp")}
-        ${chatEnabled ? act("chat", "pubChat", "chat", "Chat", ` title="${chatOk ? "Abrir chat en vivo" : chatOn ? "Chat en vivo · desde " + HH.money(HH.chatFrom(p)) : "Chat · no disponible ahora"}"${chatOn || chatOk ? "" : " disabled"}`) : ""}
         ${book ? act("book", "pubBook", "calendar", "Reservar") : ""}
         ${act("pf-fav" + (liked ? " on" : ""), "pubInterest", "heart", "Me interesa", ` aria-pressed="${liked}"`)}
       </div>
@@ -1250,9 +1239,6 @@
         : "",
       HH.contentOf(p.userId).length
         ? `<a class="lk-btn main" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">${HH.icon("image")}<span>Mis fotos y videos</span></a>`
-        : "",
-      HH.chatAvailable(p)
-        ? `<button type="button" class="lk-btn main" data-action="pubChat" data-id="${esc(p.userId)}">${HH.icon("chat")}<span>Chat en vivo · desde ${HH.money(HH.chatFrom(p))}</span></button>`
         : "",
     ].join("");
     return `<div class="container lk-page">
@@ -1411,7 +1397,6 @@
       <div class="side">
         <button type="button" class="av" data-action="pubShortInterest" data-id="${p.userId}" aria-label="Me interesa ${esc(p.displayName)}">${HH.avatar(p, 46)}<span class="plus">${swipedRight(p.userId) ? HH.icon("check") : HH.icon("plus")}</span></button>
         <button type="button" class="${liked ? "liked" : ""}" data-action="pubShortLike" data-id="${c.id}" aria-label="Me gusta" aria-pressed="${liked}">${HH.icon("heart")}</button><span class="lbl num" id="pubLikes_${c.id}">${kfmt(likeCount(c))}</span>
-        ${HH.chatAvailable(p) ? `<button type="button" data-action="pubChat" data-id="${p.userId}" aria-label="Chat en vivo">${HH.icon("chat")}</button><span class="lbl">Chat</span>` : ""}
         <button type="button" data-action="pubShortShare" data-id="${c.id}" aria-label="Compartir">${HH.icon("send")}</button><span class="lbl">Compartir</span>
         <button type="button" data-action="pubShortMore" data-id="${c.id}" aria-label="Más opciones">${HH.icon("menu")}</button>
       </div>
@@ -1620,7 +1605,7 @@
         <div><h2>Crear cuenta</h2><p class="small muted" style="margin-top:4px">Elegí cómo vas a usar SexyRose.</p></div>
         <div class="stack" style="gap:10px">
           <button type="button" class="pub-choice" data-action="pubRegPick" data-kind="worker"><span class="grow"><strong>Publicar mi perfil</strong><span class="tiny muted">Acompañante</span><span class="small">Creá tu perfil, subí fotos y empezá a aparecer en el sitio.</span></span>${HH.icon("chevronRight")}</button>
-          <button type="button" class="pub-choice" data-action="pubRegPick" data-kind="client"><span class="grow"><strong>Comprar contenido</strong><span class="tiny muted">Cliente · sin verificación de identidad</span><span class="small">Cuenta con alias para comprar fotos, videos, packs y chat. Para mirar perfiles y escribir por WhatsApp no necesitás cuenta.</span></span>${HH.icon("chevronRight")}</button>
+          <button type="button" class="pub-choice" data-action="pubRegPick" data-kind="client"><span class="grow"><strong>Comprar contenido</strong><span class="tiny muted">Cliente · sin verificación de identidad</span><span class="small">Cuenta con alias para comprar fotos, videos y packs. Para mirar perfiles y escribir por WhatsApp no necesitás cuenta.</span></span>${HH.icon("chevronRight")}</button>
         </div>
         <p class="small center muted">¿Ya tenés cuenta? <a href="#login" data-go="#login">Entrar</a></p>
       </div></div></div>`;
@@ -1984,16 +1969,6 @@
       document.querySelectorAll(".pf-fav").forEach((b) => { b.classList.add("on"); b.setAttribute("aria-pressed", "true"); });
       waSheet(p, { fromProfile: true });
     },
-    pubChat(el) {
-      const p = HH.profileOf(el.dataset.id);
-      if (!p) return;
-      const me = HH.viewer();
-      if (HH.hasChatAccess(me.id, p.userId)) {
-        HH.go("#chat." + p.userId);
-        return;
-      }
-      HH.buyChat(p, () => HH.go("#chat." + p.userId));
-    },
     pubBook(el) {
       const p = HH.profileOf(el.dataset.id);
       if (!p) return;
@@ -2159,7 +2134,6 @@
       const h = document.querySelector(".shorts-hint");
       if (h) h.remove();
     },
-    pubWaChat(el) { HH.closeModal(); HH.actions.pubChat(el); },
     pubWaBook(el) { HH.closeModal(); HH.actions.pubBook(el); },
     pubShortInterest(el) {
       HH.actions.pubInterest(el);

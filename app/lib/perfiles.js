@@ -236,7 +236,7 @@ export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos =
     salidas: datos.salidas || [],
     tarifaDesde: datos.tarifaDesde ?? null,
     fotos: fotos.map((x) => ({ url: x.url, urlMini: x.url_mini || x.url, ancho: x.ancho, alto: x.alto })),
-    videos: videos.map((v) => ({ id: v.id, url: v.url, poster: v.url_poster || null, segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto })),
+    videos: videos.map((v) => ({ id: v.id, url: v.url, poster: v.url_poster || null, segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto, ...(v.creado ? { creado: v.creado } : {}) })),
     preview: preview && preview.url ? { url: preview.url } : null,
     plan,
     star: plan === 'S',

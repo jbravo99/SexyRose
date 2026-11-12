@@ -72,7 +72,9 @@ class Cliente {
   async get(p) { const r = await fetch(BASE + p, { headers: this.headers() }); return { status: r.status, body: await r.json().catch(() => null) }; }
   async subir(p, campos) {
     const fd = new FormData();
-    for (const [k, v] of Object.entries(campos)) fd.append(k, new Blob([v], { type: 'image/jpeg' }), 'x.jpg');
+    for (const [k, v] of Object.entries(campos)) {
+      if (typeof v === 'string') fd.append(k, v); else fd.append(k, new Blob([v], { type: 'image/jpeg' }), 'x.jpg');
+    }
     const r = this.guardar(await fetch(BASE + p, { method: 'POST', headers: this.headers(), body: fd }));
     return { status: r.status, body: await r.json().catch(() => null) };
   }
@@ -99,7 +101,7 @@ async function cuentaEnRevision() {
   assert.equal(r.status, 200, JSON.stringify(r.body));
   for (let i = 0; i < 3; i++) assert.equal((await c.subir('/api/cuenta/fotos', { foto: await jpeg() })).status, 201);
   c.selfie = await jpeg({ r: 10, g: 200, b: 30 });
-  r = await c.subir('/api/cuenta/verificacion', { selfie: c.selfie, documento: await jpeg({ r: 30, g: 30, b: 200 }) });
+  r = await c.subir('/api/cuenta/verificacion', { selfie: c.selfie, documento: await jpeg({ r: 30, g: 30, b: 200 }), consentimiento: '1' });
   assert.ok(r.status === 200 || r.status === 201, JSON.stringify(r.body));
   r = await c.json('POST', '/api/cuenta/perfil/enviar-revision', {});
   assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -142,6 +144,26 @@ describe('integración cuentas + admin + planes', () => {
     const yo = (await c.get('/api/cuenta/yo')).body.cuenta;
     assert.equal(yo.plan.efectivo, 'E');
     assert.equal(yo.limites.fotos, 8);
+
+    // Retención: al decidir se recomprime; a los 3 meses de la decisión se borran selfie y documento.
+    let fila = (await db.query('SELECT id, selfie_ruta, documento_ruta, comprimido, archivos_borrados FROM verificaciones WHERE cuenta_id = $1', [c.id])).rows[0];
+    assert.ok(fila.comprimido, 'recomprimida al decidir');
+    const absS = path.join(tmpData, 'privado', fila.selfie_ruta); const absD = path.join(tmpData, 'privado', fila.documento_ruta);
+    const m2 = await sharp(await fs.readFile(absS)).metadata();
+    assert.ok(m2.format === 'jpeg' && m2.width <= 1280 && m2.height <= 1280);
+    assert.equal(await instance.ctx.retencionVerif.purgar(), 0, 'antes de los 3 meses no borra nada');
+    await db.query("UPDATE verificaciones SET revisado = now() - interval '89 days' WHERE id = $1", [fila.id]);
+    assert.equal(await instance.ctx.retencionVerif.purgar(), 0);
+    await db.query("UPDATE verificaciones SET revisado = now() - interval '91 days' WHERE id = $1", [fila.id]);
+    assert.equal(await instance.ctx.retencionVerif.purgar(), 1);
+    assert.equal(await instance.ctx.retencionVerif.purgar(), 0, 'idempotente');
+    fila = (await db.query('SELECT estado, selfie_ruta, documento_ruta, archivos_borrados FROM verificaciones WHERE id = $1', [fila.id])).rows[0];
+    assert.equal(fila.estado, 'aprobada'); assert.equal(fila.selfie_ruta, null); assert.equal(fila.documento_ruta, null); assert.ok(fila.archivos_borrados);
+    await assert.rejects(fs.stat(absS)); await assert.rejects(fs.stat(absD));
+    const det2 = await (await adm(`/acompanantes/${c.id}`)).json();
+    assert.ok(det2.verificaciones[0].archivosBorrados && !det2.verificaciones[0].tieneSelfie);
+    assert.equal((await adm(`/verificaciones/${v.id}/selfie`)).status, 404);
+    assert.equal((await c.get('/api/cuenta/yo')).body.cuenta.perfil.verificacion, 'verificada', 'la cuenta sigue verificada');
   });
 
   test('créditos por WhatsApp → el admin confirma → paga Plata y una semana de Oro con créditos; la semana termina y vuelve a Plata', async () => {
@@ -172,7 +194,7 @@ describe('integración cuentas + admin + planes', () => {
     yo = (await c.get('/api/cuenta/yo')).body.cuenta;
     assert.equal(yo.plan.efectivo, 'D');
     assert.equal(yo.limites.fotos, 30);
-    assert.equal(yo.limites.destacadas, 4);
+    assert.equal(yo.limites.destacadas, 2);
     assert.equal(yo.previewHabilitado, false); // videos sin bunny.net en esta prueba
 
     r = await c.json('POST', '/api/cuenta/plan/comprar', { plan: 'C', periodo: 'semana' });

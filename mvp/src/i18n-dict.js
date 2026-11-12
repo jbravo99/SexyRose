@@ -77,10 +77,6 @@ HH.I18N = {
 "Open chat",
 "Abrir chat"
 ],
-"Abrir chat en vivo": [
-"Open live chat",
-"Abrir chat ao vivo"
-],
 "Acceso": [
 "Access",
 "Acesso"
@@ -845,58 +841,6 @@ HH.I18N = {
 "Today's chat",
 "Chat de hoje"
 ],
-"Chat en vivo": [
-"Live chat",
-"Chat ao vivo"
-],
-"Chat en vivo (precio por sesión)": [
-"Live chat (price per session)",
-"Chat ao vivo (preço por sessão)"
-],
-"Chat en vivo con": [
-"Live chat with",
-"Chat ao vivo com"
-],
-"Chat en vivo con {x}": [
-"Live chat with {x}",
-"Chat ao vivo com {x}"
-],
-"Chat en vivo por sesiones": [
-"Live chat by session",
-"Chat ao vivo por sessões"
-],
-"Chat en vivo por sesiones, viajes y novedades por zona.": [
-"Live chat by session, trips, and local updates.",
-"Chat ao vivo por sessões, viagens e novidades por região."
-],
-"Chat en vivo y reembolsos": [
-"Live chat and refunds",
-"Chat ao vivo e reembolsos"
-],
-"Chat en vivo ·": [
-"Live chat ·",
-"Chat ao vivo ·"
-],
-"Chat en vivo · desde": [
-"Live chat · from",
-"Chat ao vivo · a partir de"
-],
-"Chat en vivo · desde USD {n}": [
-"Live chat · from USD {n}",
-"Chat ao vivo · a partir de USD {n}"
-],
-"Chat en vivo · no disponible ahora": [
-"Live chat · not available now",
-"Chat ao vivo · indisponível agora"
-],
-"Chat en vivo · {n} días": [
-"Live chat · {n} days",
-"Chat ao vivo · {n} dias"
-],
-"Chat en vivo · {x}": [
-"Live chat · {x}",
-"Chat ao vivo · {x}"
-],
 "Chat por sesiones ·": [
 "Session-based chat ·",
 "Chat por sessões ·"
@@ -904,10 +848,6 @@ HH.I18N = {
 "Chat por sesiones · Star": [
 "Chat by session · Star",
 "Chat por sessões · Star"
-],
-"Chat · no disponible ahora": [
-"Chat · not available now",
-"Chat · indisponível agora"
 ],
 "Chats activos": [
 "Active chats",
@@ -1369,9 +1309,9 @@ HH.I18N = {
 "Account updated",
 "Conta atualizada"
 ],
-"Cuenta con alias para comprar fotos, videos, packs y chat. Para mirar perfiles y escribir por WhatsApp no necesitás cuenta.": [
-"An account with an alias to buy photos, videos, packs, and chat. You don't need an account to browse profiles and message on WhatsApp.",
-"Conta com apelido para comprar fotos, vídeos, pacotes e chat. Para ver perfis e escrever pelo WhatsApp, você não precisa de conta."
+"Cuenta con alias para comprar fotos, videos y packs. Para mirar perfiles y escribir por WhatsApp no necesitás cuenta.": [
+"An account with an alias to buy photos, videos, and packs. You don't need an account to browse profiles and message on WhatsApp.",
+"Conta com apelido para comprar fotos, vídeos e pacotes. Para ver perfis e escrever pelo WhatsApp, você não precisa de conta."
 ],
 "Cuenta creada": [
 "Account created",
@@ -2757,10 +2697,6 @@ HH.I18N = {
 "Hi, {x}",
 "Olá, {x}"
 ],
-"Hola, ¿cómo funciona el chat en vivo?": [
-"Hi, how does live chat work?",
-"Oi, como funciona o chat ao vivo?"
-],
 "Hola. ¿En qué te ayudo?": [
 "Hi. How can I help you?",
 "Oi. Como posso te ajudar?"
@@ -3912,10 +3848,6 @@ HH.I18N = {
 "No tenemos permiso para ver tu ubicación. Podés habilitarlo en el navegador (ícono de candado de la barra de direcciones) o elegir la ciudad a mano.": [
 "We don't have permission to see your location. You can enable it in your browser (the padlock icon in the address bar) or choose the city manually.",
 "Não temos permissão para ver sua localização. Você pode habilitá-la no navegador (ícone de cadeado na barra de endereço) ou escolher a cidade manualmente."
-],
-"No tenés chats en curso. El chat en vivo se pide desde el perfil de cada acompañante, en sesiones de {n}, {n} o {n} minutos.": [
-"You don't have any ongoing chats. Live chat is requested from each companion's profile, in {n}, {n} or {n} minute sessions.",
-"Você não tem chats em andamento. O chat ao vivo é solicitado no perfil de cada acompanhante, em sessões de {n}, {n} ou {n} minutos."
 ],
 "No tenés historias activas. Subí una foto de tu día: café, paseo, lo que estés haciendo.": [
 "You don't have any active stories. Post a photo of your day: coffee, a walk, whatever you're up to.",
@@ -6824,6 +6756,10 @@ HH.I18N = {
 "Viajes": [
 "Trips",
 "Viagens"
+],
+"Viajes y novedades por zona.": [
+"Trips and local updates.",
+"Viagens e novidades por região."
 ],
 "Vicente López": [
 "Vicente López",

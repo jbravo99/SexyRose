@@ -3,7 +3,7 @@
 //   index.html                          cáscara chica (marca <!--SR:DEMO-->), siempre revalidada
 //   assets/app.<hash>.js|css, i18n.<hash>.js, assets/fonts/*.woff2   caché de un año (el nombre cambia con el contenido)
 //   estado.<hash>.json                   los datos ficticios (lo que en el sitio real da /api/sitio/estado)
-//   media/<hash>.svg                     imágenes abstractas (no hay fotos de personas en la demo)
+//   media/<hash>.svg|mp4                 imágenes y videos abstractos (no hay fotos ni videos de personas en la demo)
 // Las direcciones van con # (/demo/#/perfil/valentina), así que el servidor solo entrega /demo/ y esos archivos.
 // Si en la carpeta queda la demo vieja (un solo HTML sin la marca), sigue de largo y la sirve server.js como antes.
 //
@@ -19,7 +19,7 @@ import { cspSitio } from './spa-sitio.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MARCA = '<!--SR:DEMO-->';
-const ARCHIVO_RE = /^(?:assets\/(?:app|i18n)\.[0-9a-f]{8,64}\.(?:js|css)|assets\/fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2|media\/[0-9a-f]{8,64}\.svg|estado\.[0-9a-f]{8,64}\.json)$/;
+const ARCHIVO_RE = /^(?:assets\/(?:app|i18n)\.[0-9a-f]{8,64}\.(?:js|css)|assets\/fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2|media\/[0-9a-f]{8,64}\.(?:svg|mp4)|estado\.[0-9a-f]{8,64}\.json)$/;
 const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2', svg: 'image/svg+xml', json: 'application/json; charset=utf-8' };
 
 export function createDemoSitioRouter({ config = {}, log = () => {}, dir } = {}) {
@@ -66,6 +66,10 @@ export function createDemoSitioRouter({ config = {}, log = () => {}, dir } = {})
       }
       const rel = p.slice('/demo/'.length);
       if (!ARCHIVO_RE.test(rel)) return next();
+      // Videos (Shorts y clip de las tarjetas): sendFile responde por rangos (Safari no reproduce sin Range)
+      if (rel.endsWith('.mp4')) {
+        return res.sendFile(path.join(base, rel), { dotfiles: 'deny', maxAge: 31536000000, immutable: true, headers: { ...comunes, 'Content-Type': 'video/mp4' } }, (e) => { if (e) next(e.status === 404 || e.code === 'ENOENT' ? undefined : e); });
+      }
       const a = await leerArchivo(rel);
       if (!a) return next();
       const h = { ...comunes, 'Content-Type': a.type, 'Cache-Control': 'public, max-age=31536000, immutable' };

@@ -109,7 +109,7 @@ export async function del(clave) {
 }
 
 // --- Privado ---------------------------------------------------------------
-const PRIV_RE = /^[a-z0-9_-]{1,40}\/[a-f0-9]{32}(-[a-z0-9]{1,20})?\.(jpg|jpeg|png|webp|pdf)$/;
+const PRIV_RE = /^[a-z0-9_-]{1,40}\/[a-f0-9]{32}(-[a-z0-9]{1,20})?\.(jpg|jpeg|png|webp|pdf|mp4)$/;
 
 // Guarda un archivo privado y devuelve su ruta relativa (lo que se guarda en la base).
 export async function guardarPrivado(subdir, buffer, ext = 'jpg', sufijo = '') {
@@ -133,7 +133,7 @@ export async function borrarPrivado(rel) {
   if (abs) await fsp.rm(abs, { force: true });
 }
 
-const TIPOS = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' };
+const TIPOS = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf', mp4: 'video/mp4' };
 
 // Transmite un archivo privado (para las rutas del admin). Responde 404 si no existe.
 export async function enviarPrivado(res, rel) {
@@ -155,6 +155,45 @@ export async function enviarPrivado(res, rel) {
     s.on('error', reject);
     res.on('finish', resolve);
     res.on('close', resolve);
+    s.pipe(res);
+  });
+}
+
+// Transmite un archivo privado a quien tiene permiso (contenido de los pedidos personalizados), con soporte de Range
+// (los navegadores lo piden para reproducir video). Sin caché pública: no-store, private.
+export async function enviarPrivadoRango(req, res, rel) {
+  const abs = rutaPrivadaAbs(rel);
+  let stat = null;
+  if (abs) { try { stat = await fsp.stat(abs); } catch { stat = null; } }
+  if (!stat || !stat.isFile()) return res.status(404).json({ ok: false, error: 'Archivo no encontrado.' });
+  const ext = path.extname(abs).slice(1).toLowerCase();
+  const total = stat.size;
+  const base = {
+    'Content-Type': TIPOS[ext] || 'application/octet-stream',
+    'Cache-Control': 'no-store, private',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Disposition': 'inline',
+    'Accept-Ranges': 'bytes',
+    'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'",
+    'Cross-Origin-Resource-Policy': 'same-origin',
+  };
+  let start = 0; let end = total - 1; let parcial = false;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+  if (m && (m[1] !== '' || m[2] !== '')) {
+    if (m[1] === '') { start = Math.max(0, total - Number(m[2])); } else { start = Number(m[1]); if (m[2] !== '') end = Math.min(total - 1, Number(m[2])); }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= total) {
+      res.set({ ...base, 'Content-Range': `bytes */${total}` });
+      return res.status(416).end();
+    }
+    parcial = true;
+  }
+  res.status(parcial ? 206 : 200).set({ ...base, 'Content-Length': String(end - start + 1), ...(parcial ? { 'Content-Range': `bytes ${start}-${end}/${total}` } : {}) });
+  if (req.method === 'HEAD') return res.end();
+  await new Promise((resolve, reject) => {
+    const s = fs.createReadStream(abs, { start, end });
+    s.on('error', reject);
+    res.on('finish', resolve);
+    res.on('close', () => { s.destroy(); resolve(); });
     s.pipe(res);
   });
 }

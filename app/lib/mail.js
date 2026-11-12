@@ -81,7 +81,7 @@ export function emailBasico({ titulo, parrafos = [], boton = null, pie = '' }) {
   const html = `<!doctype html><html lang="es"><body style="margin:0;padding:0;background:#15131A">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#15131A;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#1F1C26;border-radius:16px;padding:28px;font-family:Arial,Helvetica,sans-serif;color:#F7F3F6">
-<tr><td style="font-size:20px;font-weight:bold;color:#FF5C8A;padding-bottom:4px">SexyRose</td></tr>
+<tr><td style="padding-bottom:4px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="padding-right:8px;vertical-align:middle"><img src="${e(urlSitio('/logo-email.png'))}" width="32" height="32" alt="" style="display:block;border:0;border-radius:9px"></td><td style="font-size:20px;font-weight:bold;color:#F7F3F6;vertical-align:middle;font-family:Poppins,Arial,Helvetica,sans-serif;letter-spacing:-0.3px">SexyRose</td></tr></table></td></tr>
 <tr><td style="font-size:18px;font-weight:bold;padding:12px 0 8px">${e(titulo)}</td></tr>
 ${parrafos.map((p) => `<tr><td style="font-size:15px;line-height:1.5;color:#D9D2DC;padding:4px 0">${e(p)}</td></tr>`).join('\n')}
 ${boton ? `<tr><td style="padding:18px 0 8px"><a href="${e(boton.url)}" style="display:inline-block;background:#FF5C8A;color:#15131A;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${e(boton.texto)}</a></td></tr>
@@ -102,6 +102,23 @@ export const plantillas = {
     }),
   }),
   restablecer: ({ url }) => ({
+    subject: 'Cambiá tu contraseña de SexyRose',
+    ...emailBasico({
+      titulo: 'Cambiar tu contraseña',
+      parrafos: ['Pediste cambiar la contraseña de tu cuenta. El link vence en 1 hora y sirve una sola vez.', 'Si no lo pediste, ignorá este email: tu contraseña sigue igual.'],
+      boton: { texto: 'Elegir una contraseña nueva', url },
+    }),
+  }),
+  // Cuentas de interesados (clientes): links a /cliente/verificar y /cliente/restablecer
+  verificarCliente: ({ usuario, url }) => ({
+    subject: 'Confirmá tu email en SexyRose',
+    ...emailBasico({
+      titulo: `Hola${usuario ? ', ' + usuario : ''}: confirmá tu email`,
+      parrafos: ['Tocá el botón para confirmar que este email es tuyo. El link vence en 48 horas.'],
+      boton: { texto: 'Confirmar email', url },
+    }),
+  }),
+  restablecerCliente: ({ url }) => ({
     subject: 'Cambiá tu contraseña de SexyRose',
     ...emailBasico({
       titulo: 'Cambiar tu contraseña',

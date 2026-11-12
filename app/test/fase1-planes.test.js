@@ -133,10 +133,10 @@ describe('precios y utilidades', () => {
     const P = Object.fromEntries(j.planes.map((p) => [p.codigo, p]));
     assert.equal(P.D.semana, null);
     assert.equal(P.C.semana, 27);
-    assert.deepEqual(P.E.limites, { fotos: 8, videos: 2, historiasDia: 1, destacadas: 1 });
-    assert.deepEqual(P.D.limites, { fotos: 30, videos: 10, historiasDia: 3, destacadas: 4 });
-    assert.deepEqual(P.C.limites, { fotos: 500, videos: 200, historiasDia: null, destacadas: 10 });
-    assert.deepEqual(P.S.limites, { fotos: 1000, videos: 500, historiasDia: null, destacadas: null });
+    assert.deepEqual(P.E.limites, { fotos: 8, videos: 2, historiasDia: 1, destacadas: 1, packs: 0 });
+    assert.deepEqual(P.D.limites, { fotos: 30, videos: 10, historiasDia: 3, destacadas: 2, packs: 1 });
+    assert.deepEqual(P.C.limites, { fotos: 500, videos: 200, historiasDia: null, destacadas: 5, packs: 5 });
+    assert.deepEqual(P.S.limites, { fotos: 1000, videos: 500, historiasDia: null, destacadas: null, packs: null });
     assert.deepEqual(j.planes.map((p) => p.preview), [false, true, true, true]);
     assert.deepEqual(P.D.destacado, { dia: 2, semana: 9 });
     assert.equal(P.S.destacado, null);

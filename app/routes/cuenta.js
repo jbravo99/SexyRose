@@ -14,6 +14,7 @@ import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
 import { invalidarSitio } from './sitio.js';
+import { DestacadaError } from '../lib/destacadas.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -94,11 +95,17 @@ export function createCuentaRouter(ctx) {
   const historiasHoy = async (cuentaId) => {
     const { rows } = await pool.query(
       `SELECT count(*)::int AS n FROM historias
-        WHERE cuenta_id = $1 AND creado >= (date_trunc('day', now() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}')`,
+        WHERE cuenta_id = $1 AND estado <> 'error' AND creado >= (date_trunc('day', now() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}')`,
       [cuentaId],
     );
     return rows[0].n;
   };
+
+  const historiaJson = (h) => ({
+    id: h.id, tipo: h.tipo || 'foto', estado: h.estado || 'listo', url: h.url || null, urlMini: h.url_mini || h.url || null, texto: h.texto,
+    segundos: h.segundos == null ? null : Number(h.segundos), ancho: h.ancho ?? null, alto: h.alto ?? null, error: h.error || null,
+    creado: h.creado, expira: h.expira,
+  });
 
   const videoJson = (v) => ({
     id: v.id, orden: v.orden, estado: v.estado, url: v.url || null, poster: v.url_poster || null,
@@ -118,7 +125,7 @@ export function createCuentaRouter(ctx) {
       pool.query('SELECT id, email, email_verificado, estado, creado FROM cuentas WHERE id = $1', [cuentaId]),
       pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
       pool.query('SELECT id, url, url_mini, orden, ancho, alto FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]),
-      pool.query('SELECT id, url, url_mini, texto, creado, expira FROM historias WHERE cuenta_id = $1 AND expira > now() ORDER BY creado DESC', [cuentaId]),
+      pool.query("SELECT id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira FROM historias WHERE cuenta_id = $1 AND (expira > now() OR estado <> 'listo') ORDER BY creado DESC", [cuentaId]),
       pool.query('SELECT estado, motivo, creado, revisado FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
     ]);
     const { rows: vids } = await pool.query(
@@ -160,7 +167,10 @@ export function createCuentaRouter(ctx) {
       ...(await creditosYo(cuentaId)),
       videosHabilitados: storage.videosHabilitados(),
       previewHabilitado: storage.videosHabilitados() && PLANES_PREVIEW.has(efectivo),
-      historias: hs.map((h) => ({ id: h.id, url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira })),
+      historias: hs.map(historiaJson),
+      destacadas: ctx.destacadas ? (await ctx.destacadas.listar(cuentaId)).destacadas : [],
+      // Pedidos personalizados sin leer (nuevos sin abrir + mensajes nuevos de los clientes)
+      pedidosNoLeidos: ctx.solicitudes ? await ctx.solicitudes.contarNoLeidos('acompanante', cuentaId) : 0,
     };
   };
   ctx.construirYo = construirYo;
@@ -413,6 +423,9 @@ export function createCuentaRouter(ctx) {
       if (ps[0]?.verificacion === 'verificada') return fail(res, 409, 'Tu identidad ya está verificada.');
       const s = archivo(req, 'selfie'); const d = archivo(req, 'documento');
       if (!s || !d) return fail(res, 400, 'Subí la selfie y la foto de tu documento.');
+      if (!['1', 'true', 'on', 'si', 'sí'].includes(String((req.body && req.body.consentimiento) || '').trim().toLowerCase())) {
+        return fail(res, 400, 'Tenés que aceptar el uso de tu documento y tu selfie para verificar tu identidad.');
+      }
       let si; let di;
       try { si = await procesarPrivada(s.buffer); di = await procesarPrivada(d.buffer); } catch (e) { if (e instanceof ImagenInvalida) return fail(res, 400, e.message); throw e; }
       const selfie = await storage.guardarPrivado('verif', si.buffer, si.ext, 'selfie');
@@ -420,7 +433,7 @@ export function createCuentaRouter(ctx) {
       // Las verificaciones pendientes anteriores quedan reemplazadas.
       const viejas = await pool.query("DELETE FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' RETURNING selfie_ruta, documento_ruta", [req.cuenta.id]);
       for (const v of viejas.rows) { await storage.borrarPrivado(v.selfie_ruta); await storage.borrarPrivado(v.documento_ruta); }
-      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta) VALUES ($1, $2, $3)', [req.cuenta.id, selfie, documento]);
+      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, consentimiento_at) VALUES ($1, $2, $3, now())', [req.cuenta.id, selfie, documento]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
       if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.');
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
@@ -446,19 +459,19 @@ export function createCuentaRouter(ctx) {
     const urlMini = await storage.put(claveMini, img.mini.buffer, img.mini.tipo);
     const { rows } = await pool.query(
       `INSERT INTO historias (id, cuenta_id, clave, clave_mini, url, url_mini, texto) VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, url, url_mini, texto, creado, expira`,
+       RETURNING id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira`,
       [id, req.cuenta.id, clave, claveMini, url, urlMini, txt],
     );
     invalidarSitio();
-    const h = rows[0];
-    res.status(201).json({ ok: true, historia: { id: h.id, url: h.url, urlMini: h.url_mini, texto: h.texto, creado: h.creado, expira: h.expira } });
+    res.status(201).json({ ok: true, historia: historiaJson(rows[0]) });
   }));
 
   r.delete('/historias/:id', conCuentaActiva, ah(async (req, res) => {
     if (!UUID_RE.test(req.params.id)) return fail(res, 404, 'Historia no encontrada.');
-    const { rows } = await pool.query('DELETE FROM historias WHERE id = $1 AND cuenta_id = $2 RETURNING clave, clave_mini', [req.params.id, req.cuenta.id]);
+    const { rows } = await pool.query('DELETE FROM historias WHERE id = $1 AND cuenta_id = $2 RETURNING clave, clave_mini, tipo', [req.params.id, req.cuenta.id]);
     if (!rows[0]) return fail(res, 404, 'Historia no encontrada.');
     await storage.del(rows[0].clave); await storage.del(rows[0].clave_mini);
+    if (rows[0].tipo === 'video' && videos()) await fsp.rm(videos().rutaTemporal(req.params.id), { force: true }).catch(() => {});
     invalidarSitio();
     res.json({ ok: true });
   }));
@@ -474,6 +487,111 @@ export function createCuentaRouter(ctx) {
     limits: { fileSize: MAX_BYTES_SUBIDA, files: 1, fields: 2, fieldSize: 256, parts: 4, fieldNameSize: 30 },
   });
   const borrarTemp = (req) => (req.file && req.file.path ? fsp.rm(req.file.path, { force: true }).catch(() => {}) : Promise.resolve());
+
+  // --- Historias en video (hasta 60 s, como las de Instagram; solo con almacenamiento externo) ---------------
+  // Mismo cupo diario que las historias con foto. Se procesan en la cola de videos (lib/videos.js) y se publican al
+  // quedar listas; las 24 h corren desde ahí.
+  const subidaHistoriaVideo = multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => cb(null, videos().tmpDir),
+      filename: (req, file, cb) => { req.videoId = crypto.randomUUID(); cb(null, `${req.videoId}.subida`); },
+    }),
+    limits: { fileSize: MAX_BYTES_SUBIDA, files: 1, fields: 2, fieldSize: 1024, parts: 4, fieldNameSize: 30 },
+  });
+  r.post('/historias/video', conCuentaActiva,
+    (req, res, next) => {
+      if (!storage.videosHabilitados() || !videos()) return fail(res, 409, 'Los videos se activan cuando el almacenamiento externo está configurado.');
+      next();
+    },
+    (req, res, next) => (limiteSubidas(req, res) ? next() : null),
+    ah(async (req, res, next) => {
+      const max = limitesDe(await planEfectivo(req.cuenta.id, planes())).historiasDia;
+      if (max !== null && (await historiasHoy(req.cuenta.id)) >= max) {
+        return fail(res, 400, `Tu plan permite ${max} ${max === 1 ? 'historia' : 'historias'} por día. Subí de plan para publicar más.`);
+      }
+      req.maxHistorias = max;
+      next();
+    }),
+    (req, res, next) => {
+      if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('multipart/form-data')) return fail(res, 415, 'Enviá el video como multipart/form-data.');
+      subidaHistoriaVideo.single('video')(req, res, (err) => {
+        if (!err) return next();
+        borrarTemp(req);
+        if (err.code === 'LIMIT_FILE_SIZE') return fail(res, 413, 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.');
+        if (err instanceof multer.MulterError) return fail(res, 400, 'No pudimos leer el archivo enviado.');
+        next(err);
+      });
+    },
+    ah(async (req, res) => {
+      rl.hit('up:' + req.cuenta.id);
+      const f = req.file;
+      if (!f) return fail(res, 400, 'Elegí un video para la historia.');
+      const txt = linea(req.body && req.body.texto);
+      if ([...txt].length > 120) { await borrarTemp(req); return fail(res, 400, 'El texto de la historia puede tener hasta 120 caracteres.'); }
+      const tipo = contenedorPorFirma(await leerFirma(f.path).catch(() => null));
+      if (!tipo) { await borrarTemp(req); return fail(res, 400, 'El archivo no es un video MP4, MOV o WebM.'); }
+      // Cupo de nuevo: dos subidas simultáneas no pueden pasar el límite del día.
+      const { rows } = await pool.query(
+        `INSERT INTO historias (id, cuenta_id, tipo, estado, texto)
+         SELECT $1, $2, 'video', 'procesando', $3
+          WHERE $4::int IS NULL OR (SELECT count(*) FROM historias WHERE cuenta_id = $2 AND estado <> 'error'
+                AND creado >= (date_trunc('day', now() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}')) < $4::int
+         RETURNING id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira`,
+        [req.videoId, req.cuenta.id, txt, req.maxHistorias],
+      );
+      if (!rows[0]) { await borrarTemp(req); return fail(res, 400, `Tu plan permite ${req.maxHistorias} ${req.maxHistorias === 1 ? 'historia' : 'historias'} por día. Subí de plan para publicar más.`); }
+      videos().encolar('h:' + rows[0].id);
+      res.status(202).json({ ok: true, historia: historiaJson(rows[0]) });
+    }));
+
+  // --- Historias destacadas (como Instagram; no vencen) -------------------------------------------
+  // La acompañante sube directamente desde su dispositivo lo que quiere mostrar (foto o video). Ver lib/destacadas.js.
+  const dest = () => ctx.destacadas;
+  const dErr = (res, e) => { if (e instanceof DestacadaError) { fail(res, e.status, e.message); return true; } return false; };
+  const dh = (fn) => ah(async (req, res) => { try { await fn(req, res); } catch (e) { if (!dErr(res, e)) throw e; } });
+  const conDest = (req, res, next) => (dest() ? next() : fail(res, 503, 'No disponible.'));
+  const idOk = (k) => (req, res, next) => (UUID_RE.test(req.params[k]) ? next() : fail(res, 404, 'No encontramos esa destacada.'));
+  r.get('/destacadas', conCuentaActiva, conDest, dh(async (req, res) => res.json(await dest().listar(req.cuenta.id))));
+  r.post('/destacadas', conCuentaActiva, conDest, dh(async (req, res) => {
+    res.status(201).json({ ok: true, destacada: await dest().crear(req.cuenta.id, body(req).titulo) });
+  }));
+  r.put('/destacadas/:id', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => res.json(await dest().renombrar(req.cuenta.id, req.params.id, body(req).titulo))));
+  r.delete('/destacadas/:id', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => res.json(await dest().borrar(req.cuenta.id, req.params.id))));
+  r.delete('/destacadas/items/:item', conCuentaActiva, conDest, (req, res, next) => (UUID_RE.test(req.params.item) ? next() : fail(res, 404, 'No encontramos ese elemento.')),
+    dh(async (req, res) => res.json(await dest().borrarItem(req.cuenta.id, req.params.item))));
+  r.post('/destacadas/:id/fotos', conCuentaActiva, conDest, idOk('id'), (req, res, next) => (limiteSubidas(req, res) ? next() : null), subir([{ name: 'foto', maxCount: 1 }]),
+    dh(async (req, res) => {
+      rl.hit('up:' + req.cuenta.id);
+      const f = archivo(req, 'foto');
+      if (!f) return fail(res, 400, 'Elegí una foto.');
+      res.status(201).json({ ok: true, item: await dest().agregarFoto(req.cuenta.id, req.params.id, f.buffer) });
+    }));
+  r.post('/destacadas/:id/videos', conCuentaActiva, conDest, idOk('id'),
+    (req, res, next) => {
+      if (!storage.videosHabilitados() || !videos()) return fail(res, 409, 'Los videos se activan cuando el almacenamiento externo está configurado.');
+      next();
+    },
+    (req, res, next) => (limiteSubidas(req, res) ? next() : null),
+    (req, res, next) => {
+      if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('multipart/form-data')) return fail(res, 415, 'Enviá el video como multipart/form-data.');
+      subidaHistoriaVideo.single('video')(req, res, (err) => {
+        if (!err) return next();
+        borrarTemp(req);
+        if (err.code === 'LIMIT_FILE_SIZE') return fail(res, 413, 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.');
+        if (err instanceof multer.MulterError) return fail(res, 400, 'No pudimos leer el archivo enviado.');
+        next(err);
+      });
+    },
+    ah(async (req, res) => {
+      rl.hit('up:' + req.cuenta.id);
+      const f = req.file;
+      if (!f) return fail(res, 400, 'Elegí un video.');
+      const tipo = contenedorPorFirma(await leerFirma(f.path).catch(() => null));
+      if (!tipo) { await borrarTemp(req); return fail(res, 400, 'El archivo no es un video MP4, MOV o WebM.'); }
+      try {
+        res.status(202).json({ ok: true, item: await dest().agregarVideo(req.cuenta.id, req.params.id, req.videoId) });
+      } catch (e) { await borrarTemp(req); if (!dErr(res, e)) throw e; }
+    }));
 
   const videosActivos = (req, res, next) => {
     if (!storage.videosHabilitados() || !videos()) return fail(res, 409, 'Los videos se activan cuando el almacenamiento externo está configurado.');

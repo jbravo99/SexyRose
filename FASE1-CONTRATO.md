@@ -3,7 +3,7 @@
 Objetivo: desde el 15/11 las acompañantes crean su cuenta en sexyrose.net, arman su perfil con fotos, suben selfie + documento, Juan aprueba desde el admin y el perfil aparece en el sitio público real. Planes por mes y por semana pagados por transferencia, activados desde el admin. Stars con cupo. Historias con foto.
 
 > **11/11/2026 — Planes v2.** Los planes pasaron de 6 a 4 y se pagan con **créditos**; los créditos se compran por WhatsApp. Lo que dice este documento sobre pedidos de plan por transferencia, Platino/Diamante y el ajuste `transferencia` queda reemplazado por la sección [Planes v2, créditos y destacado](#planes-v2-créditos-y-destacado) (al final).
-Fuera del 15: videos y shorts, destacadas, venta de contenido, packs, pedidos, chat pago, reservas, estadísticas avanzadas, cuentas de clientes (los clientes NUNCA tienen cuenta).
+Fuera del 15: videos y shorts, destacadas, venta de contenido, packs, pedidos, chat pago, reservas, estadísticas avanzadas, cuentas de clientes (los clientes NUNCA tienen cuenta). **Cambió el 12/11/2026:** para comprar packs y hacer pedidos personalizados el interesado crea una cuenta simple (ver [Cuentas de interesados y pedidos personalizados](#cuentas-de-interesados-y-pedidos-personalizados--desde-el-12112026)).
 
 Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de Juan). No tocar el equipo de Juan. Idioma de la interfaz: castellano rioplatense (las acompañantes pueden ver EN/PT con el traductor del MVP); admin solo en castellano.
 
@@ -30,6 +30,7 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `fotos` (id uuid pk, cuenta_id fk, orden int, clave text, url text, url_mini text, ancho, alto, creado). Límite por plan (LEVELS del MVP: E 8, D 15, C 30, B 50, A 500, S 1000).
 - `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text, estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text).
 - `historias` (id uuid pk, cuenta_id fk, url, url_mini, texto (≤120), creado, expira = creado + 24 h). Límite por día según plan (E 1, D 3, resto ilimitado).
+  Desde `075-historias-video.sql`: `tipo` ('foto' | 'video'), `estado` ('listo' | 'procesando' | 'error'), `segundos`, `ancho`, `alto`, `error`; en un video `url` = MP4 y `url_mini` = portada (WebP), y las 24 h corren desde que queda listo. Ver "Historias en video".
 - `ubicaciones` (id text pk (slug), nombre, tipo (pais|provincia|ciudad|zona), padre text null, activa boolean, orden int), `categorias` (id text pk, nombre, icono, orden, activa), `intereses` (id text pk, nombre, nombre_en, nombre_pt, orden). Se siembran (INSERT … ON CONFLICT DO NOTHING) con los valores del MVP: ubicaciones de Argentina (todas las provincias + ciudades principales que tenga mvp/src/geo.js o data.js), categorías HH.ACTIVITIES, 16 intereses iniciales.
 - `ajustes` (clave text pk, valor jsonb, actualizado). Claves: `precios`, `transferencia` (**quitada en Planes v2**: no se muestran datos bancarios en la web), `portada` (título, subtítulo), `promo` (texto). Planes v2 suma `packs`, `destacado`, `contacto`, `cotizacion`, `comision`, `mensajes`.
 
@@ -88,14 +89,14 @@ Decidido por Juan el 11/11/2026 (detalle en el proyecto: `claude/sexyrose-planes
 
 ### Planes
 
-| Código | Nombre | Mes (USD = créditos) | Semana | Fotos | Videos | Historias/día | Destacadas (historias) | Clip 5 s en la tarjeta | Destacado (1 día / 7 días) |
-|---|---|---|---|---|---|---|---|---|---|
-| E | Bronce | 0 (gratis) | — | 8 | 2 | 1 | 1 | no | 1 / 5 |
-| D | Plata | 35 | — | 30 | 10 | 3 | 4 | sí | 2 / 9 |
-| C | Oro | 90 | 27 | 500 | 200 | ∞ | 10 | sí | 4 / 20 |
-| S | Star | 350 | 105 | 1000 | 500 | ∞ | ∞ | sí | — (ya va arriba; cupo 10 por provincia) |
+| Código | Nombre | Mes (USD = créditos) | Semana | Fotos | Videos | Historias/día | Destacadas (historias) | Packs a la venta | Clip 5 s en la tarjeta | Destacado (1 día / 7 días) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| E | Bronce | 0 (gratis) | — | 8 | 2 | 1 | 1 | 0 | no | 1 / 5 |
+| D | Plata | 35 | — | 30 | 10 | 3 | 2 | 1 | sí | 2 / 9 |
+| C | Oro | 90 | 27 | 500 | 200 | ∞ | 5 | 5 | sí | 4 / 20 |
+| S | Star | 350 | 105 | 1000 | 500 | ∞ | ∞ | ∞ | sí | — (ya va arriba; cupo 10 por provincia) |
 
-- `null` = ilimitado en la API (`limites.historiasDia`, `limites.destacadas`). `lib/planes-ref.js` exporta `LIMITES`, `PLANES_PREVIEW` (D, C, S) y `limitesDe(plan)`.
+- `null` = ilimitado en la API (`limites.historiasDia`, `limites.destacadas`, `limites.packs`). Destacadas y packs por plan: decisión de Juan del 12/11/2026. `lib/planes-ref.js` exporta `LIMITES`, `PLANES_PREVIEW` (D, C, S) y `limitesDe(plan)`.
 - Platino (B) y Diamante (A) **no existen más**. `050-planes-v2.sql` **frena el arranque** (`RAISE EXCEPTION`, el sitio queda en 503 y el log muestra el mensaje) si hay suscripciones activas vigentes o pedidos abiertos con B/A: se decide con Juan cómo pasarlos y se vuelve a desplegar. El historial con B/A (vencido, cancelado, confirmado) se conserva; las restricciones nuevas son `NOT VALID` y ninguna fila nueva puede usar B/A (ni Plata por semana). Si `ajustes.precios` era la semilla vieja, pasa sola a la de v2.
 - Precios en `ajustes.precios` = `{"mes": {"E": 0, "D": 35, "C": 90, "S": 350}, "semana": {"C": 27, "S": 105}}`. El PUT del admin rechaza claves B/A, exige E = 0 y Plata < Oro < Star.
 - **Plan efectivo** = el de mayor rango entre las suscripciones activas vigentes; sin ninguna, E. **Plan mensual (cadena base)** = suscripciones activas por `mes` o `manual`. Encima se apilan semanas (solo Oro y Star) que suben el plan 7 días y después vuelve solo al mensual.
@@ -237,9 +238,10 @@ Mismo Basic Auth; POST con `X-SR-Admin: 1` + mismo origen + JSON. `adminUser` qu
 
 - `GET /api/sitio/estado`: `ajustes` = `{ portada, promo, precios (solo E/D/C/S), destacado }`. Cada perfil suma **`destacado: bool`** (nunca para Star). Orden sugerido para el front en cada listado de su provincia: Star primero, después las destacadas de cada plan (rotando el orden en cada visita), después el resto. El clip de 5 s (`preview`) se publica desde Plata.
 
-### Venta de contenido (solo preparado, sin UI)
+### Venta de contenido (Mercado Pago, modelo marketplace)
 
-`creditos.registrarComisionVenta(cuentaId, ventaCentavos, ref)` descuenta `ajustes.comision.porcentaje` % de la venta como movimiento `comision_venta`; puede dejar el saldo hasta −`saldoNegativoMax`; más allá responde 402 (a definir con el procesador: pausar la venta o cobrar al liquidar).
+Ver la sección "Venta de contenido con Mercado Pago" más abajo. `creditos.registrarComisionVenta` queda sin uso: la
+comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se descuenta de los créditos.
 
 ## Demo pública (/demo/) — desde el 11/11/2026
 
@@ -249,3 +251,196 @@ Mismo Basic Auth; POST con `X-SR-Admin: 1` + mismo origen + JSON. `adminUser` qu
 - Sin `/api`: `prod-demo.js` reemplaza `fetch` (el estado sale del JSON; el resto responde 403 sin salir). Publicar/Ingresar/Panel muestran una tarjeta con botón al sitio real (`/registro`, `/ingresar` y sus versiones en/pt). WhatsApp/Telegram y Reportar solo avisan que es una demostración. Favoritos aparte (`sr_demo_favs`).
 - Direcciones con `#` (`/demo/#/perfil/valentina`, `/demo/#/en/`); el servidor (`routes/demo-sitio.js`) solo entrega `/demo/` (no-cache, CSP `script-src 'self'`, noindex) y los archivos con hash (un año, immutable; los SVG con CSP `sandbox`). Si en la carpeta queda la demo vieja, sigue sirviéndola `server.js`.
 - Cartel arriba "Demostración: perfiles ficticios." + "Ver el sitio real" (es/en/pt), `noindex,nofollow`, canonical a `https://sexyrose.net/` (`DEMO_REAL_URL` para cambiarlo).
+
+## Shorts, barra inferior y logo — desde el 11/11/2026
+
+- **Shorts** (`/shorts`, `/en/shorts`, `/pt/shorts`; `mvp/src/prod-shorts.js`, sitio y demo). Feed vertical a pantalla
+  completa con los videos públicos de la galería de las acompañantes visibles (los mismos de `GET /api/sitio/estado`,
+  `perfiles[].videos[]`, que ahora traen `creado`) y las historias en video activas (`historias[]` con `tipo: 'video'`).
+  No hay endpoint aparte: el estado ya trae los videos (y la demo funciona igual).
+  - Videos de cada acompañante (`videosDePerfil(p, stories, ahora)`, pura, con tests): los de la galería y sus
+    historias en video activas, sin repetidos.
+  - Orden (`shortsOrden(items, semilla)`, pura, con tests): por acompañante del video más nuevo al más viejo; las
+    acompañantes por el día de su video más nuevo y, dentro del mismo día, mezcladas con una semilla por visita;
+    se reparte de a uno por acompañante (nadie acapara el feed).
+  - Filtros: tipo de perfil elegido y la ubicación actual; si en esa ubicación no hay videos, muestra todos con aviso.
+  - Reproducción: solo el que está en pantalla (sin sonido hasta tocar), el siguiente precargado (`metadata`), los que
+    quedan a más de 2 de distancia sueltan el video. Tandas de 8. No indexado (`noindex,follow`).
+- **Barra inferior (teléfono)**: Inicio, Swipe, Cerca, **Shorts** (ícono de reproducir) y **usuario**: con sesión, la
+  foto de la acompañante → su panel; sin sesión → "Tu espacio" (`/favoritos`: favoritos + Publicá tu perfil + Ingresar).
+  En escritorio: Shorts en el menú y el ícono de usuario arriba a la derecha (→ "Tu espacio"); con sesión, Favoritos
+  está en el menú de la cuenta.
+- **Logo único**: `app/public/favicon.svg` = el del encabezado (cuadrado rosa con el corazón). De ahí salen
+  `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` y `logo-email.png` (`node app/scripts/generar-logos.mjs`, se
+  suben al repo) y `site.webmanifest`. Lo usan el sitio, la demo, el panel, las páginas del servidor y los emails.
+- **Fuentes propias en las páginas del servidor** (/terminos, /privacidad…): `build-sitio.py` deja
+  `assets/fuentes.<hash>.css` y server.js cambia `<!--sr:fuentes-->` por esa hoja. Sin Google Fonts (CSP sin
+  googleapis/gstatic). Sin build, fuentes del sistema.
+- **Demo**: videos abstractos (`app/scripts/demo/clips/*.mp4`, degradés, sin personas) desde Plata, también como clip de
+  la tarjeta; `/demo/media/<hash>.mp4` con respuesta por rangos.
+
+## Historias en video — desde el 11/11/2026
+
+- Como las de Instagram: la acompañante sube una historia con foto **o video** desde el mismo formulario del panel
+  (Historias). Video: hasta **60 s** (si dura más se rechaza con el motivo; no se corta solo) y 95 MB; MP4, MOV, WebM o
+  3GP. Solo con almacenamiento externo (`videosHabilitados`), igual que los videos de la galería.
+- Reglas de plan: las mismas de las historias (cupo por día `limites.historiasDia`: E 1, D 3, C/S ilimitado; foto y
+  video cuentan igual; las que quedan con error no cuentan). Los videos de historias no usan el cupo de videos de la galería.
+- `POST /api/cuenta/historias/video` (multipart `video` + `texto`) → 202 `{ historia }` con `estado: 'procesando'`.
+  Se procesa en la cola de `lib/videos.js` (mismo proceso que la galería: H.264 hasta 720 px, marca de agua, sin
+  metadatos, +faststart, portada WebP) y se publica en `h/<id>.mp4` + `h/<id>.webp`. Recién al quedar `listo` aparece en
+  el sitio y desde ahí corren sus 24 h. Si falla: `estado: 'error'` + `error` (motivo); la acompañante la borra.
+  Al arrancar, las que quedaron `procesando` vuelven a la cola (o pasan a error si se perdió el temporal).
+- `GET /api/cuenta/yo` → `historias[]` = `{ id, tipo, estado, url, urlMini, texto, segundos, ancho, alto, error, creado, expira }`
+  (las activas y las que se están procesando o fallaron). `DELETE /api/cuenta/historias/:id` sirve para las dos.
+- `GET /api/sitio/estado` → `historias[]` solo `estado = 'listo'` y sin vencer; las de video suman `tipo: 'video'`,
+  `segundos`, `ancho`, `alto` (`url` = MP4, `urlMini` = portada).
+- Visor (core.js `HH.openStories`, sitio y demo): el video arranca sin sonido y hay un botón para activarlo (queda
+  elegido mientras dure la visita); la barra sigue la duración real del video y pasa a la siguiente al terminar; las
+  fotos duran 5 s. Mantener apretado pausa (fotos y videos) y al soltar sigue; tocar a los costados avanza o vuelve
+  como antes; el botón "atrás" cierra el visor. De la siguiente historia solo se precarga la portada (o la foto).
+- Admin → ficha de la acompañante: las historias en video se ven con su portada y se abren en un reproductor; las que
+  se están procesando o fallaron se muestran con su estado.
+- Historias destacadas: ver "Historias destacadas" (12/11/2026): se suben aparte, no salen de las historias.
+- Demo: dos historias en video con los clips abstractos de la demo (`"video": true` en `app/scripts/demo/perfiles.json`).
+
+## Venta de contenido con Mercado Pago — desde el 11/11/2026
+
+- **Modelo**: Checkout Pro, marketplace. Cada acompañante conecta SU cuenta de Mercado Pago por OAuth a la
+  "cuenta de comisión" activa (= una aplicación de Mercado Pago de SexyRose). El cobro va a la acompañante y la
+  comisión (`ajustes.comision.porcentaje`, la de siempre) va como `marketplace_fee` a la dueña de la aplicación.
+  El comprador no tiene cuenta.
+- **Cuentas de comisión** (`.env`): `MP_CUENTA_<n>_NOMBRE`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_WEBHOOK_SECRET` (n = 1..9;
+  id = client_id). Activa: ajuste `venta_contenido = {cuenta}` (Admin → Ajustes) o, si no hay, la primera. Sin los
+  tres datos de la activa, la función no se muestra (panel: "todavía no está disponible"; perfil: sin sección).
+- **Cambio de cuenta activa**: los tokens están atados a cada aplicación (`mp_conexiones` por cuenta_id + app_id). Las
+  vendedoras sin conexión con la nueva ven "Volvé a conectar Mercado Pago" y sus contenidos no se pueden comprar.
+- **Tokens**: cifrados (AES-256-GCM, clave HKDF del client_secret de cada aplicación). Tarea cada 12 h: renueva los
+  que vencen en menos de 30 días (refresh_token); si Mercado Pago lo rechaza, la conexión queda `revocada`.
+- **API acompañante** (`/api/cuenta`, mismo origen + X-SR: 1): `GET /contenido` → `{disponible, comisionPct,
+  conexion: {estado: conectada|reconectar|sin_conectar, desde}, items, ventas, max}` · `POST /contenido/mp/conectar`
+  → `{url}` · `GET /contenido/mp/callback?code&state` → 303 a `/panel/contenido?mp=ok|error|cancelado` ·
+  `POST /contenido/mp/desconectar` · `POST|PUT|DELETE /contenido/items[/:id]` `{titulo (3-80), descripcion (≤300),
+  precio (pesos, 100..10.000.000), link (https)}`; cantidad según el plan (ver "Packs por plan", 12/11/2026).
+- **API pública** (`/api/sitio`): `GET /contenido/perfil/:slug` → `{disponible, items: [{id, titulo, descripcion,
+  precio}]}` (sin el link) · `POST /contenido/:id/comprar` (mismo origen + X-SR) → `{url, token}`: crea la venta y la
+  preferencia con el token de la vendedora (`marketplace_fee`, `external_reference` = id de la venta, `back_urls` =
+  `/compra/<token>`, `notification_url` = `/api/mp/webhook?venta=<id>&source_news=webhooks`) · `GET /compra/:token
+  [?payment_id=]` → `{estado, titulo, monto, vendedora, link}` (link solo si `aprobada`).
+- **Verificación automática**: `POST /api/mp/webhook` valida `x-signature` (HMAC-SHA256 con `_WEBHOOK_SECRET`; plantilla
+  `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`) y consulta el pago a Mercado Pago con el token de la vendedora:
+  controla `external_reference` y monto. `/compra/<token>` también consulta (como mucho cada 10 s por venta) con el
+  `payment_id` de la vuelta o buscando por `external_reference`. Estados: pendiente → en_proceso | aprobada |
+  rechazada | reembolsada (una aprobada solo cambia si ESE pago se devuelve).
+- **Admin** (`${A}/api`): `GET /contenido/resumen` (cuentas, activa, conectadas por cuenta, URLs para configurar),
+  `PUT /contenido/cuenta-activa {cuenta}`, `GET /contenido/ventas?estado=` (+ totales de aprobadas). Pestaña
+  "Ventas de contenido"; tarjeta "Venta de contenido" en Ajustes (comisión % + cuenta que la recibe).
+- **Front**: `mvp/src/prod-contenido.js` (solo sitio real; en la demo no hace nada). Panel → Contenido; sección
+  "Contenido" al final del perfil; `/compra/<token>` (noindex). El navegador guarda `{itemId: token}` en
+  `localStorage.sr_compras` y el perfil muestra "Ver contenido".
+- Tablas: `db/080-contenido.sql` (`mp_conexiones`, `mp_oauth_estados`, `contenido_items`, `ventas_contenido`).
+
+## Cambios del 12/11/2026 (decisiones de Juan)
+
+- **Sin chat en vivo en la web** (sitio y demo): `chat.js` no entra en el build del sitio (`mvp/build.py`, `SIN_SITIO`);
+  `prod-sitio.js` deja apagadas las funciones de chat por si algún módulo las consulta. Se sacaron el botón "Chat en
+  vivo" del visor de historias (core.js), los botones/links de chat del perfil, de la hoja de WhatsApp, de la página de
+  links y de los shorts del MVP (views-public.js), la línea "Chat en vivo por sesiones" de los planes, las semillas de
+  chat de data.js y las 16 traducciones de "chat en vivo" (i18n/dict.json → i18n-dict.js). Términos y Contenido ya no
+  nombran el chat. Queda el chat del prototipo del MVP (chat.js, panel de la demo vieja y cuenta de clientes) y del
+  admin de la demo vieja, que no se publican en la web.
+- **Admin: borrar una historia** (foto o video): `DELETE ${A}/api/acompanantes/:id/historias/:hid` (JSON + X-SR-Admin)
+  → `{ ok }`; borra la fila y los archivos (foto/MP4 + portada). Botón con papelera sobre cada historia en la ficha.
+  Sin aviso a la acompañante. `lib/historias.js` (`borrar`, `borrarVencidas`).
+- **Historias vencidas se borran**: al arrancar y cada hora, todas las que pasaron `expira` (menos las que se están
+  procesando) se borran con sus archivos. No quedan guardadas: si la acompañante quiere algo fijo lo sube aparte.
+- **Mercado Pago, título neutro**: a la preferencia va `items[0].title = "Contenido digital #<8 caracteres de la venta>"`,
+  `description = "Contenido digital"` y `statement_descriptor = "CONT DIGITAL"`; nunca el título ni la descripción de
+  la vendedora (en el sitio y en las ventas sigue el título de ella).
+- **Una cuenta de Mercado Pago por acompañante**: en el callback de OAuth, si esa cuenta de Mercado Pago (`user_id`) ya
+  está conectada a otra acompañante (en cualquier aplicación) → 303 a `/panel/contenido?mp=en_uso` ("Esa cuenta de
+  Mercado Pago ya está conectada a otra acompañante."). Índice único `(app_id, mp_user_id)` (`db/085-mp-una-cuenta.sql`).
+  La renovación de tokens no cambia `mp_user_id`.
+
+## Historias destacadas y packs por plan — desde el 12/11/2026 (decisiones de Juan)
+
+- **Historias destacadas** (como Instagram; `lib/destacadas.js`, `db/090-destacadas.sql`): como las historias vencidas
+  se borran, una destacada no se arma con historias viejas: la acompañante sube directamente desde su dispositivo lo que
+  quiere mostrar (foto o video). No vencen. Cantidad por plan `limites.destacadas`: Bronce 1, Plata 2, Oro 5, Star ∞.
+  Nombre hasta 16 caracteres; portada = primer elemento; hasta 100 elementos por destacada, en el orden en que se
+  subieron (sin reordenar). Si baja de plan, en el perfil se ven las primeras que entran (por fecha de creación) y el
+  resto queda guardado (`visible: false` en su panel, "no se ve: supera el límite de tu plan").
+  - Fotos: el mismo proceso que las fotos de las historias (`d/<id>.webp` + `d/<id>-m.webp`). Videos: la misma cola y
+    el mismo tope que las historias en video (hasta 60 s, 95 MB, solo con almacenamiento externo; `d/<id>.mp4` +
+    `d/<id>.webp`); mientras se procesan no se ven. Borrar una destacada o un elemento borra sus archivos.
+  - API (`/api/cuenta`, mismo origen + X-SR: 1): `GET /destacadas` → `{ limite, usadas, destacadas: [{ id, titulo,
+    creado, visible, items: [{ id, tipo, estado, url, urlMini, segundos, ancho, alto, error, creado }] }] }` ·
+    `POST /destacadas {titulo}` → 201 (400 si llegó al límite del plan) · `PUT /destacadas/:id {titulo}` ·
+    `DELETE /destacadas/:id` · `POST /destacadas/:id/fotos` (multipart `foto`) → 201 `{ item }` ·
+    `POST /destacadas/:id/videos` (multipart `video`) → 202 `{ item }` con `estado: 'procesando'` (409 sin almacenamiento
+    externo) · `DELETE /destacadas/items/:itemId`. `GET /yo` suma `destacadas` (la misma lista).
+  - Sitio: `GET /api/sitio/estado` → `perfiles[].destacadas = [{ id, titulo, creado, items: [{ id, tipo, url, urlMini,
+    creado, (video: segundos, ancho, alto) }] }]`, solo las que entran en el plan y con elementos listos (las vacías no
+    van). En el perfil, fila de círculos debajo de la cabecera (visual de `highlights.js`); al tocar, el visor de
+    historias sobre esa destacada (video sin sonido con botón, barra según la duración, mantener apretado pausa, "atrás"
+    cierra). Sin edición desde el perfil. No entran en Shorts.
+  - Panel → Historias → bloque "Destacadas": crear (nombre), renombrar, borrar, subir foto o video, borrar elementos;
+    "Tu plan permite N destacadas · usás M".
+  - Demo: destacadas en Valentina (3), Camila (2) y Martina (1) con imágenes abstractas y los clips de la demo.
+- **Packs por plan** (venta de contenido = solo packs; los pedidos a medida están pendientes de definición):
+  `limites.packs` Bronce 0, Plata 1, Oro 5, Star ∞ (reemplaza el tope fijo de 50). `GET /api/cuenta/contenido` → `max`
+  = los que permite su plan (`null` ilimitados, `0` su plan no incluye la venta de packs) e `items[].aLaVenta`.
+  `POST /contenido/items` → 409 "Tu plan no incluye la venta de packs." / "Tu plan permite N packs a la venta.". Si baja
+  de plan, los primeros que entran (por fecha de carga) siguen a la venta; el resto queda guardado, no aparece en el
+  perfil y `comprar` responde 404. En el panel: "Tu plan permite N packs" y "No está a la venta: supera el límite de tu
+  plan" en los que no entran.
+
+## Cuentas de interesados y pedidos personalizados — desde el 12/11/2026
+
+Decisiones de Juan: para comprar packs y hacer pedidos personalizados el interesado se registra (simple: usuario, email y
+contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; el contenido se sube al sitio y vence a
+1 mes; calidad máxima 720p. Pedidos: planes Oro y Star (recomendación de Claude, aceptada).
+
+- **Cuenta del interesado** (`db/095-clientes-pedidos.sql`: `clientes`, `sesiones_clientes`, `tokens_email_clientes`;
+  `lib/clientes.js`; `routes/cliente.js` bajo `/api/cliente`). Tipo de cuenta APARTE de las acompañantes: cookie propia
+  `sr_cliente` (mismo mecanismo que `sr_sesion`), tablas propias. Un cliente nunca entra a `/api/cuenta` ni al revés.
+  - Registro `{usuario (3–20: letras, números, . _ -; único sin importar mayúsculas), email, password (≥ 10), mayorEdad,
+    aceptaTerminos}` → 201 + cookie + email `/cliente/verificar?token=` (48 h). `POST /login`, `/logout`,
+    `/verificar-email {token}`, `/reenviar-verificacion`, `/olvide {email}`, `/restablecer {token, password}` (1 h; cierra
+    las otras sesiones). `GET /yo` → `{ cliente: {usuario, email, emailVerificado, pedidosNoLeidos} }`.
+  - Para comprar o pedir: sesión (si no, 401 `requiereLogin`) y email confirmado (si no, 403 `requiereVerificacion`).
+  - La acompañante ve solo el nombre de usuario (nunca el email). Baja de la cuenta: por email a contacto@sexyrose.net.
+- **Packs**: `POST /api/sitio/contenido/:id/comprar` exige cliente verificado; la venta guarda `cliente_id`.
+  `GET /api/sitio/compra/:token` solo para su dueño (otro cliente: 404; sin sesión: 401). `GET /api/cliente/compras` →
+  Mis compras (`{token, itemId, titulo, monto, estado, vendedora, link (aprobada)}`). Ya no se guardan tokens en el
+  navegador (`sr_compras` quedó sin uso).
+- **Pedidos personalizados** (`lib/solicitudes.js`; tablas `solicitudes`, `solicitud_items`, `solicitud_mensajes`; en la
+  API de la acompañante se llaman "solicitudes" porque `/api/cuenta/pedidos` ya existe para los pedidos viejos de créditos).
+  - Disponibles en el perfil de acompañantes de plan Oro (C) o Star (S) con Mercado Pago conectado a la cuenta de
+    comisión activa (`contenido.tomaPedidos`); `GET /api/sitio/contenido/perfil/:slug` suma `pedidos: bool`.
+  - Cliente: `POST /api/cliente/pedidos {slug, texto ≤ 500}` (uno sin responder por acompañante; 10 por día) →
+    `{id}` · `GET /pedidos` · `GET /pedidos/:id?since=<id>` (detalle + mensajes nuevos; marca leído) ·
+    `POST /pedidos/:id/mensajes {texto ≤ 1000}` (30 por minuto) · `POST /pedidos/:id/cerrar` ·
+    `POST /pedidos/items/:item/pagar` → `{url}` · `POST /pedidos/:id/verificar-pagos {paymentId}` (al volver de
+    Mercado Pago) · `GET /pedidos/items/:item/archivo[?preview=1]`.
+  - Acompañante (`routes/cuenta-solicitudes.js` bajo `/api/cuenta`): `GET /solicitudes` · `GET /solicitudes/:id?since=` ·
+    `POST /solicitudes/:id/aceptar|rechazar|cerrar|mensajes` · `POST /solicitudes/:id/items` (multipart `archivo` +
+    `precio`) · `GET /solicitudes/items/:item/archivo[?preview=1]`. `GET /api/cuenta/yo` suma `pedidosNoLeidos`.
+  - Estados: pendiente → aceptada (se abre el chat) | rechazada (termina ahí); aceptada → cerrada (cualquiera de los dos;
+    solo lectura). Mensajes del sistema: `aceptada`, `rechazada`, `cerrada:<rol>`.
+  - Contenido bloqueado: foto (≤ 12 MB) o video (≤ 60 s, ≤ 95 MB, cola de ffmpeg con prefijo `x:`), sin marca de agua,
+    a 720p como máximo (lado largo 1280, lado corto 720), guardado en el disco privado (`privado/pedidos/…`, nunca en el
+    CDN) y servido por la API con Range y `Cache-Control: no-store, private`. Vista previa borrosa (48 px agrandada,
+    WebP) para los dos. El original: la acompañante siempre; el cliente solo con la venta aprobada.
+  - Pago: venta `tipo = 'pedido'` (`ventas_contenido.solicitud_item_id`, `item_id` NULL), mismo Checkout Pro marketplace
+    (título neutro, `marketplace_fee`, webhook firmado); vuelve a `/cliente/pedido/<id>`. Al aprobarse:
+    `solicitud_items.pagado` y `vence = pagado + 1 mes`.
+  - Vencimiento (al arrancar y cada hora, `solicitudes.vencer()`): a 1 mes del pago (sin pagar: a 1 mes de enviado) se
+    borran los archivos; el chat muestra "Este contenido venció".
+  - Ventas: el panel de la acompañante (Contenido → Ventas) y Admin → Ventas de contenido muestran el tipo (Pack/Pedido).
+- **Front** (`mvp/src/prod-clientes.js`, solo sitio real): `/cliente/ingresar`, `/cliente/registro`,
+  `/cliente/verificar`, `/cliente/restablecer`, `/cliente/compras`, `/cliente/pedidos`, `/cliente/pedido/<id>` (noindex).
+  Tu espacio muestra la cuenta del interesado (Mis compras, Mis pedidos, Cerrar sesión, cómo dar de baja). Comprar y
+  Hacer un pedido llevan a ingresar si no hay sesión y vuelven al perfil. Panel de la acompañante → Pedidos (contador).
+  El chat consulta `?since=` cada 4 s con la pestaña visible (15 s en segundo plano). Demo: sin cuentas ni compras
+  (prod-clientes.js no corre en la demo; la demo no muestra la sección de contenido).

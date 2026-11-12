@@ -40,7 +40,7 @@ window.HH = (function () {
   HH.LEVELS = {
     S: { price_usd: 255, label: 'Star', rank: 6, photos: 1000, videos: 500, stories_per_day: null, highlights: null, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Lugar fijo arriba del inicio en tu provincia o estado. Solo 10 por estado/provincia. Incluye todo lo de Diamante.' },
     A: { price_usd: 102, label: 'Diamante', rank: 5, photos: 500, videos: 200, stories_per_day: null, highlights: 10, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: true, chat_limit_per_day: null, priority_ranking: true, desc: 'Sección Diamante, la primera debajo de Stars, con tarjetas grandes. Todas las herramientas y estadísticas detalladas.' },
-    B: { price_usd: 60, label: 'Platino', rank: 4, photos: 50, videos: 15, stories_per_day: null, highlights: 6, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: false, chat_limit_per_day: null, priority_ranking: false, desc: 'Chat en vivo por sesiones, viajes y novedades por zona.' },
+    B: { price_usd: 60, label: 'Platino', rank: 4, photos: 50, videos: 15, stories_per_day: null, highlights: 6, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: true, trips: true, zone: true, stats: false, chat_limit_per_day: null, priority_ranking: false, desc: 'Viajes y novedades por zona.' },
     C: { price_usd: 38, label: 'Oro', rank: 3, photos: 30, videos: 10, stories_per_day: null, highlights: 4, shorts: true, premium_content: true, packs: true, requests: true, bookings: true, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Packs, pedidos a medida y agenda de reservas.' },
     D: { price_usd: 21, label: 'Plata', rank: 2, photos: 15, videos: 5, stories_per_day: 3, highlights: 2, shorts: true, premium_content: true, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Vendé fotos y videos individuales y publicá shorts.' },
     E: { price_usd: 10, label: 'Bronce', rank: 1, photos: 8, videos: 2, stories_per_day: 1, highlights: 1, shorts: false, premium_content: false, packs: false, requests: false, bookings: false, chat: false, trips: false, zone: false, stats: false, chat_limit_per_day: 0, priority_ranking: false, desc: 'Tu perfil publicado y verificado, para empezar.' },
@@ -52,7 +52,7 @@ window.HH = (function () {
     ['shield', 'Vos ponés las reglas', 'Salidas en lugares públicos, sin contenido sexual. Decidís qué proponés, cuándo y con quién. Podés reportar y bloquear a quien no respete eso.'],
     ['dollar', 'Cobrás en USD', 'La tarifa por salida la acordás directamente con el cliente. El contenido se paga en la plataforma y lo ves acreditado en tu panel.'],
     ['camera', 'Contenido que vende', 'Fotos, videos y shorts de tus salidas o de tu rutina: sueltos, en packs o a pedido. Vos fijás el precio.'],
-    ['whatsapp', 'Contacto con filtro', 'Tu WhatsApp solo lo ve quien deslizó a la derecha. El chat en vivo es pago para el cliente y lo aceptás cuando querés.'],
+    ['whatsapp', 'Contacto con filtro', 'Tu WhatsApp solo lo ve quien deslizó a la derecha.'],
   ];
   HH.PROFILE_VIDEO_MAX_S = 30;
   // Capacidad del plan vigente (sin plan = límites del plan E para poder armar el perfil)
@@ -904,6 +904,11 @@ window.HH = (function () {
   };
   HH.storyMedia = function (st, p) {
     const hue = st.hue || 330;
+    // Historia en video: arranca sin sonido (como en Instagram); el visor la reproduce y maneja el sonido
+    if (st.video && st.src) {
+      const horiz = st.w && st.h && st.w > st.h * 1.05;
+      return `${st.poster ? `<img src="${HH.esc(st.poster)}" alt="">` : ''}<video class="story-vid${horiz ? ' h' : ''}" src="${HH.esc(st.src)}"${st.poster ? ` poster="${HH.esc(st.poster)}"` : ''} muted playsinline preload="auto" disablepictureinpicture disableremoteplayback controlslist="nodownload noplaybackrate"></video>`;
+    }
     return st.src ? `<img src="${st.src}" alt="">` : `<div class="ph" style="background:${HH.hueGradient(hue, true)}"><span class="deco" style="width:60%;height:60%;left:-15%;top:-10%;background:hsl(${(hue + 50) % 360} 90% 85%)"></span><span class="deco" style="width:45%;height:45%;right:-10%;bottom:-5%;background:hsl(${(hue + 310) % 360} 80% 70%)"></span><svg class="silhouette" viewBox="0 0 100 125" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M8 125c2-30 20-46 42-46s40 16 42 46Z"/></svg></div>`;
   };
   // Visor de historias: modal propio a pantalla completa con barras de progreso y toque para avanzar
@@ -933,26 +938,86 @@ window.HH = (function () {
     // Si ya vio todas las de esta acompañante, arranca desde la primera; si no, desde la primera sin ver
     const firstUnseen = hl ? 0 : list.findIndex(s => !HH.seenStories()[s.id]);
     let i = startIndex || (firstUnseen > 0 ? firstUnseen : 0);
-    let timer = null;
+    const SND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+    const SND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
     const root = document.getElementById('storyRoot') || (() => { const d = document.createElement('div'); d.id = 'storyRoot'; d.className = 'story-root'; document.body.appendChild(d); return d; })();
     const load = (k, fromEnd) => { w = k; p = HH.profileOf(q[w]); list = HH.storiesOf(q[w]); i = fromEnd ? list.length - 1 : 0; };
     const render = () => {
       const st = list[i]; if (!hl) HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
       const next = q[w + 1] ? HH.profileOf(q[w + 1]) : null;
-      root.innerHTML = `<div class="story-view" style="--dur:5s">
+      const muted = HH.storyMuted !== false;
+      root.innerHTML = `<div class="story-view jsbar${st.video ? ' es-video' : ''}">
         <div class="story-bars">${list.map((x, k) => `<span class="${k < i ? 'done' : k === i ? 'cur' : ''}"><i></i></span>`).join('')}</div>
-        <div class="story-head"><button type="button" class="story-who" data-story="profile" aria-label="Ver perfil de ${HH.esc(p.displayName)}">${HH.avatar(p, 36)}<span class="grow"><span class="story-name">${HH.esc(p.displayName)}</span><span class="tiny story-sub">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</span></span></button>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
+        <div class="story-head"><button type="button" class="story-who" data-story="profile" aria-label="Ver perfil de ${HH.esc(p.displayName)}">${HH.avatar(p, 36)}<span class="grow"><span class="story-name">${HH.esc(p.displayName)}</span><span class="tiny story-sub">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</span></span></button>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}${st.video ? `<button type="button" class="icon-btn sm story-snd" data-story="sound" aria-label="${muted ? 'Activar sonido' : 'Silenciar'}" aria-pressed="${!muted}">${muted ? SND_OFF : SND_ON}</button>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
         <div class="story-media wm">${HH.storyMedia(st, p)}</div>
         ${st.caption ? `<div class="story-caption"><span data-noi18n>${HH.esc(st.caption)}</span></div>` : ''}
-        <div class="story-foot">${hl && opts.highlightId && HH.me() && HH.me().id === q[w] ? `<button type="button" class="btn secondary sm" data-story="hledit">${HH.icon('edit')} Editar destacada</button>` : `<button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>`}${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}${HH.me() && HH.me().id === q[w] ? '' : `<button type="button" class="btn sm" data-story="chat">${HH.icon('chat')} Chat en vivo</button>`}</div>
+        <div class="story-foot">${hl && opts.highlightId && HH.me() && HH.me().id === q[w] ? `<button type="button" class="btn secondary sm" data-story="hledit">${HH.icon('edit')} Editar destacada</button>` : `<button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>`}${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}</div>
         ${next && i === list.length - 1 ? `<div class="story-next tiny">Sigue: ${HH.esc(next.displayName)}</div>` : ''}
         <button type="button" class="story-tap prev" data-story="prev" aria-label="Anterior"></button><button type="button" class="story-tap next" data-story="next" aria-label="Siguiente"></button>
       </div>`;
-      clearTimeout(timer); timer = setTimeout(() => step(1), 5000);
+      arrancar(st);
+      precargar();
     };
+    // Avance: las fotos duran 5 s; los videos, lo que dura el video (la barra sigue al video y pasa al terminar).
+    // Mantener apretado pausa (fotos y videos); al soltar sigue. La barra la mueve este reloj, no una animación.
+    const FOTO_MS = 5000;
+    let raf = 0; let ultimo = 0; let hecho = 0; let pausada = false; let vid = null; let barra = null;
+    let holdT = null; let sostenida = false; let tragarClick = false;
+    const parar = () => { cancelAnimationFrame(raf); raf = 0; if (vid) { vid.onended = null; vid.onerror = null; try { vid.pause(); } catch (e) { /* */ } } vid = null; };
+    const tick = (t) => {
+      raf = requestAnimationFrame(tick);
+      const dt = ultimo ? Math.min(100, t - ultimo) : 0; ultimo = t;
+      if (pausada) return;
+      let frac;
+      if (vid) { const d = vid.duration && isFinite(vid.duration) ? vid.duration : 0; frac = d ? vid.currentTime / d : 0; }
+      else { hecho += dt; frac = hecho / FOTO_MS; }
+      if (barra) barra.style.width = Math.min(100, frac * 100) + '%';
+      if (!vid && frac >= 1) { parar(); step(1); }
+    };
+    const arrancar = (st) => {
+      parar(); hecho = 0; ultimo = 0; pausada = false; sostenida = false;
+      barra = root.querySelector('.story-bars span.cur i');
+      const v = st.video ? root.querySelector('video.story-vid') : null;
+      if (v) {
+        vid = v; v.muted = HH.storyMuted !== false;
+        v.onended = () => { if (vid === v) { parar(); step(1); } };
+        // Si el video no carga, sigue como una foto (con su portada)
+        v.onerror = () => { if (vid === v) { vid = null; v.remove(); } };
+        const pr = v.play();
+        if (pr && pr.catch) pr.catch(() => { if (vid === v && !v.muted) { v.muted = true; HH.storyMuted = true; pintarSonido(); const p2 = v.play(); if (p2 && p2.catch) p2.catch(() => {}); } });
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    // Lo siguiente: solo la portada (o la foto), nada de video
+    const precargar = () => {
+      const nx = list[i + 1] || (q[w + 1] ? HH.storiesOf(q[w + 1])[0] : null);
+      const src = nx ? (nx.video ? nx.poster : nx.src) : '';
+      if (src && HH.isImgSrc && HH.isImgSrc(src)) { const im = new Image(); im.decoding = 'async'; im.src = src; }
+    };
+    const pausar = (on) => {
+      pausada = on;
+      const view = root.querySelector('.story-view'); if (view) view.classList.toggle('paused', on);
+      if (vid) { if (on) vid.pause(); else { const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); } }
+    };
+    const pintarSonido = () => {
+      const b = root.querySelector('.story-snd'); if (!b) return;
+      const m = HH.storyMuted !== false;
+      const lab = m ? 'Activar sonido' : 'Silenciar';
+      b.innerHTML = m ? SND_OFF : SND_ON; b.setAttribute('aria-label', HH.t ? HH.t(lab) : lab); b.setAttribute('aria-pressed', String(!m));
+    };
+    root.onpointerdown = (ev) => {
+      if (!ev.target.closest('.story-tap, .story-media')) return;
+      clearTimeout(holdT); holdT = setTimeout(() => { sostenida = true; pausar(true); }, 200);
+    };
+    const soltar = () => {
+      clearTimeout(holdT);
+      if (sostenida) { sostenida = false; pausar(false); tragarClick = true; setTimeout(() => { tragarClick = false; }, 400); }
+    };
+    root.onpointerup = soltar; root.onpointercancel = soltar; root.onpointerleave = soltar;
+    root.oncontextmenu = (ev) => { if (ev.target.closest('.story-view')) ev.preventDefault(); };
     let ovId = null;
     // fromHistory: la cerró el botón "atrás"; nav: después se navega con replace
-    const close = (o = {}) => { clearTimeout(timer); root.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); HH.renderStoryRings && HH.renderStoryRings(); if (!o.fromHistory) HH.overlayClosed(ovId, o); };
+    const close = (o = {}) => { parar(); clearTimeout(holdT); root.remove(); document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); HH.renderStoryRings && HH.renderStoryRings(); if (!o.fromHistory) HH.overlayClosed(ovId, o); };
     const step = (d) => {
       i += d;
       if (i >= list.length) { if (w + 1 < q.length) load(w + 1, false); else { close(); return; } }
@@ -962,11 +1027,13 @@ window.HH = (function () {
     const onKey = (ev) => { if (ev.key === 'ArrowRight') step(1); else if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     root.onclick = (ev) => { const b = ev.target.closest('[data-story]'); if (!b) return; const a = b.dataset.story; const id = q[w];
+      if (tragarClick && (a === 'prev' || a === 'next')) { tragarClick = false; return; }
+      if (a === 'sound') { HH.storyMuted = HH.storyMuted === false; if (vid) { vid.muted = HH.storyMuted; if (!vid.muted && vid.paused && !pausada) { const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); } } pintarSonido(); return; }
       if (a === 'close') close(); else if (a === 'prev') step(-1); else if (a === 'next') step(1);
       else if (a === 'profile') { close({ nav: true }); HH.go('#perfil.' + p.slug, { replace: true }); }
       else if (a === 'hledit') { close(); HH.openHighlightEditor && HH.openHighlightEditor(opts.highlightId); }
       else if (a === 'book') { close(); HH.actions.pubBook({ dataset: { id } }); }
-      else if (a === 'chat') { const prof = p; if (HH.hasChatAccess(HH.viewerId(), id)) { close({ nav: true }); HH.go('#chat.' + id, { replace: true }); } else { close(); HH.buyChat(prof, () => HH.go('#chat.' + id)); } } };
+      };
     document.body.style.overflow = 'hidden'; ovId = HH.overlayOpen(() => close({ fromHistory: true })); render();
   };
   HH.renderStoryRings = function () { document.querySelectorAll('.story-ring[data-id]').forEach(el => { const id = el.dataset.id; const list = HH.storiesOf(id); const seen = list.length && list.every(s => HH.seenStories()[s.id]); el.classList.toggle('live', !!list.length && !seen); el.classList.toggle('seen', !!list.length && !!seen); el.classList.toggle('none', !list.length); }); };

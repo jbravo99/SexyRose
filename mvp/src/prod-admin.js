@@ -95,6 +95,8 @@
   { const t = TABS.find((x) => x.id === 'pagos'); if (t) Object.assign(t, { id: 'pedidos', label: 'Pedidos', icon: 'wallet' }); else if (!TABS.some((x) => x.id === 'pedidos')) TABS.push({ id: 'pedidos', label: 'Pedidos', icon: 'wallet' }); }
   if (!TABS.some((t) => t.id === 'renovaciones')) { const i = TABS.findIndex((t) => t.id === 'suscripciones'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'renovaciones', label: 'Renovaciones', icon: 'refresh' }); }
   if (!TABS.some((t) => t.id === 'destacados')) { const i = TABS.findIndex((t) => t.id === 'stars'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'destacados', label: 'Destacados', icon: 'trending' }); }
+  // Venta de contenido (Mercado Pago): ventas y totales
+  if (!TABS.some((t) => t.id === 'ventas')) { const i = TABS.findIndex((t) => t.id === 'pedidos'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'ventas', label: 'Ventas de contenido', icon: 'bag' }); }
   const counts = {};
   TABS.forEach((t) => { counts[t.id] = () => 0; });
   counts.acompanantes = () => ((S.res && S.res.acompanantes ? S.res.acompanantes.enRevision : 0) || 0) + ((S.res && S.res.verificacionesPendientes) || 0);
@@ -355,7 +357,7 @@
   const nombreDe = (list, v) => { const x = list.find((y) => y.id === v); return x ? x.nombre : String(v); };
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
-  const PATHS = { ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
+  const PATHS = { vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
   const pathDe = (k) => (k === 'pc' ? pcPath() : k.startsWith('acd:') ? '/acompanantes/' + encodeURIComponent(k.slice(4)) : k.startsWith('cr:') ? '/creditos/' + encodeURIComponent(k.slice(3)) : PATHS[k]);
   const after = (keys) => { keys.forEach((k) => { const p = pathDe(k); if (p && (S[k] != null || S.err[k] || !/^(acd|cr):/.test(k))) load(k, k.startsWith('cr:') ? p + '?limite=20' : p, true); }); refreshResumen(); };
 
@@ -482,8 +484,8 @@
           ${vLast ? `<div class="small muted">Enviada el ${fecha(vLast.creado)}${vLast.revisado ? ` · revisada el ${fecha(vLast.revisado)}${vLast.revisadoPor ? ' por ' + esc(vLast.revisadoPor) : ''}` : ''}</div>
             ${vLast.motivo ? `<div class="notice warn">${icon('alert')}<span><strong>Motivo:</strong> ${esc(vLast.motivo)}</span></div>` : ''}
             <div class="pa-verif">
-              <figure><figcaption class="small muted">Selfie</figcaption>${vLast.tieneSelfie ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/selfie" data-alt="Selfie">${loadingCard(1)}</div>` : '<div class="small muted">No hay selfie.</div>'}</figure>
-              <figure><figcaption class="small muted">Documento</figcaption>${vLast.tieneDocumento ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/documento" data-alt="Documento">${loadingCard(1)}</div>` : '<div class="small muted">No hay documento.</div>'}</figure>
+              <figure><figcaption class="small muted">Selfie</figcaption>${vLast.tieneSelfie ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/selfie" data-alt="Selfie">${loadingCard(1)}</div>` : (vLast.archivosBorrados ? '<div class="small muted">Imágenes borradas a los 3 meses.</div>' : '<div class="small muted">No hay selfie.</div>')}</figure>
+              <figure><figcaption class="small muted">Documento</figcaption>${vLast.tieneDocumento ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/documento" data-alt="Documento">${loadingCard(1)}</div>` : (vLast.archivosBorrados ? '<div class="small muted">Imágenes borradas a los 3 meses.</div>' : '<div class="small muted">No hay documento.</div>')}</figure>
             </div>
             ${datos.fechaNacimiento ? `<div class="small">Fecha de nacimiento declarada: <strong>${esc(datos.fechaNacimiento)}</strong>${edadDe(datos.fechaNacimiento) != null ? ` (${edadDe(datos.fechaNacimiento)} años)` : ''}. Comparala con el documento.</div>` : ''}
             ${vPend ? `<div class="row" style="gap:8px"><button type="button" class="btn" data-action="prodVerif" data-id="${esc(c.id)}" data-d="aprobar">${icon('check')} Aprobar identidad</button><button type="button" class="btn danger" data-action="prodVerif" data-id="${esc(c.id)}" data-d="rechazar">${icon('x')} Rechazar</button></div><p class="tiny muted">Si el perfil está en revisión, al aprobar la identidad se publica solo. Los archivos son privados: nunca se publican.</p>` : ''}` : '<p class="small muted">Todavía no envió la selfie ni el documento.</p>'}
@@ -508,7 +510,11 @@
       const fotosCard = `<section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('image')} Fotos</div><span class="small muted">${fotos.length}</span></div>
           ${fotos.length ? `<div class="pa-fotos">${fotos.map((f, i) => `<button type="button" class="pa-foto" data-action="prodFoto" data-url="${esc(f.url)}" aria-label="Ver foto ${i + 1}"><img src="${esc(f.urlMini || f.url)}" alt="" loading="lazy">${i === 0 ? '<span class="badge berry pa-foto-tag">Principal</span>' : ''}</button>`).join('')}</div>` : '<p class="small muted">Todavía no subió fotos.</p>'}
-          ${(d.historias || []).length ? `<div class="small muted">Historias: ${(d.historias || []).length} (la última el ${fecha(d.historias[0].creado)})</div><div class="pa-fotos">${d.historias.slice(0, 8).map((h) => `<button type="button" class="pa-foto" data-action="prodFoto" data-url="${esc(h.url)}" aria-label="Ver historia"><img src="${esc(h.urlMini || h.url)}" alt="" loading="lazy">${new Date(h.expira) > new Date() ? '<span class="badge ok pa-foto-tag">Activa</span>' : ''}</button>`).join('')}</div>` : ''}
+          ${(d.historias || []).length ? `<div class="small muted">Historias: ${(d.historias || []).length} (la última el ${fecha(d.historias[0].creado)})</div><div class="pa-fotos">${d.historias.slice(0, 8).map((h) => `<div class="pa-hist">${(h.tipo === 'video'
+            ? (h.estado === 'listo' && h.url
+              ? `<button type="button" class="pa-foto" data-action="prodHistVideo" data-url="${esc(h.url)}" data-poster="${esc(h.urlMini || '')}" aria-label="Ver historia en video">${h.urlMini ? `<img src="${esc(h.urlMini)}" alt="" loading="lazy">` : ''}<span class="badge neutral" style="position:absolute;right:4px;bottom:4px">${icon('film')} ${h.segundos ? Math.round(h.segundos) + ' s' : 'Video'}</span>${new Date(h.expira) > new Date() ? '<span class="badge ok pa-foto-tag">Activa</span>' : ''}</button>`
+              : `<div class="pa-foto" style="display:grid;place-items:center;text-align:center;padding:6px"><span class="tiny">${icon('film')} ${h.estado === 'procesando' ? 'Video procesándose' : esc(h.error || 'Video con error')}</span></div>`)
+            : `<button type="button" class="pa-foto" data-action="prodFoto" data-url="${esc(h.url)}" aria-label="Ver historia"><img src="${esc(h.urlMini || h.url)}" alt="" loading="lazy">${new Date(h.expira) > new Date() ? '<span class="badge ok pa-foto-tag">Activa</span>' : ''}</button>`)}<button type="button" class="pa-hist-del" data-action="prodHistBorrar" data-id="${esc(id)}" data-h="${esc(h.id)}" aria-label="Borrar historia" title="Borrar historia">${icon('trash')}</button></div>`).join('')}</div>` : ''}
         </section>`;
       // Videos y clip de 5 s de la tarjeta (solo lectura; API: routes/admin-videos.js)
       const kv = 'acv:' + id; load(kv, '/acompanantes/' + encodeURIComponent(id) + '/videos'); const dv = S[kv];
@@ -1063,13 +1069,7 @@
           <div class="field"><label for="ajMsgAdmin">Tu respuesta («Copiar mensaje» en Pedidos)</label><textarea class="textarea" id="ajMsgAdmin" rows="3" maxlength="1000">${esc(ms.admin || '')}</textarea><div class="tiny muted">Variables: ${ph(['codigo', 'pack', 'creditos', 'monto', 'ars', 'cotizacion', 'fecha'])}. No pongas tus datos bancarios acá: agregalos a mano en WhatsApp.</div></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
         </section>
-        <section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('bag')} Comisión de venta de contenido</div>${upd('comision')}</div>
-          <p class="small muted">Preparado para cuando se active la venta de contenido: SexyRose descuenta este porcentaje en créditos de cada venta. El saldo puede quedar en negativo hasta el máximo indicado.</p>
-          <div class="grid-2"><div class="field"><label for="ajComP">Comisión (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.5" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}"></div>
-          <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
-        </section>
+        ${ventaContenidoCard(cm, upd('comision'))}
         ${textosInicioCard()}
         <section class="card stack" style="gap:10px">
           <div class="card-title">${icon('sparkles')} Promoción</div>
@@ -1212,6 +1212,15 @@
     prodPkDel(el) { const list = pkEdit(); list.splice(Number(el.dataset.i), 1); S.pkDirty = true; document.getElementById('prodPacks').innerHTML = packsHtml(); },
     prodPkAdd() { const list = pkEdit(); if (list.length >= 12) return; list.push({ id: '', nombre: '', pagaUsd: 10, recibe: 10, alcanzaPara: '', masElegido: false, activo: true }); S.pkDirty = true; document.getElementById('prodPacks').innerHTML = packsHtml(); const n = document.getElementById('pk_n_' + (list.length - 1)); if (n) n.focus(); },
     prodPkReset() { S.pkEdit = null; S.pkDirty = false; document.getElementById('prodPacks').innerHTML = packsHtml(); },
+    prodHistBorrar(el) {
+      const id = el.dataset.id; const hid = el.dataset.h;
+      HH.confirm({ title: 'Borrar historia', text: 'Se borra la historia (foto o video) y deja de verse en el sitio. No se puede deshacer.', okLabel: 'Borrar', cls: 'danger', onOk: () => {
+        HH.api('DELETE', '/acompanantes/' + encodeURIComponent(id) + '/historias/' + encodeURIComponent(hid))
+          .then(() => { HH.toast('Historia borrada', { type: 'ok' }); after(['acd:' + id]); })
+          .catch(fail);
+      } });
+    },
+    prodHistVideo(el) { HH.modal({ title: 'Historia en video', wide: true, body: `<video src="${esc(el.dataset.url)}"${el.dataset.poster ? ` poster="${esc(el.dataset.poster)}"` : ''} controls playsinline preload="metadata" class="pa-full" style="max-height:75vh;background:#000"></video>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); },
     prodFoto(el) { HH.modal({ title: 'Foto', wide: true, body: `<img src="${esc(el.dataset.url)}" alt="" class="pa-full">`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); },
     prodBlobZoom(el) { HH.modal({ title: 'Archivo privado', wide: true, body: `<img src="${el.dataset.url}" alt="" class="pa-full"><p class="tiny muted">Privado: no se publica ni se guarda en este equipo.</p>`, actions: [{ label: 'Cerrar', cls: 'ghost', action: 'closeModal' }] }); },
     prodVerif(el) {
@@ -1354,6 +1363,7 @@
       } else if (k === 'comision') {
         valor = { porcentaje: num('ajComP'), saldoNegativoMax: num('ajComN') };
         if (!Number.isFinite(valor.porcentaje) || !Number.isFinite(valor.saldoNegativoMax)) { warn('Completá la comisión y el saldo negativo máximo.'); return; }
+        if (!Number.isFinite(valor.porcentaje)) { warn('Completá la comisión.'); return; }
       } else if (k === 'mensajes') {
         valor = { whatsapp: { es: val('ajMsg_es'), en: val('ajMsg_en'), pt: val('ajMsg_pt') }, admin: val('ajMsgAdmin') };
         const sin = ['es', 'en', 'pt'].find((l) => valor.whatsapp[l].trim() && !valor.whatsapp[l].includes('{codigo}'));
@@ -1369,7 +1379,7 @@
           if (k === 'packs') { S.pkEdit = null; S.pkDirty = false; }
           if (k === 'cotizacion') S.cotEdit = null;
           HH.toast({ precios: 'Precios guardados', packs: 'Packs guardados', destacado: 'Precios del Destacado guardados', contacto: 'Contacto guardado', cotizacion: 'Cotización guardada', comision: 'Comisión guardada', mensajes: 'Mensajes guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' });
-          load('aj', '/ajustes', true); if (k === 'cotizacion' || k === 'mensajes') after(['pc']);
+          load('aj', '/ajustes', true); if (k === 'cotizacion' || k === 'mensajes') after(['pc']); if (k === 'comision') load('vc', PATHS.vc, true);
         })
         .catch((e) => { el.disabled = false; fail(e); });
     },
@@ -1380,6 +1390,52 @@
     HH.api('PUT', '/' + t + '/' + encodeURIComponent(it.id), { activa: next })
       .then((r) => { if (r && r.item) Object.assign(it, r.item); HH.toast(`${it.nombre}: ${next ? 'activa' : 'inactiva'}`, { type: 'ok' }); HH.refresh(); })
       .catch((e) => { it.activa = !next; el.setAttribute('aria-checked', String(!next)); fail(e); });
+  }
+
+  /* ---------- Venta de contenido (Mercado Pago) ---------- */
+  const pesosAr = (m) => '$ ' + (Number(m && m.centavos != null ? m.centavos : 0) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+  const VC_ESTADO = { aprobada: ['ok', 'Aprobada'], en_proceso: ['warn', 'En proceso'], rechazada: ['danger', 'Rechazada'], reembolsada: ['neutral', 'Devuelta'], pendiente: ['neutral', 'Sin pagar'] };
+  function ventaContenidoCard(cm, actualizado) {
+    load('vc', PATHS.vc);
+    const vc = S.vc;
+    let cuentas;
+    if (!vc && S.err.vc) cuentas = `<div class="notice danger">${icon('alert')}<span>${esc(S.err.vc)}</span></div>`;
+    else if (!vc) cuentas = '<div class="pa-skel"></div>';
+    else if (!(vc.cuentas || []).length) cuentas = `<div class="notice">${icon('info')}<span>Todavía no hay cuentas de Mercado Pago configuradas en el servidor (MP_CUENTA_1_… en el .env). Mientras no haya una completa, la venta de contenido no se muestra.</span></div>`;
+    else {
+      cuentas = `<div class="list">${vc.cuentas.map((c) => `<div class="list-item">
+          <div class="grow" style="min-width:0"><div class="title">${esc(c.nombre)} ${c.activa ? `<span class="badge ok">${icon('check')} Recibe la comisión</span>` : ''}</div>
+            <div class="sub">${c.conectadas} ${HH.plural(c.conectadas, 'acompañante conectada', 'acompañantes conectadas')}${c.completa ? '' : ` · <span class="pa-danger">faltan ${esc(c.faltan.join(', '))} en el .env</span>`}</div></div>
+          ${c.activa ? '' : `<button type="button" class="btn secondary sm" data-action="prodVcActivar" data-id="${esc(c.id)}"${c.completa ? '' : ' disabled'}>Usar esta cuenta</button>`}
+        </div>`).join('')}</div>
+        <p class="tiny muted" style="margin:0">En cada aplicación de Mercado Pago: dirección de redirección <code>${esc(vc.redirectUri)}</code> y notificaciones (webhooks, evento «Pagos») <code>${esc(vc.webhookUrl)}</code>.</p>`;
+    }
+    return `<section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('bag')} Venta de contenido</div>${actualizado}</div>
+          <p class="small muted">Quien compra paga con Mercado Pago. El dinero va a la cuenta de Mercado Pago de la acompañante y la comisión, a la cuenta elegida acá. Si cambiás la cuenta, cada acompañante tiene que volver a conectar Mercado Pago desde su panel: hasta entonces, sus contenidos no se pueden comprar.</p>
+          <div class="grid-2"><div class="field"><label for="ajComP">Comisión (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.5" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}"></div>
+          <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
+          <div class="card-title" style="font-size:15px">Cuenta que recibe la comisión</div>
+          ${cuentas}
+        </section>`;
+  }
+  function vVentasContenido() {
+    load('vcv', PATHS.vcv);
+    const d = S.vcv;
+    let body;
+    if (!d && S.err.vcv) body = errorCard(S.err.vcv, 'vcv');
+    else if (!d) body = loadingCard(3);
+    else {
+      const t = d.totales || {};
+      const items = d.items || [];
+      body = `<div class="adm-stats">${stat('Ventas aprobadas', (t.ventas || 0).toLocaleString('es-AR'), 'desde el comienzo')}${stat('Vendido', pesosAr(t.monto), 'en pesos')}${stat('Comisión', pesosAr(t.comision), 'en pesos', 'accent')}</div>
+        ${items.length ? `<div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Fecha</th><th>Acompañante</th><th>Tipo</th><th>Contenido</th><th>Monto</th><th>Comisión</th><th>Cuenta</th><th>Estado</th></tr></thead><tbody>
+          ${items.map((v) => { const [cls, lb] = VC_ESTADO[v.estado] || VC_ESTADO.pendiente; return `<tr><td class="nowrap">${esc(fecha(v.pagado || v.creado))}</td><td>${v.acompanante && v.acompanante.id ? `<a href="#admin.acompanantes.${esc(v.acompanante.id)}" data-go="#admin.acompanantes.${esc(v.acompanante.id)}">${esc(v.acompanante.nombre || '—')}</a>` : '—'}</td><td><span class="badge ${v.tipo === 'pedido' ? 'info' : 'neutral'}">${v.tipo === 'pedido' ? 'Pedido' : 'Pack'}</span></td><td>${esc(v.titulo)}</td><td class="num">${pesosAr(v.monto)}</td><td class="num">${pesosAr(v.comision)} <span class="tiny muted">(${esc(String(v.comisionPct))} %)</span></td><td>${esc(v.cuenta)}</td><td><span class="badge ${cls}">${lb}</span></td></tr>`; }).join('')}
+        </tbody></table></div></div>` : `<div class="card"><div class="empty">${icon('bag')}<h4>Todavía no hay ventas</h4><p class="small">Acá aparecen las compras de contenido apenas el comprador inicia el pago en Mercado Pago.</p></div></div>`}`;
+    }
+    const right = `<button type="button" class="btn ghost sm" data-action="prodRetry" data-k="vcv">${icon('refresh')} Actualizar</button>`;
+    return layout('ventas', `${head('Ventas de contenido', right)}${body}`);
   }
 
   /* ---------- Secciones que llegan en las próximas fases ---------- */
@@ -1404,13 +1460,21 @@
   // Todas las pestañas del menú pasan por acá (Object.assign sobre las vistas de la demo)
   const views = {};
   TABS.forEach((t) => { views[t.id] = () => vSoon(t.id); });
-  Object.assign(views, { resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
+  Object.assign(views, { ventas: vVentasContenido, resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
   HH.adminViews = views;
   HH.route('admin.textos.:pagina', ({ pagina }) => (HH.requireRole('admin') ? vTextoPagina(pagina) : false));
   HH.route('admin.acompanantes.:id', ({ id }) => (HH.requireRole('admin') ? vAcompanante(id) : false));
 
   /* ---------- Acciones ---------- */
   Object.assign(HH.actions, {
+    prodVcActivar(el) {
+      const c = ((S.vc && S.vc.cuentas) || []).find((x) => x.id === el.dataset.id); if (!c) return;
+      HH.confirm({ title: 'Cambiar la cuenta que recibe la comisión', text: `<span>Desde ahora la comisión va a <strong>${esc(c.nombre)}</strong>.</span> <span>Las acompañantes que no conectaron esta cuenta tienen que volver a conectar Mercado Pago desde su panel; hasta entonces, sus contenidos no se pueden comprar.</span>`, okLabel: 'Cambiar', onOk: () => {
+        HH.api('PUT', '/contenido/cuenta-activa', { cuenta: c.id })
+          .then((r) => { S.vc = r; HH.toast('La comisión ahora va a ' + c.nombre, { type: 'ok' }); HH.refresh(); })
+          .catch(fail);
+      } });
+    },
     prodRetry(el) {
       const k = el.dataset.k;
       if (k.startsWith('page:')) loadPage(k.slice(5), true);
@@ -1578,6 +1642,7 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-priv-img{display:block;width:100%;max-height:420px;object-fit:contain;cursor:zoom-in;background:#000}
 .pa-full{display:block;width:100%;max-height:75vh;object-fit:contain;border-radius:12px;background:#000}
 .pa-fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.pa-hist{position:relative}.pa-hist>.pa-foto{width:100%}.pa-hist-del{position:absolute;top:4px;right:4px;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;z-index:2}.pa-hist-del:hover{background:var(--danger,#d33)}.pa-hist-del svg{width:16px;height:16px}
 .pa-foto{position:relative;padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:4/5;background:var(--surface-2);cursor:zoom-in}.pa-foto img{width:100%;height:100%;object-fit:cover;display:block}
 .pa-foto-tag{position:absolute;left:6px;bottom:6px;font-size:11px}
 .pa-grid2{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}@media(min-width:860px){.pa-grid2{grid-template-columns:repeat(2,minmax(0,1fr))}}

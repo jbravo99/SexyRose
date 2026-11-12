@@ -270,6 +270,10 @@ def main() -> int:
         print('aviso: sin @fontsource (FONTSOURCE_DIR): el sitio usa las fuentes del sistema', file=sys.stderr)
     else:
         css = css_fuentes + '\n' + css
+        if not DEMO:
+            # Las páginas informativas del servidor (/terminos, /privacidad…) usan las mismas fuentes propias:
+            # server.js cambia su <!--sr:fuentes--> por esta hoja (sin pedir nada a otro dominio).
+            (assets / f'fuentes.{h(css_fuentes)}.css').write_text(css_fuentes, encoding='utf-8')
     js_min, ok_js = minify(js, 'js', exe)
     css_min, ok_css = minify(css, 'css', exe)
     for code, nombre in ((js_min, 'JS'), (css_min, 'CSS')):

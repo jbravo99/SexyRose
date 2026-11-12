@@ -11,6 +11,11 @@
 //   4. Sube v/<id>.mp4 y v/<id>.webp, borra el temporal y marca el video como listo (o error con el motivo).
 // ffmpeg y ffprobe se llaman con spawn y listas de argumentos (nunca un shell), con tiempo máximo y prioridad baja.
 //
+// Historias en video (tabla historias, tipo 'video'): el mismo proceso, hasta 60 s (como las de Instagram). Se publican
+// en h/<id>.mp4 y h/<id>.webp; recién cuando quedan listas corren sus 24 h.
+// Videos de las historias destacadas (tabla destacada_items): igual que las historias en video (hasta 60 s), pero no
+// vencen. Se publican en d/<id>.mp4 y d/<id>.webp.
+//
 // Clip de la tarjeta (planes Oro en adelante; tabla previews): 5 s sin audio recortados de un video ya procesado
 // (que ya trae la marca de agua), de hasta 480 px del lado mayor, CRF 28 con tope de 900 kbps, +faststart y sin
 // metadatos. Se publica en p/<cuentaId>-<hash>.mp4 y se borra el anterior. Va por la misma cola que los videos.
@@ -24,6 +29,7 @@ import sharp from 'sharp';
 import { marcaPng } from './imagenes.js';
 
 export const MAX_SEGUNDOS = 30;
+export const MAX_SEGUNDOS_HISTORIA = 60;
 export const MAX_BYTES_SUBIDA = 95 * 1024 * 1024; // Cloudflare gratis corta los envíos de más de 100 MB
 const TOLERANCIA_S = 1; // un clip de "30 s" puede durar 30,4 s
 const MAX_LADO_ENTRADA = 8192;
@@ -84,7 +90,7 @@ function rotacionDe(stream) {
   return ((Math.round(r / 90) * 90) % 360 + 360) % 360;
 }
 
-export async function analizar(file, { ffprobe = 'ffprobe' } = {}) {
+export async function analizar(file, { ffprobe = 'ffprobe', maxSegundos = MAX_SEGUNDOS } = {}) {
   let info;
   try {
     const out = await correr(ffprobe, ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', '--', file], { timeoutMs: TIMEOUT_PROBE_MS });
@@ -97,7 +103,7 @@ export async function analizar(file, { ffprobe = 'ffprobe' } = {}) {
   const a = (info.streams || []).find((s) => s.codec_type === 'audio');
   const dur = Number((info.format && info.format.duration) || v.duration || 0);
   if (!Number.isFinite(dur) || dur <= 0) throw new VideoInvalido('No pudimos leer la duración del video.');
-  if (dur > MAX_SEGUNDOS + TOLERANCIA_S) throw new VideoInvalido(`El video dura ${Math.round(dur)} s. Hasta ${MAX_SEGUNDOS} segundos.`);
+  if (dur > maxSegundos + TOLERANCIA_S) throw new VideoInvalido(`El video dura ${Math.round(dur)} s. Hasta ${maxSegundos} segundos.`);
   if (dur < 1) throw new VideoInvalido('El video es demasiado corto (mínimo 1 segundo).');
   const w = Number(v.width); const h = Number(v.height);
   if (!w || !h || w < 64 || h < 64 || w > MAX_LADO_ENTRADA || h > MAX_LADO_ENTRADA) throw new VideoInvalido('Las dimensiones del video no son válidas.');
@@ -113,8 +119,9 @@ export function tamanoSalida(ancho, alto, max = LADO_SALIDA) {
   return { ancho: par(ancho), alto: par(alto) };
 }
 
-export async function transcodificar(entrada, salida, a, { ffmpeg = 'ffmpeg', marca = true } = {}) {
-  const { ancho, alto } = tamanoSalida(a.ancho, a.alto);
+// tam: tamaño de salida a medida ({ ancho, alto } pares); por defecto, lado mayor ≤ 720 px (tamanoSalida).
+export async function transcodificar(entrada, salida, a, { ffmpeg = 'ffmpeg', marca = true, maxSegundos = MAX_SEGUNDOS, tam = null } = {}) {
+  const { ancho, alto } = tam || tamanoSalida(a.ancho, a.alto);
   const args = ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-i', entrada];
   let filtro = `[0:v]scale=${ancho}:${alto}:flags=bicubic,setsar=1,format=yuv420p[v]`;
   let mapV = '[v]';
@@ -131,7 +138,7 @@ export async function transcodificar(entrada, salida, a, { ffmpeg = 'ffmpeg', ma
     ...(a.audio ? ['-map', '0:a:0', '-c:a', 'aac', '-b:a', '96k', '-ac', '2'] : ['-an']),
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-maxrate', '2500k', '-bufsize', '5000k',
     '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-threads', '2',
-    '-t', String(MAX_SEGUNDOS + TOLERANCIA_S),
+    '-t', String(maxSegundos + TOLERANCIA_S),
     '-map_metadata', '-1', '-map_metadata:s:v', '-1', '-map_metadata:s:a', '-1', '-map_chapters', '-1',
     '-metadata', 'title=', '-metadata', 'encoder=',
     '-fflags', '+bitexact', '-flags:v', '+bitexact', '-flags:a', '+bitexact',
@@ -232,6 +239,85 @@ export function createVideos({ pool, storage, log = () => {}, invalidar = () => 
     }
   }
 
+  /* ---------- Historias en video (tabla historias) ---------- */
+  async function marcarErrorHistoria(id, msg) {
+    await pool.query("UPDATE historias SET estado = 'error', error = $2 WHERE id = $1 AND estado = 'procesando'", [id, msg.slice(0, 300)]);
+  }
+
+  async function procesarHistoria(id) {
+    const entrada = rutaTemporal(id);
+    const salida = path.join(tmpDir, `${id}.mp4`);
+    try {
+      const { rows } = await pool.query("SELECT id, cuenta_id FROM historias WHERE id = $1 AND estado = 'procesando'", [id]);
+      if (!rows[0]) return; // la borró antes de procesarse
+      const a = await analizar(entrada, { ffprobe, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const dims = await transcodificar(entrada, salida, a, { ffmpeg, marca, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const final = await analizar(salida, { ffprobe, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const pos = await portada(salida, final.duracion, { ffmpeg });
+      const mp4 = await fsp.readFile(salida);
+      const claveMp4 = `h/${id}.mp4`; const clavePoster = `h/${id}.webp`;
+      const url = await storage.put(claveMp4, mp4, 'video/mp4');
+      const urlPoster = await storage.put(clavePoster, pos.buffer, 'image/webp');
+      const { rowCount } = await pool.query(
+        `UPDATE historias SET estado = 'listo', clave = $2, url = $3, clave_mini = $4, url_mini = $5, segundos = $6,
+                ancho = $7, alto = $8, error = NULL, expira = now() + interval '24 hours'
+          WHERE id = $1 AND estado = 'procesando'`,
+        [id, claveMp4, url, clavePoster, urlPoster, Math.round(final.duracion * 10) / 10, dims.ancho, dims.alto],
+      );
+      if (!rowCount) { await storage.del(claveMp4); await storage.del(clavePoster); return; } // borrada mientras se procesaba
+      invalidar();
+    } catch (e) {
+      if (e instanceof VideoInvalido) await marcarErrorHistoria(id, e.message);
+      else {
+        log('historia: error al procesar', id, e.code || e.message);
+        await marcarErrorHistoria(id, 'No pudimos procesar el video. Borralo y probá de nuevo.').catch(() => {});
+      }
+    } finally {
+      await fsp.rm(entrada, { force: true }).catch(() => {});
+      await fsp.rm(salida, { force: true }).catch(() => {});
+    }
+  }
+
+  /* ---------- Videos de las historias destacadas (tabla destacada_items) ----------
+     Mismo proceso y mismo tope que las historias en video (60 s). No vencen. Archivos en d/<id>.mp4 + d/<id>.webp. */
+  async function marcarErrorDestacada(id, msg) {
+    await pool.query("UPDATE destacada_items SET estado = 'error', error = $2 WHERE id = $1 AND estado = 'procesando'", [id, msg.slice(0, 300)]);
+  }
+
+  async function procesarDestacada(id) {
+    const entrada = rutaTemporal(id);
+    const salida = path.join(tmpDir, `${id}.mp4`);
+    try {
+      const { rows } = await pool.query("SELECT id, cuenta_id FROM destacada_items WHERE id = $1 AND estado = 'procesando'", [id]);
+      if (!rows[0]) return; // lo borró antes de procesarse
+      const a = await analizar(entrada, { ffprobe, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const dims = await transcodificar(entrada, salida, a, { ffmpeg, marca, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const final = await analizar(salida, { ffprobe, maxSegundos: MAX_SEGUNDOS_HISTORIA });
+      const pos = await portada(salida, final.duracion, { ffmpeg });
+      const mp4 = await fsp.readFile(salida);
+      const claveMp4 = `d/${id}.mp4`; const clavePoster = `d/${id}.webp`;
+      const url = await storage.put(claveMp4, mp4, 'video/mp4');
+      const urlPoster = await storage.put(clavePoster, pos.buffer, 'image/webp');
+      const { rowCount } = await pool.query(
+        `UPDATE destacada_items SET estado = 'listo', clave = $2, url = $3, clave_mini = $4, url_mini = $5, segundos = $6,
+                ancho = $7, alto = $8, error = NULL
+          WHERE id = $1 AND estado = 'procesando'`,
+        [id, claveMp4, url, clavePoster, urlPoster, Math.round(final.duracion * 10) / 10, dims.ancho, dims.alto],
+      );
+      if (!rowCount) { await storage.del(claveMp4); await storage.del(clavePoster); return; } // borrado mientras se procesaba
+      invalidar();
+    } catch (e) {
+      if (e instanceof VideoInvalido) await marcarErrorDestacada(id, e.message);
+      else {
+        log('destacada: error al procesar', id, e.code || e.message);
+        await marcarErrorDestacada(id, 'No pudimos procesar el video. Borralo y probá de nuevo.').catch(() => {});
+      }
+    } finally {
+      await fsp.rm(entrada, { force: true }).catch(() => {});
+      await fsp.rm(salida, { force: true }).catch(() => {});
+    }
+  }
+
   /* ---------- Clip de la tarjeta (tabla previews) ---------- */
   const primerVideoListo = async (cuentaId, excepto = null) => (await pool.query(
     "SELECT id FROM videos WHERE cuenta_id = $1 AND estado = 'listo' AND ($2::uuid IS NULL OR id <> $2) ORDER BY orden, creado LIMIT 1",
@@ -315,13 +401,18 @@ export function createVideos({ pool, storage, log = () => {}, invalidar = () => 
     }
   }
 
+  // Tareas de otros módulos que usan la misma cola (una por vez): registrar('x', fn) → encolar('x:<id>') llama fn(id).
+  const extra = new Map();
+  function registrar(prefijo, fn) { extra.set(prefijo, fn); }
+
   function encolar(id) { if (cola.includes(id)) return; cola.push(id); setImmediate(() => { bucle().catch((e) => log('video: cola', e.message)); }); }
 
   async function bucle() {
     if (activo || detenido) return;
     while (cola.length && !detenido) {
       const id = cola.shift();
-      activo = id.startsWith('p:') ? procesarPreview(id.slice(2)) : procesarUno(id);
+      const pre = id.split(':')[0];
+      activo = id.includes(':') && extra.has(pre) ? extra.get(pre)(id.slice(pre.length + 1)) : id.startsWith('p:') ? procesarPreview(id.slice(2)) : id.startsWith('h:') ? procesarHistoria(id.slice(2)) : id.startsWith('d:') ? procesarDestacada(id.slice(2)) : procesarUno(id);
       await activo;
       activo = null;
     }
@@ -332,7 +423,7 @@ export function createVideos({ pool, storage, log = () => {}, invalidar = () => 
     rutaTemporal,
     tmpDir,
     async preparar() { await fsp.mkdir(tmpDir, { recursive: true, mode: 0o700 }); },
-    encolar,
+    encolar, registrar, ffmpeg, ffprobe,
     pedirPreview, asegurarPreview, alBorrarVideo, previewAutomatico,
     // Al arrancar: los que quedaron "procesando" vuelven a la cola si el archivo temporal sigue; si no, pasan a error.
     async recuperar() {
@@ -341,6 +432,18 @@ export function createVideos({ pool, storage, log = () => {}, invalidar = () => 
       for (const { id } of rows) {
         if (fs.existsSync(rutaTemporal(id))) encolar(id);
         else await marcarError(id, 'Se interrumpió el procesamiento. Borralo y subilo de nuevo.');
+      }
+      // Historias en video que quedaron a medio procesar
+      const { rows: hs } = await pool.query("SELECT id FROM historias WHERE estado = 'procesando' ORDER BY creado");
+      for (const { id } of hs) {
+        if (fs.existsSync(rutaTemporal(id))) encolar('h:' + id);
+        else await marcarErrorHistoria(id, 'Se interrumpió el procesamiento. Borrala y subila de nuevo.');
+      }
+      // Videos de destacadas que quedaron a medio procesar
+      const { rows: ds } = await pool.query("SELECT id FROM destacada_items WHERE estado = 'procesando' ORDER BY creado");
+      for (const { id } of ds) {
+        if (fs.existsSync(rutaTemporal(id))) encolar('d:' + id);
+        else await marcarErrorDestacada(id, 'Se interrumpió el procesamiento. Borralo y subilo de nuevo.');
       }
       // Los clips de tarjeta pendientes se rehacen desde el video ya publicado.
       const { rows: pv } = await pool.query("SELECT cuenta_id FROM previews WHERE estado = 'procesando' ORDER BY actualizado");

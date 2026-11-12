@@ -333,11 +333,14 @@ describe('fotos', () => {
 describe('verificación de identidad', () => {
   test('selfie y documento quedan privados', async () => {
     const a = await registrar();
-    const r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600) });
+    // Sin el consentimiento aparte para datos sensibles, se rechaza
+    const sin = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600) });
+    assert.equal(sin.status, 400); assert.match(sin.body.error, /aceptar el uso de tu documento/);
+    const r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600), consentimiento: '1' });
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.cuenta.perfil.verificacion, 'pendiente');
-    const { rows } = await db.query('SELECT selfie_ruta, documento_ruta, estado FROM verificaciones WHERE cuenta_id = $1', [a.yo.id]);
-    assert.equal(rows.length, 1); assert.equal(rows[0].estado, 'pendiente');
+    const { rows } = await db.query('SELECT selfie_ruta, documento_ruta, estado, consentimiento_at FROM verificaciones WHERE cuenta_id = $1', [a.yo.id]);
+    assert.equal(rows.length, 1); assert.equal(rows[0].estado, 'pendiente'); assert.ok(rows[0].consentimiento_at, 'guarda cuándo dio el consentimiento');
     for (const rel of [rows[0].selfie_ruta, rows[0].documento_ruta]) {
       assert.match(rel, /^verif\/[0-9a-f]{32}-(selfie|doc)\.jpg$/);
       const st = await fs.stat(path.join(tmpData, 'privado', rel));
@@ -350,11 +353,11 @@ describe('verificación de identidad', () => {
       }
     }
     // Reenviar reemplaza la pendiente anterior
-    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg() });
+    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), consentimiento: '1' });
     const { rows: r2 } = await db.query('SELECT 1 FROM verificaciones WHERE cuenta_id = $1', [a.yo.id]);
     assert.equal(r2.length, 1);
     await assert.rejects(fs.stat(path.join(tmpData, 'privado', rows[0].selfie_ruta)));
-    assert.equal((await a.subir('/api/cuenta/verificacion', { selfie: await jpeg() })).status, 400);
+    assert.equal((await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), consentimiento: '1' })).status, 400);
   });
 });
 
@@ -384,7 +387,7 @@ describe('enviar a revisión y sitio público', () => {
     for (let i = 0; i < 3; i++) await a.subir('/api/cuenta/fotos', { foto: await jpeg() });
     r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 400); assert.deepEqual(r.body.faltantes, ['Enviá tu verificación de identidad (selfie y documento).']);
-    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg() });
+    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), consentimiento: '1' });
     r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 200); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
 

@@ -191,7 +191,7 @@ describe('cabeceras de seguridad', () => {
       assert.match(csp, /script-src 'self'(;|$)/, p);
       assert.doesNotMatch(csp, /unsafe-inline/, p);
       assert.match(csp, /frame-ancestors 'none'/, p);
-      assert.match(csp, /fonts\.googleapis\.com/, p);
+      assert.doesNotMatch(csp, /googleapis|gstatic/, p);
       assert.equal(r.headers.get('x-content-type-options'), 'nosniff', p);
       assert.equal(r.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', p);
       assert.ok(r.headers.get('permissions-policy'), p);
