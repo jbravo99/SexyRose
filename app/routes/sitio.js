@@ -69,7 +69,7 @@ export async function armarEstado(pool, planesInst) {
   const aj = cat.ajustes;
   return {
     ahora: new Date().toISOString(),
-    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null },
+    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null, seo: aj.seo ?? null },
     ubicaciones: cat.ubicaciones.filter((u) => u.activa).map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden })),
     // Las actividades (tabla categorias) no se publican: el sitio es de anuncios y no menciona qué se ofrece
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),
@@ -138,7 +138,7 @@ export function createSitioRouter(ctx) {
     );
     rl.hit(key);
     res.status(201).json({ ok: true, id: rows[0].id });
-    if (d.categoria !== 'otro' && notify) notify(`Reporte urgente sobre un perfil\nID: ${rows[0].id}\nRevisar en el panel de admin.`);
+    if (d.categoria !== 'otro' && notify) notify(`Reporte urgente sobre un perfil\nID: ${rows[0].id}\nRevisar en el panel de admin.`, 'denuncia');
   }));
 
   return r;

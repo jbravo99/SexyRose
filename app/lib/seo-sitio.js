@@ -5,9 +5,11 @@
 // (plantillas por defecto, slugs, "indexable con al menos N perfiles"). También arma /sitemap.xml.
 //
 // Las plantillas y los nombres de lugares salen de app/sitio-spa/seo-datos.json, que genera
-// app/scripts/build-sitio.py desde mvp/src/seo.js y urls.js (así no hay dos copias de los textos).
+// app/scripts/build-sitio.py desde mvp/src/seo.js y urls.js (así no hay dos copias de los textos). Lo que Juan edita en
+// Admin → SEO (ajuste `seo`, que llega en estado.ajustes.seo) pisa esas plantillas campo por campo (lib/seo-ajustes.js).
 // Si cambian las reglas de urls.js/seo.js (slugs, qué es indexable), cambiarlas también acá.
 import fs from 'node:fs/promises';
+import { seoTexto, seoMinProfiles } from './seo-ajustes.js';
 
 const LANGS = ['es', 'en', 'pt'];
 const WORDS = {
@@ -72,7 +74,7 @@ function modelo(estado, datos) {
   const bySlug = new Map(perfiles.map((p) => [p.slug, p]));
   const placeProfiles = (loc, actId, g) => perfiles.filter((p) => (g ? (p.genero || 'mujer') === g : VISIBLES.has(p.genero || 'mujer'))
     && p.dentro.has(loc.id));
-  const minProfiles = Math.max(1, Number(datos.defaults.minProfiles) || 1);
+  const minProfiles = seoMinProfiles(datos.defaults, (estado.ajustes || {}).seo);
   const indexable = (loc, actId, g) => {
     const list = placeProfiles(loc, actId, g);
     if (list.length < minProfiles) return false;
@@ -149,14 +151,12 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
   async function actual() {
     const [e, d] = await Promise.all([estado(), leerDatos()]);
     if (!d || !e) return null;
-    if (cacheM.estado !== e || cacheM.datos !== d) cacheM = { estado: e, datos: d, m: modelo(e, d) };
-    return { m: cacheM.m, d };
+    if (cacheM.estado !== e || cacheM.datos !== d) cacheM = { estado: e, datos: d, m: modelo(e, d), d: { ...d, seo: (e.ajustes || {}).seo || null } };
+    return { m: cacheM.m, d: cacheM.d };
   }
   const site = (d) => String(siteUrl || d.defaults.siteUrl || '').replace(/\/$/, '');
-  const get = (d, path, lang) => {
-    const parts = path.split('.');
-    return parts[0] === 'home' ? ((d.defaults.home || {})[lang] || {})[parts[1]] || '' : (((d.defaults.tpl || {})[lang] || {})[parts[1]] || {})[parts[2]] || '';
-  };
+  // Texto de una plantilla: lo editado en Admin → SEO gana; si no, el de seo-datos.json
+  const get = (d, path, lang) => seoTexto(d.defaults, d.seo, path, lang);
 
   // Metadatos de una dirección. null = sin datos (seo-datos.json o la base no están): se sirve la cáscara tal cual.
   async function meta(pathname) {
@@ -237,10 +237,12 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
 
   // Mapa del sitio: portada, países, páginas de hombres y lugares con perfiles suficientes,
   // perfiles publicados; cada dirección en los tres idiomas con sus alternativas. Caché de 10 minutos.
-  let sm = { xml: null, at: 0 };
+  // Si cambia lo editado en Admin → SEO (por ejemplo el mínimo de perfiles para indexar) se arma de nuevo.
+  let sm = { xml: null, at: 0, seo: '' };
   async function sitemap(extras = []) {
-    if (sm.xml && Date.now() - sm.at < 10 * 60 * 1000) return sm.xml;
     const a = await actual(); if (!a) return null;
+    const seoKey = JSON.stringify(a.d.seo || null);
+    if (sm.xml && sm.seo === seoKey && Date.now() - sm.at < 10 * 60 * 1000) return sm.xml;
     const { m: M, d } = a; const base = site(d);
     const hoy = new Date().toISOString().slice(0, 10);
     const ultimo = (list) => list.map((p) => dia(p.actualizado)).filter(Boolean).sort().pop() || hoy;
@@ -264,8 +266,8 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       add(M.placeKey(l), ultimo(M.placeProfiles(l)), '0.8');
     }
     for (const p of pub) add('perfil.' + p.slug, dia(p.actualizado) || hoy, '0.7');
-    sm = { xml: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${filas.join('\n')}\n</urlset>\n`, at: Date.now() };
+    sm = { seo: seoKey, xml: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${filas.join('\n')}\n</urlset>\n`, at: Date.now() };
     return sm.xml;
   }
-  return { meta, aplicar, etiquetas, sitemap, invalidar: () => { sm = { xml: null, at: 0 }; } };
+  return { meta, aplicar, etiquetas, sitemap, invalidar: () => { sm = { xml: null, at: 0, seo: '' }; } };
 }

@@ -108,6 +108,8 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
     const c = rows[0];
     const ok = c && c.estado !== 'baja' ? await verifyPassword(pw, c.pass_hash) : await verifyDummy(pw);
     if (!ok) { rl.hit(ipKey); rl.hit(emKey); return fail(res, 401, 'Email o contraseña incorrectos.'); }
+    // Bloqueado desde el admin: no entra (la contraseña ya se comprobó, así no se revela si la cuenta existe)
+    if (c.estado === 'suspendida') return fail(res, 403, 'Tu cuenta está suspendida. Escribinos a contacto@sexyrose.net.', { suspendida: true });
     await pool.query('UPDATE clientes SET ultimo_login = now() WHERE id = $1', [c.id]);
     await authCli.crearSesion(res, c.id, req);
     res.json({ ok: true, cliente: await yoJson(await leer(c.id)) });

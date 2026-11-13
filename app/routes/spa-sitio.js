@@ -59,8 +59,11 @@ export function cspSitio(nonce, mediaOrigin) {
 
 const originOf = (u) => { try { return u ? new URL(u).origin : ''; } catch { return ''; } };
 
+// Cáscara del sitio (y a su lado seo-datos.json): la misma dirección para este router y para Admin → SEO
+export const archivoSpaSitio = (config = {}, spaPath) => path.resolve(spaPath || config.sitioSpaPath || process.env.SITIO_SPA_PATH || DEFAULT_SPA);
+
 export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null, planes = null, spaPath } = {}) {
-  const file = path.resolve(spaPath || config.sitioSpaPath || process.env.SITIO_SPA_PATH || DEFAULT_SPA);
+  const file = archivoSpaSitio(config, spaPath);
   const publicDir = config.publicDir || path.join(HERE, '..', 'public');
   const adminPath = config.adminPath || '';
   // Mismo origen de medios que el resto del sitio (lib/storage.js ya validó la configuración de bunny.net).

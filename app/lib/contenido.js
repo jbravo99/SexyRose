@@ -89,7 +89,7 @@ export function descifrar(cuenta, guardado) {
   } catch { return null; }
 }
 
-export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = () => {}, invalidar = () => {}, now = () => Date.now(), planDe = async () => 'E' }) {
+export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = () => {}, invalidar = () => {}, now = () => Date.now(), planDe = async () => 'E', notify = () => {} }) {
   // Packs que puede tener a la venta según su plan (null = ilimitados).
   const limitePacks = async (cuentaId) => { const l = limitesDe(await planDe(cuentaId)).packs; return l === undefined ? 0 : l; };
   const enVenta = (i, lim) => lim === null || i < lim;
@@ -433,6 +433,10 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
                 pagado = CASE WHEN $2 = 'aprobada' THEN COALESCE(pagado, now()) ELSE pagado END, actualizado = now(), verificado = now()
           WHERE id = $1`, [v.id, nuevo, pagoId, String(pago.status), link]);
       await client.query('COMMIT');
+      // Aviso interno (Telegram): solo cuando la venta pasa a pagada. Sin datos de quien compra.
+      if (nuevo === 'aprobada' && v.estado !== 'aprobada') {
+        Promise.resolve(notify(`Venta de contenido pagada: ${v.tipo === 'pedido' ? 'pedido personalizado' : 'pack'}.\nMonto: $ ${(Number(v.monto_centavos) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })}\nRevisar en Admin → Ventas de contenido.`, 'venta')).catch(() => {});
+      }
       return nuevo;
     } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }
   }
@@ -511,6 +515,8 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
       cuentas: cuentas.map((c) => ({
         id: c.id, nombre: c.nombre, activa: !!activa && activa.id === c.id, completa: cuentaCompleta(c), conectadas: n.get(c.id) || 0,
         faltan: [!c.clientId && 'CLIENT_ID', !c.clientSecret && 'CLIENT_SECRET', !c.webhookSecret && 'WEBHOOK_SECRET'].filter(Boolean),
+        origen: c.origen || 'servidor', clientId: c.clientId || '',
+        secretoFin: c.clientSecret ? '••••' + String(c.clientSecret).slice(-4) : '', webhookFin: c.webhookSecret ? '••••' + String(c.webhookSecret).slice(-4) : '',
       })),
       redirectUri, webhookUrl: SITE + '/api/mp/webhook',
     };
@@ -518,7 +524,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
   async function elegirCuenta(id) {
     const c = porId(id);
     if (!c) throw he(400, 'Esa cuenta no está configurada.');
-    if (!cuentaCompleta(c)) throw he(400, 'A esa cuenta le faltan datos en la configuración del servidor.');
+    if (!cuentaCompleta(c)) throw he(400, 'A esa cuenta le faltan datos (Client ID, Client Secret o la clave de las notificaciones).');
     await pool.query(
       `INSERT INTO ajustes (clave, valor, actualizado) VALUES ('venta_contenido', $1::jsonb, now())
        ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now()`, [JSON.stringify({ cuenta: c.id })]);
@@ -541,8 +547,9 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
 
   let timer = null;
   function iniciarTarea({ listo = () => true, cadaMs = 12 * HOUR } = {}) {
-    if (timer || !cuentas.length) return;
-    const correr = () => { if (listo()) renovarTokens().catch((e) => log('mercado pago: renovación falló:', e.code || e.message)); };
+    if (timer) return;
+    // Las cuentas pueden aparecer después (Admin → Ajustes): la tarea arranca siempre y no hace nada si no hay ninguna.
+    const correr = () => { if (listo() && cuentas.length) renovarTokens().catch((e) => log('mercado pago: renovación falló:', e.code || e.message)); };
     setTimeout(correr, 60 * 1000).unref();
     timer = setInterval(correr, cadaMs); timer.unref();
   }

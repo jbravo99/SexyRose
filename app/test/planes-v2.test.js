@@ -228,7 +228,7 @@ describe('ajustes nuevos del admin', () => {
     assert.equal(all.cotizacion.arsPorUsd, 1450);
     // el sitio público no recibe ni contacto interno ni cotización ni datos bancarios
     const e = await estadoSitio();
-    assert.deepEqual(Object.keys(e.ajustes).sort(), ['destacado', 'portada', 'precios', 'promo', 'textos_sitio']);
+    assert.deepEqual(Object.keys(e.ajustes).sort(), ['destacado', 'portada', 'precios', 'promo', 'seo', 'textos_sitio']);
   });
 });
 

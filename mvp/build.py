@@ -11,7 +11,7 @@ if ONLY:
 # sin datos de demo). Sin HH_TARGET, la salida (index.html y full.html) no cambia.
 TARGET = os.environ.get('HH_TARGET')
 if TARGET == 'admin':
-    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-admin.js', 'boot.js']
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-admin.js', 'prod-admin-mod.js', 'prod-admin-seo.js', 'prod-admin-integraciones.js', 'boot.js']
 elif TARGET == 'sitio':
     # HH_TARGET=sitio → build/sitio.html: el sitio público real (datos de /api/sitio/estado, panel de la acompañante
     # contra /api/cuenta), con direcciones reales (data-routing="path"). Lo sirve app/routes/spa-sitio.js.
@@ -21,7 +21,7 @@ elif TARGET == 'sitio':
     # Sin bookings.js (reservas de salidas) ni activity.js (actividad de cuentas de la demo): el sitio no los usa
     # (prod-sitio.js apaga HH.canTakeBookings) y sus textos describían salidas (12/11/2026).
     SIN_SITIO = {'views-dashboard.js', 'views-admin.js', 'views-client.js', 'ops.js', 'chat.js', 'bookings.js', 'activity.js'}
-    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio-errores.js', 'prod-sitio.js', 'prod-shorts.js', 'prod-contenido.js', 'prod-clientes.js', 'boot.js']
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js' and n not in SIN_SITIO] + ['prod-sitio-errores.js', 'prod-sitio.js', 'prod-sitio-seo.js', 'prod-shorts.js', 'prod-contenido.js', 'prod-clientes.js', 'boot.js']
     # La semilla del prototipo (data.js: perfiles, mensajes y compras de ejemplo) no viaja al sitio: data-sitio.js
     # da la misma forma vacía (el sitio solo muestra datos reales o el estado ficticio de la demo).
     JS_ORDER = ['data-sitio.js' if n == 'data.js' else n for n in JS_ORDER]

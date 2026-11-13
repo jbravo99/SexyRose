@@ -315,6 +315,17 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     };
   }
   const pedidoConContacto = async (r) => ({ ...pedidoJson(r), ...(await urlsContacto(r)) });
+  // Admin → Ajustes → Contacto → "Probar": el mismo mensaje que arma un pedido real, con el primer pack activo y un
+  // código de ejemplo (no crea ningún pedido).
+  async function mensajeEjemplo() {
+    const lista = await packs({ soloActivos: true });
+    const p = lista[0] || PACKS_DEFAULT[0];
+    const r = await urlsContacto({
+      lang: 'es', pack_id: p.id, pack_nombre: p.nombre, paga_usd: p.pagaUsd,
+      base_centavos: Math.round(p.pagaUsd * 100), bonus_centavos: Math.round((p.recibe - p.pagaUsd) * 100), codigo: 'SR-0000',
+    });
+    return { mensaje: r.mensaje, whatsappUrl: r.whatsappUrl };
+  }
 
   // body: { packId } o { creditos } (carga a medida, entero ≥ 10, sin bonificación). lang = idioma del panel.
   async function crearPedido(cuentaId, { packId = null, creditos = null, lang = 'es' } = {}) {
@@ -485,7 +496,7 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     packs, contacto, cotizacion, comision, mensajes, leerAjuste,
     notificar, notificaciones, noLeidas, marcarLeidas,
     crearPedido, pedidosDeCuenta, adjuntarComprobante, cancelarPedido, confirmarPedido, rechazarPedido, reabrirPedido, vencerPedidos, pedidosAdmin,
-    pedidoJson, mail,
+    pedidoJson, mail, mensajeEjemplo,
     setAlAcreditar(fn) { alAcreditar = typeof fn === 'function' ? fn : async () => {}; },
   };
 }

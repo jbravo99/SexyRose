@@ -28,7 +28,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_COMPROBANTE = 8 * 1024 * 1024;
 const LANGS = ['es', 'en', 'pt'];
 
-export function createCuentaPlanesRouter({ planes, requireCuenta, privado, sameOrigin, pool, log = () => {} }) {
+export function createCuentaPlanesRouter({ planes, requireCuenta, privado, sameOrigin, pool, log = () => {}, notify = () => {} }) {
   const r = express.Router();
   const cred = planes.creditos;
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -144,6 +144,8 @@ export function createCuentaPlanesRouter({ planes, requireCuenta, privado, sameO
       creditos: b.packId ? null : b.creditos, lang,
     });
     res.status(201).json({ ok: true, pedido });
+    // Aviso interno (Telegram): solo el código y el pack, sin datos de la acompañante
+    Promise.resolve(notify(`Pedido de créditos nuevo: ${pedido.codigo}\nPack: ${pedido.packNombre}\nConfirmalo en Admin → Pedidos cuando te paguen.`, 'pedido_creditos')).catch(() => {});
   }));
 
   r.post('/creditos/pedidos/:id/comprobante', guardPost, (req, res, next) => {

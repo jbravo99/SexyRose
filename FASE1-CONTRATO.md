@@ -482,3 +482,74 @@ contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; 
   acompañante (sin cambios).
 - Admin: la sección se titula "Intereses y categorías", con Intereses primero ("los eligen las acompañantes (hasta 6) y
   se usan como filtro en el sitio") y Salidas después ("No se muestran en el sitio").
+
+## Admin: moderación, créditos e interesados — desde el 13/11/2026 (decisiones de Juan)
+
+Migración `app/db/110-admin-moderacion.sql`: `solicitudes.motivo_cierre`, `cerrada_por` acepta `'admin'`, `clientes.bloqueado` + `motivo_bloqueo`, tabla `admin_acciones` (registro de solo agregado: quién, acción, objeto, detalle). Router `app/routes/admin-moderacion.js` bajo `${A}/api` (Basic Auth + `X-SR-Admin: 1` en escrituras, como el resto del admin). No se avisa nada a nadie.
+
+**Pedidos personalizados y chats**
+- `GET /solicitudes?estado=` lista con fecha, acompañante, usuario, estado, último mensaje y contenidos pagados; filtros por estado.
+- `GET /solicitudes/:id` chat completo, contenidos bloqueados (pagado o no) y registro del admin. Los archivos privados solo salen por `GET /solicitudes/items/:item/archivo[?preview=1]` (autenticado; 410 si venció).
+- `POST /solicitudes/:id/cerrar {motivo}`: motivo obligatorio; queda de solo lectura (`cerrada_por='admin'`, mensaje de sistema `cerrada:admin`).
+- `DELETE /solicitudes/:id/mensajes/:mid` (los de sistema no se borran) y `DELETE /solicitudes/items/:item` (borra los archivos del almacenamiento privado).
+
+**Bloqueo de interesados** — `POST /clientes/:id/bloquear {motivo}` / `desbloquear`: estado `suspendida`, se cierran sus sesiones, el login responde 403 (`suspendida: true`), no puede comprar ni pedir, y sus chats quedan de solo lectura para los dos (409 al escribir o subir contenido; la acompañante no puede aceptar).
+
+**Interesados** — `GET /clientes?q=` (usuario, email, verificado, alta, compras cantidad/total, pedidos, bloqueado), `GET /clientes/:id`, `POST /clientes/:id/reenviar-verificacion`. Nunca se muestran contraseñas; el email solo se ve en el admin.
+
+**Créditos** — sección propia con todas las acompañantes (saldo, plan, último movimiento, búsqueda) y `GET /creditos-resumen?dias=` (emitidos, consumidos, comprados y ajustes del período; saldo total). El ajuste manual reutiliza la API y reglas existentes. El bloque de créditos de la ficha se mantiene.
+
+**Ficha de la acompañante** — `GET /acompanantes/:id/extra`: Destacadas (ver, borrar historia o elemento), Packs (si su plan permite venderlos; borrar), Mercado Pago (conectada / reconectar / sin conectar y qué cuenta recibe la comisión) y cantidad de pedidos personalizados con enlace a moderación. Borrados registrados en `admin_acciones`.
+
+**Limpieza del menú** — sin Pre-registros (ni sus números en Resumen), sin Soporte ni «WhatsApp / Avisos automáticos», sin la tarjeta Promoción de Ajustes (el valor queda en la base). «Categorías» pasa a «Intereses» (la lista de salidas se oculta; datos y API quedan). «Clientes — Próximamente» pasa a «Interesados». La tarjeta «Migración a producción» se reemplaza por «Para revisar»: verificaciones, pedidos de créditos, denuncias abiertas y pedidos personalizados abiertos.
+
+## Admin → SEO — desde el 13/11/2026 (decisión de Juan)
+
+- Títulos y descripciones para Google editables desde el admin, guardados en el servidor (ajuste `seo`). Pisan, campo
+  por campo, las plantillas por defecto de `mvp/src/seo.js` (→ `app/sitio-spa/seo-datos.json`); un campo vacío o igual
+  al por defecto no se guarda (sigue el por defecto). Formato (`app/lib/seo-ajustes.js`, el mismo que `HH.settings().seo`):
+  `{ minProfiles?, home?: { es|en|pt: { title, description, blockTitle, blockText } }, tpl?: { es|en|pt: { country|place|countryMen|placeMen: { title, description, intro }, profile: { title, description } } } }`.
+  Variables por plantilla (otras se rechazan): lugar/país/hombres `{pais} {lugar} {ciudad} {cantidad}`; perfil
+  `{nombre} {edad} {lugar} {ciudad} {pais} {bio}`; portada ninguna. Largos: título recomendado 70 / máx. 90; descripción
+  160 / 300; presentación 300 / 800; bloque al pie 80 / 100 y 1200 / 2000. Mínimo de perfiles para indexar: 1..20.
+- API admin (`${A}/api`, `routes/admin-seo.js`): `GET /seo` → `{ valor, defaults: { home, tpl, minProfiles, siteUrl },
+  actualizado, reglas: { vars, largo, tipos, home, campos, minProfiles } }` · `PUT /seo { valor }` (valida; todo vacío =
+  borra el ajuste) · `DELETE /seo` (todo por defecto). Al guardar se invalidan catálogos y estado del sitio.
+- Servidor (`lib/seo-sitio.js`): `<title>`, meta description, robots (mínimo de perfiles) y `sitemap.xml` usan lo
+  editado (el sitemap se rearma si cambia el ajuste). Las direcciones viejas de actividad siguen con 301 al lugar.
+- Sitio: `/api/sitio/estado` → `ajustes.seo`; `mvp/src/prod-sitio-seo.js` se lo entrega a `seo.js`, así el navegador
+  muestra los mismos textos (título, descripción, presentación de país/lugar, bloque al pie) que arma el servidor.
+- Pantalla: `mvp/src/prod-admin-seo.js` (reemplaza el "Próximamente"): idioma, contador de caracteres, marca
+  Editado / Por defecto, "Volver al texto por defecto" por campo, vista previa tipo Google con datos de ejemplo,
+  "Guardar cambios" y "Volver todo a los textos por defecto". El título grande de la portada sigue en Ajustes → Textos del inicio.
+
+## Integraciones del admin (Telegram, Mercado Pago, WhatsApp) — desde el 13/11/2026
+
+Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que modifica, con `apiPost`).
+
+- **Avisos por Telegram** (`lib/telegram.js`). El token del bot queda en el servidor (`TELEGRAM_BOT_TOKEN`). El chat se
+  vincula desde el admin: `POST /integraciones/telegram/vincular` → código de un solo uso (8 caracteres, vence a los
+  10 min) y link `https://t.me/<bot>?start=<código>` (bot leído con `getMe`). Mientras hay un código pendiente, el
+  servidor consulta `getUpdates` cada 3 s (sin webhook público); al llegar `/start <código>` guarda el chat en
+  `ajustes.telegram = { chatId, chatNombre, chatUsuario, vinculado, avisos }` y contesta "Listo". Un código
+  equivocado o vencido no vincula (el bot lo avisa). Si el bot tiene un webhook configurado, vincular responde 409.
+  `TELEGRAM_CHAT_ID` del servidor queda de respaldo si no hay un chat vinculado.
+  `GET /integraciones/telegram` (estado), `POST …/cancelar`, `…/desvincular`, `…/probar`, `PUT …/avisos {avisos}`.
+- **Tipos de aviso** (`notify(texto, tipo)`; cada uno se apaga desde el admin): `cuenta_nueva`, `perfil_revisar`,
+  `verificacion`, `denuncia` (denuncias y reportes urgentes), `cotizacion`, `pedido_creditos` (pedido SR nuevo:
+  código y pack), `pedido_personalizado` (sin el texto), `venta` (pack o pedido pagado: tipo y monto). Se sacó el
+  aviso de pre-registro. Ningún aviso lleva datos de contacto.
+- **Cuentas de comisión de Mercado Pago** (`lib/mp-cuentas.js`, tabla `mp_cuentas`, `db/130-integraciones.sql`).
+  Se cargan desde el admin: nombre, Client ID, Client Secret y la clave secreta de las notificaciones. Los dos
+  secretos se guardan cifrados (AES-256-GCM, `lib/secretos.js`, clave derivada de `SECRETS_KEY` del servidor). Sin
+  `SECRETS_KEY` el formulario se deshabilita; con otra clave, las guardadas quedan "ilegibles" (se pueden borrar).
+  Nunca se devuelven al navegador: solo los últimos 4 caracteres. `GET /integraciones/mp`, `POST /integraciones/mp`,
+  `PUT /integraciones/mp/:id` (secretos vacíos = se conservan; el Client ID no cambia), `DELETE …/:id`,
+  `POST …/:id/probar` (pide un token `client_credentials` a Mercado Pago). Las del `.env` (`MP_CUENTA_<n>_*`) siguen
+  funcionando, de solo lectura, como "desde el servidor". La lista que usa `lib/contenido.js` es la misma (primero
+  las del admin): cuenta activa, OAuth de las vendedoras, renovación de tokens y firma del webhook ven los cambios
+  sin reiniciar. `GET /contenido/resumen` suma `origen`, `clientId`, `secretoFin` y `webhookFin`. Cambiar el Client
+  Secret de una cuenta obliga a reconectar a sus vendedoras (sus tokens se cifran con ese secreto).
+- **WhatsApp del sitio**: "Probar" en Contacto abre `wa.me/<número del campo>` con el mismo mensaje que arma un pedido
+  de créditos real (`GET /integraciones/whatsapp/ejemplo`, primer pack activo y código `SR-0000`; no crea nada).
+- Front: `mvp/src/prod-admin-integraciones.js` (solo el paquete del admin; `HH.adminInt`).

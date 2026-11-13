@@ -112,6 +112,10 @@ export function createMercadoPago({ fetchImpl = null, authUrl = MP_AUTH_URL, api
     renovar({ clientId, clientSecret, refreshToken }) {
       return pedir('POST', '/oauth/token', { form: { client_id: clientId, client_secret: clientSecret, grant_type: 'refresh_token', refresh_token: refreshToken } });
     },
+    // Admin → "Probar": pide un token de la propia aplicación (client_credentials). Si responde, las credenciales sirven.
+    probarCredenciales({ clientId, clientSecret }) {
+      return pedir('POST', '/oauth/token', { form: { client_id: clientId, client_secret: clientSecret, grant_type: 'client_credentials' } });
+    },
     crearPreferencia(token, preferencia, idem) {
       return pedir('POST', '/checkout/preferences', { token, json: preferencia, idem });
     },

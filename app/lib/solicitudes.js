@@ -62,7 +62,7 @@ async function borrosa(buffer) {
     .blur(18).webp({ quality: 60 }).toBuffer();
 }
 
-export function createSolicitudes({ pool, storage, contenido, videos = null, log = () => {}, tmpDir }) {
+export function createSolicitudes({ pool, storage, contenido, videos = null, log = () => {}, tmpDir, notify = () => {} }) {
   const ROL = { cliente: 'cliente', acompanante: 'acompanante' };
 
   // ---------- Lectura ----------
@@ -85,6 +85,12 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
     const { rows } = await pool.query('SELECT usuario FROM clientes WHERE id = $1', [clienteId]);
     return rows[0] ? rows[0].usuario : '';
   };
+  // Interesado bloqueado desde el admin: sus pedidos quedan de solo lectura para los dos.
+  const clienteBloqueado = async (clienteId) => {
+    const { rows } = await pool.query('SELECT estado FROM clientes WHERE id = $1', [clienteId]);
+    return !rows[0] || rows[0].estado !== 'activa';
+  };
+  const exigirActivo = async (s) => { if (await clienteBloqueado(s.cliente_id)) throw he(409, 'Este pedido quedó de solo lectura.'); };
 
   // Estado de un contenido para quien mira (rol). Nunca devuelve rutas: el archivo se pide por /archivo.
   async function itemsDe(solicitudId, rol, clienteId) {
@@ -146,7 +152,7 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
     return {
       solicitud: { id: s.id, estado: s.estado, texto: s.texto, creado: s.creado, respondida: s.respondida, cerrada: s.cerrada, cerradaPor: s.cerrada_por || null, ...otro },
       mensajes: ms.map(mensajeJson), items: await itemsDe(s.id, rol, s.cliente_id), ultimo: ultimo || desde,
-      puedeEnviarContenido: rol === ROL.acompanante && s.estado === 'aceptada' ? await contenido.tomaPedidos(s.cuenta_id) : false,
+      puedeEnviarContenido: rol === ROL.acompanante && s.estado === 'aceptada' && !(await clienteBloqueado(s.cliente_id)) ? await contenido.tomaPedidos(s.cuenta_id) : false,
     };
   }
 
@@ -165,12 +171,15 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
     const { rows: ab } = await pool.query("SELECT id FROM solicitudes WHERE cliente_id = $1 AND cuenta_id = $2 AND estado = 'pendiente' LIMIT 1", [clienteId, p.cuenta_id]);
     if (ab[0]) throw he(409, 'Ya tenés un pedido esperando respuesta de esta acompañante.', { solicitudId: ab[0].id });
     const { rows: [s] } = await pool.query('INSERT INTO solicitudes (cliente_id, cuenta_id, texto) VALUES ($1, $2, $3) RETURNING *', [clienteId, p.cuenta_id, txt]);
+    // Aviso interno (Telegram), sin el texto del pedido ni datos de quien lo hace
+    Promise.resolve(notify('Hay un pedido personalizado nuevo.', 'pedido_personalizado')).catch(() => {});
     return { id: s.id, estado: s.estado };
   }
 
   async function responder(cuentaId, id, acepta) {
     const s = await propia(ROL.acompanante, cuentaId, id);
     if (s.estado !== 'pendiente') throw he(409, 'Este pedido ya fue respondido.');
+    if (acepta) await exigirActivo(s);
     if (acepta && !(await contenido.tomaPedidos(cuentaId))) throw he(409, 'Para aceptar pedidos necesitás el plan Oro o Star y tu cuenta de Mercado Pago conectada.');
     const estado = acepta ? 'aceptada' : 'rechazada';
     const { rowCount } = await pool.query(
@@ -183,6 +192,7 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
   async function mensaje(rol, actorId, id, t) {
     const s = await propia(rol, actorId, id);
     if (s.estado !== 'aceptada') throw he(409, s.estado === 'pendiente' ? 'El chat se abre cuando la acompañante acepta el pedido.' : 'Este pedido está cerrado.');
+    await exigirActivo(s);
     const txt = texto(t);
     if (!txt) throw he(400, 'Escribí un mensaje.');
     if (largo(txt) > MAX_MENSAJE) throw he(400, `El mensaje puede tener hasta ${MAX_MENSAJE} caracteres.`);
@@ -206,6 +216,7 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
   async function subirItem(cuentaId, id, { tipo, precio, buffer = null, archivo = null, itemId = null }) {
     const s = await propia(ROL.acompanante, cuentaId, id);
     if (s.estado !== 'aceptada') throw he(409, 'Solo podés mandar contenido en un pedido aceptado y abierto.');
+    await exigirActivo(s);
     if (!(await contenido.tomaPedidos(cuentaId))) throw he(409, 'Para mandar contenido necesitás el plan Oro o Star y tu cuenta de Mercado Pago conectada.');
     const p = validarPrecio(precio);
     if (p.error) throw he(400, p.error);

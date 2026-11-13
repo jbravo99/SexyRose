@@ -52,12 +52,13 @@ gen_alnum() {
   printf '%s' "${s:0:32}"
 }
 
-export GEN_POSTGRES_PASSWORD GEN_IP_HASH_SALT GEN_ADMIN_PASSWORD GEN_ADMIN_PATH GEN_DATABASE_URL GEN_SITE_URL
+export GEN_POSTGRES_PASSWORD GEN_IP_HASH_SALT GEN_ADMIN_PASSWORD GEN_ADMIN_PATH GEN_DATABASE_URL GEN_SITE_URL GEN_SECRETS_KEY
 GEN_POSTGRES_PASSWORD="$(gen_hex)"
 GEN_IP_HASH_SALT="$(gen_hex)"
 GEN_ADMIN_PASSWORD="$(gen_alnum)"
 # Dirección secreta del admin: "/p-" + 24 caracteres hexadecimales (misma regla que valida el app).
 GEN_ADMIN_PATH="/p-$(openssl rand -hex 12)"
+GEN_SECRETS_KEY="$(openssl rand -hex 32)"
 GEN_DATABASE_URL="postgres://${PG_USER}:${GEN_POSTGRES_PASSWORD}@db:5432/${PG_DB}"
 GEN_SITE_URL=""
 [[ "$DEV" -eq 1 ]] && GEN_SITE_URL="http://localhost:3000"
@@ -74,6 +75,7 @@ awk '
   /^IP_HASH_SALT=/      { print "IP_HASH_SALT="      ENVIRON["GEN_IP_HASH_SALT"];      next }
   /^ADMIN_PASSWORD=/    { print "ADMIN_PASSWORD="    ENVIRON["GEN_ADMIN_PASSWORD"];    next }
   /^ADMIN_PATH=/        { print "ADMIN_PATH="        ENVIRON["GEN_ADMIN_PATH"];        next }
+  /^SECRETS_KEY=/       { print "SECRETS_KEY="       ENVIRON["GEN_SECRETS_KEY"];       next }
   /^DATABASE_URL=/      { print "DATABASE_URL="      ENVIRON["GEN_DATABASE_URL"];      next }
   /^TUNNEL_TOKEN=/      { print "TUNNEL_TOKEN=";                                         next }
   /^SITE_URL=/ && ENVIRON["GEN_SITE_URL"] != "" { print "SITE_URL=" ENVIRON["GEN_SITE_URL"]; next }
@@ -100,7 +102,7 @@ mv "$TMP" "$OUTPUT"
 trap - EXIT
 
 echo "Listo: $OUTPUT (permisos 600)."
-echo "Generados: POSTGRES_PASSWORD, IP_HASH_SALT, ADMIN_PASSWORD, ADMIN_PATH, DATABASE_URL."
+echo "Generados: POSTGRES_PASSWORD, IP_HASH_SALT, ADMIN_PASSWORD, ADMIN_PATH, DATABASE_URL, SECRETS_KEY."
 echo "Falta completar a mano: TUNNEL_TOKEN (y opcionales: OPERATOR_NAME, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, AGE_RECIPIENT)."
 echo "Usuario del admin: $(grep -m1 '^ADMIN_USER=' "$OUTPUT" | cut -d= -f2-)"
 if [[ "$SHOW" -eq 1 ]]; then

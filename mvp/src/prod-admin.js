@@ -88,7 +88,7 @@
 
   /* ---------- Menú: el de la demo + Pre-registros y Textos ---------- */
   const TABS = HH.adminTabs;
-  if (!TABS.some((t) => t.id === 'preregistros')) TABS.splice(Math.max(0, TABS.findIndex((t) => t.id === 'resumen')) + 1, 0, { id: 'preregistros', label: 'Pre-registros', icon: 'inbox' });
+  // Pre-registros: el sitio ya no tiene pre-registro (la sección salió del menú; los datos y la API siguen)
   if (!TABS.some((t) => t.id === 'textos')) { const i = TABS.findIndex((t) => t.id === 'apariencia'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'textos', label: 'Textos', icon: 'edit' }); }
   { const i = TABS.findIndex((t) => t.id === 'apariencia'); if (i >= 0) TABS.splice(i, 1); } // la portada se edita en Ajustes
   // Planes v2: «Pagos» (transferencia por plan) pasa a «Pedidos» de créditos; se suman Renovaciones y Destacados
@@ -102,7 +102,6 @@
   counts.acompanantes = () => ((S.res && S.res.acompanantes ? S.res.acompanantes.enRevision : 0) || 0) + ((S.res && S.res.verificacionesPendientes) || 0);
   counts.pedidos = () => (S.res && S.res.pedidosCreditos ? S.res.pedidosCreditos.pendientes : 0) || 0;
   counts.renovaciones = () => (S.res ? (S.res.pausadasSinSaldo || 0) + ((S.res.vencen7 && S.res.vencen7.sinSaldo) || 0) : 0);
-  counts.preregistros = () => (S.res && S.res.preregistros ? S.res.preregistros.nuevos : 0) || 0;
   counts.reportes = () => (S.res && S.res.denuncias ? S.res.denuncias.abiertas : 0) || 0;
   HH.adminCounts = counts;
 
@@ -114,7 +113,7 @@
     if (!r && S.err.res) body = errorCard(S.err.res, 'res');
     else if (!r) body = loadingCard(2);
     else {
-      const p = r.preregistros || {}, d = r.denuncias || {}, t = r.textos || {};
+      const d = r.denuncias || {}, t = r.textos || {}, pp = r.pedidosPersonalizados || {}, cl = r.clientes || {};
       const ac = r.acompanantes || {}, vp = r.verificacionesPendientes || 0, pc = r.pedidosCreditos || {};
       const pa = r.pausadasSinSaldo || 0, v7 = r.vencen7 || {};
       const dAct = S.dst ? (S.dst.items || []).filter((x) => x.estado === 'activo' && x.vigente).length : null;
@@ -126,7 +125,7 @@
       if (ac.enRevision) pend.push({ ic: 'users', cls: 'info', t: `${ac.enRevision} ${HH.plural(ac.enRevision, 'perfil en revisión', 'perfiles en revisión')}`, s: 'Se publican al aprobar la identidad.', go: '#admin.acompanantes' });
       if (d.urgentes) pend.push({ ic: 'alert', cls: 'danger', t: `${d.urgentes} ${HH.plural(d.urgentes, 'denuncia urgente', 'denuncias urgentes')} sin resolver`, s: 'Abuso infantil, imágenes sin consentimiento o trata: revisar ya.', go: '#admin.reportes' });
       if (d.abiertas && d.abiertas !== d.urgentes) pend.push({ ic: 'flag', cls: 'warn', t: `${d.abiertas} ${HH.plural(d.abiertas, 'denuncia abierta', 'denuncias abiertas')}`, s: 'Marcalas como resueltas cuando las revises.', go: '#admin.reportes' });
-      if (p.nuevos) pend.push({ ic: 'inbox', cls: 'info', t: `${p.nuevos} ${HH.plural(p.nuevos, 'pre-registro nuevo', 'pre-registros nuevos')}`, s: 'Contactalas y marcá el estado de cada una.', go: '#admin.preregistros' });
+      if (pp.pendientes) pend.push({ ic: 'chat', cls: 'info', t: `${pp.pendientes} ${HH.plural(pp.pendientes, 'pedido personalizado sin responder', 'pedidos personalizados sin responder')}`, s: 'Esperan que la acompañante los acepte o rechace.', go: '#admin.solicitudes' });
       body = `<div class="adm-stats">
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Acompañantes', (ac.total || 0).toLocaleString('es-AR'), `${ac.publicadas || 0} publicadas · ${ac.enRevision || 0} en revisión`, 'accent')}</a>
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Verificaciones', vp, vp ? 'pendientes de revisar' : 'todo al día', vp ? 'pa-warn' : '')}</a>
@@ -134,25 +133,23 @@
           <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Pausadas por saldo', pa, pa ? 'no les alcanzó para renovar' : 'ninguna', pa ? 'pa-danger' : '')}</a>
           <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Vencen en 7 días', v7.total || 0, `${v7.sinSaldo || 0} sin saldo para renovar`, v7.sinSaldo ? 'pa-warn' : '')}</a>
           <a class="pa-statlink" href="#admin.destacados" data-go="#admin.destacados">${stat('Destacados activos', dAct == null ? '…' : dAct, 'ahora en el sitio')}</a>
-          ${stat('Pre-registros', (p.total || 0).toLocaleString('es-AR'), `${p.ultimos7 || 0} en los últimos 7 días`)}
-          ${stat('Por contactar', p.nuevos || 0, p.nuevos ? 'en estado nuevo' : 'todo al día')}
+          <a class="pa-statlink" href="#admin.solicitudes" data-go="#admin.solicitudes">${stat('Pedidos personalizados', pp.abiertos || 0, 'abiertos (sin responder o con chat)')}</a>
+          <a class="pa-statlink" href="#admin.clientes" data-go="#admin.clientes">${stat('Interesados', (cl.total || 0).toLocaleString('es-AR'), `${cl.bloqueados || 0} ${HH.plural(cl.bloqueados || 0, 'bloqueado', 'bloqueados')}`)}</a>
           ${stat('Denuncias abiertas', d.abiertas || 0, `de ${d.total || 0} recibidas`)}
           ${stat('Urgentes', d.urgentes || 0, d.urgentes ? 'revisar ya' : 'ninguna pendiente', d.urgentes ? 'pa-danger' : '')}
           ${stat('Textos modificados', t.modificados || 0, `de ${t.total || 0} textos editables`)}
         </div>
         <div class="card stack" style="gap:10px">
           <div class="card-title">Pendientes</div>
-          ${pend.length ? `<div class="list">${pend.map((x) => `<a class="list-item" href="${x.go}" data-go="${x.go}"><span class="badge ${x.cls}" style="padding:6px">${icon(x.ic)}</span><div class="grow" style="min-width:0"><div class="title">${esc(x.t)}</div><div class="sub">${esc(x.s)}</div></div>${icon('chevronRight')}</a>`).join('')}</div>` : `<p class="small muted">Nada pendiente. Los pedidos de créditos, los perfiles pausados por saldo, las verificaciones, las denuncias y los pre-registros nuevos aparecen acá.</p>`}
+          ${pend.length ? `<div class="list">${pend.map((x) => `<a class="list-item" href="${x.go}" data-go="${x.go}"><span class="badge ${x.cls}" style="padding:6px">${icon(x.ic)}</span><div class="grow" style="min-width:0"><div class="title">${esc(x.t)}</div><div class="sub">${esc(x.s)}</div></div>${icon('chevronRight')}</a>`).join('')}</div>` : `<p class="small muted">Nada pendiente. Los pedidos de créditos, los perfiles pausados por saldo, las verificaciones, las denuncias y los pedidos personalizados sin responder aparecen acá.</p>`}
         </div>
         <div class="card stack" style="gap:10px">
-          <div class="card-title">Migración a producción</div>
-          <p class="small muted">Este panel es el mismo de la demostración, conectado a los datos reales del sitio. Las secciones marcadas como «Próximamente» se activan cuando su parte del sitio tenga datos reales.</p>
+          <div class="card-title">Para revisar</div>
           <div class="list">
-            <div class="list-item">${icon('checkCircle')}<div class="grow"><div class="title">Fase 0 · En línea</div><div class="sub">Resumen, Pre-registros, Reportes (denuncias) y Textos del sitio.</div></div><span class="badge ok">Activo</span></div>
-            <div class="list-item">${icon('users')}<div class="grow"><div class="title">Fase 1 · Cuentas y perfiles</div><div class="sub">Acompañantes, verificación manual, ubicaciones, categorías e intereses, portada.</div></div><span class="badge ok">Activo</span></div>
-            <div class="list-item">${icon('wallet')}<div class="grow"><div class="title">Fase 2 · Planes y créditos</div><div class="sub">4 planes (Bronce, Plata, Oro y Star), créditos por WhatsApp, renovación automática, Destacado, Stars y precios.</div></div><span class="badge ok">Activo</span></div>
-            <div class="list-item">${icon('film')}<div class="grow"><div class="title">Fase 3 · Historias y videos</div><div class="sub">Historias, destacadas, shorts, videos, estadísticas y soporte.</div></div><span class="badge neutral">Próximamente</span></div>
-            <div class="list-item">${icon('bag')}<div class="grow"><div class="title">Fase 4 · Venta de contenido</div><div class="sub">Fotos y videos premium, packs y pedidos a medida, cuando apruebe un procesador de pagos.</div></div><span class="badge neutral">Próximamente</span></div>
+            <a class="list-item" href="#admin.acompanantes" data-go="#admin.acompanantes">${icon('shield')}<div class="grow"><div class="title">Verificaciones pendientes</div></div><span class="badge ${vp ? 'warn' : 'ok'}">${vp}</span></a>
+            <a class="list-item" href="#admin.pedidos" data-go="#admin.pedidos">${icon('wallet')}<div class="grow"><div class="title">Pedidos de créditos pendientes</div></div><span class="badge ${pc.pendientes ? 'warn' : 'ok'}">${pc.pendientes || 0}</span></a>
+            <a class="list-item" href="#admin.reportes" data-go="#admin.reportes">${icon('flag')}<div class="grow"><div class="title">Denuncias abiertas</div></div><span class="badge ${d.abiertas ? (d.urgentes ? 'danger' : 'warn') : 'ok'}">${d.abiertas || 0}</span></a>
+            <a class="list-item" href="#admin.solicitudes" data-go="#admin.solicitudes">${icon('chat')}<div class="grow"><div class="title">Pedidos personalizados abiertos</div></div><span class="badge ${pp.abiertos ? 'info' : 'ok'}">${pp.abiertos || 0}</span></a>
           </div>
         </div>`;
     }
@@ -358,6 +355,9 @@
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
   const PATHS = { vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
+  // Para prod-admin-integraciones.js (Ajustes → cuentas de Mercado Pago)
+  HH.adminRecargar = (k) => load(k, PATHS[k], true);
+  HH.adminVc = () => S.vc;
   const pathDe = (k) => (k === 'pc' ? pcPath() : k.startsWith('acd:') ? '/acompanantes/' + encodeURIComponent(k.slice(4)) : k.startsWith('cr:') ? '/creditos/' + encodeURIComponent(k.slice(3)) : PATHS[k]);
   const after = (keys) => { keys.forEach((k) => { const p = pathDe(k); if (p && (S[k] != null || S.err[k] || !/^(acd|cr):/.test(k))) load(k, k.startsWith('cr:') ? p + '?limite=20' : p, true); }); refreshResumen(); };
 
@@ -570,7 +570,7 @@
           </dl>
         </section>`;
       body = `<div class="pa-detail">
-          <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}</div>
+          <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}${HH.paFichaExtra ? HH.paFichaExtra(id) : ''}</div>
           <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos)}</section>${credCard}${planCard}${cuentaCard}</div>
         </div>`;
     }
@@ -866,13 +866,12 @@
 
   /* ---------- Categorías (salidas) e Intereses ---------- */
   function vCategorias() {
-    load('cat', '/categorias'); load('int', '/intereses');
-    const catList = !S.cat ? (S.err.cat ? errorCard(S.err.cat, 'cat') : loadingCard(2)) : ((S.cat.items || []).length ? `<div class="list card" style="padding:4px">${S.cat.items.map((c) => `<div class="list-item"><span class="pa-catic">${icon(c.icono || 'sparkles')}</span><div class="grow"><div class="title">${esc(c.nombre)}${c.activa ? '' : ' <span class="badge warn">Inactiva</span>'}</div><div class="sub"><code>${esc(c.id)}</code> · orden ${c.orden || 0}</div></div><button type="button" class="switch" role="switch" aria-checked="${!!c.activa}" aria-label="Activa" data-action="prodCatActiva" data-id="${esc(c.id)}"></button><button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="categorias" data-id="${esc(c.id)}" aria-label="Editar ${esc(c.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="categorias" data-id="${esc(c.id)}" aria-label="Borrar ${esc(c.nombre)}">${icon('trash')}</button></div>`).join('')}</div>` : '<p class="small muted">No hay categorías.</p>');
+    load('int', '/intereses');
+    // Las salidas (categorías) ya no se muestran en el sitio: no se listan acá (los datos y la API siguen)
     const intList = !S.int ? (S.err.int ? errorCard(S.err.int, 'int') : loadingCard(2)) : ((S.int.items || []).length ? `<div class="list card" style="padding:4px">${S.int.items.map((i) => `<div class="list-item"><div class="grow" style="min-width:0"><div class="title">${esc(i.nombre)}</div><div class="sub ellipsis">EN: ${esc(i.nombre_en || '—')} · PT: ${esc(i.nombre_pt || '—')} · orden ${i.orden || 0}</div></div><button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="intereses" data-id="${esc(i.id)}" aria-label="Editar ${esc(i.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="intereses" data-id="${esc(i.id)}" aria-label="Borrar ${esc(i.nombre)}">${icon('trash')}</button></div>`).join('')}</div>` : '<p class="small muted">No hay intereses.</p>');
-    return layout('categorias', `${head('Intereses y categorías', actualizar('cat'), 'Intereses: los eligen las acompañantes (hasta 6) y se usan como filtro en el sitio.')}
+    return layout('categorias', `${head('Intereses', actualizar('cat'), 'Intereses: los eligen las acompañantes (hasta 6) y se usan como filtro en el sitio.')}
       <div class="stack" style="gap:18px">
         <section class="stack" style="gap:10px"><div class="row between"><h3 style="font-size:17px">Intereses</h3><button type="button" class="btn sm" data-action="prodCatEdit" data-t="intereses">${icon('plus')} Nuevo interés</button></div><p class="small muted">Solo gustos y temas de conversación (máximo 6 por acompañante). Los nombres en inglés y portugués se muestran cuando el visitante cambia de idioma.</p>${intList}</section>
-        <section class="stack" style="gap:10px"><div class="row between"><h3 style="font-size:17px">Salidas</h3><button type="button" class="btn sm" data-action="prodCatEdit" data-t="categorias">${icon('plus')} Nueva salida</button></div><p class="small muted">No se muestran en el sitio.</p>${catList}</section>
       </div>`);
   }
   const CAT_ICONOS = ['coffee', 'icecream', 'walk', 'museum', 'cine', 'dinner', 'ticket', 'languages', 'bag', 'dumbbell', 'music', 'globe', 'heart', 'star', 'camera', 'sparkles'];
@@ -1060,8 +1059,9 @@
           <div class="grid-2"><div class="field"><label for="ajWa">WhatsApp del sitio (con código de país)</label><input class="input" id="ajWa" inputmode="tel" maxlength="20" value="${esc(ct.whatsapp || '')}" placeholder="5491122334455"></div>
           <div class="field"><label for="ajTg">Usuario de Telegram</label><input class="input" id="ajTg" maxlength="40" value="${esc(ct.telegram || '')}" placeholder="sexyrose_soporte"></div></div>
           <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="ajTgOn"${ct.telegramActivo ? ' checked' : ''}> Mostrar también Telegram</label>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar contacto</button></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar contacto</button>${HH.adminInt ? HH.adminInt.botonProbarWa() : ''}</div>
         </section>
+        ${HH.adminInt ? HH.adminInt.telegramCard() : ''}
         <section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('message')} Mensajes</div>${upd('mensajes')}</div>
           <p class="small muted">Mensaje que la acompañante te manda por WhatsApp al pedir créditos, en su idioma. Variables: ${ph(['pack', 'creditos', 'monto', 'codigo'])}. <strong>{codigo}</strong> es obligatorio.</p>
@@ -1070,15 +1070,9 @@
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
         </section>
         ${ventaContenidoCard(cm, upd('comision'))}
-        ${textosInicioCard()}
-        <section class="card stack" style="gap:10px">
-          <div class="card-title">${icon('sparkles')} Promoción</div>
-          <p class="small muted">Texto corto de la promoción vigente (se muestra en la portada y en la página de planes). Dejalo vacío para no mostrar ninguna.</p>
-          <textarea class="textarea" id="ajPromo" rows="2" maxlength="500" placeholder="Ej.: Bronce gratis y precios de lanzamiento por 3 meses.">${esc(a.promo || '')}</textarea>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="promo">${icon('check')} Guardar promoción</button></div>
-        </section>`;
+        ${textosInicioCard()}`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Precios, packs de créditos, Destacado, cotización, contacto, mensajes, textos del inicio y promoción')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Precios, packs de créditos, Destacado, cotización, contacto, mensajes y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Acciones de Fase 1+2 ---------- */
@@ -1417,7 +1411,7 @@
           <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
           <div class="card-title" style="font-size:15px">Cuenta que recibe la comisión</div>
-          ${cuentas}
+          ${HH.adminInt ? HH.adminInt.mpCuentas(vc, S.err.vc) : cuentas}
         </section>`;
   }
   function vVentasContenido() {
@@ -1443,7 +1437,7 @@
     clientes: ['Clientes', 4, 'Los clientes no tienen cuenta: navegan sin registrarse para cuidar su privacidad. Esta sección va a mostrar compras y bloqueos cuando exista la venta de contenido.'],
     soporte: ['Soporte', 3, 'Consultas de las acompañantes y respuestas del asistente de soporte.'],
     whatsapp: ['Avisos automáticos', 3, 'Los avisos a las acompañantes (verificación, pagos y vencimientos) hoy salen por email. El bot de Telegram llega después: WhatsApp Business no permite este rubro.'],
-    seo: ['SEO', 3, 'Títulos, descripciones y textos de las páginas por país, ciudad y tipo de salida, mapa del sitio y redirecciones de direcciones viejas.'],
+    // seo: lo arma prod-admin-seo.js (Admin → SEO)
   };
   function vSoon(tab) {
     const t = TABS.find((x) => x.id === tab) || { label: tab, icon: 'sparkles' };
@@ -1462,6 +1456,7 @@
   TABS.forEach((t) => { views[t.id] = () => vSoon(t.id); });
   Object.assign(views, { ventas: vVentasContenido, resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
   HH.adminViews = views;
+  HH.pa = { S, API, BASE, load, layout, head, fecha, dia, badge, loadingCard, errorCard, stat, actualizar, filtro, pedirMotivo, blobUrl, fillBlobs, cred, cnum, credSig, planBadge, linkCuenta, thumb, ext, pesosAr, refreshResumen, TIPO_MOV, PLAN_NOMBRE, views, counts };
   HH.route('admin.textos.:pagina', ({ pagina }) => (HH.requireRole('admin') ? vTextoPagina(pagina) : false));
   HH.route('admin.acompanantes.:id', ({ id }) => (HH.requireRole('admin') ? vAcompanante(id) : false));
 
@@ -1478,7 +1473,7 @@
     prodRetry(el) {
       const k = el.dataset.k;
       if (k.startsWith('page:')) loadPage(k.slice(5), true);
-      else if (k.startsWith('acd:')) { [...blobs.keys()].forEach((b) => { URL.revokeObjectURL(blobs.get(b).url); blobs.delete(b); }); load(k, '/acompanantes/' + encodeURIComponent(k.slice(4)), true); load('acv:' + k.slice(4), '/acompanantes/' + encodeURIComponent(k.slice(4)) + '/videos', true); load('cr:' + k.slice(4), '/creditos/' + encodeURIComponent(k.slice(4)) + '?limite=20', true); load('dst', '/destacados', true); }
+      else if (k.startsWith('acd:')) { [...blobs.keys()].forEach((b) => { URL.revokeObjectURL(blobs.get(b).url); blobs.delete(b); }); load(k, '/acompanantes/' + encodeURIComponent(k.slice(4)), true); load('acx:' + k.slice(4), '/acompanantes/' + encodeURIComponent(k.slice(4)) + '/extra', true); load('acv:' + k.slice(4), '/acompanantes/' + encodeURIComponent(k.slice(4)) + '/videos', true); load('cr:' + k.slice(4), '/creditos/' + encodeURIComponent(k.slice(4)) + '?limite=20', true); load('dst', '/destacados', true); }
       else if (k === 'ren') { load('ven', PATHS.ven, true); load('pau', PATHS.pau, true); }
       else { if (k === 'aj') { S.pkEdit = null; S.pkDirty = false; } load(k, { res: '/resumen', pre: '/preregistros', den: '/denuncias', txt: '/textos' }[k] || pathDe(k), true); }
       if (k === 'cat') load('int', '/intereses', true);

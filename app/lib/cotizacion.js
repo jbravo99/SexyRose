@@ -132,7 +132,7 @@ export function createCotizacion({ pool, log = () => {}, notify = async () => {}
         const clave = `${d.fuente}:${valorNuevo}`;
         if (ultimaAlertaAvisada !== clave) {
           ultimaAlertaAvisada = clave;
-          try { await notify(`Cotización: salto mayor a 25 %\n${d.fuente} ${actual.valor} ${valorNuevo} (en uso ${enUso}).\nNo se aplicó. Revisar en Admin → Ajustes.`); } catch { /* */ }
+          try { await notify(`Cotización: salto mayor a 25 %\n${d.fuente} ${actual.valor} ${valorNuevo} (en uso ${enUso}).\nNo se aplicó. Revisar en Admin → Ajustes.`, 'cotizacion'); } catch { /* */ }
         }
         return { cotizacion: c, actualizada: false, alerta };
       }

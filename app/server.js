@@ -29,10 +29,11 @@ import { createCuentaPlanesRouter } from './routes/cuenta-planes.js';
 import { createAdminCreditosRouter } from './routes/admin-creditos.js';
 import { createCotizacion } from './lib/cotizacion.js';
 import { createAdminCotizacionRouter } from './routes/admin-cotizacion.js';
-import { createSpaSitioRouter } from './routes/spa-sitio.js';
+import { createSpaSitioRouter, archivoSpaSitio } from './routes/spa-sitio.js';
 import { createDemoSitioRouter } from './routes/demo-sitio.js';
 // ---- fin Fase 1 (agente B): imports ----
 import { createAdminTextosSitioRouter } from './routes/admin-textos-sitio.js';
+import { createAdminSeoRouter, datosSeoDe } from './routes/admin-seo.js';
 import { createAdminVideosRouter } from './routes/admin-videos.js';
 // Venta de contenido con Mercado Pago (marketplace)
 import { createMercadoPago, cuentasDesdeEnv } from './lib/mercadopago.js';
@@ -40,6 +41,10 @@ import { createContenido } from './lib/contenido.js';
 import { createCuentaContenidoRouter } from './routes/cuenta-contenido.js';
 import { createContenidoSitioRouter, createMpWebhookRouter } from './routes/contenido.js';
 import { createAdminContenidoRouter } from './routes/admin-contenido.js';
+import { createAdminModeracionRouter } from './routes/admin-moderacion.js';
+import { createTelegram } from './lib/telegram.js';
+import { createMpCuentas } from './lib/mp-cuentas.js';
+import { createAdminIntegracionesRouter } from './routes/admin-integraciones.js';
 // Cuentas de interesados (clientes) y pedidos personalizados con chat
 import { createAuthClientes } from './lib/clientes.js';
 import { createSolicitudes } from './lib/solicitudes.js';
@@ -72,6 +77,8 @@ export function loadConfig(env = process.env) {
     privacyEmail: str(env.PRIVACY_EMAIL) || 'contacto@sexyrose.net',
     telegramToken: str(env.TELEGRAM_BOT_TOKEN),
     telegramChatId: str(env.TELEGRAM_CHAT_ID),
+    // Clave para guardar secretos en la base (cuentas de Mercado Pago cargadas desde el admin). openssl rand -hex 32
+    secretsKey: str(env.SECRETS_KEY),
     // Cotización del dólar blue (opcional, para pruebas): por defecto DolarApi y Bluelytics.
     cotizacionUrl: str(env.COTIZACION_URL) || undefined,
     cotizacionFallbackUrl: str(env.COTIZACION_FALLBACK_URL) || undefined,
@@ -400,20 +407,13 @@ export function createApp(config) {
   const ipHash = (req) => crypto.createHash('sha256').update(salt + clientIp(req), 'utf8').digest('hex');
 
   // Avisos por Telegram (opcional). Nunca incluyen datos de contacto ni el texto de la denuncia.
-  const notify = async (text) => {
-    if (!config.telegramToken || !config.telegramChatId) return;
-    try {
-      const r = await fetch(`https://api.telegram.org/bot${config.telegramToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id: config.telegramChatId, text, disable_web_page_preview: true }),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!r.ok) log('telegram: respuesta', r.status);
-    } catch (e) {
-      log('telegram: no se pudo enviar el aviso:', e.name, e.cause?.code || '');
-    }
-  };
+  // El token queda en el servidor; el chat se vincula desde Admin → Ajustes (lib/telegram.js). notify(texto, tipo).
+  const telegram = createTelegram({
+    pool, token: config.telegramToken, chatIdEnv: config.telegramChatId, log,
+    fetchImpl: config.telegramFetch !== undefined ? config.telegramFetch : globalThis.fetch,
+    cadaMs: config.telegramCadaMs || 3000,
+  });
+  const notify = (text, tipo = null) => telegram.notify(text, tipo);
 
   // Placeholders {{...}} en HTML
   const placeholders = {
@@ -500,11 +500,14 @@ export function createApp(config) {
     fetchImpl: config.mpFetch !== undefined ? config.mpFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
     authUrl: config.mpAuthUrl, apiBase: config.mpApiBase,
   });
-  const contenido = createContenido({ pool, mp, cuentas: config.mpCuentas || [], siteUrl: config.siteUrl, log, invalidar: () => invalidarSitio(), now: config.contenidoNow, planDe: (id) => planEfectivo(id, planes) });
+  // Cuentas de comisión: las del admin (cifradas en la base) + las del .env. `mpLista` es compartida con contenido.
+  const mpLista = [];
+  const mpCuentas = createMpCuentas({ pool, secretsKey: config.secretsKey, envCuentas: config.mpCuentas || [], lista: mpLista, mp, log, onChange: () => invalidarSitio() });
+  const contenido = createContenido({ pool, mp, cuentas: mpLista, siteUrl: config.siteUrl, log, invalidar: () => invalidarSitio(), now: config.contenidoNow, planDe: (id) => planEfectivo(id, planes), notify });
   ctx.contenido = contenido;
   // Interesados (clientes): sesión propia (cookie sr_cliente). Pedidos personalizados con chat y contenido bloqueado.
   const authCli = createAuthClientes({ pool, config });
-  const solicitudes = createSolicitudes({ pool, storage, contenido, videos, log, tmpDir: videos.tmpDir });
+  const solicitudes = createSolicitudes({ pool, storage, contenido, videos, log, tmpDir: videos.tmpDir, notify });
   ctx.solicitudes = solicitudes;
 
   const app = express();
@@ -587,7 +590,6 @@ export function createApp(config) {
     );
     rl.hit(key);
     res.status(201).json({ ok: true });
-    notify(`Nuevo pre-registro\nPlan: ${PLAN_LABEL[d.plan_interes]}`);
   }));
 
   api.post('/denuncia', requireJson, ah(async (req, res) => {
@@ -610,7 +612,7 @@ export function createApp(config) {
     const { id, creado } = rows[0];
     res.status(201).json({ ok: true, id });
     if (CATEGORIAS_URGENTES.has(d.categoria)) {
-      notify(`Denuncia urgente\nCategoría: ${CATEGORIA_LABEL[d.categoria]}\nID: ${id}\nHora: ${fmtDate(creado)} (hora Argentina)\nRevisar en el panel de admin.`);
+      notify(`Denuncia urgente\nCategoría: ${CATEGORIA_LABEL[d.categoria]}\nID: ${id}\nHora: ${fmtDate(creado)} (hora Argentina)\nRevisar en el panel de admin.`, 'denuncia');
     }
   }));
 
@@ -619,7 +621,7 @@ export function createApp(config) {
   // Planes y pedidos de la acompañante (/api/cuenta/planes, /api/cuenta/pedidos…): mismo requireCuenta y mismas
   // reglas de mutación (mismo origen + X-SR: 1). Va antes del router de cuenta, que no tiene esas rutas.
   app.use('/api/cuenta', createCuentaPlanesRouter({
-    planes, privado, sameOrigin: mismoOrigen, pool, log,
+    planes, privado, sameOrigin: mismoOrigen, pool, log, notify,
     // config.requireCuenta solo existe en pruebas (se pasa por código, nunca por variables de entorno).
     requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
   }));
@@ -1089,7 +1091,12 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   if (config.tareaPlanes !== false) planes.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
   // ---- fin Fase 1 (agente B) ----
   admin.use('/api', createAdminTextosSitioRouter({ pool, apiPost }), createAdminVideosRouter({ pool })); // Ajustes → Textos del inicio; videos en la ficha
+  admin.use('/api', createAdminSeoRouter({ pool, apiPost, datosPath: datosSeoDe(archivoSpaSitio(config)), siteUrl: config.siteUrl || '' })); // Admin → SEO
   admin.use('/api', createAdminContenidoRouter({ contenido, apiPost, log })); // venta de contenido: cuenta de comisión y ventas
+  // Moderación de pedidos personalizados y chats, interesados, créditos de todas y ficha completa (admin, 13/11/2026)
+  const moderacionAdmin = createAdminModeracionRouter({ pool, storage, contenido, destacadas, apiPost, adminUser: config.adminUser || 'admin', invalidar: () => invalidarSitio(), log });
+  admin.use('/api', moderacionAdmin.router);
+  admin.use('/api', createAdminIntegracionesRouter({ telegram, mpCuentas, creditos, apiPost, log })); // Telegram, cuentas de Mercado Pago, WhatsApp
   if (config.tareaContenido !== false) contenido.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
 
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
@@ -1108,6 +1115,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
       generado: new Date().toISOString(),
       ...(await fase1Admin.contadores().catch(() => ({}))), // Fase 1 (agente B)
       ...(await creditosAdmin.contadores().catch(() => ({}))), // Planes v2
+      ...(await moderacionAdmin.contadores().catch(() => ({}))), // pedidos personalizados e interesados
     });
   }));
 
@@ -1346,6 +1354,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
         for (const sql of sqls) await pool.query(sql);
         state.dbReady = true;
         log('base de datos lista (esquema aplicado)');
+        try { await mpCuentas.cargar(); } catch (e) { log('no se pudieron cargar las cuentas de Mercado Pago del admin:', e.code || e.message); }
         try {
           await cargarTextos();
           log(`textos editados cargados: ${textos.valores.size}`);
@@ -1405,6 +1414,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const shutdown = async () => {
     planes.detenerTarea();
     cotizacion.detenerTarea();
+    telegram.detener();
     contenido.detenerTarea();
     videos.detener();
     state.stopping = true;

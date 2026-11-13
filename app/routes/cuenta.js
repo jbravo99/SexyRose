@@ -228,7 +228,7 @@ export function createCuentaRouter(ctx) {
     rl.hit(ipKey);
     await auth.crearSesion(res, cuentaId, req);
     await enviarVerificacion(cuentaId, email, v.datos.displayName).catch((e) => log('mail verificación:', e.message));
-    if (ctx.notify) ctx.notify('Nueva cuenta de acompañante registrada.');
+    if (ctx.notify) ctx.notify('Nueva cuenta de acompañante registrada.', 'cuenta_nueva');
     res.status(201).json({ ok: true, cuenta: await construirYo(cuentaId) });
   }));
 
@@ -355,7 +355,7 @@ export function createCuentaRouter(ctx) {
     if (p.pausadoPorSaldo) return fail(res, 409, 'Tu perfil está pausado porque no alcanzaron los créditos para renovar tu plan. Cargá créditos (se reanuda solo) o desactivá la renovación automática para seguir con Bronce.');
     if (!p.completo) return fail(res, 400, 'Todavía falta completar algunas cosas.', { faltantes: p.faltantes });
     await pool.query("UPDATE perfiles SET estado = 'en_revision', motivo_rechazo = NULL, actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
-    if (ctx.notify) ctx.notify('Hay un perfil nuevo para revisar en el admin.');
+    if (ctx.notify) ctx.notify('Hay un perfil nuevo para revisar en el admin.', 'perfil_revisar');
     res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
   }));
 
@@ -435,7 +435,7 @@ export function createCuentaRouter(ctx) {
       for (const v of viejas.rows) { await storage.borrarPrivado(v.selfie_ruta); await storage.borrarPrivado(v.documento_ruta); }
       await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, consentimiento_at) VALUES ($1, $2, $3, now())', [req.cuenta.id, selfie, documento]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
-      if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.');
+      if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.', 'verificacion');
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
     }));
 
