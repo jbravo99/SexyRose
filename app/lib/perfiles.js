@@ -154,9 +154,9 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
     d.intereses = v;
   }
   if (has('salidas')) {
-    if (!Array.isArray(body.salidas)) return { error: 'Formato de salidas inválido.' };
+    if (!Array.isArray(body.salidas)) return { error: 'Formato de opciones inválido.' };
     const v = [...new Set(body.salidas.map(String))];
-    if (v.length > 20 || v.some((x) => !catalogos.categorias.has(x))) return { error: 'Hay un tipo de salida que no está en la lista.' };
+    if (v.length > 20 || v.some((x) => !catalogos.categorias.has(x))) return { error: 'Hay una opción que no está en la lista.' };
     d.salidas = v;
   }
   if (has('tarifaDesde')) {
@@ -233,7 +233,6 @@ export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos =
     alturaCm: datos.alturaCm || null,
     contextura: datos.contextura || null,
     intereses: datos.intereses || [],
-    salidas: datos.salidas || [],
     tarifaDesde: datos.tarifaDesde ?? null,
     fotos: fotos.map((x) => ({ url: x.url, urlMini: x.url_mini || x.url, ancho: x.ancho, alto: x.alto })),
     videos: videos.map((v) => ({ id: v.id, url: v.url, poster: v.url_poster || null, segundos: v.segundos == null ? null : Number(v.segundos), ancho: v.ancho, alto: v.alto, ...(v.creado ? { creado: v.creado } : {}) })),

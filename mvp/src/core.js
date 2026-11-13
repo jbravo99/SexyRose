@@ -49,9 +49,9 @@ window.HH = (function () {
   HH.planName = (lv) => (HH.LEVELS[lv] || {}).label || 'Sin plan';
   // Presentación para acompañantes (se muestra recién después de registrarse y verificar el email, antes de pagar)
   HH.COMPANION_BENEFITS = [
-    ['shield', 'Vos ponés las reglas', 'Salidas en lugares públicos, sin contenido sexual. Decidís qué proponés, cuándo y con quién. Podés reportar y bloquear a quien no respete eso.'],
-    ['dollar', 'Cobrás en USD', 'La tarifa por salida la acordás directamente con el cliente. El contenido se paga en la plataforma y lo ves acreditado en tu panel.'],
-    ['camera', 'Contenido que vende', 'Fotos, videos y shorts de tus salidas o de tu rutina: sueltos, en packs o a pedido. Vos fijás el precio.'],
+    ['shield', 'Vos ponés las reglas', 'Cada anunciante es responsable de su aviso. Decidís qué publicás y con quién hablás. Podés reportar a quien no respete las reglas.'],
+    ['dollar', 'Cobrás en USD', 'Tu tarifa la definís vos y la acordás directamente con quien te escribe. El contenido se paga en la plataforma y lo ves acreditado en tu panel.'],
+    ['camera', 'Contenido que vende', 'Fotos, videos y shorts: sueltos, en packs o a pedido. Vos fijás el precio.'],
     ['whatsapp', 'Contacto con filtro', 'Tu WhatsApp solo lo ve quien deslizó a la derecha.'],
   ];
   HH.PROFILE_VIDEO_MAX_S = 30;
@@ -82,7 +82,7 @@ window.HH = (function () {
   HH.uniqueActivityId = function (base) { let s = base || 'cat', i = 2; while (HH.db.activities.some(a => a.id === s)) s = base + '-' + (i++); return s; };
   HH.activityUsage = (id) => HH.db.profiles.filter(p => (p.activities || []).includes(id)).length;
   // Ajustes del sitio editables desde admin (portada de inicio, etc.)
-  HH.DEFAULT_SETTINGS = { hero: { eyebrow: 'Compañía para salidas', title: 'Compañía para tu próxima *salida*.', subtitle: 'Elegí con quién tomar un café, recorrer un museo o ir a un evento en tu ciudad. Deslizás, abrís WhatsApp y arman el plan. Sin registro: tu identidad queda reservada.', image: null, ctaPrimary: 'Explorar perfiles', ctaSecondary: 'Cerca de mí' }, nearby: { defaultCity: 'Ciudad de Buenos Aires' } };
+  HH.DEFAULT_SETTINGS = { hero: { eyebrow: 'Sitio de anuncios', title: 'Acompañantes en tu *ciudad*.', subtitle: 'Avisos de acompañantes en tu ciudad. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.', image: null, ctaPrimary: 'Explorar perfiles', ctaSecondary: 'Cerca de mí' }, nearby: { defaultCity: 'Ciudad de Buenos Aires' } };
   HH.settings = () => { if (!HH.db.settings) HH.db.settings = JSON.parse(JSON.stringify(HH.DEFAULT_SETTINGS)); return HH.db.settings; };
   HH.saveSettings = (patch) => { const st = HH.settings(); Object.keys(patch).forEach(k => { st[k] = Object.assign({}, st[k] || {}, patch[k]); }); HH.save(); return st; };
   // Ficha del perfil (datos neutros: nada de medidas ni datos del cuerpo)
@@ -112,7 +112,7 @@ window.HH = (function () {
   // Pedido a medida: el cliente elige foto, video o pack, paga al enviarlo y la acompañante acepta enviando el contenido o rechaza (se reembolsa)
   HH.REQUEST_KINDS = {
     photo: { label: 'Foto', icon: 'image', hint: 'Una foto pensada para vos' },
-    video: { label: 'Video', icon: 'video', hint: 'Un video corto: saludo, recomendación, recorrido' },
+    video: { label: 'Video', icon: 'video', hint: 'Un video corto: un saludo o una recomendación' },
     pack: { label: 'Pack', icon: 'pack', hint: 'Varias fotos y/o videos sobre lo que pidas' },
   };
   HH.DEFAULT_REQUEST_PRICES = { photo: 8, video: 15, pack: 25 };
@@ -429,11 +429,11 @@ window.HH = (function () {
     const photos = (p.photos || []).filter(Boolean).length;
     const items = [
       (() => { const loc = HH.locByName && HH.locByName(p.homeCity || p.city); const locPending = !!loc && loc.status === 'pending';
-        return { key: 'identity', label: 'Verificar identidad' + (locPending ? ' y ubicación' : ''), done: p.verified === 'verified' && !locPending && !!loc, pending: p.verified === 'pending' || (p.verified === 'verified' && locPending), go: '#panel.verificacion', hint: locPending ? 'Documento, selfie y un video corto. También revisamos tu localidad nueva (' + HH.esc(loc.name) + ') para sumarla al sitio.' : 'Documento, selfie y un video corto de 5 segundos. Lo revisamos en menos de 24 h.' }; })(),
+        return { key: 'identity', label: 'Verificar identidad' + (locPending ? ' y ubicación' : ''), done: p.verified === 'verified' && !locPending && !!loc, pending: p.verified === 'pending' || (p.verified === 'verified' && locPending), go: '#panel.verificacion', hint: locPending ? 'Documento, selfie y un video corto. Tu localidad nueva (' + HH.esc(loc.name) + ') se suma al sitio al verificar tu cuenta.' : 'Documento, selfie y un video corto de 5 segundos.' }; })(),
       { key: 'email', label: 'Verificar email', done: p.emailVerified !== false, action: 'verifyContact', kind: 'email', hint: 'Te mandamos un código de 6 dígitos.' },
       { key: 'whatsapp', label: 'Verificar WhatsApp', done: p.whatsappVerified !== false && /\d{8,}/.test((p.whatsapp || '').replace(/\D/g, '')), action: 'verifyContact', kind: 'whatsapp', hint: 'Es el número al que te escriben los clientes.' },
       { key: 'avatar', label: 'Subir foto de perfil', done: !!(p.photos || [])[0], go: '#panel.perfil', hint: 'La que se ve en el swipe y en las historias.' },
-      { key: 'photos', label: `Subir fotos (${Math.min(photos, HH.PHOTOS_REQUIRED)}/${HH.PHOTOS_REQUIRED})`, done: photos >= HH.PHOTOS_REQUIRED, go: '#panel.perfil', hint: 'Fotos reales, de cara visible y en lugares públicos.' },
+      { key: 'photos', label: `Subir fotos (${Math.min(photos, HH.PHOTOS_REQUIRED)}/${HH.PHOTOS_REQUIRED})`, done: photos >= HH.PHOTOS_REQUIRED, go: '#panel.perfil', hint: 'Fotos reales, de cara visible.' },
     ];
     const done = items.filter(i => i.done).length;
     return { items, done, total: items.length, ok: done === items.length };
@@ -441,7 +441,7 @@ window.HH = (function () {
   HH.profileCompleteness = function (p) {
     const items = [
       { key: 'bio', label: 'Escribí tu presentación', done: (p.bio || '').length >= 40, go: '#panel.perfil' },
-      { key: 'activities', label: 'Elegí qué salidas ofrecés', done: (p.activities || []).length >= 2, go: '#panel.perfil' },
+      ...(HH.ACTIVITIES.length ? [{ key: 'activities', label: 'Elegí tus categorías', done: (p.activities || []).length >= 2, go: '#panel.perfil' }] : []),
       { key: 'city', label: 'Indicá tu ciudad', done: !!p.city, go: '#panel.perfil' },
       { key: 'plan', label: 'Activá un plan', done: !!HH.levelOf(p.userId), go: '#panel.suscripcion' },
       { key: 'content', label: 'Publicá tu primer contenido', done: HH.contentOf(p.userId).length > 0, go: '#panel.contenido' },

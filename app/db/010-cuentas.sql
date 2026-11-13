@@ -248,6 +248,6 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO ajustes (clave, valor) VALUES
   ('precios', '{"mes": {"E": 0, "D": 35, "C": 90, "S": 350}, "semana": {"C": 27, "S": 105}}'::jsonb),  -- Planes v2 (ver 050)
   ('transferencia', '""'::jsonb),
-  ('portada', '{"titulo": "Acompañantes para salidas", "subtitulo": "Perfiles verificados en toda la Argentina"}'::jsonb),
+  ('portada', '{"titulo": "Avisos de acompañantes", "subtitulo": "Contacto directo con cada anunciante"}'::jsonb),  -- texto viejo: ver 100
   ('promo', '""'::jsonb)
 ON CONFLICT (clave) DO NOTHING;

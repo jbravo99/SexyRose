@@ -289,7 +289,9 @@ describe('build del sitio (app/scripts/build-sitio.py)', () => {
       const seoDatos = JSON.parse(await fs.readFile(path.join(out, 'seo-datos.json'), 'utf8'));
       assert.ok(seoDatos.defaults.tpl.es.place.title.includes('{lugar}'));
       assert.equal(seoDatos.lugares['Ciudad de Buenos Aires'].slug, 'buenos-aires');
-      assert.deepEqual(seoDatos.dict.Cena, ['Dinner', 'Jantar']);
+      assert.deepEqual(seoDatos.dict['Provincia de Buenos Aires'], ['Buenos Aires Province', 'Província de Buenos Aires']);
+      // Sin actividades en el sitio (12/11/2026): sus nombres no viajan en el diccionario ni hay plantilla de lugar + actividad
+      assert.equal(seoDatos.dict.Cena, undefined); assert.equal(seoDatos.defaults.tpl.es.placeAct, undefined);
       const ls = await fs.readdir(path.join(out, 'assets'));
       const js = ls.find((n) => /^app\.[0-9a-f]{12}\.js$/.test(n)); const css = ls.find((n) => /^app\.[0-9a-f]{12}\.css$/.test(n)); const dic = ls.find((n) => /^i18n\.[0-9a-f]{12}\.js$/.test(n));
       assert.ok(js && css && dic, ls.join(','));

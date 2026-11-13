@@ -1,5 +1,6 @@
 // SEO del sitio público en el servidor: para cada dirección del SPA arma título, descripción, canonical, hreflang
-// (es/en/pt), robots, og:* y el código HTTP (404 si el perfil, el lugar o el tipo de salida no existe), con los
+// (es/en/pt), robots, og:* y el código HTTP (404 si el perfil o el lugar no existe; 301 a la página de la ciudad para
+// las direcciones viejas de lugar + actividad, que ya no existen: el sitio no menciona actividades), con los
 // mismos datos que ve el SPA (/api/sitio/estado) y las mismas reglas que mvp/src/urls.js y mvp/src/seo.js
 // (plantillas por defecto, slugs, "indexable con al menos N perfiles"). También arma /sitemap.xml.
 //
@@ -27,14 +28,12 @@ const PERFIL_NO = { es: 'Perfil no encontrado', en: 'Profile not found', pt: 'Pe
 const STARS = { es: 'Stars: perfiles destacados por provincia', en: 'Stars: featured profiles by region', pt: 'Stars: perfis em destaque por região' };
 const REGISTRO = {
   title: { es: 'Publicá tu perfil de acompañante', en: 'Publish your companion profile', pt: 'Publique seu perfil' },
-  description: { es: 'Publicá tu perfil para salidas en SexyRose: verificación automática, planes mensuales y contacto directo con tus clientes por WhatsApp.', en: 'Publish your profile for outings on SexyRose: automatic verification, monthly plans and direct contact with your clients on WhatsApp.', pt: 'Publique seu perfil para passeios no SexyRose: verificação automática, planos mensais e contato direto com seus clientes pelo WhatsApp.' },
+  description: { es: 'Publicá tu aviso en SexyRose: planes mensuales y contacto directo por WhatsApp o Telegram.', en: 'Publish your ad on SexyRose: monthly plans and direct contact on WhatsApp or Telegram.', pt: 'Publique seu anúncio no SexyRose: planos mensais e contato direto pelo WhatsApp ou Telegram.' },
 };
 
 // Igual que HH.slugify (core.js)
 export const slugify = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const fill = (t, v) => String(t || '').replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m)).replace(/\s+/g, ' ').replace(/\s([.,:;])/g, '$1').trim();
-const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const low = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…'; };
 const dia = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10); };
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -64,11 +63,6 @@ function modelo(estado, datos) {
     const inside = locs.filter((l) => l.id !== country.id && pathOf(l)[0] && pathOf(l)[0].id === country.id);
     return inside.find((l) => locSlug(l) === s) || inside.find((l) => slugify(l.name) === s) || null;
   };
-  const acts = (estado.categorias || []).filter((c) => c.activa !== false).map((c) => ({ id: c.id, label: c.nombre }));
-  const actById = new Map(acts.map((a) => [a.id, a]));
-  const actSlug = (a, lang) => (!lang || lang === 'es' ? a.id : slugify(t(a.label, lang)) || a.id);
-  const actBySlug = (s, lang) => acts.find((a) => a.id === s || actSlug(a, lang) === s || LANGS.some((l) => actSlug(a, l) === s)) || null;
-  const actLabel = (id, lang) => { const a = actById.get(id); return a ? t(a.label, lang) : ''; };
 
   const perfiles = (estado.perfiles || []).map((p) => {
     const ids = p.ubicacionIds || {};
@@ -77,7 +71,7 @@ function modelo(estado, datos) {
   });
   const bySlug = new Map(perfiles.map((p) => [p.slug, p]));
   const placeProfiles = (loc, actId, g) => perfiles.filter((p) => (g ? (p.genero || 'mujer') === g : VISIBLES.has(p.genero || 'mujer'))
-    && p.dentro.has(loc.id) && (!actId || (p.salidas || []).includes(actId)));
+    && p.dentro.has(loc.id));
   const minProfiles = Math.max(1, Number(datos.defaults.minProfiles) || 1);
   const indexable = (loc, actId, g) => {
     const list = placeProfiles(loc, actId, g);
@@ -101,7 +95,6 @@ function modelo(estado, datos) {
       if (parts[0] === 'lugar') {
         out += '/' + enc(parts[2] || '');
         if (parts[3] === GENDER.key) out += '/' + GENDER.words[lang];
-        else if (parts[3]) { const a = actById.get(parts[3]); out += '/' + enc(a ? actSlug(a, lang) : parts[3]); }
       }
       return out;
     }
@@ -127,9 +120,9 @@ function modelo(estado, datos) {
     const loc = locBySlug(country, segs[1].toLowerCase());
     if (!loc || segs.length > 3) return { key: '404', lang };
     if (segs[2] && isG(segs[2])) return { key: placeKey(loc, null, GENDER.gender), lang };
-    let act = null;
-    if (segs[2]) { act = actBySlug(segs[2].toLowerCase(), lang); if (!act) return { key: '404', lang }; }
-    return { key: placeKey(loc, act && act.id), lang };
+    // Direcciones viejas de lugar + actividad (/argentina/san-isidro/cena): ya no existen → 301 a la página del lugar
+    if (segs[2]) return { key: placeKey(loc), lang, redirect: true };
+    return { key: placeKey(loc), lang };
   };
   const placeOf = (key) => {
     const parts = key.split('.');
@@ -138,11 +131,10 @@ function modelo(estado, datos) {
     if (parts[0] === 'pais' && parts.length > 2) return null;
     const country = countryBySlug(parts[1]); if (!country) return null;
     const loc = parts[0] === 'pais' ? country : locBySlug(country, parts[2]); if (!loc) return null;
-    const act = parts[0] === 'lugar' && parts[3] ? actById.get(parts[3]) : null;
-    if (parts[3] && !act) return null;
-    return { loc, act, g };
+    if (parts[3]) return null; // sin páginas de actividad
+    return { loc, act: null, g };
   };
-  return { t, locs, countries, pathOf, perfiles, bySlug, acts, actLabel, locSeoName, placeProfiles, indexable, placeKey, urlOf, parse, placeOf };
+  return { t, locs, countries, pathOf, perfiles, bySlug, locSeoName, placeProfiles, indexable, placeKey, urlOf, parse, placeOf };
 }
 
 export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
@@ -170,7 +162,9 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
   async function meta(pathname) {
     const a = await actual(); if (!a) return null;
     const { m: M, d } = a;
-    const { key, lang } = M.parse(pathname);
+    const { key, lang, redirect } = M.parse(pathname);
+    // Dirección vieja de actividad → 301 a la página del lugar (en el mismo idioma)
+    if (redirect) return { key, lang, status: 301, location: M.urlOf(key, lang) };
     const top = key.split('.')[0]; const base = site(d);
     const abs = (k, l) => base + M.urlOf(k, l);
     const alts = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = abs(k, l); }); o['x-default'] = abs(k, 'es'); return o; };
@@ -182,9 +176,9 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       const pl = M.placeOf(key);
       if (!pl) return no(NO_ENCONTRADA);
       const n = M.placeProfiles(pl.loc, pl.act && pl.act.id, pl.g).length;
-      const type = pl.g ? (pl.loc.level === 'country' ? 'countryMen' : 'placeMen') : pl.act ? 'placeAct' : pl.loc.level === 'country' ? 'country' : 'place';
-      const country = M.pathOf(pl.loc)[0] || pl.loc; const al = pl.act ? M.actLabel(pl.act.id, lang) : '';
-      const v = { pais: M.locSeoName(country, lang), lugar: M.locSeoName(pl.loc, lang), ciudad: M.locSeoName(pl.loc, lang), actividad: low(al), Actividad: cap(al), cantidad: n };
+      const type = pl.g ? (pl.loc.level === 'country' ? 'countryMen' : 'placeMen') : pl.loc.level === 'country' ? 'country' : 'place';
+      const country = M.pathOf(pl.loc)[0] || pl.loc;
+      const v = { pais: M.locSeoName(country, lang), lugar: M.locSeoName(pl.loc, lang), ciudad: M.locSeoName(pl.loc, lang), cantidad: n };
       r.title = fill(get(d, 'tpl.' + type + '.title', lang), v);
       r.description = clip(fill(get(d, 'tpl.' + type + '.description', lang), v), 160);
       r.alternates = alts(key);
@@ -194,7 +188,7 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       if (!p) return no(PERFIL_NO);
       const lugar = p.loc ? M.locSeoName(p.loc, lang) : p.cityName;
       const country = p.loc ? M.pathOf(p.loc)[0] : null;
-      const v = { nombre: p.displayName, edad: p.edad || '', lugar, ciudad: lugar, pais: country ? M.locSeoName(country, lang) : (p.pais || ''), salidas: (p.salidas || []).map((x) => low(M.actLabel(x, lang))).filter(Boolean).join(', '), bio: clip(lang === 'en' && p.bioEn ? p.bioEn : p.bio, 110) };
+      const v = { nombre: p.displayName, edad: p.edad || '', lugar, ciudad: lugar, pais: country ? M.locSeoName(country, lang) : (p.pais || ''), bio: clip(lang === 'en' && p.bioEn ? p.bioEn : p.bio, 110) };
       r.title = fill(get(d, 'tpl.profile.title', lang), v);
       r.description = clip(fill(get(d, 'tpl.profile.description', lang), v), 160);
       r.alternates = alts(key); r.type = 'profile';
@@ -241,7 +235,7 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
     return out;
   }
 
-  // Mapa del sitio: portada, países, páginas de hombres, lugares y lugar × salida con perfiles suficientes,
+  // Mapa del sitio: portada, países, páginas de hombres y lugares con perfiles suficientes,
   // perfiles publicados; cada dirección en los tres idiomas con sus alternativas. Caché de 10 minutos.
   let sm = { xml: null, at: 0 };
   async function sitemap(extras = []) {
@@ -268,7 +262,6 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       if (M.indexable(l, null, GENDER.gender)) add(M.placeKey(l, null, GENDER.gender), ultimo(M.placeProfiles(l, null, GENDER.gender)), '0.7');
       if (!M.indexable(l)) continue;
       add(M.placeKey(l), ultimo(M.placeProfiles(l)), '0.8');
-      for (const act of M.acts) if (M.indexable(l, act.id)) add(M.placeKey(l, act.id), ultimo(M.placeProfiles(l, act.id)), '0.6');
     }
     for (const p of pub) add('perfil.' + p.slug, dia(p.actualizado) || hoy, '0.7');
     sm = { xml: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${filas.join('\n')}\n</urlset>\n`, at: Date.now() };

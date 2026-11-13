@@ -71,7 +71,7 @@ export async function armarEstado(pool, planesInst) {
     ahora: new Date().toISOString(),
     ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null },
     ubicaciones: cat.ubicaciones.filter((u) => u.activa).map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden })),
-    categorias: cat.categoriasLista.filter((c) => c.activa).map((c) => ({ id: c.id, nombre: c.nombre, icono: c.icono, orden: c.orden })),
+    // Las actividades (tabla categorias) no se publican: el sitio es de anuncios y no menciona qué se ofrece
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),
     perfiles: lista,
     historias: historias.rows.map((h) => ({

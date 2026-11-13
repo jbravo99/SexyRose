@@ -383,7 +383,7 @@ describe('enviar a revisión y sitio público', () => {
     let r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 400); assert.ok(r.body.faltantes.length >= 4);
     await new Cliente().json('POST', '/api/cuenta/verificar-email', { token: ultimoLink(a.email, '/cuenta/verificar') });
-    await a.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Hola', nacionalidad: 'Argentina' });
+    await a.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Hola', nacionalidad: 'Argentina', intereses: ['arte', 'vinos'] });
     for (let i = 0; i < 3; i++) await a.subir('/api/cuenta/fotos', { foto: await jpeg() });
     r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 400); assert.deepEqual(r.body.faltantes, ['Enviá tu verificación de identidad (selfie y documento).']);
@@ -394,7 +394,8 @@ describe('enviar a revisión y sitio público', () => {
     const pub = new Cliente();
     invalidarSitio();
     let e = (await pub.get('/api/sitio/estado')).body;
-    assert.ok(Array.isArray(e.perfiles) && e.ubicaciones.length > 50 && e.categorias.length >= 11 && e.intereses.length === 16);
+    assert.ok(Array.isArray(e.perfiles) && e.ubicaciones.length > 50 && e.intereses.length === 16);
+    assert.equal(e.categorias, undefined); // el sitio no publica actividades (12/11/2026)
     assert.ok(e.ajustes.precios.mes.S === 350 && e.ajustes.precios.semana.C === 27 && !('B' in e.ajustes.precios.mes));
     assert.ok(!e.perfiles.some((p) => p.cuentaId === a.yo.id));
 
@@ -413,6 +414,11 @@ describe('enviar a revisión y sitio público', () => {
     assert.equal(p.edad > 18, true); assert.equal(p.plan, 'E'); assert.equal(p.star, false);
     assert.equal(p.fotos.length, 3); assert.equal(p.contacto.whatsapp, '+5493511234567');
     assert.ok(!('fechaNacimiento' in p) && !('email' in p));
+    assert.ok(!('salidas' in p)); // las actividades no se publican
+    // Intereses: el sitio filtra por ellos (inicio, Cerca y Swipe): la lista del admin con nombres por idioma y los ids de cada perfil
+    assert.deepEqual(p.intereses, ['arte', 'vinos']);
+    const arte = e.intereses.find((x) => x.id === 'arte');
+    assert.ok(arte && arte.nombre === 'Arte' && arte.nombreEn === 'Art' && arte.nombrePt === 'Arte');
     assert.ok(e.historias.some((h) => h.cuentaId === a.yo.id && h.texto === 'Hoy'));
     assert.equal((await pub.get('/api/sitio/perfil/' + p.slug)).body.slug, p.slug);
     assert.equal((await pub.get('/api/sitio/perfil/no-existe-zz')).status, 404);

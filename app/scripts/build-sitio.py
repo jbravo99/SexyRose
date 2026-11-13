@@ -130,6 +130,27 @@ def js_literal(src: str, start: int) -> str:
     raise ValueError('literal sin cerrar')
 
 
+# Textos del prototipo que hablaban de actividades o prometían cosas (criterio "sitio de anuncios", 12/11/2026):
+# el diccionario en/pt es compartido con el prototipo, así que al sitio solo viajan esas entradas si el texto
+# todavía está en el código del sitio (las demás quedarían como traducciones huérfanas en el navegador).
+RESTOS = re.compile(r"salidas?\b|\bcenas?\b|caf[eé]s?\b|museos?\b|helados?\b|paseos?\b|\bcine\b|eventos?\b|"
+                    r"lugares p[uú]blicos|sin contenido sexual|verificad[ao]s\b|garantiz|revisamos|tu pr[oó]xima|"
+                    r"\bouting|\bdinners?\b|\bcoffee\b|\bmuseums?\b|\bpasseios?\b|\bjantar|\bmuseus?\b", re.I)
+
+
+def sin_restos(dic_literal: str, app: str) -> str:
+    try:
+        d = json.loads(dic_literal)
+    except ValueError:
+        return dic_literal
+    def esta(k):
+        partes = [x for x in re.split(r'\{[xn]\}', k) if len(x.strip()) >= 4] or [k]
+        return all(re.search(('\\b' if x[:1].isalnum() else '') + re.escape(x) + ('\\b' if x[-1:].isalnum() else ''), app) for x in partes)
+    def resto(k, v):
+        return bool(RESTOS.search(k) or any(RESTOS.search(str(t)) for t in (v if isinstance(v, list) else [v])))
+    return json.dumps({k: v for k, v in d.items() if not resto(k, v) or esta(k)}, ensure_ascii=False, separators=(',', ':'))
+
+
 def seo_datos(dic_literal: str) -> dict:
     """Plantillas SEO y nombres de lugares del SPA (evaluados con node) + traducciones cortas del diccionario."""
     src = ROOT / 'mvp' / 'src'
@@ -225,7 +246,7 @@ def main() -> int:
         print('error: no encuentro el diccionario (i18n-dict.js) en el build', file=sys.stderr)
         return 1
     app = app[:m.start()] + app[m.end():]
-    dic_literal = m.group(1)
+    dic_literal = sin_restos(m.group(1), app)
     dic = 'HH.I18N=Object.assign(' + dic_literal + ',HH.I18N||{});HH.I18N_BASE=1;'
     # Mensajes del servidor en en/pt (prod-sitio-errores.js): también van al diccionario, sin pisar lo que ya hay
     m = re.search(r'/\* ===== prod-sitio-errores\.js ===== \*/[\s\S]*?Object\.assign\(HH\.I18N = HH\.I18N \|\| \{\}, (\{[\s\S]*?\})\);\s*\}\)\(\);\s*(?=/\* ===== )', app)

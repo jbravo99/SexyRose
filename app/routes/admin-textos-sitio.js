@@ -18,16 +18,18 @@ const MAX_FAQ = 12;
 // Los textos que el sitio muestra hoy (no cambiar la redacción: es lo que ve el visitante si no se editó nada)
 export const TEXTOS_SITIO_DEFAULT = Object.freeze({
   es: {
-    heroEyebrow: 'Compañía para salidas',
-    heroTitulo: 'Compañía para tu próxima *salida*.',
-    heroSubtitulo: 'Elegí con quién tomar un café, recorrer un museo o ir a un evento en tu ciudad. Deslizás, abrís WhatsApp y arman el plan. Sin registro: tu identidad queda reservada.',
+    heroEyebrow: 'Sitio de anuncios',
+    heroTitulo: 'Acompañantes en tu *ciudad*.',
+    heroSubtitulo: 'Avisos de acompañantes en tu ciudad. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.',
     faqTitulo: 'Lo que todos preguntan antes de empezar',
     faq: [
-      { pregunta: '¿Es seguro?', respuesta: 'Las salidas son siempre en lugares públicos: cafés, museos, parques, eventos. Los perfiles de acompañantes pasan por verificación de identidad y cualquier conducta inapropiada se puede reportar desde el perfil. El WhatsApp se comparte solo después de que vos mostrás interés.' },
-      { pregunta: '¿Qué incluye una salida?', respuesta: 'Compañía y buena conversación para la actividad que propongas: un café, una muestra, una caminata, un recital, una cena de trabajo. El plan, la duración y la tarifa los acordás directamente con la acompañante por WhatsApp.' },
-      { pregunta: '¿Qué no está permitido?', respuesta: 'Ningún tipo de contenido o propuesta sexual, ni dentro ni fuera de la plataforma. Tampoco insistir después de un no, pedir datos personales que no fueron ofrecidos ni proponer encuentros en lugares privados. Quien lo hace queda fuera.' },
-      { pregunta: '¿Cómo funciona la verificación?', respuesta: 'Cada acompañante envía una selfie con su documento y una foto del documento, que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Solo se publican los perfiles verificados.' },
-      { pregunta: '¿Puedo cancelar?', respuesta: 'Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Los planes de las acompañantes se pagan por mes o por semana y no se renuevan solos.' },
+      { pregunta: '¿Qué es SexyRose?', respuesta: 'Es un sitio de anuncios. Cada acompañante publica su propio aviso y es la única responsable de lo que publica y de lo que ofrece. SexyRose no organiza, no intermedia, no cobra ni participa en ningún encuentro entre usuarios y anunciantes.' },
+      { pregunta: '¿SexyRose garantiza algo sobre los anunciantes?', respuesta: 'No. No garantizamos la conducta de los anunciantes ni de los usuarios, ni la veracidad de las fotos, los datos o las tarifas publicadas. Todo lo que se acuerde es entre las partes y bajo su exclusiva responsabilidad.' },
+      { pregunta: '¿Cómo contacto a una acompañante?', respuesta: 'Directamente, por su WhatsApp o su Telegram. Lo que hablen y acuerden queda entre ustedes: SexyRose no tiene acceso a esas conversaciones ni interviene en ellas.' },
+      { pregunta: '¿Se verifican los perfiles?', respuesta: 'Al crear el perfil pedimos un documento y una selfie para confirmar que quien publica es mayor de edad y es la persona del aviso. Esa verificación no garantiza su conducta ni lo que publique después.' },
+      { pregunta: '¿Quién vende el contenido?', respuesta: 'Cada acompañante produce y vende su propio contenido. SexyRose solo provee la plataforma. Los reclamos sobre el contenido son con quien lo vende.' },
+      { pregunta: '¿Qué no está permitido?', respuesta: 'Publicar o pedir cualquier cosa que involucre a menores, la trata o la explotación de personas, contenido de alguien sin su consentimiento, y cualquier actividad ilegal. Quien lo haga es dado de baja y, si corresponde, denunciado ante las autoridades.' },
+      { pregunta: '¿Cómo hago una denuncia?', respuesta: 'Con el botón Reportar de cada perfil o desde la página Denunciar. Si sospechás que hay una menor o un caso de trata, llamá también a la Línea 145, gratis y las 24 horas.' },
     ],
   },
 });

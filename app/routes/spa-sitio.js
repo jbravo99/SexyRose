@@ -190,6 +190,8 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
         const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
         const m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
         if (!m) return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, headers);
+        // Dirección vieja de lugar + actividad: 301 a la página del lugar (las actividades ya no se muestran)
+        if (m.status === 301 && m.location) { const q = req.originalUrl.indexOf('?'); return res.redirect(301, m.location + (q >= 0 ? req.originalUrl.slice(q) : '')); }
         if (m.status === 404) headers['X-Robots-Tag'] = 'noindex';
         return enviar(req, res, paquetePagina(seo.aplicar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'), m)), headers, m.status);
       }

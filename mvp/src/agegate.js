@@ -31,7 +31,7 @@
     return `<div class="ag-box" data-noi18n>
       <div class="ag-top"><span class="brand"><span class="mark">${icon('heart')}</span><span>SexyRose</span></span>${HH.langSelect ? HH.langSelect() : ''}</div>
       <div class="ag-head"><span class="ag-18">18+</span><h2 id="agT">${esc(T('Antes de entrar'))}</h2></div>
-      <p class="small muted">${esc(T('SexyRose es un sitio para mayores de 18 años. Las salidas son en lugares públicos y sin contenido sexual.'))}</p>
+      <p class="small muted">${esc(T('SexyRose es un sitio de anuncios para mayores de 18 años. Cada anunciante es responsable de su aviso.'))}</p>
       <div class="ag-q" id="agQ">${esc(T('¿Qué buscás?'))}</div>
       <div class="ag-opts" role="group" aria-labelledby="agQ">${HH.GENDERS.map(g => `<button type="button" class="ag-opt${sel.includes(g.id) ? ' on' : ''}" data-ag="${g.id}" aria-pressed="${sel.includes(g.id)}">${icon(g.icon)}<span>${esc(T(g.plural))}</span><span class="ag-tick">${icon('check')}</span></button>`).join('')}</div>
       <span class="tiny muted">${esc(T('Podés elegir más de una y cambiarlo después desde la barra.'))}</span>
@@ -64,9 +64,8 @@
 
   /* ---------- Traducciones (v56) ---------- */
   Object.assign(HH.I18N = HH.I18N || {}, {
-    "Pagos online": ["Online payments", "Pagamentos online"],
     "Antes de entrar": ["Before you enter", "Antes de entrar"],
-    "SexyRose es un sitio para mayores de 18 años. Las salidas son en lugares públicos y sin contenido sexual.": ["SexyRose is for adults 18 and over. Outings take place in public places and involve no sexual content.", "A SexyRose é para maiores de 18 anos. Os passeios são em lugares públicos e sem conteúdo sexual."],
+    "SexyRose es un sitio de anuncios para mayores de 18 años. Cada anunciante es responsable de su aviso.": ["SexyRose is an ads site for adults 18 and over. Each advertiser is responsible for their own ad.", "O SexyRose é um site de anúncios para maiores de 18 anos. Cada anunciante é responsável pelo seu anúncio."],
     "¿Qué buscás?": ["What are you looking for?", "O que você procura?"],
     "Podés elegir más de una y cambiarlo después desde la barra.": ["You can choose more than one and change it later from the top bar.", "Você pode escolher mais de uma e mudar depois pela barra."],
     "Soy mayor de 18 · Entrar": ["I'm 18 or older · Enter", "Tenho 18 anos ou mais · Entrar"],

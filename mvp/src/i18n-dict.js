@@ -165,6 +165,14 @@ HH.I18N = {
 "Companions in all cities",
 "Acompanhantes em todas as cidades"
 ],
+"Acompañantes en tu": [
+"Companions in your",
+"Acompanhantes na sua"
+],
+"Acompañantes en tu *ciudad*.": [
+"Companions in your *city*.",
+"Acompanhantes na sua *cidade*."
+],
 "Acompañantes en {x}": [
 "Companions in {x}",
 "Acompanhantes em {x}"
@@ -216,10 +224,6 @@ HH.I18N = {
 "Acá vas a ver me gusta, ventas, pedidos, reservas y solicitudes de chat.": [
 "Here you'll see likes, sales, requests, bookings and chat requests.",
 "Aqui você vai ver curtidas, vendas, pedidos, reservas e solicitações de chat."
-],
-"Acá vas a ver tus compras, pedidos, reservas y chats.": [
-"Here you'll see your purchases, requests, bookings and chats.",
-"Aqui você vai ver suas compras, pedidos, reservas e chats."
 ],
 "Acá vas a ver worker.": [
 "Here you'll see worker.",
@@ -308,6 +312,10 @@ HH.I18N = {
 "Ajustes": [
 "Settings",
 "Ajustes"
+],
+"Al crear el perfil pedimos un documento y una selfie para confirmar que quien publica es mayor de edad y es la persona del aviso. Esa verificación no garantiza su conducta ni lo que publique después.": [
+"When a profile is created we ask for an ID and a selfie to confirm that the person publishing is of legal age and is the person in the ad. That verification does not guarantee her conduct or what she publishes afterwards.",
+"Ao criar o perfil pedimos um documento e uma selfie para confirmar que quem publica é maior de idade e é a pessoa do anúncio. Essa verificação não garante a conduta dela nem o que ela publicar depois."
 ],
 "Al día": [
 "Up to date",
@@ -472,6 +480,10 @@ HH.I18N = {
 "Avisarme cada solicitud al": [
 "Notify me of each request at",
 "Me avisar de cada solicitação no"
+],
+"Avisos de acompañantes en tu ciudad. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.": [
+"Companion ads in your city. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.",
+"Anúncios de acompanhantes na sua cidade. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram."
 ],
 "Avisos de reservas": [
 "Booking notifications",
@@ -641,6 +653,18 @@ HH.I18N = {
 "Each companion submits her ID, a selfie, and a short video that the SexyRose team reviews: we confirm she's an adult and that she's the person in the photos. Once approved, the profile shows the Verified badge. New profiles can go live while verification is in progress.",
 "Cada acompanhante envia seu documento, uma selfie e um vídeo curto que a equipe da SexyRose analisa: confirmamos que ela é maior de idade e que é a pessoa das fotos. Quando aprovado, o perfil mostra o selo Verificada. Perfis novos podem ser publicados enquanto a verificação está em andamento."
 ],
+"Cada acompañante produce y vende su propio contenido. SexyRose solo provee la plataforma. Los reclamos sobre el contenido son con quien lo vende.": [
+"Each companion produces and sells her own content. SexyRose only provides the platform. Complaints about the content are with whoever sells it.",
+"Cada acompanhante produz e vende o próprio conteúdo. O SexyRose só fornece a plataforma. As reclamações sobre o conteúdo são com quem o vende."
+],
+"Cada anunciante es responsable de su aviso. Decidís qué publicás y con quién hablás. Podés reportar a quien no respete las reglas.": [
+"Each advertiser is responsible for their ad. You decide what you publish and who you talk to. You can report anyone who breaks the rules.",
+"Cada anunciante é responsável pelo seu anúncio. Você decide o que publica e com quem fala. Você pode denunciar quem não respeitar as regras."
+],
+"Cada anunciante es responsable de su aviso. Si ves algo que no cumple las reglas, reportalo.": [
+"Each advertiser is responsible for their ad. If you see something that breaks the rules, report it.",
+"Cada anunciante é responsável pelo seu anúncio. Se vir algo que não cumpre as regras, denuncie."
+],
 "Cada vez que alguien compra tu contenido": [
 "Every time someone buys your content",
 "Toda vez que alguém compra seu conteúdo"
@@ -652,10 +676,6 @@ HH.I18N = {
 "Café de la mañana en Palermo": [
 "Morning coffee in Palermo",
 "Café da manhã em Palermo"
-],
-"Café · {x} · {n}:{n} a {n}:{n} h": [
-"Coffee · {x} · {n}:{n} to {n}:{n}",
-"Café · {x} · {n}:{n} às {n}:{n}"
 ],
 "Cambiar": [
 "Change",
@@ -780,6 +800,10 @@ HH.I18N = {
 "Cataluña": [
 "Catalonia",
 "Catalunha"
+],
+"Categoría": [
+"Category",
+"Categoria"
 ],
 "Categorías": [
 "Categories",
@@ -953,22 +977,6 @@ HH.I18N = {
 "Share your location to filter by distance",
 "Compartilhe sua localização para filtrar por distância"
 ],
-"Compañía para salidas": [
-"Company for outings",
-"Companhia para passeios"
-],
-"Compañía para tu próxima": [
-"Company for your next",
-"Companhia para o seu próximo"
-],
-"Compañía para tu próxima *salida*.": [
-"Company for your next *outing*.",
-"Companhia para o seu próximo *passeio*."
-],
-"Compañía y buena conversación para la actividad que propongas: un café, una muestra, una caminata, un recital, una cena de trabajo. El plan, la duración y la tarifa los acordás directamente con la acompañante por WhatsApp.": [
-"Company and good conversation for whatever activity you suggest: a coffee, an exhibition, a walk, a concert, a business dinner. You agree on the plan, length, and rate directly with the companion on WhatsApp.",
-"Companhia e boa conversa para a atividade que você propuser: um café, uma exposição, uma caminhada, um show, um jantar de trabalho. O plano, a duração e a tarifa você combina diretamente com a acompanhante pelo WhatsApp."
-],
 "Completá el email y la contraseña.": [
 "Enter your email and password.",
 "Preencha o email e a senha."
@@ -1025,6 +1033,10 @@ HH.I18N = {
 "Community of Madrid",
 "Comunidade de Madri"
 ],
+"Con el botón Reportar de cada perfil o desde la página Denunciar. Si sospechás que hay una menor o un caso de trata, llamá también a la Línea 145, gratis y las 24 horas.": [
+"With the Report button on each profile or from the Report page. If you suspect a minor or a trafficking case, also call the 145 hotline (Argentina), free and 24 hours a day.",
+"Com o botão Denunciar de cada perfil ou pela página Denunciar. Se você suspeitar que há uma menor ou um caso de tráfico, ligue também para a Linha 145 (Argentina), gratuita e 24 horas."
+],
 "Con la agenda los clientes reservan salidas en tus horarios libres y te pagan la seña por adelantado.": [
 "With the calendar, clients book outings during your free time slots and pay you the deposit in advance.",
 "Com a agenda, os clientes reservam passeios nos seus horários livres e pagam o sinal antecipado."
@@ -1068,6 +1080,10 @@ HH.I18N = {
 "Contacto con filtro": [
 "Filtered contact",
 "Contato com filtro"
+],
+"Contacto directo con cada anunciante": [
+"Direct contact with each advertiser",
+"Contato direto com cada anunciante"
 ],
 "Contactos": [
 "Contacts",
@@ -1240,10 +1256,6 @@ HH.I18N = {
 "Crear destacada": [
 "Create highlight",
 "Criar destaque"
-],
-"Crear mi perfil y reservar": [
-"Create my profile and book",
-"Criar meu perfil e reservar"
 ],
 "Crear pack": [
 "Create pack",
@@ -1589,6 +1601,10 @@ HH.I18N = {
 "Link {n} URL",
 "Endereço do link {n}"
 ],
+"Directamente, por su WhatsApp o su Telegram. Lo que hablen y acuerden queda entre ustedes: SexyRose no tiene acceso a esas conversaciones ni interviene en ellas.": [
+"Directly, through her WhatsApp or her Telegram. Whatever you talk about and agree on stays between you: SexyRose has no access to those conversations and does not take part in them.",
+"Diretamente, pelo WhatsApp ou pelo Telegram dela. O que vocês conversarem e combinarem fica entre vocês: o SexyRose não tem acesso a essas conversas nem intervém nelas."
+],
 "Disponible hasta el {x} · quedan": [
 "Available until {x} · remaining",
 "Disponível até {x} · restam"
@@ -1613,13 +1629,17 @@ HH.I18N = {
 "ID document",
 "Documento"
 ],
-"Documento, selfie y un video corto de {n} segundos. Lo revisamos en menos de {n} h.": [
-"ID, selfie, and a short {n}-second video. We review it in under {n} h.",
-"Documento, selfie e um vídeo curto de {n} segundos. Analisamos em menos de {n} h."
+"Documento, selfie y un video corto de {n} segundos.": [
+"ID, selfie, and a short {n}-second video.",
+"Documento, selfie e um vídeo curto de {n} segundos."
 ],
 "Documento, selfie y un video corto. Es una sola vez y lleva unos minutos.": [
 "ID, selfie and a short video. It's a one-time step and takes a few minutes.",
 "Documento, selfie e um vídeo curto. É uma única vez e leva alguns minutos."
+],
+"Documento, selfie y un video corto. Tu localidad nueva ({x}) se suma al sitio al verificar tu cuenta.": [
+"ID, selfie and a short video. Your new town ({x}) is added to the site when your account is verified.",
+"Documento, selfie e um vídeo curto. Sua nova localidade ({x}) entra no site quando sua conta for verificada."
 ],
 "Domingo": [
 "Sunday",
@@ -1664,6 +1684,10 @@ HH.I18N = {
 "Edad": [
 "Age",
 "Idade"
+],
+"Edad e identidad verificadas al publicar": [
+"Age and identity verified when publishing",
+"Idade e identidade verificadas ao publicar"
 ],
 "Editar": [
 "Edit",
@@ -1821,10 +1845,6 @@ HH.I18N = {
 "Choose at least {n}. These are the filters clients use.",
 "Escolha pelo menos {n}. São os filtros que os clientes usam."
 ],
-"Elegí con quién tomar un café, recorrer un museo o ir a un evento en tu ciudad. Deslizás, abrís WhatsApp y arman el plan. Sin registro: tu identidad queda reservada.": [
-"Choose who to grab a coffee with, tour a museum with, or go to an event with in your city. Swipe, open WhatsApp, and make the plan together. No sign-up: your identity stays private.",
-"Escolha com quem tomar um café, visitar um museu ou ir a um evento na sua cidade. Deslize, abra o WhatsApp e combinem o plano. Sem cadastro: sua identidade fica preservada."
-],
 "Elegí cuánto querés crecer": [
 "Choose how much you want to grow",
 "Escolha quanto você quer crescer"
@@ -1889,13 +1909,13 @@ HH.I18N = {
 "Choose which content to send",
 "Escolha qual conteúdo enviar"
 ],
-"Elegí qué salidas ofrecés": [
-"Choose which outings you offer",
-"Escolha quais passeios você oferece"
-],
 "Elegí tu ciudad": [
 "Choose your city",
 "Escolha sua cidade"
+],
+"Elegí tus categorías": [
+"Choose your categories",
+"Escolha suas categorias"
 ],
 "Elegí un alias de al menos 2 letras.": [
 "Choose an alias with at least 2 letters.",
@@ -2157,10 +2177,6 @@ HH.I18N = {
 "Upload error",
 "Erro ao enviar"
 ],
-"Es el mejor momento para reservar el tuyo.": [
-"It's the best time to book yours.",
-"É o melhor momento para reservar o seu."
-],
 "Es el número al que te escriben los clientes cuando deslizan tu perfil a la derecha.": [
 "It's the number clients message you on when they swipe right on your profile.",
 "É o número pelo qual os clientes falam com você quando deslizam seu perfil para a direita."
@@ -2180,6 +2196,10 @@ HH.I18N = {
 "Es tu foto principal: la siguiente pasa a ser la principal.": [
 "It's your main photo: the next one will become the main one.",
 "É sua foto principal: a próxima passa a ser a principal."
+],
+"Es un sitio de anuncios. Cada acompañante publica su propio aviso y es la única responsable de lo que publica y de lo que ofrece. SexyRose no organiza, no intermedia, no cobra ni participa en ningún encuentro entre usuarios y anunciantes.": [
+"It is an ads site. Each companion publishes her own ad and is solely responsible for what she publishes and what she offers. SexyRose does not organize, mediate, charge for or take part in any meeting between users and advertisers.",
+"É um site de anúncios. Cada acompanhante publica o próprio anúncio e é a única responsável pelo que publica e pelo que oferece. O SexyRose não organiza, não intermedeia, não cobra nem participa de nenhum encontro entre usuários e anunciantes."
 ],
 "Esa cuenta no es de cliente. Usá \"Iniciar sesión\".": [
 "That account isn't a client account. Use \"Log in\".",
@@ -2505,17 +2525,17 @@ HH.I18N = {
 "Photos of {x}",
 "Fotos de {x}"
 ],
-"Fotos reales, de cara visible y en lugares públicos.": [
-"Real photos, with your face visible, in public places.",
-"Fotos reais, com o rosto visível e em lugares públicos."
+"Fotos reales, de cara visible.": [
+"Real photos, with your face visible.",
+"Fotos reais, com o rosto visível."
 ],
 "Fotos y videos del perfil": [
 "Profile photos and videos",
 "Fotos e vídeos do perfil"
 ],
-"Fotos, videos y shorts de tus salidas o de tu rutina: sueltos, en packs o a pedido. Vos fijás el precio.": [
-"Photos, videos and shorts of your outings or your routine: individually, in packs or on request. You set the price.",
-"Fotos, vídeos e shorts dos seus passeios ou da sua rotina: avulsos, em pacotes ou sob pedido. Você define o preço."
+"Fotos, videos y shorts: sueltos, en packs o a pedido. Vos fijás el precio.": [
+"Photos, videos and shorts: individually, in packs or on request. You set the price.",
+"Fotos, vídeos e shorts: avulsos, em pacotes ou sob encomenda. Você define o preço."
 ],
 "Fraude o cobros indebidos": [
 "Fraud or improper charges",
@@ -2949,10 +2969,6 @@ HH.I18N = {
 "The request is no longer available",
 "A solicitação não está mais disponível"
 ],
-"La tarifa por salida la acordás directamente con el cliente. El contenido se paga en la plataforma y lo ves acreditado en tu panel.": [
-"You agree on the per-outing rate directly with the client. Content is paid on the platform and you'll see it credited in your dashboard.",
-"A tarifa por passeio você combina diretamente com o cliente. O conteúdo é pago na plataforma e você vê o crédito no seu painel."
-],
 "La verificación automática marcó:": [
 "The automatic verification flagged:",
 "A verificação automática sinalizou:"
@@ -3013,17 +3029,9 @@ HH.I18N = {
 "Bookings are for client accounts",
 "As reservas são para contas de cliente"
 ],
-"Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las suscripciones de acompañantes se cancelan desde el panel y siguen activas hasta el fin del período pago. Las compras de contenido no tienen devolución una vez desbloqueadas.": [
-"Outings are canceled with the person you arranged them with, via WhatsApp and with advance notice. Companion subscriptions are canceled from the dashboard and stay active until the end of the paid period. Content purchases are non-refundable once unlocked.",
-"Os passeios são cancelados com quem você combinou, pelo WhatsApp e com antecedência. As assinaturas de acompanhantes são canceladas pelo painel e continuam ativas até o fim do período pago. As compras de conteúdo não têm reembolso depois de desbloqueadas."
-],
 "Las salidas son siempre en lugares públicos. Si algo te incomoda, usá \"Reportar\" en el perfil, el chat o la reserva: lo revisa el equipo. Si estás en peligro, llamá a emergencias de tu país.": [
 "Outings are always in public places. If something makes you uncomfortable, use \"Report\" on the profile, the chat or the booking: the team will review it. If you're in danger, call your country's emergency number.",
 "Os passeios são sempre em lugares públicos. Se algo incomodar você, use \"Denunciar\" no perfil, no chat ou na reserva: a equipe vai revisar. Se você estiver em perigo, ligue para a emergência do seu país."
-],
-"Las salidas son siempre en lugares públicos: cafés, museos, parques, eventos. Los perfiles de acompañantes pasan por verificación de identidad y cualquier conducta inapropiada se puede reportar desde el perfil. El WhatsApp se comparte solo después de que vos mostrás interés.": [
-"Outings are always in public places: cafés, museums, parks, events. Companion profiles go through identity verification and any inappropriate behavior can be reported from the profile. WhatsApp is only shared after you show interest.",
-"Os passeios são sempre em lugares públicos: cafés, museus, parques, eventos. Os perfis de acompanhantes passam por verificação de identidade e qualquer conduta inadequada pode ser denunciada pelo perfil. O WhatsApp só é compartilhado depois que você demonstra interesse."
 ],
 "Las {n} mejores salidas del mes": [
 "The {n} best outings of the month",
@@ -3421,10 +3429,6 @@ HH.I18N = {
 "See who's near you.",
 "Veja quem está perto de você."
 ],
-"Mirás y contactás sin registrarte": [
-"Browse and get in touch without signing up",
-"Você vê e entra em contato sem se cadastrar"
-],
 "Mis compras": [
 "My purchases",
 "Minhas compras"
@@ -3540,10 +3544,6 @@ HH.I18N = {
 "Museo": [
 "Museum",
 "Museu"
-],
-"Museo · {x} · {n}:{n} a {n}:{n} h": [
-"Museum · {x} · {n}:{n} to {n}:{n}",
-"Museu · {x} · {n}:{n} às {n}:{n} h"
 ],
 "Más elegido": [
 "Most popular",
@@ -3725,6 +3725,10 @@ HH.I18N = {
 "No packs yet",
 "Não há pacotes por enquanto"
 ],
+"No hay perfiles con ese interés todavía": [
+"No profiles with that interest yet",
+"Ainda não há perfis com esse interesse"
+],
 "No hay perfiles con esos filtros": [
 "No profiles match those filters",
 "Não há perfis com esses filtros"
@@ -3877,6 +3881,10 @@ HH.I18N = {
 "No, talk to a person",
 "Não, falar com uma pessoa"
 ],
+"No. No garantizamos la conducta de los anunciantes ni de los usuarios, ni la veracidad de las fotos, los datos o las tarifas publicadas. Todo lo que se acuerde es entre las partes y bajo su exclusiva responsabilidad.": [
+"No. We do not guarantee the conduct of advertisers or users, nor the accuracy of the photos, details or rates published. Anything agreed is between the parties and under their sole responsibility.",
+"Não. Não garantimos a conduta dos anunciantes nem dos usuários, nem a veracidade das fotos, dos dados ou das tarifas publicadas. Tudo o que for combinado é entre as partes e sob sua exclusiva responsabilidade."
+],
 "Nombre": [
 "Name",
 "Nome"
@@ -3992,10 +4000,6 @@ HH.I18N = {
 "Ocupado": [
 "Busy",
 "Ocupado"
-],
-"Ocupado · Salida coordinada por fuera": [
-"Busy · Outing arranged outside the platform",
-"Ocupado · Passeio combinado por fora"
 ],
 "Ocupado: una salida que coordinaste por fuera. Bloqueado: un horario personal. En los dos casos, los clientes no pueden reservar ahí.": [
 "Busy: an outing you arranged outside the platform. Blocked: personal time. In both cases, clients can't book that slot.",
@@ -4229,9 +4233,9 @@ HH.I18N = {
 "To recover your purchases. It isn't shown to anyone.",
 "Para recuperar suas compras. Não é mostrado a ninguém."
 ],
-"Para reservar una salida necesitás una cuenta de cliente. Sin verificación de identidad.": [
-"To book an outing you need a client account. No identity verification.",
-"Para reservar um passeio você precisa de uma conta de cliente. Sem verificação de identidade."
+"Para reservar necesitás una cuenta de cliente.": [
+"To book you need a client account.",
+"Para reservar você precisa de uma conta de cliente."
 ],
 "Para una foto elegí una imagen (JPG o PNG)": [
 "For a photo, choose an image (JPG or PNG)",
@@ -4252,10 +4256,6 @@ HH.I18N = {
 "Paseo": [
 "Walk",
 "Passeio"
-],
-"Paseo · {x} · {n}:{n} a {n}:{n} h": [
-"Walk · {x} · {n}:{n} to {n}:{n}",
-"Passeio · {x} · {n}:{n} às {n}:{n} h"
 ],
 "Paso": [
 "Pass",
@@ -4428,10 +4428,6 @@ HH.I18N = {
 "Perfiles nuevos en tu ciudad y promociones.": [
 "New profiles in your city and promotions.",
 "Novos perfis na sua cidade e promoções."
-],
-"Perfiles verificados": [
-"Verified profiles",
-"Perfis verificados"
 ],
 "Permiso de ubicación denegado. Podés elegir la ciudad a mano.": [
 "Location permission denied. You can choose the city manually.",
@@ -4681,6 +4677,14 @@ HH.I18N = {
 "Try removing an activity or widening the age range.",
 "Tente remover alguma atividade ou ampliar a faixa de idade."
 ],
+"Probá quitando algún interés o ampliando el rango de edad.": [
+"Try removing an interest or widening the age range.",
+"Tente remover algum interesse ou ampliar a faixa de idade."
+],
+"Probá quitando la ciudad o el interés.": [
+"Try removing the city or the interest.",
+"Tente remover a cidade ou o interesse."
+],
 "Probá quitando la ciudad o la actividad.": [
 "Try removing the city or the activity.",
 "Tente remover a cidade ou a atividade."
@@ -4748,6 +4752,10 @@ HH.I18N = {
 "Publicar mi perfil": [
 "Publish my profile",
 "Publicar meu perfil"
+],
+"Publicar o pedir cualquier cosa que involucre a menores, la trata o la explotación de personas, contenido de alguien sin su consentimiento, y cualquier actividad ilegal. Quien lo haga es dado de baja y, si corresponde, denunciado ante las autoridades.": [
+"Publishing or requesting anything involving minors, human trafficking or exploitation, content of someone without their consent, and any illegal activity. Anyone who does so is removed and, where appropriate, reported to the authorities.",
+"Publicar ou pedir qualquer coisa que envolva menores, o tráfico ou a exploração de pessoas, conteúdo de alguém sem o seu consentimento e qualquer atividade ilegal. Quem fizer isso é removido e, quando for o caso, denunciado às autoridades."
 ],
 "Publicá el tuyo": [
 "Publish yours",
@@ -5021,10 +5029,6 @@ HH.I18N = {
 "Book outing",
 "Reservar passeio"
 ],
-"Reservar una salida": [
-"Book an outing",
-"Reservar um passeio"
-],
 "Reservas": [
 "Bookings",
 "Reservas"
@@ -5141,25 +5145,9 @@ HH.I18N = {
 "Outings",
 "Passeios"
 ],
-"Salidas en lugares públicos y con reglas claras.": [
-"Outings in public places with clear rules.",
-"Passeios em lugares públicos e com regras claras."
-],
-"Salidas en lugares públicos, sin contenido sexual. Decidís qué proponés, cuándo y con quién. Podés reportar y bloquear a quien no respete eso.": [
-"Outings in public places, with no sexual content. You decide what you offer, when and with whom. You can report and block anyone who doesn't respect that.",
-"Passeios em lugares públicos, sem conteúdo sexual. Você decide o que propõe, quando e com quem. Você pode denunciar e bloquear quem não respeitar isso."
-],
-"Salidas en lugares públicos. Reportá cualquier conducta inapropiada.": [
-"Outings in public places. Report any inappropriate behavior.",
-"Passeios em lugares públicos. Denuncie qualquer conduta inadequada."
-],
 "Salidas que ofrecés": [
 "Outings you offer",
 "Passeios que você oferece"
-],
-"Salidas que propone": [
-"Outings offered",
-"Passeios oferecidos"
 ],
 "Salidas siempre en lugares públicos. Si alguien te incomoda, bloquealo y reportalo desde Mensajes.": [
 "Outings are always in public places. If someone makes you uncomfortable, block and report them from Messages.",
@@ -5328,6 +5316,10 @@ HH.I18N = {
 "SexyRose": [
 "SexyRose",
 "SexyRose"
+],
+"SexyRose es un sitio de anuncios para mayores de 18 años. Cada anunciante es responsable de su aviso.": [
+"SexyRose is an ads site for adults 18 and over. Each advertiser is responsible for their own ad.",
+"O SexyRose é um site de anúncios para maiores de 18 anos. Cada anunciante é responsável pelo seu anúncio."
 ],
 "SexyRose, inicio": [
 "SexyRose, home",
@@ -5529,6 +5521,10 @@ HH.I18N = {
 "No videos yet.",
 "Ainda sem vídeos."
 ],
+"Sitio de anuncios": [
+"Ads site",
+"Site de anúncios"
+],
 "Sitio de publicidad y contenido.": [
 "Advertising and content site.",
 "Site de publicidade e conteúdo."
@@ -5573,6 +5569,10 @@ HH.I18N = {
 "Just the neighborhood, never your address.",
 "Só o bairro, nunca seu endereço."
 ],
+"Solo gustos y temas de conversación (arte, viajes, vinos…). Nada de preferencias sexuales.": [
+"Only tastes and conversation topics (art, travel, wine…). Nothing about sexual preferences.",
+"Só gostos e temas de conversa (arte, viagens, vinhos…). Nada de preferências sexuais."
+],
 "Solo se muestra a quien desliza tu perfil a la derecha.": [
 "Only shown to people who swipe your profile right.",
 "Só aparece para quem desliza seu perfil para a direita."
@@ -5597,9 +5597,9 @@ HH.I18N = {
 "You're a Star for {x}",
 "Você é Star por {x}"
 ],
-"Soy mayor de 18 años y acepto los términos: salidas en lugares públicos, sin contenido sexual.": [
-"I'm 18 or older and I accept the terms: outings in public places, with no sexual content.",
-"Sou maior de 18 anos e aceito os termos: passeios em lugares públicos, sem conteúdo sexual."
+"Soy mayor de 18 años y acepto los Términos y condiciones.": [
+"I'm 18 or older and I accept the Terms and conditions.",
+"Sou maior de 18 anos e aceito os Termos e condições."
 ],
 "Soy mayor de {n} años y acepto los términos.": [
 "I'm at least {n} years old and accept the terms.",
@@ -5809,10 +5809,6 @@ HH.I18N = {
 "Tell people what you like to do and which neighborhoods you know.",
 "Conte o que você gosta de fazer e quais bairros conhece."
 ],
-"Tenés que aceptar las condiciones de la salida": [
-"You must accept the outing's conditions",
-"Você precisa aceitar as condições do passeio"
-],
 "Tenés que confirmar que sos mayor de 18 y aceptar los términos.": [
 "You need to confirm you're 18 or older and accept the terms.",
 "Você precisa confirmar que é maior de 18 e aceitar os termos."
@@ -5844,10 +5840,6 @@ HH.I18N = {
 "Tipo de documento": [
 "Document type",
 "Tipo de documento"
-],
-"Tipo de salida": [
-"Outing type",
-"Tipo de passeio"
 ],
 "Tips para vender más": [
 "Tips to sell more",
@@ -5901,9 +5893,13 @@ HH.I18N = {
 "All locations",
 "Todas as localizações"
 ],
-"Todavía no armaste destacadas. Juntá tus mejores historias (viajes, salidas, cafés) para que se vean siempre en tu perfil.": [
-"You haven't made any highlights yet. Gather your best stories (trips, outings, coffees) so they always show on your profile.",
-"Você ainda não criou destaques. Junte seus melhores stories (viagens, passeios, cafés) para que apareçam sempre no seu perfil."
+"Todavía hay lugares libres.": [
+"There are still free spots.",
+"Ainda há lugares livres."
+],
+"Todavía no armaste destacadas. Juntá tus mejores historias para que se vean siempre en tu perfil.": [
+"You haven't made any highlights yet. Gather your best stories so they always show on your profile.",
+"Você ainda não criou destaques. Junte seus melhores stories para que apareçam sempre no seu perfil."
 ],
 "Todavía no armaste ningún pack": [
 "You haven't created any packs yet",
@@ -6257,6 +6253,10 @@ HH.I18N = {
 "Your week",
 "Sua semana"
 ],
+"Tu tarifa la definís vos y la acordás directamente con quien te escribe. El contenido se paga en la plataforma y lo ves acreditado en tu panel.": [
+"You set your rate and agree on it directly with whoever writes to you. Content is paid on the platform and you see it credited in your dashboard.",
+"Você define a sua tarifa e combina diretamente com quem escreve para você. O conteúdo é pago na plataforma e você vê o crédito no seu painel."
+],
 "Tu titular aparece acá": [
 "Your headline shows up here",
 "Seu título aparece aqui"
@@ -6385,9 +6385,9 @@ HH.I18N = {
 "A trip can last up to",
 "Uma viagem pode durar até"
 ],
-"Un video corto: saludo, recomendación, recorrido": [
-"A short video: greeting, recommendation, tour",
-"Um vídeo curto: saudação, recomendação, passeio"
+"Un video corto: un saludo o una recomendación": [
+"A short video: a greeting or a recommendation",
+"Um vídeo curto: uma saudação ou uma recomendação"
 ],
 "Una destacada puede tener hasta {n} historias.": [
 "A highlight can have up to {n} stories.",
@@ -7097,6 +7097,10 @@ HH.I18N = {
 "closed",
 "fechado"
 ],
+"ciudad": [
+"city",
+"cidade"
+],
 "ciudades": [
 "cities",
 "cidades"
@@ -7413,18 +7417,6 @@ HH.I18N = {
 "no rate set",
 "sem tarifa cadastrada"
 ],
-"solicitó una reserva: Café · {x} · {n}:{n} a {n}:{n} h": [
-"requested a booking: Coffee · {x} · {n}:{n} to {n}:{n} h",
-"solicitou uma reserva: Café · {x} · {n}:{n} às {n}:{n} h"
-],
-"solicitó una reserva: Museo · {x} · {n}:{n} a {n}:{n} h": [
-"requested a booking: Museum · {x} · {n}:{n} to {n}:{n} h",
-"solicitou uma reserva: Museu · {x} · {n}:{n} às {n}:{n} h"
-],
-"solicitó una reserva: Paseo · {x} · {n}:{n} a {n}:{n} h": [
-"requested a booking: Walk · {x} · {n}:{n} to {n}:{n} h",
-"solicitou uma reserva: Passeio · {x} · {n}:{n} às {n}:{n} h"
-],
 "string": [
 "string",
 "string"
@@ -7713,10 +7705,6 @@ HH.I18N = {
 "{n}% of previous step",
 "{n}% da etapa anterior"
 ],
-"{n}:{n}–{n}:{n} · Salida coordinada por fuera": [
-"{n}:{n}–{n}:{n} · Outing arranged elsewhere",
-"{n}:{n}–{n}:{n} · Passeio combinado por fora"
-],
 "{n}s": [
 "{n}s",
 "{n}s"
@@ -7776,54 +7764,6 @@ HH.I18N = {
 "{x} · {x} · {n}:{n} a {n}:{n} h": [
 "{x} · {x} · {n}:{n} to {n}:{n} h",
 "{x} · {x} · {n}:{n} às {n}:{n} h"
-],
-"{x}, {x} · Café, Museo, Helado": [
-"{x}, {x} · Coffee, Museum, Ice cream",
-"{x}, {x} · Café, Museu, Sorvete"
-],
-"{x}, {x} · Café, Paseo, Museo": [
-"{x}, {x} · Coffee, Walk, Museum",
-"{x}, {x} · Café, Passeio, Museu"
-],
-"{x}, {x} · Cena, Paseo, Café": [
-"{x}, {x} · Dinner, Walk, Coffee",
-"{x}, {x} · Jantar, Passeio, Café"
-],
-"{x}, {x} · Cena, Paseo, Evento": [
-"{x}, {x} · Dinner, Walk, Event",
-"{x}, {x} · Jantar, Passeio, Evento"
-],
-"{x}, {x} · Evento, Café, Museo": [
-"{x}, {x} · Event, Coffee, Museum",
-"{x}, {x} · Evento, Café, Museu"
-],
-"{x}, {x} · Evento, Cena, Deporte": [
-"{x}, {x} · Event, Dinner, Sports",
-"{x}, {x} · Evento, Jantar, Esporte"
-],
-"{x}, {x} · Museo, Café, Paseo": [
-"{x}, {x} · Museum, Coffee, Walk",
-"{x}, {x} · Museu, Café, Passeio"
-],
-"{x}, {x} · Paseo, Cena, Café": [
-"{x}, {x} · Walk, Dinner, Coffee",
-"{x}, {x} · Passeio, Jantar, Café"
-],
-"{x}, {x} · Paseo, Cena, Evento": [
-"{x}, {x} · Walk, Dinner, Event",
-"{x}, {x} · Passeio, Jantar, Evento"
-],
-"{x}, {x} · Paseo, Compras, Cena": [
-"{x}, {x} · Walk, Shopping, Dinner",
-"{x}, {x} · Passeio, Compras, Jantar"
-],
-"{x}, {x} · Paseo, Helado, Deporte": [
-"{x}, {x} · Walk, Ice cream, Sports",
-"{x}, {x} · Passeio, Sorvete, Esporte"
-],
-"{x}, {x} · Paseo, Museo, Evento": [
-"{x}, {x} · Walk, Museum, Event",
-"{x}, {x} · Passeio, Museu, Evento"
 ],
 "¡Hola {x}! Sí, el {n} a la tarde estoy libre. Podemos arrancar por el Malba y después un café en Villa Crespo.": [
 "Hi {x}! Yes, I'm free on the afternoon of the {n}. We can start at Malba and then grab a coffee in Villa Crespo.",
@@ -7913,9 +7853,17 @@ HH.I18N = {
 "Who are you asking?",
 "Para quem você está pedindo?"
 ],
+"¿Cómo contacto a una acompañante?": [
+"How do I contact a companion?",
+"Como entro em contato com uma acompanhante?"
+],
 "¿Cómo funciona la verificación?": [
 "How does verification work?",
 "Como funciona a verificação?"
+],
+"¿Cómo hago una denuncia?": [
+"How do I make a report?",
+"Como faço uma denúncia?"
 ],
 "¿Cómo se cobra el contenido?": [
 "How is content paid for?",
@@ -7924,10 +7872,6 @@ HH.I18N = {
 "¿Dentro de qué provincia, zona o país?": [
 "Within which province, area or country?",
 "Em qual província, região ou país?"
-],
-"¿Es seguro?": [
-"Is it safe?",
-"É seguro?"
 ],
 "¿No aparece? Escribila a mano:": [
 "Not listed? Type it in:",
@@ -7949,13 +7893,13 @@ HH.I18N = {
 "Remove this video from your profile?",
 "Quer remover este vídeo do seu perfil?"
 ],
+"¿Quién vende el contenido?": [
+"Who sells the content?",
+"Quem vende o conteúdo?"
+],
 "¿Qué es SexyRose?": [
 "What is SexyRose?",
 "O que é o SexyRose?"
-],
-"¿Qué incluye una salida?": [
-"What does an outing include?",
-"O que inclui um passeio?"
 ],
 "¿Qué no está permitido?": [
 "What isn't allowed?",
@@ -7964,6 +7908,14 @@ HH.I18N = {
 "¿Qué querés?": [
 "What do you want?",
 "O que você quer?"
+],
+"¿Se verifican los perfiles?": [
+"Are profiles verified?",
+"Os perfis são verificados?"
+],
+"¿SexyRose garantiza algo sobre los anunciantes?": [
+"Does SexyRose guarantee anything about the advertisers?",
+"O SexyRose garante algo sobre os anunciantes?"
 ],
 "¿Te sirvió?": [
 "Was this helpful?",

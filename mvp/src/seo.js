@@ -1,5 +1,6 @@
 /* SexyRose · SEO
-   - Páginas por país, lugar (provincia, zona o ciudad) y lugar × tipo de salida, con H1, texto, perfiles y enlaces internos.
+   - Páginas por país y lugar (provincia, zona o ciudad), con H1, texto, perfiles y enlaces internos. Sin páginas por
+     actividad: el sitio es de anuncios y no menciona qué se ofrece (las direcciones viejas lugar + actividad van al lugar).
    - Título, descripción, canonical, hreflang (es/en/pt), robots y datos estructurados en cada página.
    - Bloque SEO al pie de la portada (texto + enlaces a ciudades y búsquedas frecuentes).
    - Admin → SEO: textos de la portada y plantillas por idioma, nombre/slug/texto propio por lugar, mapa del sitio.
@@ -14,38 +15,35 @@
   HH.SEO_DEFAULTS = {
     siteUrl: 'https://sexyrose.net', minProfiles: 1,
     home: {
-      es: { title: 'SexyRose · Acompañantes para salidas, cenas y eventos', description: 'Acompañantes verificadas para un café, una cena, un museo o un evento en tu ciudad. Contacto directo por WhatsApp, sin registro y sin contenido sexual.', h1: '', blockTitle: 'Acompañantes para salidas en tu ciudad', blockText: 'SexyRose es un directorio de acompañantes para salidas sin contenido sexual: un café, una cena, una muestra, un recital o un evento de trabajo. Cada perfil muestra en qué ciudad está, qué salidas ofrece, sus idiomas y su tarifa, y el contacto es directo con cada acompañante por WhatsApp o Telegram.\n\nLos perfiles pasan por verificación de identidad y de mayoría de edad. Si estás de viaje, buscá por ciudad: también aparecen las acompañantes que están de visita.' },
-      en: { title: 'SexyRose · Companions for outings, dinners and events', description: 'Verified companions for coffee, dinner, a museum or an event in your city. Contact them directly on WhatsApp, no sign-up and no sexual content.', h1: 'Companionship for your next *outing*.', blockTitle: 'Companions for outings in your city', blockText: 'SexyRose is a directory of companions for outings with no sexual content: coffee, dinner, an exhibition, a concert or a work event. Each profile shows the city, the outings offered, languages and rates, and you contact each companion directly on WhatsApp or Telegram.\n\nProfiles go through identity and age verification. If you are traveling, search by city: companions who are visiting show up too.' },
-      pt: { title: 'SexyRose · Companhia para passeios, jantares e eventos', description: 'Companhia verificada para um café, um jantar, um museu ou um evento na sua cidade. Contato direto pelo WhatsApp, sem cadastro e sem conteúdo sexual.', h1: 'Companhia para o seu próximo *passeio*.', blockTitle: 'Companhia para passeios na sua cidade', blockText: 'O SexyRose é um diretório de companhia para passeios sem conteúdo sexual: um café, um jantar, uma exposição, um show ou um evento de trabalho. Cada perfil mostra a cidade, os passeios oferecidos, os idiomas e o valor, e o contato é direto pelo WhatsApp ou Telegram.\n\nOs perfis passam por verificação de identidade e de maioridade. Se estiver viajando, busque por cidade: quem está de visita também aparece.' },
+      es: { title: 'SexyRose · Avisos de acompañantes', description: 'Avisos de acompañantes en tu ciudad. Contacto directo con cada anunciante por WhatsApp o Telegram.', h1: '', blockTitle: 'Avisos de acompañantes en tu ciudad', blockText: 'SexyRose es un sitio de anuncios. Cada acompañante publica su aviso con su ciudad, sus idiomas y su tarifa, y es responsable de lo que publica. El contacto es directo con cada anunciante por WhatsApp o Telegram; SexyRose no interviene.\n\nSi estás de viaje, buscá por ciudad: también aparecen quienes están de visita.' },
+      en: { title: 'SexyRose · Companion ads', description: 'Companion ads in your city. Direct contact with each advertiser on WhatsApp or Telegram.', h1: 'Companions in your *city*.', blockTitle: 'Companion ads in your city', blockText: 'SexyRose is an ads site. Each companion publishes her own ad with her city, languages and rates, and is responsible for what she publishes. You contact each advertiser directly on WhatsApp or Telegram; SexyRose does not take part.\n\nIf you are traveling, search by city: people who are visiting show up too.' },
+      pt: { title: 'SexyRose · Anúncios de acompanhantes', description: 'Anúncios de acompanhantes na sua cidade. Contato direto com cada anunciante pelo WhatsApp ou Telegram.', h1: 'Acompanhantes na sua *cidade*.', blockTitle: 'Anúncios de acompanhantes na sua cidade', blockText: 'O SexyRose é um site de anúncios. Cada acompanhante publica o seu anúncio com a cidade, os idiomas e o valor, e é responsável pelo que publica. O contato é direto com cada anunciante pelo WhatsApp ou Telegram; o SexyRose não intervém.\n\nSe estiver viajando, busque por cidade: quem está de visita também aparece.' },
     },
     tpl: {
       es: {
-        country: { title: 'Acompañantes para salidas en {pais} | SexyRose', description: 'Acompañantes verificadas en {pais} para café, cena, museo, cine o eventos. {cantidad} perfiles con contacto directo por WhatsApp.', h1: 'Acompañantes para salidas en {pais}', intro: 'Elegí ciudad y tipo de salida. Cada perfil muestra qué planes ofrece, sus idiomas y su tarifa; el contacto es directo con cada acompañante.' },
-        place: { title: 'Acompañantes en {lugar} para salidas y eventos | SexyRose', description: '{cantidad} acompañantes en {lugar} para un café, una cena, un museo o un evento. Perfiles verificados y contacto directo por WhatsApp.', h1: 'Acompañantes en {lugar}', intro: 'Compañía para salidas en {lugar}: un café, una cena, una muestra o un evento. Mirá los perfiles, elegí con quién ir y contactá directo por WhatsApp o Telegram.' },
-        placeAct: { title: '{Actividad} en {lugar} con acompañante | SexyRose', description: 'Acompañantes en {lugar} que ofrecen salidas de {actividad}: {cantidad} perfiles verificados, contacto directo por WhatsApp.', h1: '{Actividad} en {lugar}: acompañantes para tu salida', intro: 'Perfiles en {lugar} que incluyen {actividad} entre sus salidas. Contactá directo a quien elijas para arreglar día, horario y tarifa.' },
-        countryMen: { title: 'Hombres acompañantes para salidas en {pais} | SexyRose', description: 'Acompañantes hombres verificados en {pais} para café, cena, museo, cine o eventos. {cantidad} perfiles con contacto directo por WhatsApp.', h1: 'Hombres acompañantes en {pais}', intro: 'Perfiles de hombres para salidas en {pais}: un café, una cena, un museo o un evento. Elegí con quién ir y contactá directo por WhatsApp o Telegram.' },
-        placeMen: { title: 'Hombres acompañantes en {lugar} para salidas | SexyRose', description: '{cantidad} acompañantes hombres en {lugar} para un café, una cena, un museo o un evento. Perfiles verificados y contacto directo por WhatsApp.', h1: 'Hombres acompañantes en {lugar}', intro: 'Compañía masculina para salidas en {lugar}: un café, una cena, una muestra o un evento. Mirá los perfiles, elegí con quién ir y contactá directo por WhatsApp o Telegram.' },
-        profile: { title: '{nombre}, acompañante en {lugar} | SexyRose', description: '{nombre}, {edad} años, acompañante para salidas en {lugar}: {salidas}. {bio}' },
+        country: { title: 'Acompañantes en {pais} | SexyRose', description: 'Avisos de acompañantes en {pais}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Acompañantes en {pais}', intro: 'Avisos de acompañantes en {pais}. Elegí una ciudad, mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
+        place: { title: 'Acompañantes en {lugar} | SexyRose', description: 'Avisos de acompañantes en {lugar}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Acompañantes en {lugar}', intro: 'Avisos de acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
+        countryMen: { title: 'Hombres acompañantes en {pais} | SexyRose', description: 'Avisos de hombres acompañantes en {pais}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Hombres acompañantes en {pais}', intro: 'Avisos de hombres acompañantes en {pais}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
+        placeMen: { title: 'Hombres acompañantes en {lugar} | SexyRose', description: 'Avisos de hombres acompañantes en {lugar}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Hombres acompañantes en {lugar}', intro: 'Avisos de hombres acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
+        profile: { title: '{nombre}, acompañante en {lugar} | SexyRose', description: '{nombre}, {edad} años, acompañante en {lugar}. {bio}' },
       },
       en: {
-        country: { title: 'Companions for outings in {pais} | SexyRose', description: 'Verified companions in {pais} for coffee, dinner, museums, movies or events. {cantidad} profiles with direct WhatsApp contact.', h1: 'Companions for outings in {pais}', intro: 'Choose a city and a type of outing. Each profile shows the plans offered, languages and rates; you contact each companion directly.' },
-        place: { title: 'Companions in {lugar} for outings and events | SexyRose', description: '{cantidad} companions in {lugar} for coffee, dinner, a museum or an event. Verified profiles and direct WhatsApp contact.', h1: 'Companions in {lugar}', intro: 'Company for outings in {lugar}: coffee, dinner, an exhibition or an event. Browse the profiles, choose who to go with and get in touch directly on WhatsApp or Telegram.' },
-        placeAct: { title: '{Actividad} in {lugar} with a companion | SexyRose', description: 'Companions in {lugar} who offer {actividad} outings: {cantidad} verified profiles, direct WhatsApp contact.', h1: '{Actividad} in {lugar}: companions for your outing', intro: 'Profiles in {lugar} that include {actividad} among their outings. Contact whoever you choose directly to agree on day, time and rate.' },
-        countryMen: { title: 'Male companions for outings in {pais} | SexyRose', description: 'Verified male companions in {pais} for coffee, dinner, museums, movies or events. {cantidad} profiles with direct WhatsApp contact.', h1: 'Male companions in {pais}', intro: 'Male profiles for outings in {pais}: coffee, dinner, a museum or an event. Choose who to go with and get in touch directly on WhatsApp or Telegram.' },
-        placeMen: { title: 'Male companions in {lugar} for outings | SexyRose', description: '{cantidad} male companions in {lugar} for coffee, dinner, a museum or an event. Verified profiles and direct WhatsApp contact.', h1: 'Male companions in {lugar}', intro: 'Male company for outings in {lugar}: coffee, dinner, an exhibition or an event. Browse the profiles, choose who to go with and get in touch directly on WhatsApp or Telegram.' },
-        profile: { title: '{nombre}, companion in {lugar} | SexyRose', description: '{nombre}, {edad}, companion for outings in {lugar}: {salidas}. {bio}' },
+        country: { title: 'Companions in {pais} | SexyRose', description: 'Companion ads in {pais}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Companions in {pais}', intro: 'Companion ads in {pais}. Choose a city, browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
+        place: { title: 'Companions in {lugar} | SexyRose', description: 'Companion ads in {lugar}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Companions in {lugar}', intro: 'Companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
+        countryMen: { title: 'Male companions in {pais} | SexyRose', description: 'Male companion ads in {pais}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Male companions in {pais}', intro: 'Male companion ads in {pais}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
+        placeMen: { title: 'Male companions in {lugar} | SexyRose', description: 'Male companion ads in {lugar}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Male companions in {lugar}', intro: 'Male companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
+        profile: { title: '{nombre}, companion in {lugar} | SexyRose', description: '{nombre}, {edad}, companion in {lugar}. {bio}' },
       },
       pt: {
-        country: { title: 'Companhia para passeios em {pais} | SexyRose', description: 'Perfis verificados em {pais} para café, jantar, museu, cinema ou eventos. {cantidad} perfis com contato direto pelo WhatsApp.', h1: 'Companhia para passeios em {pais}', intro: 'Escolha a cidade e o tipo de passeio. Cada perfil mostra os planos oferecidos, os idiomas e o valor; o contato é direto.' },
-        place: { title: 'Companhia em {lugar} para passeios e eventos | SexyRose', description: '{cantidad} perfis em {lugar} para um café, um jantar, um museu ou um evento. Perfis verificados e contato direto pelo WhatsApp.', h1: 'Companhia para passeios em {lugar}', intro: 'Companhia para passeios em {lugar}: um café, um jantar, uma exposição ou um evento. Veja os perfis, escolha com quem ir e fale direto pelo WhatsApp ou Telegram.' },
-        placeAct: { title: '{Actividad} em {lugar} com companhia | SexyRose', description: 'Perfis em {lugar} que oferecem passeios de {actividad}: {cantidad} perfis verificados, contato direto pelo WhatsApp.', h1: '{Actividad} em {lugar}: companhia para o seu passeio', intro: 'Perfis em {lugar} que incluem {actividad} entre os passeios. Fale direto com quem escolher para combinar dia, horário e valor.' },
-        countryMen: { title: 'Companhia masculina para passeios em {pais} | SexyRose', description: 'Perfis masculinos verificados em {pais} para café, jantar, museu, cinema ou eventos. {cantidad} perfis com contato direto pelo WhatsApp.', h1: 'Companhia masculina em {pais}', intro: 'Perfis masculinos para passeios em {pais}: um café, um jantar, um museu ou um evento. Escolha com quem ir e fale direto pelo WhatsApp ou Telegram.' },
-        placeMen: { title: 'Companhia masculina em {lugar} para passeios | SexyRose', description: '{cantidad} perfis masculinos em {lugar} para um café, um jantar, um museu ou um evento. Perfis verificados e contato direto pelo WhatsApp.', h1: 'Companhia masculina em {lugar}', intro: 'Companhia masculina para passeios em {lugar}: um café, um jantar, uma exposição ou um evento. Veja os perfis, escolha com quem ir e fale direto pelo WhatsApp ou Telegram.' },
-        profile: { title: '{nombre}, companhia para passeios em {lugar} | SexyRose', description: '{nombre}, {edad} anos, em {lugar}: {salidas}. {bio}' },
+        country: { title: 'Acompanhantes em {pais} | SexyRose', description: 'Anúncios de acompanhantes em {pais}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes em {pais}', intro: 'Anúncios de acompanhantes em {pais}. Escolha uma cidade, veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
+        place: { title: 'Acompanhantes em {lugar} | SexyRose', description: 'Anúncios de acompanhantes em {lugar}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes em {lugar}', intro: 'Anúncios de acompanhantes em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
+        countryMen: { title: 'Acompanhantes homens em {pais} | SexyRose', description: 'Anúncios de acompanhantes homens em {pais}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes homens em {pais}', intro: 'Anúncios de acompanhantes homens em {pais}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
+        placeMen: { title: 'Acompanhantes homens em {lugar} | SexyRose', description: 'Anúncios de acompanhantes homens em {lugar}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes homens em {lugar}', intro: 'Anúncios de acompanhantes homens em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
+        profile: { title: '{nombre}, acompanhante em {lugar} | SexyRose', description: '{nombre}, {edad} anos, acompanhante em {lugar}. {bio}' },
       },
     },
   };
-  HH.SEO_VARS = ['{pais}', '{lugar}', '{actividad}', '{Actividad}', '{cantidad}', '{nombre}', '{edad}', '{salidas}', '{bio}'];
+  HH.SEO_VARS = ['{pais}', '{lugar}', '{cantidad}', '{nombre}', '{edad}', '{bio}'];
   const cfg = () => { const st = HH.settings(); if (!st.seo) st.seo = {}; return st.seo; };
   const get = (path, lang) => {
     // path: 'home.title' o 'tpl.place.h1'; lo guardado gana, si está vacío se usa el texto por defecto
@@ -66,10 +64,9 @@
   /* ---------- Datos ---------- */
   const locs = () => HH.db.locations || [];
   const countryOf = (loc) => HH.locPath(loc)[0] || loc;
-  const actLabel = (a, lang) => { const act = typeof a === 'string' ? HH.activity(a) : a; return lang && lang !== 'es' ? HH.t(act.label, lang) : act.label; };
   // g = 'hombre' en las páginas de hombres; sin g, los tipos que ve el visitante (por defecto mujeres y trans; así las ve Google)
   const byGender = (g) => g ? HH.rankList(HH.publishedProfiles().filter(p => (p.gender || 'mujer') === g)) : HH.rankedProfiles();
-  HH.placeProfiles = (loc, actId, g) => byGender(g).filter(p => HH.inCity(p, loc.name) && (!actId || (p.activities || []).includes(actId)));
+  HH.placeProfiles = (loc, actId, g) => byGender(g).filter(p => HH.inCity(p, loc.name));
   // Una provincia o zona con perfiles en una sola ciudad repetiría la página de esa ciudad: queda fuera de Google
   HH.seoIndexable = (loc, actId, g) => {
     const list = HH.placeProfiles(loc, actId, g);
@@ -79,9 +76,9 @@
     return cities.size >= 2;
   };
   const countAll = (loc, actId, g) => HH.placeProfiles(loc, actId, g).length;
-  const varsFor = (loc, act, n, lang) => ({ pais: HH.locSeoName(countryOf(loc), lang), lugar: HH.locSeoName(loc, lang), ciudad: HH.locSeoName(loc, lang), actividad: act ? low(actLabel(act, lang), lang) : '', Actividad: act ? cap(actLabel(act, lang)) : '', cantidad: n });
+  const varsFor = (loc, act, n, lang) => ({ pais: HH.locSeoName(countryOf(loc), lang), lugar: HH.locSeoName(loc, lang), ciudad: HH.locSeoName(loc, lang), cantidad: n });
   const placeIntro = (loc, lang) => { const pc = (cfg().places || {})[loc.id]; return pc && pc.intro && pc.intro[lang] && pc.intro[lang].trim() ? pc.intro[lang] : ''; };
-  // Lugar de una clave "pais.x" / "lugar.x.y[.act]"
+  // Lugar de una clave "pais.x" / "lugar.x.y" (una clave vieja "lugar.x.y.actividad" devuelve el lugar con old: true)
   HH.seoPlaceOf = (key) => {
     const parts = String(key || '').split('.');
     if (parts[0] !== 'pais' && parts[0] !== 'lugar') return null;
@@ -90,9 +87,7 @@
     if (parts[0] === 'pais' && parts.length > 2) return null;
     const country = HH.countryBySlug(parts[1]); if (!country) return null;
     const loc = parts[0] === 'pais' ? country : HH.locBySlug(country, parts[2]); if (!loc) return null;
-    const act = parts[0] === 'lugar' && parts[3] ? HH.ACTIVITIES.find(a => a.id === parts[3]) : null;
-    if (parts[3] && !act) return null;
-    return { country, loc, act, g };
+    return { country, loc, act: null, g, old: !!(parts[0] === 'lugar' && parts[3]) };
   };
 
   /* ---------- Metadatos de cada página ---------- */
@@ -113,20 +108,21 @@
     } else if (top === 'pais' || top === 'lugar') {
       const pl = HH.seoPlaceOf(key);
       if (!pl) { m.status = 404; m.robots = 'noindex,follow'; m.title = { es: 'Página no encontrada', en: 'Page not found', pt: 'Página não encontrada' }[lang] + ' | SexyRose'; return m; }
-      const n = countAll(pl.loc, pl.act && pl.act.id, pl.g); const type = pl.g ? (pl.loc.level === 'country' ? 'countryMen' : 'placeMen') : pl.act ? 'placeAct' : pl.loc.level === 'country' ? 'country' : 'place';
+      if (pl.old) { m.status = 301; m.robots = 'noindex,follow'; m.canonical = abs(HH.placeKey(pl.loc), lang); return m; }
+      const n = countAll(pl.loc, null, pl.g); const type = pl.g ? (pl.loc.level === 'country' ? 'countryMen' : 'placeMen') : pl.loc.level === 'country' ? 'country' : 'place';
       const v = varsFor(pl.loc, pl.act, n, lang);
       m.title = fill(get('tpl.' + type + '.title', lang), v); m.description = clip(fill(get('tpl.' + type + '.description', lang), v), 160);
-      m.alternates = alts(key); if (!HH.seoIndexable(pl.loc, pl.act && pl.act.id, pl.g)) m.robots = 'noindex,follow';
+      m.alternates = alts(key); if (!HH.seoIndexable(pl.loc, null, pl.g)) m.robots = 'noindex,follow';
       const path = HH.locPath(pl.loc);
-      m.ld.push(crumbsLd([{ name: homeName, url: abs('inicio', lang) }].concat(path.map(l => ({ name: HH.locSeoName(l, lang), url: abs(HH.placeKey(l), lang) }))).concat(pl.act ? [{ name: cap(actLabel(pl.act, lang)), url: abs(key, lang) }] : []).concat(pl.g ? [{ name: menLabel(lang), url: abs(key, lang) }] : [])));
-      const list = HH.placeProfiles(pl.loc, pl.act && pl.act.id, pl.g).slice(0, 24);
+      m.ld.push(crumbsLd([{ name: homeName, url: abs('inicio', lang) }].concat(path.map(l => ({ name: HH.locSeoName(l, lang), url: abs(HH.placeKey(l), lang) }))).concat(pl.g ? [{ name: menLabel(lang), url: abs(key, lang) }] : [])));
+      const list = HH.placeProfiles(pl.loc, null, pl.g).slice(0, 24);
       if (list.length) m.ld.push({ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: list.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: abs('perfil.' + p.slug, lang), name: p.displayName })) });
     } else if (top === 'perfil') {
       const p = HH.profileBySlug(key.split('.')[1]);
       const pub = p && HH.publishedProfiles().includes(p);
       if (!p) { m.status = 404; m.robots = 'noindex,follow'; m.title = { es: 'Perfil no encontrado', en: 'Profile not found', pt: 'Perfil não encontrado' }[lang] + ' | SexyRose'; return m; }
       const loc = HH.locByName(p.homeCity || p.city) || HH.locByName(p.city);
-      const v = { nombre: p.displayName, edad: p.age || '', lugar: loc ? HH.locSeoName(loc, lang) : p.city, ciudad: loc ? HH.locSeoName(loc, lang) : p.city, pais: loc ? HH.locSeoName(countryOf(loc), lang) : (p.country || ''), salidas: (p.activities || []).map(a => low(actLabel(a, lang), lang)).join(', '), bio: clip(HH.pText ? (lang === 'en' && p.bioEn ? p.bioEn : p.bio) : p.bio, 110) };
+      const v = { nombre: p.displayName, edad: p.age || '', lugar: loc ? HH.locSeoName(loc, lang) : p.city, ciudad: loc ? HH.locSeoName(loc, lang) : p.city, pais: loc ? HH.locSeoName(countryOf(loc), lang) : (p.country || ''), bio: clip(HH.pText ? (lang === 'en' && p.bioEn ? p.bioEn : p.bio) : p.bio, 110) };
       m.title = fill(get('tpl.profile.title', lang), v); m.description = clip(fill(get('tpl.profile.description', lang), v), 160);
       m.alternates = alts(key); m.type = 'profile'; if (!pub) { m.robots = 'noindex,follow'; m.status = 404; }
       const path = loc ? HH.locPath(loc).filter(HH.isActiveLoc) : [];
@@ -136,7 +132,7 @@
       m.title = { es: 'Stars: perfiles destacados por provincia', en: 'Stars: featured profiles by region', pt: 'Stars: perfis em destaque por região' }[lang] + ' | SexyRose'; m.alternates = alts('stars');
     } else if (top === 'registro') {
       m.title = { es: 'Publicá tu perfil de acompañante', en: 'Publish your companion profile', pt: 'Publique seu perfil' }[lang] + ' | SexyRose';
-      m.description = { es: 'Publicá tu perfil para salidas en SexyRose: verificación automática, planes mensuales y contacto directo con tus clientes por WhatsApp.', en: 'Publish your profile for outings on SexyRose: automatic verification, monthly plans and direct contact with your clients on WhatsApp.', pt: 'Publique seu perfil para passeios no SexyRose: verificação automática, planos mensais e contato direto com seus clientes pelo WhatsApp.' }[lang];
+      m.description = { es: 'Publicá tu aviso en SexyRose: planes mensuales y contacto directo por WhatsApp o Telegram.', en: 'Publish your ad on SexyRose: monthly plans and direct contact on WhatsApp or Telegram.', pt: 'Publique seu anúncio no SexyRose: planos mensais e contato direto pelo WhatsApp ou Telegram.' }[lang];
       m.alternates = alts('registro');
     } else if (PRIVATE.includes(top)) { m.robots = 'noindex,nofollow'; m.canonical = null; }
     else if (NOINDEX.includes(top)) { m.robots = 'noindex,follow'; if (top === '404') { m.status = 404; m.title = { es: 'Página no encontrada', en: 'Page not found', pt: 'Página não encontrada' }[lang] + ' | SexyRose'; } if (top === 'swipe') m.title = 'Swipe | SexyRose'; if (top === 'shorts') m.title = 'Shorts | SexyRose'; }
@@ -184,12 +180,11 @@
   }
   document.addEventListener('click', (ev) => { const a = ev.target.closest('[data-lang-to]'); if (!a) return; ev.preventDefault(); HH.setLang(a.dataset.langTo); });
 
-  /* ---------- Páginas de país, lugar y lugar × salida ---------- */
+  /* ---------- Páginas de país y lugar ---------- */
   const S = HH.ui.seoView = HH.ui.seoView || {};
   const crumbsHtml = (loc, act, g) => {
     const items = [`<a href="#inicio" data-go="#inicio">${L('Inicio', 'Home', 'Início')}</a>`];
     HH.locPath(loc).forEach((l, i, arr) => { const last = i === arr.length - 1 && !act && !g; items.push(last ? `<span aria-current="page">${esc(HH.locSeoName(l, HH.lang))}</span>` : `<a href="#${HH.placeKey(l)}" data-go="#${HH.placeKey(l)}">${esc(HH.locSeoName(l, HH.lang))}</a>`); });
-    if (act) items.push(`<span aria-current="page">${esc(cap(actLabel(act, HH.lang)))}</span>`);
     if (g) items.push(`<span aria-current="page">${esc(menLabel(HH.lang))}</span>`);
     return `<nav class="pf-crumbs" aria-label="${L('Ubicación', 'Location', 'Localização')}" data-noi18n>${items.join(icon('chevronRight'))}</nav>`;
   };
@@ -197,14 +192,15 @@
   function landing(key) {
     const pl = HH.seoPlaceOf(key); const lang = HH.lang;
     if (!pl) return notFound();
-    const { loc, act, g } = pl;
-    const all = HH.placeProfiles(loc, act && act.id, g); const n = all.length;
-    const type = g ? (loc.level === 'country' ? 'countryMen' : 'placeMen') : act ? 'placeAct' : loc.level === 'country' ? 'country' : 'place';
-    const v = varsFor(loc, act, countAll(loc, act && act.id, g), lang);
-    const h1 = fill(get('tpl.' + type + '.h1', lang), v); const intro = (!act && !g && placeIntro(loc, lang)) || fill(get('tpl.' + type + '.intro', lang), v);
+    // Dirección vieja de lugar + actividad: se reemplaza por la del lugar (ya no hay páginas por actividad)
+    if (pl.old) { setTimeout(() => HH.go('#' + HH.placeKey(pl.loc), { replace: true }), 0); return ''; }
+    const { loc, g } = pl; const act = null;
+    const all = HH.placeProfiles(loc, null, g); const n = all.length;
+    const type = g ? (loc.level === 'country' ? 'countryMen' : 'placeMen') : loc.level === 'country' ? 'country' : 'place';
+    const v = varsFor(loc, null, countAll(loc, null, g), lang);
+    const h1 = fill(get('tpl.' + type + '.h1', lang), v); const intro = (!g && placeIntro(loc, lang)) || fill(get('tpl.' + type + '.intro', lang), v);
     if (S.key !== key) { S.key = key; S.shown = 24; }
     const shown = all.slice(0, S.shown);
-    const acts = g ? [] : HH.ACTIVITIES.map(a => ({ a, n: countAll(loc, a.id) })).filter(x => x.n);
     // Lugares dentro: una provincia o zona con una sola ciudad se reemplaza por esa ciudad (es la página que está en Google)
     const expand = (l) => (l.level === 'city' || HH.seoIndexable(l, null, g)) ? [l] : locs().filter(x => x.parentId === l.id && HH.isActiveLoc(x)).flatMap(expand);
     const kids = [...new Map(locs().filter(l => l.parentId === loc.id && HH.isActiveLoc(l)).flatMap(expand).map(l => [l.id, l])).values()].map(l => ({ l, n: countAll(l, null, g) })).filter(x => x.n).sort((a, b) => b.n - a.n || a.l.name.localeCompare(b.l.name));
@@ -212,19 +208,17 @@
     const sibs = parent ? [...new Map(locs().filter(l => l.parentId === parent.id && l.id !== loc.id && HH.isActiveLoc(l)).flatMap(expand).filter(l => l.id !== loc.id).map(l => [l.id, l])).values()].map(l => ({ l, n: countAll(l, null, g) })).filter(x => x.n).sort((a, b) => b.n - a.n).slice(0, 12) : [];
     // Enlace entre la página general y la de hombres del mismo lugar
     const otherN = g ? countAll(loc) : countAll(loc, null, HH.GENDER_PAGE.gender);
-    const otherHtml = act || !otherN ? '' : `<div class="seo-sub" data-noi18n><div class="chips">${g ? linkChip(HH.placeKey(loc), L('Mujeres y trans en ', 'Women and trans in ', 'Mulheres e trans em ') + HH.locSeoName(loc, lang), otherN) : linkChip(HH.placeKey(loc, null, HH.GENDER_PAGE.gender), menLabel(lang) + L(' en ', ' in ', ' em ') + HH.locSeoName(loc, lang), otherN)}</div></div>`;
+    const otherHtml = !otherN ? '' : `<div class="seo-sub" data-noi18n><div class="chips">${g ? linkChip(HH.placeKey(loc), L('Mujeres y trans en ', 'Women and trans in ', 'Mulheres e trans em ') + HH.locSeoName(loc, lang), otherN) : linkChip(HH.placeKey(loc, null, HH.GENDER_PAGE.gender), menLabel(lang) + L(' en ', ' in ', ' em ') + HH.locSeoName(loc, lang), otherN)}</div></div>`;
     const placeName = HH.locSeoName(loc, lang);
-    const actsHtml = acts.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Tipos de salida en ', 'Types of outing in ', 'Tipos de passeio em ') + esc(placeName)}</h2><div class="chips">${loc.level !== 'country' ? linkChip(HH.placeKey(loc), L('Todas', 'All', 'Todos'), countAll(loc), !act) + acts.map(x => linkChip(HH.placeKey(loc, x.a), cap(actLabel(x.a, lang)), x.n, act && act.id === x.a.id)).join('') : ''}</div></div>` : '';
     return `<div class="container seo-page stack-lg">
       ${crumbsHtml(loc, act, g)}
-      <header class="seo-head" data-noi18n><h1>${esc(h1)}</h1><p class="lead">${esc(intro)}</p><p class="small muted">${n} ${n === 1 ? L('perfil', 'profile', 'perfil') : L('perfiles', 'profiles', 'perfis')}${act ? '' : ' · ' + L('incluye a quienes están de visita', 'includes visitors', 'inclui quem está de visita')}</p></header>
-      ${loc.level !== 'country' && acts.length ? actsHtml : ''}
+      <header class="seo-head" data-noi18n><h1>${esc(h1)}</h1><p class="lead">${esc(intro)}</p><p class="small muted">${n} ${n === 1 ? L('perfil', 'profile', 'perfil') : L('perfiles', 'profiles', 'perfis')} · ${L('incluye a quienes están de visita', 'includes visitors', 'inclui quem está de visita')}</p></header>
       ${otherHtml}
       ${n ? `<section aria-label="${L('Perfiles', 'Profiles', 'Perfis')}"><div class="tier-grid lg">${shown.map(p => HH.pcard(p)).join('')}</div>${n > shown.length ? `<div class="row" style="justify-content:center;margin-top:12px"><button type="button" class="btn ghost sm" data-action="seoMore" data-noi18n>${L('Ver más', 'Show more', 'Ver mais')} <span class="small muted num">${shown.length} / ${n}</span></button></div>` : ''}</section>`
         : `<div class="empty" data-noi18n>${icon('search')}<h4>${L('Todavía no hay perfiles acá', 'No profiles here yet', 'Ainda não há perfis aqui')}</h4>${parent ? `<a class="btn secondary sm" href="#${HH.placeKey(parent, null, g)}" data-go="#${HH.placeKey(parent, null, g)}">${L('Ver ', 'See ', 'Ver ') + esc(HH.locSeoName(parent, lang))}</a>` : ''}</div>`}
-      ${kids.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Lugares en ', 'Places in ', 'Lugares em ') + esc(placeName)}</h2><div class="chips">${kids.map(x => linkChip(HH.placeKey(x.l, act && countAll(x.l, act.id) ? act : null, g), HH.locSeoName(x.l, lang), x.n)).join('')}</div></div>` : ''}
+      ${kids.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Lugares en ', 'Places in ', 'Lugares em ') + esc(placeName)}</h2><div class="chips">${kids.map(x => linkChip(HH.placeKey(x.l, null, g), HH.locSeoName(x.l, lang), x.n)).join('')}</div></div>` : ''}
       ${sibs.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Más lugares en ', 'More places in ', 'Mais lugares em ') + esc(HH.locSeoName(parent, lang))}</h2><div class="chips">${sibs.map(x => linkChip(HH.placeKey(x.l, null, g), HH.locSeoName(x.l, lang), x.n)).join('')}</div></div>` : ''}
-      <aside class="card seo-recruit" data-noi18n><div class="grow"><strong>${L('¿Sos acompañante en ', 'Are you a companion in ', 'Você oferece companhia em ') + esc(placeName)}?</strong><p class="small muted">${L('Publicá tu perfil: verificación automática, sin intermediarios y con contacto directo con tus clientes.', 'Publish your profile: automatic verification, no middlemen and direct contact with your clients.', 'Publique seu perfil: verificação automática, sem intermediários e com contato direto com seus clientes.')}</p></div><a class="btn sm" href="#registro" data-go="#registro">${L('Publicar mi perfil', 'Publish my profile', 'Publicar meu perfil')}</a></aside>
+      <aside class="card seo-recruit" data-noi18n><div class="grow"><strong>${L('¿Sos acompañante en ', 'Are you a companion in ', 'Você é acompanhante em ') + esc(placeName)}?</strong><p class="small muted">${L('Publicá tu aviso: contacto directo con quien te escribe, sin intermediarios.', 'Publish your ad: direct contact with whoever writes to you, no middlemen.', 'Publique seu anúncio: contato direto com quem escreve para você, sem intermediários.')}</p></div><a class="btn sm" href="#registro" data-go="#registro">${L('Publicar mi perfil', 'Publish my profile', 'Publicar meu perfil')}</a></aside>
     </div>${HH.seoHubFooter ? HH.seoHubFooter() : ''}${HH.pubFooter ? HH.pubFooter() : ''}`;
   }
   function notFound() {
@@ -244,17 +238,12 @@
       return { c, n, men, cities: inside.slice(0, 12) };
     });
   };
-  HH.seoTopCombos = function (max) {
-    const out = [];
-    locs().filter(l => l.level === 'city' && HH.isActiveLoc(l)).forEach(l => HH.ACTIVITIES.forEach(a => { const n = countAll(l, a.id); if (n >= HH.seoMin()) out.push({ l, a, n }); }));
-    return out.sort((x, y) => y.n - x.n || x.l.name.localeCompare(y.l.name)).slice(0, max || 12);
-  };
+  HH.seoTopCombos = () => []; // sin páginas por actividad
+
   const hubLinks = () => {
-    const lang = HH.lang; const data = HH.seoHubData(); const combos = HH.seoTopCombos(12);
-    const comboLabel = (x) => cap(actLabel(x.a, lang)) + L(' en ', ' in ', ' em ') + HH.locSeoName(x.l, lang);
+    const lang = HH.lang; const data = HH.seoHubData();
     return `<div class="seo-hub-grid">
       ${data.map(d => `<div><h3 class="seo-h3"><a href="#${HH.placeKey(d.c)}" data-go="#${HH.placeKey(d.c)}">${esc(HH.locSeoName(d.c, lang))}</a></h3><ul class="seo-links">${d.cities.map(x => `<li><a href="#${HH.placeKey(x.l)}" data-go="#${HH.placeKey(x.l)}">${esc(HH.locSeoName(x.l, lang))}</a></li>`).join('')}${d.men ? `<li><a href="#${HH.placeKey(d.c, null, HH.GENDER_PAGE.gender)}" data-go="#${HH.placeKey(d.c, null, HH.GENDER_PAGE.gender)}">${esc(menLabel(lang) + L(' en ', ' in ', ' em ') + HH.locSeoName(d.c, lang))}</a></li>` : ''}</ul></div>`).join('')}
-      ${combos.length ? `<div><h3 class="seo-h3">${L('Búsquedas frecuentes', 'Popular searches', 'Buscas frequentes')}</h3><ul class="seo-links">${combos.map(x => `<li><a href="#${HH.placeKey(x.l, x.a)}" data-go="#${HH.placeKey(x.l, x.a)}">${esc(comboLabel(x))}</a></li>`).join('')}</ul></div>` : ''}
     </div>`;
   };
   // Pie de la portada: título, texto y enlaces (todo editable en Admin → SEO)
@@ -282,7 +271,6 @@
       if (HH.seoIndexable(l, null, MEN)) add(HH.placeKey(l, null, MEN), last(HH.placeProfiles(l, null, MEN)), '0.7');
       const list = pub.filter(p => HH.inCity(p, l.name)); if (!HH.seoIndexable(l)) return;
       add(HH.placeKey(l), last(list), '0.8');
-      HH.ACTIVITIES.forEach(a => { const la = list.filter(p => (p.activities || []).includes(a.id)); if (HH.seoIndexable(l, a.id)) add(HH.placeKey(l, a), last(la), '0.6'); });
     });
     pub.forEach(p => add('perfil.' + p.slug, String(p.updatedAt || '').slice(0, 10) || today, '0.7'));
     add('stars', today, '0.4'); add('registro', today, '0.5');
@@ -309,7 +297,7 @@
     const counter = (id, max) => `<span class="tiny muted num" data-seo-count="${id}" data-max="${max}"></span>`;
     const serp = (id, url, t, d) => `<div class="serp" id="${id}"><div class="serp-u">${esc(url)}</div><div class="serp-t">${esc(t)}</div><div class="serp-d">${esc(d)}</div></div>`;
     const prettyUrl = (u) => ((HH.seoSite() || 'https://tudominio.com') + u).replace(/^https?:\/\//, '').replace(/\/$/, '').split('/').join(' › ');
-    const exampleLoc = () => { const top = HH.seoTopCombos(1)[0]; return top ? top : null; };
+    const exampleLoc = () => { const l = locs().find(x => x.level === 'city' && HH.isActiveLoc(x) && countAll(x)); return l ? { l } : null; };
     HH.adminViews.seo = function (me) {
       const lang = A.lang || 'es'; const c = cfg(); const hero = Object.assign({}, HH.DEFAULT_SETTINGS.hero, HH.settings().hero || {});
       const sm = HH.seoSitemap();
@@ -327,9 +315,9 @@
         <div class="field"><label for="seoBX">Texto del bloque al pie</label><textarea class="textarea" id="seoBX" name="blockText" rows="6" maxlength="2000">${esc(val('home.blockText'))}</textarea><span class="hint">Una línea en blanco separa párrafos. Debajo se agregan solos los enlaces a ciudades y búsquedas frecuentes.</span></div>
         <div class="row" style="justify-content:flex-end"><button class="btn" type="submit">${icon('check')} Guardar portada</button></div></form>`;
       const ex = exampleLoc();
-      const TYPES = [['countryMen', 'Página de hombres por país', ''], ['placeMen', 'Página de hombres por lugar', ''], ['country', 'Página de país', 'argentina'], ['place', 'Página de lugar (provincia, zona o ciudad)', ''], ['placeAct', 'Página de lugar + tipo de salida', ''], ['profile', 'Perfil', '']];
-      const exVars = (type) => { if (!ex) return {}; const loc = type === 'country' || type === 'countryMen' ? countryOf(ex.l) : ex.l; const act = type === 'placeAct' ? ex.a : null; const g = /Men$/.test(type) ? HH.GENDER_PAGE.gender : null; const v = varsFor(loc, act, countAll(loc, act && act.id, g), lang); return Object.assign(v, { nombre: 'Valentina', edad: 27, salidas: 'café, cena', bio: '' }); };
-      const exUrl = (type) => { if (!ex) return '/'; if (type === 'countryMen') return HH.urlOf(HH.placeKey(countryOf(ex.l), null, HH.GENDER_PAGE.gender), lang); if (type === 'placeMen') return HH.urlOf(HH.placeKey(ex.l, null, HH.GENDER_PAGE.gender), lang); return type === 'country' ? HH.urlOf(HH.placeKey(countryOf(ex.l)), lang) : type === 'place' ? HH.urlOf(HH.placeKey(ex.l), lang) : type === 'placeAct' ? HH.urlOf(HH.placeKey(ex.l, ex.a), lang) : HH.urlOf('perfil.valentina', lang); };
+      const TYPES = [['countryMen', 'Página de hombres por país', ''], ['placeMen', 'Página de hombres por lugar', ''], ['country', 'Página de país', 'argentina'], ['place', 'Página de lugar (provincia, zona o ciudad)', ''], ['profile', 'Perfil', '']];
+      const exVars = (type) => { if (!ex) return {}; const loc = type === 'country' || type === 'countryMen' ? countryOf(ex.l) : ex.l; const act = null; const g = /Men$/.test(type) ? HH.GENDER_PAGE.gender : null; const v = varsFor(loc, act, countAll(loc, act && act.id, g), lang); return Object.assign(v, { nombre: 'Valentina', edad: 27, bio: '' }); };
+      const exUrl = (type) => { if (!ex) return '/'; if (type === 'countryMen') return HH.urlOf(HH.placeKey(countryOf(ex.l), null, HH.GENDER_PAGE.gender), lang); if (type === 'placeMen') return HH.urlOf(HH.placeKey(ex.l, null, HH.GENDER_PAGE.gender), lang); return type === 'country' ? HH.urlOf(HH.placeKey(countryOf(ex.l)), lang) : type === 'place' ? HH.urlOf(HH.placeKey(ex.l), lang) : HH.urlOf('perfil.valentina', lang); };
       const tpl = `<form class="card stack" data-submit="seoTplSave"><div class="row between" style="gap:8px"><div class="card-title">${icon('edit')} Plantillas</div>${langChips()}</div>
         <div class="small muted">Se completan solas en cada página. Variables: ${HH.SEO_VARS.map(x => `<code>${x}</code>`).join(' ')}. <code>{lugar}</code> también acepta <code>{ciudad}</code>.</div>
         ${TYPES.map(([t, label]) => `<details class="seo-tpl"${A.open === t ? ' open' : ''} data-t="${t}"><summary><strong>${label}</strong>${icon('chevronDown')}</summary><div class="stack" style="gap:10px;padding-top:10px">
@@ -349,7 +337,7 @@
             <div class="field"><label for="seoPI_${l.id}">Texto propio (${LN[lang]})</label><textarea class="textarea" id="seoPI_${l.id}" name="intro" rows="3" maxlength="800" placeholder="Vacío: usa la plantilla">${esc((pc(l).intro || {})[lang] || '')}</textarea></div>
             <div class="row between" style="gap:8px"><a class="small" href="#${HH.placeKey(l)}" data-go="#${HH.placeKey(l)}">Ver página</a><button class="btn sm" type="submit">${icon('check')} Guardar</button></div>
           </form></details>`).join('')}</div></div>`;
-      return HH.adminLayout(me, 'seo', `${HH.adminHead('SEO', '', 'Textos para Google de la portada y de las páginas de país, lugar, tipo de salida y perfil, en los tres idiomas.')}<div class="stack" style="gap:16px">${site}${home}${tpl}${placesCard}</div>`);
+      return HH.adminLayout(me, 'seo', `${HH.adminHead('SEO', '', 'Textos para Google de la portada y de las páginas de país, lugar y perfil, en los tres idiomas.')}<div class="stack" style="gap:16px">${site}${home}${tpl}${placesCard}</div>`);
     };
     const updCounters = () => document.querySelectorAll('[data-seo-count]').forEach(s => { const el = document.getElementById(s.dataset.seoCount); if (!el) return; const n = el.value.length, max = Number(s.dataset.max); s.textContent = n + ' / ' + max + (n > max ? ' · Google lo puede cortar' : ''); s.style.color = n > max ? 'var(--warn)' : ''; });
     document.addEventListener('hh:rendered', () => { if (/^admin\.seo/.test(HH.current.path || '')) updCounters(); });
@@ -357,7 +345,7 @@
       seoLang(el) { A.lang = el.dataset.l; const open = document.querySelector('details.seo-tpl[open]'); A.open = open ? open.dataset.t : null; HH.save(); HH.refresh(); },
       seoPrev(el) {
         const box = document.getElementById(el.dataset.prev); if (!box) return; const t = el.dataset.vars; const ex = exampleLoc();
-        let v = {}; if (t && ex) { const loc = t === 'country' ? countryOf(ex.l) : ex.l; const act = t === 'placeAct' ? ex.a : null; v = Object.assign(varsFor(loc, act, countAll(loc, act && act.id), A.lang || 'es'), { nombre: 'Valentina', edad: 27, salidas: 'café, cena', bio: '' }); }
+        let v = {}; if (t && ex) { const loc = t === 'country' ? countryOf(ex.l) : ex.l; v = Object.assign(varsFor(loc, null, countAll(loc), A.lang || 'es'), { nombre: 'Valentina', edad: 27, bio: '' }); }
         const txt = t ? fill(el.value, v) : el.value; box.querySelector(el.dataset.part === 't' ? '.serp-t' : '.serp-d').textContent = el.dataset.part === 'd' ? clip(txt, 160) : txt; updCounters();
       },
       seoSiteSave(form, ev, v) { const u = String(v.siteUrl || '').trim().replace(/\/$/, ''); if (u && !/^https:\/\/[^/]+\.[^/]+$/.test(u)) { HH.toast('Usá la dirección completa, por ejemplo https://tudominio.com', { type: 'warn' }); return; } const c = cfg(); c.siteUrl = u; c.minProfiles = Number(v.minProfiles) || 1; HH.save(); HH.toast('Sitio guardado', { type: 'ok' }); HH.refresh(); },

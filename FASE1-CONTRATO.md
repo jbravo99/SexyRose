@@ -45,8 +45,8 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 ## API
 
 ### Pública (agente A) — routes/sitio.js
-- `GET /api/sitio/estado` → `{ahora, ajustes:{portada, promo, precios}, ubicaciones:[...], categorias:[...], intereses:[...], perfiles:[PerfilPublico], historias:[{id, cuentaId, url, urlMini, texto, creado, expira}]}`. Solo perfiles con estado publicado, verificacion verificada, no ocultos, cuenta activa.
-  - `PerfilPublico` = {cuentaId, slug, displayName, edad, genero, nacionalidad, pais, provincia, ciudad, zona, titular, bio, titularEn, bioEn, idiomas, alturaCm, contextura, intereses, salidas, tarifaDesde, fotos:[{url, urlMini, ancho, alto}], plan (código efectivo), star (bool), verificada: true, actualizado, publicadoEn, contacto:{whatsapp, telegram} , links}. (WhatsApp va en el estado público porque el MVP lo muestra tras "Me interesa"; es decisión de producto existente.)
+- `GET /api/sitio/estado` → `{ahora, ajustes:{portada, promo, precios}, ubicaciones:[...], intereses:[...], perfiles:[PerfilPublico], historias:[{id, cuentaId, url, urlMini, texto, creado, expira}]}`. Solo perfiles con estado publicado, verificacion verificada, no ocultos, cuenta activa.
+  - `PerfilPublico` = {cuentaId, slug, displayName, edad, genero, nacionalidad, pais, provincia, ciudad, zona, titular, bio, titularEn, bioEn, idiomas, alturaCm, contextura, intereses, tarifaDesde, fotos:[{url, urlMini, ancho, alto}], plan (código efectivo), star (bool), verificada: true, actualizado, publicadoEn, contacto:{whatsapp, telegram} , links}. (WhatsApp va en el estado público porque el MVP lo muestra tras "Me interesa"; es decisión de producto existente.)
   - Caché en memoria 30 s, invalidada en cada cambio.
 - `GET /api/sitio/perfil/:slug` → PerfilPublico o 404.
 - `POST /api/sitio/reporte` → reutiliza la lógica de denuncias (categoría + url del perfil + descripción).
@@ -444,3 +444,41 @@ contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; 
   Hacer un pedido llevan a ingresar si no hay sesión y vuelven al perfil. Panel de la acompañante → Pedidos (contador).
   El chat consulta `?since=` cada 4 s con la pestaña visible (15 s en segundo plano). Demo: sin cuentas ni compras
   (prod-clientes.js no corre en la demo; la demo no muestra la sección de contenido).
+
+## Textos sin actividades ni garantías — desde el 12/11/2026 (decisión de Juan, criterio de su abogado)
+
+- Criterio: SexyRose es un sitio de anuncios, solo publica; cada parte es responsable; ninguna garantía más allá de
+  "Edad e identidad verificadas al publicar"; nunca describir ni sugerir actividades o servicios. Frases tipo:
+  "Avisos de acompañantes en {lugar}", "Contacto directo con cada anunciante", "Cada anunciante es responsable de su aviso".
+- **Actividades (tabla `categorias`) fuera de todo lo público**: `GET /api/sitio/estado` ya no trae `categorias` ni
+  `PerfilPublico.salidas`; el sitio y la demo arman `HH.db.activities = []` (sin filtro de categorías en el inicio,
+  Cerca ni Swipe, sin etiquetas en tarjetas ni perfiles, sin "Salidas que te gustan" en el panel: el panel ya no manda
+  `salidas`, así que lo guardado queda intacto en `datos.salidas` y se puede volver atrás). El admin sigue teniendo
+  Categorías (interno). En el build del sitio, `HH.DEFAULT_ACTIVITIES` y `HH.ACTIVITY_ICONS` van vacíos y
+  `data.js` (semilla del prototipo) se reemplaza por `data-sitio.js` (forma vacía); tampoco van `bookings.js` ni
+  `activity.js`. Del diccionario en/pt no viajan las entradas que mencionan actividades si su texto no está en el sitio
+  (`build-sitio.py`, `sin_restos`).
+- **Sin páginas por actividad**: `/<pais>/<lugar>/<cualquier cosa que no sea "hombres">` (y `/en/…`, `/pt/…`) responde
+  **301** a `/<pais>/<lugar>` en el mismo idioma (con la consulta). Más de 3 tramos sigue siendo 404. No hay
+  lugar × actividad en el mapa del sitio, ni plantilla `placeAct` en SEO, ni enlaces "Búsquedas frecuentes". En la
+  demo (rutas con #) la dirección vieja abre la página del lugar.
+- Plantillas SEO por defecto: "Acompañantes en {pais|lugar}", "Hombres acompañantes en {…}", perfil
+  "{nombre}, {edad} años, acompañante en {lugar}. {bio}" (sin `{salidas}`/`{actividad}`).
+- `ajustes.portada`: el valor viejo por defecto (salidas / perfiles verificados) se cambia en `db/100-textos-sin-actividades.sql`
+  solo si sigue igual al de siempre.
+
+
+## Filtro por intereses — desde el 12/11/2026 (decisión de Juan)
+
+- El filtro del inicio (desplegable "Intereses" con contador o el elegido, chips, "Quitar"), el de Cerca (ventana
+  Filtros, varios a la vez, junto con la edad) y el de Swipe (chips "Todos" + intereses; en el teléfono se abren con el
+  botón de filtros) usan los **intereses** en lugar de las categorías: mismo lugar y mismo comportamiento que tenía el
+  filtro de categorías. Selección simple en el inicio y en Swipe (el inicio pasa el elegido a Swipe y viceversa).
+- Lista = `GET /api/sitio/estado` → `intereses[]` `{id, nombre, nombreEn, nombrePt, orden}` (la que define el admin,
+  en su orden; se muestran todos) y cada perfil filtra por `perfiles[].intereses` (ids). Nombres por idioma.
+- Front: `HH.FILTRO_INTERESES = true` en `prod-sitio.js` (sitio real y demo); `views-public.js` usa la lista de
+  intereses cuando está prendido y las categorías en el prototipo. Sin páginas SEO por interés, sin intereses en las
+  tarjetas, sin parámetro en la dirección (el elegido queda en el estado de la sesión, como antes). Máximo 6 por
+  acompañante (sin cambios).
+- Admin: la sección se titula "Intereses y categorías", con Intereses primero ("los eligen las acompañantes (hasta 6) y
+  se usan como filtro en el sitio") y Salidas después ("No se muestran en el sitio").

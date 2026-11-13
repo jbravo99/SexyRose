@@ -489,14 +489,24 @@
     }).join("")}</div>`;
   }
   const GRID_PAGE = 12;
+  /* Filtro del inicio, Cerca y Swipe: en el prototipo son las categorías (actividades); en el sitio real
+     (HH.FILTRO_INTERESES, prod-sitio.js) son los intereses que define el admin y eligen las acompañantes. */
+  const FI = () => !!HH.FILTRO_INTERESES;
+  const filtList = () =>
+    FI()
+      ? (HH.interestList ? HH.interestList() : []).map((x) => ({ id: x.id, label: HH.interestLabel(x.id), icon: "" }))
+      : HH.ACTIVITIES;
+  const filtOf = (p) => (FI() ? p.interests || [] : p.activities || []);
+  const filtLabel = (id) => (FI() ? HH.interestLabel(id) || id : HH.activity(id).label);
+  const filtIcon = (a) => (a.icon ? HH.icon(a.icon) + " " : "");
   const homeCat = () =>
-    HH.ui.homeCat && HH.ACTIVITIES.some((a) => a.id === HH.ui.homeCat)
+    HH.ui.homeCat && filtList().some((a) => a.id === HH.ui.homeCat)
       ? HH.ui.homeCat
       : "";
   function gridProfiles() {
     const cat = homeCat();
     const base = HH.rankedProfiles().filter(
-      (p) => !cat || (p.activities || []).includes(cat),
+      (p) => !cat || filtOf(p).includes(cat),
     );
     return HH.geo() ? HH.byDistance(base) : orderByCity(base, cityCurrent());
   }
@@ -582,7 +592,7 @@
     return list.filter(
       (p) =>
         (!f.acts.length ||
-          f.acts.some((a) => (p.activities || []).includes(a))) &&
+          f.acts.some((a) => filtOf(p).includes(a))) &&
         (!f.ageMin || (p.age || 0) >= f.ageMin) &&
         (!f.ageMax || (p.age || 0) <= f.ageMax),
     );
@@ -607,7 +617,7 @@
     const pos = ringPos(i);
     return `<a class="pub-bub" href="#perfil.${p.slug}" data-go="#perfil.${p.slug}"${pos ? ` style="${pos}"` : ""} aria-label="Ver perfil de ${esc(p.displayName)}">
       <span class="pub-bub-av">${HH.avatar(p, 96)}${HH.isStar(p.userId) ? `<span class="pub-bub-pin" title="Star">${HH.icon("pin")}</span>` : ""}</span>
-      <span class="pub-bub-name">${p.verified === "verified" ? `<span class="ver" title="Verificada">${HH.icon("verified")}</span>` : ""}<span class="ellipsis">${esc(p.displayName)}</span>${p.online ? '<span class="pub-dot" title="En línea"></span>' : ""}</span></a>`;
+      <span class="pub-bub-name">${p.verified === "verified" ? `<span class="ver" title="Edad e identidad verificadas al publicar">${HH.icon("verified")}</span>` : ""}<span class="ellipsis">${esc(p.displayName)}</span>${p.online ? '<span class="pub-dot" title="En línea"></span>' : ""}</span></a>`;
   }
   // Radio de búsqueda en "Cerca de mí" (km): de 5 a 100, arranca en 15. Requiere la ubicación del visitante.
   const NEAR_KM = [5, 10, 15, 25, 50, 100];
@@ -656,7 +666,7 @@
       ${fallback ? `<div class="notice">${HH.icon("info")}<span>Todavía no hay acompañantes publicadas en ${esc(city)}. Te mostramos las de otras ciudades.</span></div>` : ""}
       ${
         !list.length
-          ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles con esos filtros</h4><p class="small">Probá quitando alguna actividad o ampliando el rango de edad.</p><button type="button" class="btn secondary sm" data-action="pubNearClear">Quitar filtros</button></div>`
+          ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles con esos filtros</h4><p class="small">${FI() ? "Probá quitando algún interés o ampliando el rango de edad." : "Probá quitando alguna actividad o ampliando el rango de edad."}</p><button type="button" class="btn secondary sm" data-action="pubNearClear">Quitar filtros</button></div>`
           : `
       ${fallback ? `<h3 style="font-size:18px">En otras ciudades</h3>` : ""}
       <div class="pub-near${extra.length ? " has-more" : ""}" aria-label="Acompañantes cerca">
@@ -698,7 +708,7 @@
     HH.modal({
       title: "Filtros",
       body: `<div class="stack">
-        <div><div class="label" style="margin-bottom:8px">Tipo de salida</div><div class="chips" id="pubNearActs" role="group" aria-label="Tipo de salida">${HH.ACTIVITIES.map((a) => `<button type="button" class="chip" data-action="pubNearAct" data-id="${a.id}" aria-pressed="${f.acts.includes(a.id)}">${HH.icon(a.icon)} ${a.label}</button>`).join("")}</div></div>
+        ${filtList().length ? `<div><div class="label" style="margin-bottom:8px">${FI() ? "Intereses" : "Categoría"}</div><div class="chips" id="pubNearActs" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">${filtList().map((a) => `<button type="button" class="chip" data-action="pubNearAct" data-id="${a.id}" aria-pressed="${f.acts.includes(a.id)}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}</div></div>` : ""}
         <div><div class="label" style="margin-bottom:8px">Edad</div><div class="grid-2" style="gap:10px">${ages("pubAgeMin", "Sin mínimo")}${ages("pubAgeMax", "Sin máximo")}</div></div>
         <p class="small muted">Los resultados se actualizan al instante, detrás de esta ventana.</p>
       </div>`,
@@ -724,7 +734,7 @@
     const msg =
       "Hola " +
       p.displayName +
-      ", te vi en SexyRose y me gustaría proponerte una salida.";
+      ", te vi en SexyRose.";
     const href = HH.whatsappLink(p.whatsapp, msg);
     const hasPhone = String(p.whatsapp || "").replace(/\D/g, "").length >= 8;
     const tgHref = HH.telegramLink(p.telegram);
@@ -798,28 +808,32 @@
     );
     const faq = [
       [
-        "¿Es seguro?",
-        "Las salidas son siempre en lugares públicos: cafés, museos, parques, eventos. Los perfiles de acompañantes pasan por verificación de identidad y cualquier conducta inapropiada se puede reportar desde el perfil. El WhatsApp se comparte solo después de que vos mostrás interés.",
+        "¿Qué es SexyRose?",
+        "Es un sitio de anuncios. Cada acompañante publica su propio aviso y es la única responsable de lo que publica y de lo que ofrece. SexyRose no organiza, no intermedia, no cobra ni participa en ningún encuentro entre usuarios y anunciantes.",
       ],
       [
-        "¿Qué incluye una salida?",
-        "Compañía y buena conversación para la actividad que propongas: un café, una muestra, una caminata, un recital, una cena de trabajo. El plan, la duración y la tarifa los acordás directamente con la acompañante por WhatsApp.",
+        "¿SexyRose garantiza algo sobre los anunciantes?",
+        "No. No garantizamos la conducta de los anunciantes ni de los usuarios, ni la veracidad de las fotos, los datos o las tarifas publicadas. Todo lo que se acuerde es entre las partes y bajo su exclusiva responsabilidad.",
       ],
       [
-        "¿Cómo se cobra el contenido?",
-        "Las fotos, videos y shorts marcados como premium se compran dentro de SexyRose, en dólares. También podés comprar packs o pedir contenido a medida: la acompañante cotiza, pagás en la plataforma y te lo entrega acá mismo.",
+        "¿Cómo contacto a una acompañante?",
+        "Directamente, por su WhatsApp o su Telegram. Lo que hablen y acuerden queda entre ustedes: SexyRose no tiene acceso a esas conversaciones ni interviene en ellas.",
+      ],
+      [
+        "¿Se verifican los perfiles?",
+        "Al crear el perfil pedimos un documento y una selfie para confirmar que quien publica es mayor de edad y es la persona del aviso. Esa verificación no garantiza su conducta ni lo que publique después.",
+      ],
+      [
+        "¿Quién vende el contenido?",
+        "Cada acompañante produce y vende su propio contenido. SexyRose solo provee la plataforma. Los reclamos sobre el contenido son con quien lo vende.",
       ],
       [
         "¿Qué no está permitido?",
-        "Ningún tipo de contenido o propuesta sexual, ni dentro ni fuera de la plataforma. Tampoco insistir después de un no, pedir datos personales que no fueron ofrecidos ni proponer encuentros en lugares privados. Quien lo hace queda fuera.",
+        "Publicar o pedir cualquier cosa que involucre a menores, la trata o la explotación de personas, contenido de alguien sin su consentimiento, y cualquier actividad ilegal. Quien lo haga es dado de baja y, si corresponde, denunciado ante las autoridades.",
       ],
       [
-        "¿Cómo funciona la verificación?",
-        "Cada acompañante envía su documento, una selfie y un video corto que revisa el equipo de SexyRose: confirmamos que es mayor de edad y que es la persona de las fotos. Cuando se aprueba, el perfil muestra el sello Verificada. Los perfiles nuevos pueden publicarse mientras la verificación está en curso.",
-      ],
-      [
-        "¿Puedo cancelar?",
-        "Las salidas se cancelan con quien las acordaste, por WhatsApp y con tiempo. Las suscripciones de acompañantes se cancelan desde el panel y siguen activas hasta el fin del período pago. Las compras de contenido no tienen devolución una vez desbloqueadas.",
+        "¿Cómo hago una denuncia?",
+        "Con el botón Reportar de cada perfil o desde la página Denunciar. Si sospechás que hay una menor o un caso de trata, llamá también a la Línea 145, gratis y las 24 horas.",
       ],
     ];
     const hero = Object.assign(
@@ -846,9 +860,8 @@
             <button type="button" class="btn secondary" data-go="${worker ? "#panel" : "#cerca"}">${worker ? HH.icon("dashboard") + " Ir a mi panel" : HH.icon("pin") + " " + esc(hero.ctaSecondary || "Cerca de mí")}</button>
           </div>
           <div class="row small muted hero-trust" style="gap:6px 16px">
-            <span class="pub-ir">${HH.icon("shield")} Mirás y contactás sin registrarte</span>
-            <span class="pub-ir">${HH.icon("verified")} Perfiles verificados</span>
-            <span class="pub-ir">${HH.icon("card")} Pagos online</span>
+            <span class="pub-ir">${HH.icon("shield")} Contacto directo con cada anunciante</span>
+            <span class="pub-ir">${HH.icon("verified")} Edad e identidad verificadas al publicar</span>
             <span class="pub-ir">${HH.icon("globe")} ${cities.size} ciudades</span>
           </div>
         </div>
@@ -862,7 +875,6 @@
             .map((p) => pcard(p))
             .join("")}
           <span class="float" style="left:-6px;top:47%">${HH.icon("whatsapp")} Swipe a la derecha → WhatsApp</span>
-          <span class="float" style="right:-6px;bottom:12%">${HH.icon("card")} Pagos online</span>
         </div>`
         }
       </div>
@@ -898,22 +910,22 @@
     }
 
     <div class="container" style="padding-top:10px">${HH.locationBar()}</div>
-    <div class="container" style="padding-top:14px">
+    ${filtList().length ? `<div class="container" style="padding-top:14px">
       <details class="pub-cats"${homeCat() ? " open" : ""}>
-        <summary><span class="pub-ir">${HH.icon("grid")} <strong>Categorías</strong>${homeCat() ? `<span class="badge">${esc(HH.activity(homeCat()).label)}</span>` : `<span class="small muted">${HH.ACTIVITIES.length}</span>`}</span>${HH.icon("chevronDown")}</summary>
-        <div class="chips">${HH.ACTIVITIES.map((a) => `<button type="button" class="chip${homeCat() === a.id ? " active" : ""}" data-action="pubGoActivity" data-id="${a.id}" aria-pressed="${homeCat() === a.id}">${HH.icon(a.icon)} ${a.label}</button>`).join("")}${homeCat() ? `<button type="button" class="chip" data-action="pubGoActivity" data-id="">${HH.icon("x")} Quitar</button>` : ""}</div>
+        <summary><span class="pub-ir">${HH.icon(FI() ? "heart" : "grid")} <strong>${FI() ? "Intereses" : "Categorías"}</strong>${homeCat() ? `<span class="badge">${esc(filtLabel(homeCat()))}</span>` : `<span class="small muted">${filtList().length}</span>`}</span>${HH.icon("chevronDown")}</summary>
+        <div class="chips">${filtList().map((a) => `<button type="button" class="chip${homeCat() === a.id ? " active" : ""}" data-action="pubGoActivity" data-id="${a.id}" aria-pressed="${homeCat() === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}${homeCat() ? `<button type="button" class="chip" data-action="pubGoActivity" data-id="">${HH.icon("x")} Quitar</button>` : ""}</div>
       </details>
-    </div>
+    </div>` : ""}
     <section class="section">
       <div class="container stack-lg">
         <div class="row between">
-          <div><span class="eyebrow">${gSel ? gSel + " · " : ""}${homeCat() ? esc(HH.activity(homeCat()).label) + " · " : ""}Perfiles cerca tuyo</span><h2>${city ? "Acompañantes en " + esc(city) : "Acompañantes en todas las ciudades"}</h2><p class="small muted" style="margin-top:4px">${city ? "Primero las de " + esc(city) + ", después el resto." : "Ordenadas por ranking: Stars y plan A primero."}</p></div>
+          <div><span class="eyebrow">${gSel ? gSel + " · " : ""}${homeCat() ? esc(filtLabel(homeCat())) + " · " : ""}Perfiles cerca tuyo</span><h2>${city ? "Acompañantes en " + esc(city) : "Acompañantes en todas las ciudades"}</h2><p class="small muted" style="margin-top:4px">${city ? "Primero las de " + esc(city) + ", después el resto." : "Ordenadas por ranking: Stars y plan A primero."}</p></div>
         </div>
-        <button type="button" class="btn lg block pub-swipe-cta" data-action="pubSwipeMode">${HH.icon("heart")} Modo swipe${homeCat() ? `<span class="small" style="opacity:.85;font-weight:600"> · ${esc(HH.activity(homeCat()).label)}</span>` : ""}</button>
+        <button type="button" class="btn lg block pub-swipe-cta" data-action="pubSwipeMode">${HH.icon("heart")} Modo swipe${homeCat() ? `<span class="small" style="opacity:.85;font-weight:600"> · ${esc(filtLabel(homeCat()))}</span>` : ""}</button>
         ${
           gridAll.length
             ? tierSections(gridAll, new Set(stars.map((p) => p.userId)))
-            : `${homeCat() ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">Ver todas las categorías</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
+            : `${homeCat() ? `<div class="empty">${HH.icon("search")}<h4>${FI() ? "No hay perfiles con ese interés todavía" : `No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía`}</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">${FI() ? "Ver todos" : "Ver todas las categorías"}</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
         }
       </div>
     </section>
@@ -955,7 +967,7 @@
     return HH.rankedProfiles().filter(
       (p) =>
         HH.inCity(p, f.city) &&
-        (!f.activity || (p.activities || []).includes(f.activity)) &&
+        (!f.activity || filtOf(p).includes(f.activity)) &&
         !swipedRight(p.userId),
     );
   }
@@ -982,7 +994,7 @@
   function swipeEmptyHtml() {
     const f = swipeFilters();
     const hasFilters = !!(f.city || f.activity);
-    return `<div class="empty" style="height:100%;align-content:center">${HH.icon("search")}<h4>Viste todos los perfiles${hasFilters ? " con estos filtros" : ""}</h4><p class="small">${hasFilters ? "Probá quitando la ciudad o la actividad." : "Podés volver a empezar y verlos de nuevo."}</p>
+    return `<div class="empty" style="height:100%;align-content:center">${HH.icon("search")}<h4>Viste todos los perfiles${hasFilters ? " con estos filtros" : ""}</h4><p class="small">${hasFilters ? (FI() ? "Probá quitando la ciudad o el interés." : "Probá quitando la ciudad o la actividad.") : "Podés volver a empezar y verlos de nuevo."}</p>
       <div class="row" style="justify-content:center">${hasFilters ? `<button type="button" class="btn secondary sm" data-action="pubSwipeClearFilters">Quitar filtros</button>` : ""}<button type="button" class="btn sm" data-action="pubSwipeRestart">${HH.icon("refresh")} Volver a empezar</button></div></div>`;
   }
   function renderStack() {
@@ -1108,19 +1120,18 @@
             <div class="grow" style="min-width:0">${HH.placePill(f.city || "", "pubSwipeCity", { block: true })}</div>
             <span class="small muted num hide-mobile" id="pubSwipeCount" style="white-space:nowrap;flex:none"></span>
             <button type="button" class="icon-btn sw-ib hide-desktop" data-action="pubGridMode" aria-label="Modo grilla" title="Modo grilla">${HH.icon("grid")}</button>
-            <button type="button" class="icon-btn sw-ib hide-desktop${f.activity ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>
+            ${filtList().length ? `<button type="button" class="icon-btn sw-ib hide-desktop${f.activity ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>` : ""}
           </div>
           <button type="button" class="btn lg block pub-swipe-cta hide-mobile" data-action="pubGridMode">${HH.icon("grid")} Modo grilla</button>
-          <div class="chips scroll sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips" role="group" aria-label="Tipo de salida">
-            <button type="button" class="chip" data-action="pubSwipeActivity" data-id="" aria-pressed="${!f.activity}">Todas</button>
-            ${HH.ACTIVITIES.map((a) => `<button type="button" class="chip" data-action="pubSwipeActivity" data-id="${a.id}" aria-pressed="${f.activity === a.id}">${HH.icon(a.icon)} ${a.label}</button>`).join("")}
-          </div>
+          ${filtList().length ? `<div class="chips scroll sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">
+            <button type="button" class="chip" data-action="pubSwipeActivity" data-id="" aria-pressed="${!f.activity}">${FI() ? "Todos" : "Todas"}</button>
+            ${filtList().map((a) => `<button type="button" class="chip" data-action="pubSwipeActivity" data-id="${a.id}" aria-pressed="${f.activity === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}
+          </div>` : ""}
           <div class="hide-mobile">
             <div class="card soft stack" style="gap:8px;margin-top:8px">
               <div class="card-title">Cómo deslizar</div>
               <p class="small muted">Arrastrá la card o usá el teclado. A la derecha se abre el WhatsApp de la acompañante; a la izquierda pasás a la siguiente.</p>
               <div class="row small" style="gap:6px 14px"><span><span class="kbd">←</span> <span class="kbd">X</span> Paso</span><span><span class="kbd">→</span> <span class="kbd">Enter</span> Me gusta</span><span><span class="kbd">I</span> Ver perfil</span></div>
-              <div class="notice" style="margin-top:4px">${HH.icon("shield")}<span>Salidas en lugares públicos y con reglas claras.</span></div>
             </div>
           </div>
         </div>
@@ -1235,7 +1246,7 @@
     const hh = [
       `<a class="lk-btn main" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">${HH.icon("user")}<span>Mi perfil en SexyRose</span></a>`,
       HH.canTakeBookings(p)
-        ? `<button type="button" class="lk-btn main" data-action="pubBook" data-id="${esc(p.userId)}">${HH.icon("calendar")}<span>Reservar una salida</span></button>`
+        ? `<button type="button" class="lk-btn main" data-action="pubBook" data-id="${esc(p.userId)}">${HH.icon("calendar")}<span>Reservar</span></button>`
         : "",
       HH.contentOf(p.userId).length
         ? `<a class="lk-btn main" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">${HH.icon("image")}<span>Mis fotos y videos</span></a>`
@@ -1322,7 +1333,7 @@
       <section class="pf-card" aria-label="Perfil">
         <button type="button" class="pf-thumb${stories ? " has-st" + (HH.storiesOf(p.userId).every((x) => HH.seenStories()[x.id]) ? " seen" : "") : ""}" data-action="${stories ? "openStories" : "pubLightbox"}" data-id="${p.userId}" data-idx="0" aria-label="${stories ? "Ver historias" : "Ver foto"}">${HH.photo(p, 0)}</button>
         <div class="pf-head">
-          <h1>${esc(p.displayName)}${HH.isStar(p.userId) ? `<span class="pf-ic star" title="Star" aria-label="Star">${HH.icon("star")}</span>` : ""}${p.verified === "verified" ? `<span class="pf-ic ok" title="Verificada" aria-label="Verificada">${HH.icon("verified")}</span>` : ""}</h1>
+          <h1>${esc(p.displayName)}${HH.isStar(p.userId) ? `<span class="pf-ic star" title="Star" aria-label="Star">${HH.icon("star")}</span>` : ""}${p.verified === "verified" ? `<span class="pf-ic ok" title="Edad e identidad verificadas al publicar" aria-label="Verificada">${HH.icon("verified")}</span>` : ""}</h1>
           ${p.age || p.nationality ? `<div class="pf-age">${p.age ? `<span>${p.age} años</span>` : ""}${p.age && p.nationality ? " · " : ""}${p.nationality ? `<span data-noi18n>${esc(p.nationality)}</span>` : ""}${p.verified === "pending" ? ` · <span class="muted">verificación en curso</span>` : ""}</div>` : ""}
           <div class="pf-loc">${HH.icon("pin")} <span>${p.zone && !p.traveling ? `<span data-noi18n>${esc(p.zone)}</span>, ` : ""}${esc(p.city || "Ciudad a definir")}</span></div>
           ${curTrip ? `<div class="pf-loc pf-trip">${HH.icon("globe")} <span>De visita hasta el ${HH.fmtDay(curTrip.to)}${p.homeCity ? ` · vive en ${esc(p.homeCity)}` : ""}</span></div>` : ""}
@@ -1343,7 +1354,7 @@
         ${p.headline ? `<p class="lead" style="font-weight:600" data-noi18n>${esc(HH.pText(p, "headline"))}</p>` : ""}
         ${p.bio ? `<p class="pf-bio${S.bioOpen === p.userId ? " open" : ""}" id="pfBio" data-noi18n>${esc(HH.pText(p, "bio"))}</p>${String(HH.pText(p, "bio")).length > 180 ? `<button type="button" class="pf-more" data-action="pubBioMore">${S.bioOpen === p.userId ? "Ver menos" : "Ver más"}</button>` : ""}` : `<p class="muted">Todavía no escribió su presentación.</p>`}
         <p class="pf-meta">En el sitio desde ${monthYear(p.createdAt || HH.now())} · Actualizado el ${HH.fmtDate(updated, { day: "numeric", month: "long", year: "numeric" })} · ${((p.stats && p.stats.views) || 0).toLocaleString(HH.loc())} visitas</p>
-        <div class="notice">${HH.icon("shield")}<span>Salidas en lugares públicos. Reportá cualquier conducta inapropiada.</span></div>
+        <div class="notice">${HH.icon("shield")}<span>Cada anunciante es responsable de su aviso. Si ves algo que no cumple las reglas, reportalo.</span></div>
       </section>
       ${about.length ? `<section class="pf-about pf-panel" id="pfPanel_about" role="tabpanel" aria-labelledby="pfTab_about"${ptab === "about" ? "" : " hidden"}><dl>${about.map(([k, v, tr]) => `<div><dt>${k}</dt><dd${tr ? "" : " data-noi18n"}>${esc(v)}</dd></div>`).join("")}</dl></section>` : ""}`;
       })()}
@@ -1498,7 +1509,7 @@
         </article>`,
               )
               .join("")}</div>`
-          : `<div class="empty">${HH.icon("star")}<h4>Todos los lugares de ${esc(country || "esta provincia")} están libres</h4><p class="small">Es el mejor momento para reservar el tuyo.</p></div>`
+          : `<div class="empty">${HH.icon("star")}<h4>Todos los lugares de ${esc(country || "esta provincia")} están libres</h4><p class="small">Todavía hay lugares libres.</p></div>`
       }
       <section class="card lift stack" style="gap:14px;background:linear-gradient(135deg,var(--berry-tint),var(--surface))">
         <div class="row between">
@@ -1512,7 +1523,7 @@
             <li class="pub-ir ok">${HH.icon("check")} Tus shorts arriba del feed</li>
             <li class="pub-ir ok">${HH.icon("check")} Sello Star en tu perfil y tus cards</li>
           </ul></div>
-        <div class="row"><button type="button" class="btn lg" data-go="${worker ? "#panel.suscripcion" : "#registro"}">${HH.icon("star")} ${worker ? "Reservar mi slot" : "Crear mi perfil y reservar"}</button>${!free ? `<span class="small muted">Ahora no hay slots libres. El próximo se libera el ${HH.fmtDate(stars.map((x) => x.s.activeUntil).sort()[0])}.</span>` : ""}</div>
+        <div class="row"><button type="button" class="btn lg" data-go="${worker ? "#panel.suscripcion" : "#registro"}">${HH.icon("star")} ${worker ? "Reservar mi slot" : "Crear mi perfil"}</button>${!free ? `<span class="small muted">Ahora no hay slots libres. El próximo se libera el ${HH.fmtDate(stars.map((x) => x.s.activeUntil).sort()[0])}.</span>` : ""}</div>
       </section>
     </div>`;
   });
@@ -1631,7 +1642,7 @@
             <div class="pub-place-res" id="pubPlaceRes"></div>
             <span class="hint" id="pubPlaceHint">Los clientes ven tu localidad y una distancia aproximada, nunca tu dirección. Si es nueva en SexyRose, la sumamos cuando verifiquemos tu cuenta.</span>
           </div>
-          <label class="pub-check"><input type="checkbox" name="terms" value="1"><span>Soy mayor de 18 años y acepto los términos: salidas en lugares públicos, sin contenido sexual.</span></label>
+          <label class="pub-check"><input type="checkbox" name="terms" value="1"><span>Soy mayor de 18 años y acepto los Términos y condiciones.</span></label>
           <div id="pubAuthErr" aria-live="polite"></div>
           <button type="submit" class="btn lg block">Crear cuenta</button>
         </form>
@@ -1976,7 +1987,7 @@
       if (!me) {
         HH.clientAuth({
           reason:
-            "Para reservar una salida necesitás una cuenta de cliente. Sin verificación de identidad.",
+            "Para reservar necesitás una cuenta de cliente.",
           onDone: () => HH.actions.pubBook(el),
         });
         return;

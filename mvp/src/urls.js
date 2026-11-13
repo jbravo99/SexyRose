@@ -45,7 +45,7 @@
   HH.actSlug = (a, lang) => { const act = typeof a === 'string' ? HH.activity(a) : a; if (!act) return ''; return (!lang || lang === 'es') ? act.id : slug(HH.t ? HH.t(act.label, lang) : act.label) || act.id; };
   HH.actBySlug = (s, lang) => HH.ACTIVITIES.find(a => a.id === s || HH.actSlug(a, lang) === s || LANGS.some(l => HH.actSlug(a, l) === s)) || null;
   // Clave interna de la página de un lugar (con actividad opcional)
-  // g = 'hombre' arma la clave de la página de hombres (sin tipo de salida)
+  // g = 'hombre' arma la clave de la página de hombres (sin categoría)
   HH.placeKey = (loc, act, g) => {
     if (!loc) return 'inicio';
     const path = HH.locPath(loc); const country = path[0];
@@ -92,7 +92,8 @@
     if (!loc || segs.length > 3) return { key: '404', lang };
     if (segs[2] && isGenderWord(segs[2])) return { key: HH.placeKey(loc, null, HH.GENDER_PAGE.gender), lang };
     let act = null;
-    if (segs[2]) { act = HH.actBySlug(segs[2].toLowerCase(), lang); if (!act) return { key: '404', lang }; }
+    // Sin actividades (sitio público): una dirección vieja lugar + actividad abre la página del lugar
+    if (segs[2]) { act = HH.actBySlug(segs[2].toLowerCase(), lang); if (!act) return { key: HH.ACTIVITIES.length ? '404' : HH.placeKey(loc), lang }; }
     const key = HH.placeKey(loc, act);
     return { key, lang };
   };

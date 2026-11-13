@@ -46,7 +46,7 @@ describe('textos del inicio: validación (routes/admin-textos-sitio.js)', () => 
     const r = validarTextosSitio({ es: es() });
     assert.equal(r.error, undefined);
     assert.deepEqual(r.valor.es, TEXTOS_SITIO_DEFAULT.es);
-    assert.equal(r.valor.es.faq.length, 5);
+    assert.equal(r.valor.es.faq.length, 7);
   });
   test('español obligatorio (título, subtítulo y título de preguntas); la línea de arriba es opcional', () => {
     assert.match(validarTextosSitio({ en: { heroTitulo: 'x' } }).error, /español/);
@@ -116,25 +116,24 @@ describe('SEO en el servidor (lib/seo-sitio.js) con un estado de prueba', () => 
     assert.deepEqual(m.alternates, { es: 'https://sexyrose.net/', en: 'https://sexyrose.net/en/', pt: 'https://sexyrose.net/pt/', 'x-default': 'https://sexyrose.net/' });
     assert.equal(m.robots, 'index,follow');
   });
-  test('lugares: slugs propios (buenos-aires), salida traducida en la dirección, indexable solo con perfiles suficientes', async () => {
+  test('lugares: slugs propios (buenos-aires), indexable solo con perfiles suficientes; dirección vieja de actividad → 301 al lugar', async () => {
     const zona = await seo.meta('/argentina/zona-norte-gba');
     assert.equal(zona.status, 200); assert.equal(zona.title, '[es] lugar Zona Norte (GBA)'); assert.equal(zona.description, '3 en Zona Norte (GBA)');
     assert.equal(zona.robots, 'index,follow'); // perfiles en dos ciudades
-    const act = await seo.meta('/en/argentina/san-isidro/dinner');
-    assert.equal(act.title, '[en] Dinner en San Isidro'); assert.equal(act.description, 'dinner en San Isidro: 1');
-    assert.equal(act.alternates.pt, 'https://sexyrose.net/pt/argentina/san-isidro/jantar');
-    assert.equal(act.alternates.es, 'https://sexyrose.net/argentina/san-isidro/cena');
+    // Sin páginas por actividad: la dirección vieja (cualquier tercer tramo que no sea "hombres") va al lugar, mismo idioma
+    for (const [u, to] of [['/en/argentina/san-isidro/dinner', '/en/argentina/san-isidro'], ['/argentina/san-isidro/cena', '/argentina/san-isidro'], ['/pt/argentina/tigre/cafe', '/pt/argentina/tigre'], ['/argentina/san-isidro/no-existe', '/argentina/san-isidro']]) {
+      const r = await seo.meta(u);
+      assert.equal(r.status, 301, u); assert.equal(r.location, to, u);
+    }
     const caba = await seo.meta('/argentina/buenos-aires');
     assert.equal(caba.status, 200); assert.equal(caba.robots, 'noindex,follow'); // sin perfiles
     const prov = await seo.meta('/en/argentina/provincia-de-buenos-aires');
     assert.equal(prov.title, '[en] lugar Buenos Aires Province');
-    const cafeTigre = await seo.meta('/argentina/tigre/cafe');
-    assert.equal(cafeTigre.robots, 'noindex,follow');
     const men = await seo.meta('/argentina/hombres');
     assert.equal(men.title, '[es] hombres Argentina'); assert.equal(men.description, '1');
   });
-  test('404: lugar, salida o perfil que no existe, país con demasiados niveles', async () => {
-    for (const u of ['/argentina/no-existe', '/argentina/san-isidro/no-existe', '/perfil/no-existe', '/en/profile/nadie', '/perfil', '/argentina/san-isidro/cena/extra']) {
+  test('404: lugar o perfil que no existe, país con demasiados niveles', async () => {
+    for (const u of ['/argentina/no-existe', '/perfil/no-existe', '/en/profile/nadie', '/perfil', '/argentina/san-isidro/cena/extra']) {
       const m = await seo.meta(u);
       assert.equal(m.status, 404, u); assert.equal(m.robots, 'noindex,follow', u); assert.equal(m.canonical, null, u);
     }
@@ -163,14 +162,15 @@ describe('SEO en el servidor (lib/seo-sitio.js) con un estado de prueba', () => 
     for (const u of ['/swipe', '/cerca', '/en/near-me']) assert.equal((await seo.meta(u)).robots, 'noindex,follow', u);
     assert.equal((await seo.meta('/panel')).canonical, null);
   });
-  test('sitemap: portada, lugares y salidas indexables, perfiles; cada uno en es/en/pt con alternativas y lastmod', async () => {
+  test('sitemap: portada, lugares indexables y perfiles (sin páginas por actividad); cada uno en es/en/pt con alternativas y lastmod', async () => {
     const xml = await seo.sitemap(['  <url><loc>https://sexyrose.net/terminos</loc></url>']);
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1]);
     for (const u of ['https://sexyrose.net/', 'https://sexyrose.net/en/', 'https://sexyrose.net/pt/', 'https://sexyrose.net/argentina',
-      'https://sexyrose.net/argentina/zona-norte-gba', 'https://sexyrose.net/argentina/san-isidro', 'https://sexyrose.net/en/argentina/san-isidro/dinner',
+      'https://sexyrose.net/argentina/zona-norte-gba', 'https://sexyrose.net/argentina/san-isidro',
       'https://sexyrose.net/perfil/ana', 'https://sexyrose.net/en/profile/bea', 'https://sexyrose.net/pt/perfil/caro', 'https://sexyrose.net/terminos',
       'https://sexyrose.net/argentina/hombres']) assert.ok(locs.includes(u), u);
-    for (const u of ['https://sexyrose.net/argentina/buenos-aires', 'https://sexyrose.net/argentina/cordoba', 'https://sexyrose.net/argentina/tigre/cafe']) assert.ok(!locs.includes(u), u);
+    for (const u of ['https://sexyrose.net/argentina/buenos-aires', 'https://sexyrose.net/argentina/cordoba', 'https://sexyrose.net/argentina/tigre/cafe', 'https://sexyrose.net/argentina/san-isidro/cena', 'https://sexyrose.net/en/argentina/san-isidro/dinner']) assert.ok(!locs.includes(u), u);
+    assert.doesNotMatch(xml, /\/(cena|cafe|dinner|jantar)</);
     assert.match(xml, /<url><loc>https:\/\/sexyrose\.net\/perfil\/bea<\/loc><lastmod>2026-11-05<\/lastmod>/);
     assert.match(xml, /<url><loc>https:\/\/sexyrose\.net\/argentina\/san-isidro<\/loc><lastmod>2026-11-05<\/lastmod>/);
     assert.match(xml, /xmlns:xhtml="http:\/\/www\.w3\.org\/1999\/xhtml"/);
@@ -265,7 +265,7 @@ describe('servidor: 404, SEO, sitemap, textos del inicio y videos del admin', ()
     assert.match(html, /<meta property="og:image" content="https:\/\/cdn\.example\/zzp0-mini\.jpg">/);
     assert.match(html, /<meta name="robots" content="index,follow">/);
     assert.equal(r.headers.get('x-robots-tag'), null);
-    for (const u of ['/perfil/no-existe-zzp', '/perfil/' + slug(2), '/argentina/no-existe-zzp', '/argentina/san-isidro/no-existe', '/en/argentina/nada-zzp']) {
+    for (const u of ['/perfil/no-existe-zzp', '/perfil/' + slug(2), '/argentina/no-existe-zzp', '/en/argentina/nada-zzp']) {
       const n = await fetch(BASE + u);
       assert.equal(n.status, 404, u);
       assert.equal(n.headers.get('x-robots-tag'), 'noindex', u);
@@ -281,9 +281,14 @@ describe('servidor: 404, SEO, sitemap, textos del inicio y videos del admin', ()
     assert.equal(etiqueta(h, /<title>([^<]*)<\/title>/), 'Início PT');
     assert.match(h, /<meta name="description" content="Desc PT">/);
     assert.doesNotMatch(h, /content="vieja"/);
-    const l = await fetch(BASE + '/argentina/san-isidro/cena');
+    // Dirección vieja de lugar + actividad: 301 a la página del lugar (con la consulta), sin páginas por actividad
+    for (const [u, to] of [['/argentina/san-isidro/cena?x=1', '/argentina/san-isidro?x=1'], ['/en/argentina/san-isidro/dinner', '/en/argentina/san-isidro'], ['/argentina/san-isidro/no-existe', '/argentina/san-isidro']]) {
+      const l = await fetch(BASE + u, { redirect: 'manual' });
+      assert.equal(l.status, 301, u); assert.equal(l.headers.get('location'), to, u);
+    }
+    const l = await fetch(BASE + '/argentina/san-isidro');
     assert.equal(l.status, 200);
-    assert.match(await l.text(), /<title>\[es\] Cena en San Isidro<\/title>/);
+    assert.match(await l.text(), /<title>\[es\] lugar San Isidro<\/title>/);
     for (const u of ['/favoritos', '/panel', '/ingresar']) {
       const r = await fetch(BASE + u);
       assert.equal(r.status, 200, u);

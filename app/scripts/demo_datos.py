@@ -1,7 +1,7 @@
 """Datos de la demostración (/demo/): arma el "estado" ficticio (misma forma que GET /api/sitio/estado) y las imágenes.
 
 - Perfiles: app/scripts/demo/perfiles.json (ficticios, basados en la semilla del MVP, en ciudades de Argentina).
-- Ubicaciones, salidas, intereses, precios y Destacado: las semillas de la base (app/db/010-cuentas.sql y
+- Ubicaciones, intereses, precios y Destacado (sin actividades: el sitio no las muestra): las semillas de la base (app/db/010-cuentas.sql y
   060-creditos.sql), así la demo usa los mismos catálogos que el sitio real recién instalado.
 - Imágenes: SVG abstractos (degradé + rosa de línea), sin personas. Se nombran por su contenido (caché de un año).
 - "ahora" es fijo (el build es reproducible); el navegador corre todas las fechas a la hora de la visita (prod-demo.js).
@@ -112,10 +112,9 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
     sql010 = (db / '010-cuentas.sql').read_text(encoding='utf-8')
     sql060 = (db / '060-creditos.sql').read_text(encoding='utf-8')
     ubic = _sql_valores(sql010, 'ubicaciones')
-    cats = _sql_valores(sql010, 'categorias')
     ints = _sql_valores(sql010, 'intereses')
     aj = {r['clave']: r['valor'] for r in _sql_valores(sql010, 'ajustes') + _sql_valores(sql060, 'ajustes')}
-    if not ubic or not cats or not ints or 'precios' not in aj:
+    if not ubic or not ints or 'precios' not in aj:
         raise SystemExit('error: no encontré las semillas en app/db/010-cuentas.sql')
     por_id = {u['id']: u for u in ubic}
     datos = json.loads((root / 'app' / 'scripts' / 'demo' / 'perfiles.json').read_text(encoding='utf-8'))
@@ -143,9 +142,6 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
         for k in ('provincia', 'ciudad'):
             if p.get(k) and p[k] not in por_id:
                 raise SystemExit(f"error: {p['id']}: la ubicación {p[k]!r} no existe en las semillas")
-        for s in p.get('salidas', []):
-            if s not in {c['id'] for c in cats}:
-                raise SystemExit(f"error: {p['id']}: la salida {s!r} no existe")
         for s in p.get('intereses', []):
             if s not in {i['id'] for i in ints}:
                 raise SystemExit(f"error: {p['id']}: el interés {s!r} no existe")
@@ -194,7 +190,7 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
             'ubicacionIds': {'pais': 'argentina', 'provincia': p.get('provincia'), 'ciudad': p.get('ciudad')},
             'titular': p.get('titular', ''), 'bio': p.get('bio', ''), 'titularEn': p.get('titularEn', ''), 'bioEn': p.get('bioEn', ''),
             'idiomas': p.get('idiomas', []), 'alturaCm': p.get('altura'), 'contextura': None,
-            'intereses': p.get('intereses', []), 'salidas': p.get('salidas', []), 'tarifaDesde': p.get('tarifa'),
+            'intereses': p.get('intereses', []), 'tarifaDesde': p.get('tarifa'),
             'fotos': fotos, 'videos': videos, 'preview': {'url': videos[0]['url']} if videos else None, 'plan': plan, 'star': plan == 'S',
             'destacado': plan != 'S' and bool(p.get('destacado')), 'verificada': True,
             'actualizado': _iso(publicado + timedelta(days=min(5, int(p.get('dias', 30)) // 2))), 'publicadoEn': _iso(publicado),
@@ -223,7 +219,6 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
             'destacado': aj.get('destacado') or {}, 'textos_sitio': None,
         },
         'ubicaciones': [{'id': u['id'], 'nombre': u['nombre'], 'tipo': u['tipo'], 'padre': u['padre'], 'lat': u['lat'], 'lng': u['lng'], 'orden': u['orden']} for u in ubic],
-        'categorias': [{'id': c['id'], 'nombre': c['nombre'], 'icono': c['icono'], 'orden': c['orden']} for c in cats],
         'intereses': [{'id': i['id'], 'nombre': i['nombre'], 'nombreEn': i['nombre_en'], 'nombrePt': i['nombre_pt'], 'orden': i['orden']} for i in ints],
         'perfiles': perfiles,
         'historias': historias,
