@@ -27,7 +27,7 @@ before(async () => {
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-data-'));
   tmpPublic = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-pub-'));
   await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
     adminUser: '', adminPassword: '', adminPath: '', ipHashSalt: 'sal', siteUrl: 'https://sexyrose.net',
     telegramToken: '', telegramChatId: '', mailgunApiKey: '', log: () => {},

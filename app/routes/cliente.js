@@ -16,6 +16,7 @@ import { SolicitudError } from '../lib/solicitudes.js';
 import { ContenidoError } from '../lib/contenido.js';
 import * as storage from '../lib/storage.js';
 import { crearLimitesAuth } from '../lib/seguridad.js';
+import { prelanzamientoEn, REGISTRO_CLIENTE_CERRADO } from '../lib/prelanzamiento.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -69,6 +70,8 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
 
   // --- Registro / ingreso ----------------------------------------------------------------------
   r.post('/registro', ah(async (req, res) => {
+    // Home provisoria (Admin → Ajustes): el registro de interesados está cerrado; las cuentas que ya existen ingresan igual
+    if (await prelanzamientoEn(pool)) return fail(res, 403, REGISTRO_CLIENTE_CERRADO, { registroCerrado: true });
     const ipKey = 'cli-reg:' + ipHash(req);
     if (!limit(req, res, ipKey, 5, HOUR, 'Se crearon demasiadas cuentas desde tu conexión. Probá de nuevo en una hora.')) return;
     const b = body(req);

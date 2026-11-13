@@ -60,9 +60,26 @@ export function nuevaReferencia() {
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 const esObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
+// Semana calculada sola (Juan, 13/11/2026): semana = mes / 4 × (1 + recargo %), con 2 decimales. Se prende desde
+// Admin → Ajustes. Sin precios guardados, prendida con 20 % (da los mismos valores de PRECIOS_DEFAULT); con precios
+// guardados de antes (sin semanaAuto), apagada: quedan las semanas que Juan escribió a mano.
+export const SEMANA_AUTO_DEFAULT = Object.freeze({ activo: true, recargo: 20 });
+export const semanaDeMes = (mes, recargo) => Math.round((Number(mes) / 4) * (1 + Number(recargo) / 100) * 100) / 100;
+function aplicarSemanaAuto(out) {
+  if (!out.semanaAuto.activo) return out;
+  for (const k of PLANES_SEMANA) out.semana[k] = semanaDeMes(out.mes[k], out.semanaAuto.recargo);
+  return out;
+}
+const leerSemanaAuto = (v) => {
+  if (!esObj(v)) return null;
+  const r = Number(v.recargo);
+  return { activo: v.activo === true, recargo: Number.isFinite(r) && r >= 0 && r <= 200 ? Math.round(r * 100) / 100 : SEMANA_AUTO_DEFAULT.recargo };
+};
+
 // Precios guardados (ajustes.precios) sobre los de defecto. Lo inválido (o B/A viejos) se ignora.
 export function mezclarPrecios(valor) {
   const out = { mes: { ...PRECIOS_DEFAULT.mes }, semana: { ...PRECIOS_DEFAULT.semana } };
+  out.semanaAuto = esObj(valor) ? (leerSemanaAuto(valor.semanaAuto) || { activo: false, recargo: SEMANA_AUTO_DEFAULT.recargo }) : { ...SEMANA_AUTO_DEFAULT };
   if (esObj(valor)) {
     for (const p of ['mes', 'semana']) {
       const src = valor[p];
@@ -74,13 +91,22 @@ export function mezclarPrecios(valor) {
     }
   }
   out.mes.E = 0;
-  return out;
+  return aplicarSemanaAuto(out);
 }
 
 // Valida un PUT de precios del admin. Devuelve { valor } o { error }.
 export function validarPrecios(v) {
   if (!esObj(v)) return { error: 'Formato de precios inválido.' };
   const out = { mes: {}, semana: {} };
+  let auto = { activo: false, recargo: SEMANA_AUTO_DEFAULT.recargo };
+  if (v.semanaAuto !== undefined) {
+    const sa = v.semanaAuto; const r = Number(esObj(sa) ? sa.recargo : NaN);
+    if (!esObj(sa) || typeof sa.activo !== 'boolean') return { error: 'Formato inválido de la semana calculada: {activo, recargo}.' };
+    if (sa.activo && !(Number.isFinite(r) && r >= 0 && r <= 200)) return { error: 'El recargo de la semana tiene que estar entre 0 y 200 %.' };
+    auto = { activo: sa.activo, recargo: Number.isFinite(r) && r >= 0 && r <= 200 ? Math.round(r * 100) / 100 : SEMANA_AUTO_DEFAULT.recargo };
+  }
+  // Con la semana calculada, lo que venga en "semana" no importa: se calcula del mes
+  if (auto.activo && esObj(v.mes)) v = { ...v, semana: Object.fromEntries(PLANES_SEMANA.map((k) => [k, semanaDeMes(v.mes[k], auto.recargo)])) };
   for (const [p, claves] of [['mes', PLAN_CODIGOS], ['semana', PLANES_SEMANA]]) {
     const src = v[p];
     if (!esObj(src)) return { error: `Faltan los precios por ${p}.` };
@@ -96,6 +122,7 @@ export function validarPrecios(v) {
   if (out.mes.E !== 0) return { error: 'Bronce es gratis: su precio tiene que ser 0.' };
   if (!(out.mes.D > 0 && out.mes.D < out.mes.C && out.mes.C < out.mes.S)) return { error: 'Los precios por mes tienen que subir con el plan: Plata < Oro < Star (y Plata mayor a 0).' };
   if (!(out.semana.C > 0 && out.semana.S > 0)) return { error: 'Las semanas de Oro y Star tienen que costar más de 0.' };
+  out.semanaAuto = auto;
   return { valor: out };
 }
 

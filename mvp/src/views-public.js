@@ -541,7 +541,7 @@
   }
   const GRID_PAGE = 12;
   /* Filtro del inicio, Cerca y Swipe: en el prototipo son las categorías (actividades); en el sitio real
-     (HH.FILTRO_INTERESES, prod-sitio.js) son los intereses que define el admin y eligen las acompañantes. */
+     (HH.FILTRO_INTERESES, prod-sitio.js) son los intereses que define el admin y eligen las acompañantes (en pantalla: "Servicios"). */
   const FI = () => !!HH.FILTRO_INTERESES;
   // Intereses: solo los que tiene al menos un perfil publicado (pedido de Juan, 12/11/2026)
   const interesesUsados = () => {
@@ -881,7 +881,7 @@
       ${fallback ? `<div class="notice">${HH.icon("info")}<span>Todavía no hay acompañantes publicadas en ${esc(city)}. Te mostramos las de otras ciudades.</span></div>` : ""}
       ${
         !list.length
-          ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles con esos filtros</h4><p class="small">${FI() ? "Probá quitando algún interés o ampliando el rango de edad." : "Probá quitando alguna actividad o ampliando el rango de edad."}</p><button type="button" class="btn secondary sm" data-action="pubNearClear">Quitar filtros</button></div>`
+          ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles con esos filtros</h4><p class="small">${FI() ? "Probá quitando algún servicio o ampliando el rango de edad." : "Probá quitando alguna actividad o ampliando el rango de edad."}</p><button type="button" class="btn secondary sm" data-action="pubNearClear">Quitar filtros</button></div>`
           : `
       ${fallback ? `<h3 style="font-size:18px">En otras ciudades</h3>` : ""}
       ${nearVista() === "mapa"
@@ -927,7 +927,7 @@
     HH.modal({
       title: "Filtros",
       body: `<div class="stack">
-        ${filtList().length ? `<div><div class="label" style="margin-bottom:8px">${FI() ? "Intereses" : "Categoría"}</div><div class="chips" id="pubNearActs" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">${filtList().map((a) => `<button type="button" class="chip" data-action="pubNearAct" data-id="${a.id}" aria-pressed="${f.acts.includes(a.id)}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}</div></div>` : ""}
+        ${filtList().length ? `<div><div class="label" style="margin-bottom:8px">${FI() ? "Servicios" : "Categoría"}</div><div class="chips" id="pubNearActs" role="group" aria-label="${FI() ? "Servicios" : "Categoría"}">${filtList().map((a) => `<button type="button" class="chip" data-action="pubNearAct" data-id="${a.id}" aria-pressed="${f.acts.includes(a.id)}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}</div></div>` : ""}
         <div><div class="label" style="margin-bottom:8px">Edad</div><div class="grid-2" style="gap:10px">${ages("pubAgeMin", "Sin mínimo")}${ages("pubAgeMax", "Sin máximo")}</div></div>
         <p class="small muted">Los resultados se actualizan al instante, detrás de esta ventana.</p>
       </div>`,
@@ -1130,7 +1130,7 @@
 
     ${filtList().length || FT() ? `<div class="container stack" style="padding-top:14px;gap:10px">${HH.tipoChips("pubTipo")}${filtList().length ? `
       <details class="pub-cats"${homeCat() ? " open" : ""}>
-        <summary><span class="pub-ir">${HH.icon(FI() ? "heart" : "grid")} <strong>${FI() ? "Intereses" : "Categorías"}</strong>${homeCat() ? `<span class="badge">${esc(filtLabel(homeCat()))}</span>` : `<span class="small muted">${filtList().length}</span>`}</span>${HH.icon("chevronDown")}</summary>
+        <summary><span class="pub-ir">${HH.icon(FI() ? "heart" : "grid")} <strong>${FI() ? "Servicios" : "Categorías"}</strong>${homeCat() ? `<span class="badge">${esc(filtLabel(homeCat()))}</span>` : `<span class="small muted">${filtList().length}</span>`}</span>${HH.icon("chevronDown")}</summary>
         <div class="chips">${filtList().map((a) => `<button type="button" class="chip${homeCat() === a.id ? " active" : ""}" data-action="pubGoActivity" data-id="${a.id}" aria-pressed="${homeCat() === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}${homeCat() ? `<button type="button" class="chip" data-action="pubGoActivity" data-id="">${HH.icon("x")} Quitar</button>` : ""}</div>
       </details>` : ""}
     </div>` : ""}
@@ -1143,7 +1143,7 @@
         ${
           gridAll.length
             ? tierSections(gridAll, new Set(stars.map((p) => p.userId)))
-            : `${!homeCat() && tipoSel() ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles de ese tipo todavía</h4><button type="button" class="btn secondary sm" data-action="pubTipo" data-id="">Ver todos</button></div>` : homeCat() ? `<div class="empty">${HH.icon("search")}<h4>${FI() ? "No hay perfiles con ese interés todavía" : `No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía`}</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">${FI() ? "Ver todos" : "Ver todas las categorías"}</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
+            : `${!homeCat() && tipoSel() ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles de ese tipo todavía</h4><button type="button" class="btn secondary sm" data-action="pubTipo" data-id="">Ver todos</button></div>` : homeCat() ? `<div class="empty">${HH.icon("search")}<h4>${FI() ? "No hay perfiles con ese servicio todavía" : `No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía`}</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">${FI() ? "Ver todos" : "Ver todas las categorías"}</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
         }
       </div>
     </section>
@@ -1214,7 +1214,7 @@
   function swipeEmptyHtml() {
     const f = swipeFilters();
     const hasFilters = !!(f.city || f.activity || tipoSel());
-    return `<div class="empty" style="height:100%;align-content:center">${HH.icon("search")}<h4>Viste todos los perfiles${hasFilters ? " con estos filtros" : ""}</h4><p class="small">${hasFilters ? (FI() ? "Probá quitando la ciudad o el interés." : "Probá quitando la ciudad o la actividad.") : "Podés volver a empezar y verlos de nuevo."}</p>
+    return `<div class="empty" style="height:100%;align-content:center">${HH.icon("search")}<h4>Viste todos los perfiles${hasFilters ? " con estos filtros" : ""}</h4><p class="small">${hasFilters ? (FI() ? "Probá quitando la ciudad o el servicio." : "Probá quitando la ciudad o la actividad.") : "Podés volver a empezar y verlos de nuevo."}</p>
       <div class="row" style="justify-content:center">${hasFilters ? `<button type="button" class="btn secondary sm" data-action="pubSwipeClearFilters">Quitar filtros</button>` : ""}<button type="button" class="btn sm" data-action="pubSwipeRestart">${HH.icon("refresh")} Volver a empezar</button></div></div>`;
   }
   function renderStack() {
@@ -1343,7 +1343,7 @@
             ${filtList().length || FT() ? `<button type="button" class="icon-btn sw-ib hide-desktop${f.activity || tipoSel() ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity || tipoSel() ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>` : ""}
           </div>
           <button type="button" class="btn lg block pub-swipe-cta hide-mobile" data-action="pubGridMode">${HH.icon("grid")} Modo grilla</button>
-          ${filtList().length || FT() ? `<div class="sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips">${HH.tipoChips("pubSwipeTipo", "scroll")}${filtList().length ? `<div class="chips scroll" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">
+          ${filtList().length || FT() ? `<div class="sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips">${HH.tipoChips("pubSwipeTipo", "scroll")}${filtList().length ? `<div class="chips scroll" role="group" aria-label="${FI() ? "Servicios" : "Categoría"}">
             <button type="button" class="chip" data-action="pubSwipeActivity" data-id="" aria-pressed="${!f.activity}">${FI() ? "Todos" : "Todas"}</button>
             ${filtList().map((a) => `<button type="button" class="chip" data-action="pubSwipeActivity" data-id="${a.id}" aria-pressed="${f.activity === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}
           </div>` : ""}</div>` : ""}
@@ -1533,7 +1533,7 @@
       (p.languages || []).length ? ["Idiomas", p.languages.join(", "), false] : null,
       p.heightCm ? ["Altura", (p.heightCm / 100).toFixed(2).replace(".", ",") + " m", false] : null,
       p.build && BUILD[p.build] ? ["Contextura", BUILD[p.build], true] : null,
-      HH.interestsOf && HH.interestsOf(p).length ? ["Intereses", HH.interestsOf(p).map((id) => HH.interestLabel(id)).join(" · "), false] : null,
+      HH.interestsOf && HH.interestsOf(p).length ? ["Servicios", HH.interestsOf(p).map((id) => HH.interestLabel(id)).join(" · "), false] : null,
     ].filter(Boolean);
     const curTrip = HH.tripsOf(p).find((tr) => tr.from <= HH.localDay() && tr.to >= HH.localDay());
     const monthYear = (iso) => new Date(iso).toLocaleDateString(HH.loc(), { month: "long", year: "numeric" });

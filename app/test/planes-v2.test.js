@@ -69,7 +69,7 @@ const estadoSitio = async () => {
 
 before(async () => {
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'srv2-data-'));
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
     ipHashSalt: 'sal-de-prueba', siteUrl: 'https://sexyrose.test', dataDir: tmpData,
     log: () => {}, tareaPlanes: false,
@@ -148,6 +148,9 @@ describe('libro de créditos', () => {
     const cred = createCreditos({ pool: db });
     const c = await nuevaCuenta();
     await cred.ajusteAdmin(c.id, { centavos: 500, motivo: 'carga' });
+    // Sin costo de Mercado Pago: la comisión de SexyRose es el total
+    await db.query(`INSERT INTO ajustes (clave, valor) VALUES ('comision', '{"porcentaje": 10, "costoMp": 0, "saldoNegativoMax": 20}')
+                    ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`);
     const m = await cred.registrarComisionVenta(c.id, 10000, 'venta-1'); // venta de 100 → comisión 10
     assert.equal(m.tipo, 'comision_venta');
     assert.equal(m.centavos, -1000);
@@ -155,10 +158,13 @@ describe('libro de créditos', () => {
     await assert.rejects(cred.registrarComisionVenta(c.id, 20000, 'venta-2'), (e) => e.status === 402); // quedaría en −25
     assert.equal(await cred.saldo(c.id), -500);
     assert.ok(await cred.registrarComisionVenta(c.id, 150000, 'venta-3').then(() => false, () => true));
-    await db.query("UPDATE ajustes SET valor = '{\"porcentaje\": 5, \"saldoNegativoMax\": 20}' WHERE clave = 'comision'");
+    await db.query("UPDATE ajustes SET valor = '{\"porcentaje\": 5, \"costoMp\": 0, \"saldoNegativoMax\": 20}' WHERE clave = 'comision'");
     assert.equal((await cred.registrarComisionVenta(c.id, 20000)).centavos, -1000);
     assert.equal(await cred.saldo(c.id), -1500);
-    await db.query("UPDATE ajustes SET valor = '{\"porcentaje\": 10, \"saldoNegativoMax\": 20}' WHERE clave = 'comision'");
+    // Total 10 % con 7,61 % de Mercado Pago: SexyRose 2,39 % (venta de 1000 → 23,9)
+    await db.query("UPDATE ajustes SET valor = '{\"porcentaje\": 10, \"costoMp\": 7.61, \"saldoNegativoMax\": 50}' WHERE clave = 'comision'");
+    assert.equal((await cred.registrarComisionVenta(c.id, 100000)).centavos, -2390);
+    await db.query("DELETE FROM ajustes WHERE clave = 'comision'");
     // con saldo negativo no se pueden comprar planes ni hacer ajustes negativos
     await assert.rejects(cred.ajusteAdmin(c.id, { centavos: -1, motivo: 'corrección' }), (e) => e.status === 402);
     await invariante(c.id);
@@ -188,7 +194,7 @@ describe('ajustes nuevos del admin', () => {
       [['inicial', 10, 10, 0], ['mes-plata', 35, 35, 0], ['trimestre-plata', 95, 105, 10], ['trimestre-oro', 240, 280, 40], ['trimestre-star', 980, 1150, 170]]);
     assert.equal(all.packs.find((p) => p.masElegido).id, 'trimestre-plata');
     assert.deepEqual(all.destacado, { E: { dia: 1, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } });
-    assert.deepEqual(all.comision, { porcentaje: 10, saldoNegativoMax: 20 });
+    assert.deepEqual(all.comision, { porcentaje: 10, costoMp: 7.61, saldoNegativoMax: 20 });
     assert.equal(all.contacto.whatsapp, '');
     assert.match(all.mensajes.whatsapp.pt, /\{codigo\}/);
 
@@ -218,6 +224,7 @@ describe('ajustes nuevos del admin', () => {
     assert.equal(r.status, 200);
     assert.ok((await r.json()).valor.fecha);
     assert.equal((await put('comision', { porcentaje: 95, saldoNegativoMax: 20 })).status, 400);
+    assert.equal((await put('comision', { porcentaje: 5, costoMp: 7.61, saldoNegativoMax: 20 })).status, 400, 'Mercado Pago no puede superar el total');
     assert.equal((await put('comision', { porcentaje: 10, saldoNegativoMax: 20 })).status, 200);
     assert.equal((await put('mensajes', { whatsapp: { es: 'Hola sin código' } })).status, 400);
     assert.equal((await put('destacado', { E: { dia: 0, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } })).status, 400);
@@ -228,7 +235,7 @@ describe('ajustes nuevos del admin', () => {
     assert.equal(all.cotizacion.arsPorUsd, 1450);
     // el sitio público no recibe ni contacto interno ni cotización ni datos bancarios
     const e = await estadoSitio();
-    assert.deepEqual(Object.keys(e.ajustes).sort(), ['destacado', 'portada', 'precios', 'promo', 'seo', 'textos_sitio']);
+    assert.deepEqual(Object.keys(e.ajustes).sort(), ['destacado', 'portada', 'precios', 'prelanzamiento', 'promo', 'seo', 'textos_sitio']);
   });
 });
 

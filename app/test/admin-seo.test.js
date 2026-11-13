@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import vm from 'node:vm';
 import pg from 'pg';
 import { start } from '../server.js';
 import { invalidarSitio } from '../routes/sitio.js';
@@ -33,6 +34,49 @@ const DATOS = {
   lugares: {},
   dict: { 'Provincia de Buenos Aires': ['Buenos Aires Province', 'Província de Buenos Aires'] },
 };
+
+// Plantillas por defecto reales (mvp/src/seo.js → seo-datos.json): las mismas que lee build-sitio.py
+async function defaultsReales() {
+  const src = await fs.readFile(new URL('../../mvp/src/seo.js', import.meta.url), 'utf8');
+  const i = src.indexOf('HH.SEO_DEFAULTS = ') + 'HH.SEO_DEFAULTS = '.length;
+  let n = 0; let j = i; let str = null;
+  for (; j < src.length; j++) {
+    const c = src[j];
+    if (str) { if (c === '\\') j++; else if (c === str) str = null; continue; }
+    if (c === '"' || c === "'") str = c; else if (c === '{') n++; else if (c === '}' && --n === 0) break;
+  }
+  return vm.runInNewContext('(' + src.slice(i, j + 1) + ')');
+}
+
+describe('SEO: plantillas por defecto (13/11/2026: escorts y acompañantes)', () => {
+  test('cada texto por defecto pasa la validación del admin (variables y largos) y nombra las palabras clave', async () => {
+    const D = await defaultsReales();
+    const sinH1 = JSON.parse(JSON.stringify({ home: D.home, tpl: D.tpl }), (k, v) => (k === 'h1' ? undefined : v));
+    const r = validarSeo(sinH1);
+    assert.equal(r.error, undefined, r.error);
+    assert.equal(D.home.es.title, 'Escorts y acompañantes en Argentina | SexyRose');
+    assert.equal(D.tpl.es.place.title, 'Escorts y acompañantes en {lugar} | SexyRose');
+    assert.equal(D.tpl.es.place.h1, 'Escorts y acompañantes en {lugar}');
+    assert.equal(D.tpl.es.placeMen.h1, 'Escorts hombres y acompañantes en {lugar}');
+    assert.equal(D.tpl.es.profile.title, '{nombre}, escort en {lugar} | SexyRose');
+    assert.equal(D.tpl.en.place.title, 'Escorts and companions in {lugar} | SexyRose');
+    assert.equal(D.tpl.pt.place.title, 'Acompanhantes e escorts em {lugar} | SexyRose');
+    for (const l of ['es', 'en', 'pt']) {
+      for (const t of ['country', 'place', 'countryMen', 'placeMen']) {
+        const x = D.tpl[l][t];
+        for (const f of ['title', 'description', 'h1', 'intro']) assert.match(x[f], /escort/i, `${l}.${t}.${f}`);
+        // Con un lugar largo y un número de 3 cifras: título hasta 60 y descripción hasta 155 (lo que muestra Google)
+        const v = (s) => s.replace(/\{(lugar|pais)\}/g, 'Capital Federal').replace('{cantidad}', '128');
+        assert.ok(v(x.title).length <= 60, `${l}.${t}.title ${v(x.title).length}`);
+        assert.ok(v(x.description).length <= 155, `${l}.${t}.description ${v(x.description).length}`);
+      }
+      assert.ok(D.home[l].title.length <= 60 && D.home[l].description.length <= 155, l);
+    }
+    // Criterio legal: sin garantías, sin "verificados", sin precios ni actividades
+    const todo = JSON.stringify(D);
+    assert.doesNotMatch(todo, /verificad|garant|guarant|sexo|sexual|\$|precio|cena|caf[eé]|salida/i);
+  });
+});
 
 describe('SEO editable: validación', () => {
   test('acepta campos conocidos por idioma y tipo, saca los vacíos y normaliza espacios', () => {
@@ -148,7 +192,7 @@ describe('Admin → SEO con el servidor real', () => {
     await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
     await fs.writeFile(path.join(tmpSpa, 'index.html'), '<!doctype html><html lang="es-AR" data-prod="sitio" data-routing="path"><head><meta charset="utf-8"><title>SexyRose</title><meta name="description" content="vieja">\n<!--SR:SEO-->\n<!--SR:PRECONNECT-->\n<link rel="stylesheet" href="/assets/app.0123456789ab.css">\n</head><body><main id="app"></main>' + 'x'.repeat(1500) + '<script src="/assets/app.0123456789ab.js" defer></script></body></html>');
     await fs.writeFile(path.join(tmpSpa, 'seo-datos.json'), JSON.stringify(DATOS));
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local', sitioSpaPath: path.join(tmpSpa, 'index.html'),
       adminUser: 'zzsadmin', adminPassword: 'clave-larga-zzs-123', adminPath: ADMIN, ipHashSalt: 'sal', siteUrl: 'https://sexyrose.net',
       telegramToken: '', telegramChatId: '', mailgunApiKey: '', tareaPlanes: false, log: () => {},

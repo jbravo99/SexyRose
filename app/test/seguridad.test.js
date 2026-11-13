@@ -193,7 +193,7 @@ describe('servidor', () => {
     tmpPublic = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-sec-pub-'));
     await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
     certs = { keys: [jwk] };
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
       adminUser: 'zzsecadmin', adminPassword: 'clave-larga-zzsec-123', adminPath: ADMIN, ipHashSalt: 'sal', siteUrl: 'https://sexyrose.net',
       telegramToken: '', telegramChatId: '', mailgunApiKey: '', tareaPlanes: false, log: () => {},

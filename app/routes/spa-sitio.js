@@ -11,6 +11,9 @@
 // página de "no encontrado"). También arma el mapa del sitio (router.sitemap(), lo usa /sitemap.xml de server.js)
 // y sirve las fuentes (/assets/fonts/).
 //
+// Home provisoria (lib/prelanzamiento.js, Admin → Ajustes): mientras está prendida, todo lo que mostraría perfiles o
+// lugares responde 302 a la portada (en su idioma) y la portada sale con su propio título y descripción.
+//
 // Uso en server.js (después del admin y antes de "Páginas HTML"):
 //   import { createSpaSitioRouter } from './routes/spa-sitio.js';
 //   app.use(createSpaSitioRouter({ config, log, pool, planes }));
@@ -24,6 +27,7 @@ import { paquete, enviar } from '../lib/compresion.js';
 import { createSeoSitio } from '../lib/seo-sitio.js';
 import { estadoSitio } from './sitio.js';
 import { mapaConfig, mapaOrigenes } from '../lib/mapa.js';
+import { prelanzamientoEn, ocultaEnPrelanzamiento, SEO_PRELANZAMIENTO } from '../lib/prelanzamiento.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
@@ -176,7 +180,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       try { segs = p.split('/').filter(Boolean).map((s) => decodeURIComponent(s).toLowerCase()); } catch { return next(); }
       if (segs.some((s) => s.includes('.') || s.includes('\\'))) return next(); // archivos estáticos (/css/site.css, /favicon.svg) y rarezas
       const otroIdioma = segs[0] === 'en' || segs[0] === 'pt';
-      if (otroIdioma) segs.shift();
+      const idioma = otroIdioma ? segs.shift() : 'es';
       if (segs.length > 4) return next();
       let ok = false;
       if (!segs.length) ok = true;
@@ -184,6 +188,10 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       else if (segs.length === 1 && (await esPaginaServidor(segs[0]))) ok = false;
       else ok = await esPais(segs[0]);
       if (!ok) return next();
+      // Home provisoria (lib/prelanzamiento.js): lugares, perfiles, Cerca, Swipe, Shorts, Stars, favoritos, links y el
+      // registro de interesados van a la portada en el mismo idioma (302, sin caché: al apagarla vuelven solos)
+      const pre = await prelanzamientoEn(pool);
+      if (pre && ocultaEnPrelanzamiento(segs)) { res.set('Cache-Control', 'no-store'); return res.redirect(302, idioma === 'es' ? '/' : `/${idioma}/`); }
 
       const html = await leerSpa();
       if (html === null) {
@@ -195,8 +203,10 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       if (spa.pq) {
         // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
         const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
-        const m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
+        let m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
         if (!m) return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, headers);
+        // Portada provisoria: título y descripción propios, indexable
+        if (pre && !segs.length && m.status === 200) m = { ...m, ...(SEO_PRELANZAMIENTO[m.lang] || SEO_PRELANZAMIENTO.es), robots: 'index,follow' };
         // Dirección vieja de lugar + actividad: 301 a la página del lugar (las actividades ya no se muestran)
         if (m.status === 301 && m.location) { const q = req.originalUrl.indexOf('?'); return res.redirect(301, m.location + (q >= 0 ? req.originalUrl.slice(q) : '')); }
         if (m.status === 404) headers['X-Robots-Tag'] = 'noindex';

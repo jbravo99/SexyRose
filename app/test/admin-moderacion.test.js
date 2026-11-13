@@ -107,7 +107,7 @@ const existe = (rel) => fs.access(path.join(tmpData, 'privado', rel)).then(() =>
 
 before(async () => {
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'srmod-data-'));
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
     ipHashSalt: 'sal', siteUrl: SITE, dataDir: tmpData, log: () => {}, tareaPlanes: false, tareaContenido: false, tareaCotizacion: false,
     mpCuentas: [APP], mpFetch, cookieSecure: false,

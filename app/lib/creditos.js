@@ -32,7 +32,17 @@ export const PACKS_DEFAULT = Object.freeze([
 ]);
 export const CONTACTO_DEFAULT = Object.freeze({ whatsapp: '', telegram: '', telegramActivo: false });
 export const COTIZACION_DEFAULT = Object.freeze({ arsPorUsd: null, fecha: null, nota: '' });
-export const COMISION_DEFAULT = Object.freeze({ porcentaje: 10, saldoNegativoMax: 20 });
+// Venta de packs y contenido (Juan, 13/11/2026): 'porcentaje' es el descuento TOTAL a la acompañante (comisión de
+// SexyRose + costo de Mercado Pago). 'costoMp' es lo que se estima que cobra Mercado Pago, con IVA (7,61 % = 6,29 % + IVA,
+// plazo "al instante", el más caro; mercadopago.com.ar, 13/11/2026). SexyRose cobra la diferencia (comisionPlataforma).
+export const COMISION_DEFAULT = Object.freeze({ porcentaje: 10, costoMp: 7.61, saldoNegativoMax: 20 });
+// % que va como marketplace_fee: total − costo de Mercado Pago (nunca negativo), con 2 decimales
+export function comisionPlataforma(cfg) {
+  const c = { ...COMISION_DEFAULT, ...(cfg && typeof cfg === 'object' ? cfg : {}) };
+  const total = Number(c.porcentaje); const mp = Number(c.costoMp);
+  if (!Number.isFinite(total) || !Number.isFinite(mp)) return Math.round((COMISION_DEFAULT.porcentaje - COMISION_DEFAULT.costoMp) * 100) / 100;
+  return Math.max(0, Math.round((total - mp) * 100) / 100);
+}
 export const MENSAJES_DEFAULT = Object.freeze({
   whatsapp: Object.freeze({
     es: 'Hola, quiero comprar {pack} ({creditos} créditos, USD {monto}). Pedido {codigo}',
@@ -111,12 +121,15 @@ export function validarCotizacion(v) {
 }
 
 export function validarComision(v) {
-  if (!esObj(v)) return { error: 'Formato inválido: {porcentaje, saldoNegativoMax}.' };
+  if (!esObj(v)) return { error: 'Formato inválido: {porcentaje, costoMp, saldoNegativoMax}.' };
   const p = numOk(v.porcentaje, 0, 90);
+  const mp = numOk(v.costoMp == null ? COMISION_DEFAULT.costoMp : v.costoMp, 0, 90);
   const neg = numOk(v.saldoNegativoMax, 0, 10000);
-  if (p === null) return { error: 'La comisión tiene que estar entre 0 y 90 %.' };
+  if (p === null) return { error: 'El descuento total tiene que estar entre 0 y 90 %.' };
+  if (mp === null) return { error: 'El costo de Mercado Pago tiene que estar entre 0 y 90 %.' };
+  if (mp > p) return { error: 'El costo de Mercado Pago no puede ser mayor que el descuento total.' };
   if (neg === null) return { error: 'El saldo negativo máximo tiene que ser un número entre 0 y 10000.' };
-  return { valor: { porcentaje: Math.round(p * 100) / 100, saldoNegativoMax: Math.round(neg * 100) / 100 } };
+  return { valor: { porcentaje: Math.round(p * 100) / 100, costoMp: Math.round(mp * 100) / 100, saldoNegativoMax: Math.round(neg * 100) / 100 } };
 }
 
 export function validarMensajes(v) {
@@ -257,11 +270,12 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     if (!Number.isFinite(venta) || venta <= 0) throw err(400, 'Importe de venta inválido.');
     return enTransaccion(async (db) => {
       const cfg = await comision(db);
-      const comi = Math.round((venta * Number(cfg.porcentaje)) / 100);
+      const pct = comisionPlataforma(cfg);
+      const comi = Math.round((venta * pct) / 100);
       if (!comi) return null;
       return mover(db, {
         cuentaId, tipo: 'comision_venta', centavos: -comi, refTipo: 'venta', refId: ref,
-        motivo: `Comisión ${cfg.porcentaje} % sobre una venta de ${fmtCreditos(venta)}`, minimo: -aCentavos(cfg.saldoNegativoMax),
+        motivo: `Comisión ${pct} % sobre una venta de ${fmtCreditos(venta)}`, minimo: -aCentavos(cfg.saldoNegativoMax),
       });
     });
   }

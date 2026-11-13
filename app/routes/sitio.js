@@ -1,5 +1,6 @@
 // API pública del sitio: /api/sitio/...
 //   GET  estado         → todo lo que el sitio público necesita (perfiles publicados con sus destacadas, historias activas, catálogos).
+//                         Con la home provisoria prendida (ajustes.prelanzamiento: true) no trae perfiles, historias ni lugares.
 //   GET  perfil/:slug   → un perfil publicado.
 //   POST reporte        → denuncia sobre un perfil (misma tabla que /api/denuncia).
 // El estado se arma una vez cada 30 s como máximo; invalidarSitio() fuerza recalcularlo (lo llaman cuenta y admin).
@@ -11,6 +12,7 @@ import { limitesDe, planesEfectivos, destacadosVigentes, PLANES_PREVIEW } from '
 import { sameOrigin } from '../lib/auth.js';
 import { mezclarPrecios, mezclarDestacado } from '../lib/planes.js';
 import { mapaConfig } from '../lib/mapa.js';
+import { prelanzamientoActivo } from '../lib/prelanzamiento.js';
 
 const TTL = 30 * 1000;
 let cache = null;
@@ -65,7 +67,9 @@ export function aclaraciones(lista, ubic) {
 
 export async function armarEstado(pool, planesInst) {
   const cat = await cargarCatalogos(pool);
-  const { rows: perfiles } = await pool.query(
+  // Home provisoria (lib/prelanzamiento.js): sin perfiles, historias ni lugares; el sitio muestra solo la portada
+  const pre = prelanzamientoActivo(cat.ajustes);
+  const { rows: perfiles } = pre ? { rows: [] } : await pool.query(
     `SELECT p.cuenta_id, p.slug, p.datos, p.actualizado, p.publicado_en
        FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
       WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'
@@ -113,7 +117,7 @@ export async function armarEstado(pool, planesInst) {
     ahora: new Date().toISOString(),
     // Vista Mapa de Cerca (MAP_TILES_URL; sin ella no viene y el sitio muestra solo el radar)
     ...(mapa ? { mapa } : {}),
-    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null, seo: aj.seo ?? null },
+    ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null, seo: aj.seo ?? null, prelanzamiento: pre },
     // Solo los lugares con al menos un perfil visible y los lugares que los contienen (con Georef hay más de 4000:
     // el selector, los contadores, el sitemap y el SEO solo necesitan estos). slug: dirección pública (/argentina/<slug>).
     ubicaciones: ubicacionesUsadas(cat, lista),

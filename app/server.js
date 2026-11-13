@@ -52,6 +52,8 @@ import { createSolicitudes } from './lib/solicitudes.js';
 import { createClienteRouter } from './routes/cliente.js';
 import { createCuentaSolicitudesRouter } from './routes/cuenta-solicitudes.js';
 import { crearIpCliente, crearCfAccess } from './lib/seguridad.js';
+// Home provisoria (pre-lanzamiento): Admin → Ajustes
+import { configurarPrelanzamiento, prelanzamientoEn } from './lib/prelanzamiento.js';
 export { escapeHtml };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -376,6 +378,9 @@ const conMedia = (csp, origin) => (origin ? csp.replace(/(img-src [^;]*)/, `$1 $
 export function createApp(config) {
   const log = config.log;
   const state = { dbReady: false, stopping: false };
+  // Home provisoria: prendida si nunca se guardó el ajuste. config.prelanzamientoPorDefecto solo existe en pruebas
+  // (se pasa por código, nunca por variables de entorno).
+  configurarPrelanzamiento({ porDefecto: config.prelanzamientoPorDefecto !== false });
   const rl = createRateLimiter();
   const adminEnabled = Boolean(config.adminUser) && typeof config.adminPassword === 'string' && config.adminPassword.length >= 12;
   // El admin vive solo en ADMIN_PATH. Sin una dirección válida no se monta nada (todas sus rutas dan la 404 pública).
@@ -576,6 +581,14 @@ export function createApp(config) {
     for (const [route, file] of SITEMAP_PAGES) {
       if (await exists(file)) urls.push(`  <url><loc>${escapeXml(config.siteUrl + '/' + route)}</loc></url>`);
     }
+    // Home provisoria: solo la portada (es/en/pt) y las páginas legales
+    if (state.dbReady && await prelanzamientoEn(pool)) {
+      const home = { es: config.siteUrl + '/', en: config.siteUrl + '/en/', pt: config.siteUrl + '/pt/' };
+      const alt = Object.entries(home).map(([l, u]) => `<xhtml:link rel="alternate" hreflang="${l}" href="${escapeXml(u)}"/>`).join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${escapeXml(home.es)}"/>`;
+      const filas = Object.values(home).map((u) => `  <url><loc>${escapeXml(u)}</loc>${alt}</url>`).concat(urls.slice(1));
+      return res.type('application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=600')
+        .send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${filas.join('\n')}\n</urlset>\n`);
+    }
     const completo = spaSitio && spaSitio.sitemap ? await spaSitio.sitemap(urls.slice(1)).catch((e) => { log('sitemap: ' + e.message); return null; }) : null;
     if (completo) return res.type('application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=600').send(completo);
     res.type('application/xml; charset=utf-8').set('Cache-Control', 'public, max-age=3600')
@@ -656,6 +669,11 @@ export function createApp(config) {
   }));
   app.use('/api/cuenta', createCuentaRouter(ctx));
   app.use('/api/cliente', createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log, dormirAuth: config.dormirAuth }));
+  // Home provisoria: los packs de un perfil tampoco se muestran (el perfil no existe para el sitio)
+  app.get('/api/sitio/contenido/perfil/:slug', ah(async (req, res, next) => {
+    if (state.dbReady && await prelanzamientoEn(pool)) return res.status(404).set('Cache-Control', 'no-store').json({ ok: false, error: 'Perfil no encontrado.' });
+    next();
+  }));
   app.use('/api/sitio', createContenidoSitioRouter({ contenido, authCli, rl, ipHash, state, log }));
   app.use('/api/sitio', createSitioRouter(ctx));
   app.use('/api/ubicaciones', createUbicacionesRouter(ctx));

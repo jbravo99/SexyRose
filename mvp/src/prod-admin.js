@@ -463,7 +463,7 @@
     add('Altura', d.alturaCm ? esc((d.alturaCm / 100).toFixed(2).replace('.', ',') + ' m') : '');
     add('Contextura', esc((HH.BUILDS && HH.BUILDS[d.contextura]) || d.contextura || ''));
     add('Salidas', esc((d.salidas || []).map((x) => nombreDe(cat.ca(), x)).join(' · ')));
-    add('Intereses', esc((d.intereses || []).map((x) => nombreDe(cat.in(), x)).join(' · ')));
+    add('Servicios', esc((d.intereses || []).map((x) => nombreDe(cat.in(), x)).join(' · ')));
     add('Titular', esc(d.titular || ''));
     add('Descripción', d.bio ? `<span class="pa-pre">${esc(d.bio)}</span>` : '');
     add('Titular (EN)', esc(d.titularEn || ''));
@@ -902,14 +902,14 @@
     return `<div class="stack" style="gap:4px">${cand.map((u) => `<label class="row nowrap small" style="gap:8px;align-items:flex-start"><input type="radio" name="umDest" value="${esc(u.id)}"><span><strong data-noi18n>${esc(u.nombre)}</strong> <span class="muted">${esc(caminoUb(u))}${u.departamento ? ' · ' + esc(u.departamento) : ''}</span>${u.perfiles ? ` · ${u.perfiles} ${HH.plural(u.perfiles, 'perfil', 'perfiles')}` : ''}</span></label>`).join('')}</div>`;
   }
 
-  /* ---------- Categorías (salidas) e Intereses ---------- */
+  /* ---------- Categorías (salidas) e Intereses (en pantalla: "Servicios") ---------- */
   function vCategorias() {
     load('int', '/intereses');
     // Las salidas (categorías) ya no se muestran en el sitio: no se listan acá (los datos y la API siguen)
-    const intList = !S.int ? (S.err.int ? errorCard(S.err.int, 'int') : loadingCard(2)) : ((S.int.items || []).length ? `<div class="list card" style="padding:4px">${S.int.items.map((i) => `<div class="list-item"><div class="grow" style="min-width:0"><div class="title">${esc(i.nombre)}</div><div class="sub ellipsis">EN: ${esc(i.nombre_en || '—')} · PT: ${esc(i.nombre_pt || '—')} · orden ${i.orden || 0}</div></div><button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="intereses" data-id="${esc(i.id)}" aria-label="Editar ${esc(i.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="intereses" data-id="${esc(i.id)}" aria-label="Borrar ${esc(i.nombre)}">${icon('trash')}</button></div>`).join('')}</div>` : '<p class="small muted">No hay intereses.</p>');
-    return layout('categorias', `${head('Intereses', actualizar('cat'), 'Intereses: los eligen las acompañantes (hasta 6) y se usan como filtro en el sitio.')}
+    const intList = !S.int ? (S.err.int ? errorCard(S.err.int, 'int') : loadingCard(2)) : ((S.int.items || []).length ? `<div class="list card" style="padding:4px">${S.int.items.map((i) => `<div class="list-item"><div class="grow" style="min-width:0"><div class="title">${esc(i.nombre)}</div><div class="sub ellipsis">EN: ${esc(i.nombre_en || '—')} · PT: ${esc(i.nombre_pt || '—')} · orden ${i.orden || 0}</div></div><button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="intereses" data-id="${esc(i.id)}" aria-label="Editar ${esc(i.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="intereses" data-id="${esc(i.id)}" aria-label="Borrar ${esc(i.nombre)}">${icon('trash')}</button></div>`).join('')}</div>` : '<p class="small muted">No hay servicios.</p>');
+    return layout('categorias', `${head('Servicios', actualizar('cat'), 'Servicios: los eligen las acompañantes (hasta 6), se ven en su perfil y se usan como filtro en el sitio.')}
       <div class="stack" style="gap:18px">
-        <section class="stack" style="gap:10px"><div class="row between"><h3 style="font-size:17px">Intereses</h3><button type="button" class="btn sm" data-action="prodCatEdit" data-t="intereses">${icon('plus')} Nuevo interés</button></div><p class="small muted">Solo gustos y temas de conversación (máximo 6 por acompañante). Los nombres en inglés y portugués se muestran cuando el visitante cambia de idioma.</p>${intList}</section>
+        <section class="stack" style="gap:10px"><div class="row between"><h3 style="font-size:17px">Servicios</h3><button type="button" class="btn sm" data-action="prodCatEdit" data-t="intereses">${icon('plus')} Nuevo servicio</button></div><p class="small muted">Por ejemplo, formas de pago (como «Acepta tarjeta» o «Efectivo») o gustos y salidas. Nada sexual. Máximo 6 por acompañante. Los nombres en inglés y portugués se muestran cuando el visitante cambia de idioma.</p>${intList}</section>
       </div>`);
   }
   const CAT_ICONOS = ['coffee', 'icecream', 'walk', 'museum', 'cine', 'dinner', 'ticket', 'languages', 'bag', 'dumbbell', 'music', 'globe', 'heart', 'star', 'camera', 'sparkles'];
@@ -940,13 +940,13 @@
       </div>`;
     }
     return `<div class="stack" style="gap:12px">
-      <div class="field"><label for="cfNombre">Nombre (castellano)</label><input class="input" id="cfNombre" maxlength="40" value="${esc(it.nombre || '')}" placeholder="Ej.: Fotografía"></div>
+      <div class="field"><label for="cfNombre">Nombre (castellano)</label><input class="input" id="cfNombre" maxlength="40" value="${esc(it.nombre || '')}" placeholder="Ej.: Acepta tarjeta"></div>
       <div class="grid-2"><div class="field"><label for="cfEn">Inglés (opcional)</label><input class="input" id="cfEn" maxlength="40" value="${esc(it.nombre_en || '')}"></div><div class="field"><label for="cfPt">Portugués (opcional)</label><input class="input" id="cfPt" maxlength="40" value="${esc(it.nombre_pt || '')}"></div></div>
       <div class="field"><label for="cfOrden">Orden</label><input class="input" id="cfOrden" type="number" min="0" max="9999" value="${esc(it.orden != null ? it.orden : 0)}"></div>
     </div>`;
   }
   const CAT_KEY = { ubicaciones: 'ub', categorias: 'cat', intereses: 'int' };
-  const CAT_TIT = { ubicaciones: ['Nuevo lugar', 'Editar lugar'], categorias: ['Nueva salida', 'Editar salida'], intereses: ['Nuevo interés', 'Editar interés'] };
+  const CAT_TIT = { ubicaciones: ['Nuevo lugar', 'Editar lugar'], categorias: ['Nueva salida', 'Editar salida'], intereses: ['Nuevo servicio', 'Editar servicio'] };
 
   /* ---------- Ajustes → Textos del inicio (API: routes/admin-textos-sitio.js; el sitio los aplica en prod-sitio.js) ----------
      Reemplaza a la tarjeta «Portada» (su ajuste quedaba guardado pero el sitio no lo usaba): el título y el subtítulo se
@@ -1064,15 +1064,27 @@
     else {
       const a = S.aj; const pr = a.precios || { mes: {}, semana: {} };
       const upd = (k) => (a.actualizado && a.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado[k])}</span>` : '');
-      const pin = (per, k, dis) => `<input class="input pa-num" type="number" min="0" max="100000" step="1" id="pr_${per}_${k}" value="${esc(per === 'mes' && k === 'E' ? 0 : (pr[per] && pr[per][k] != null ? pr[per][k] : ''))}"${dis ? ' disabled' : ''} data-input="prodPrecioHint" aria-label="${PLAN_NOMBRE[k]} por ${per}">`;
+      const sa = pr.semanaAuto || { activo: false, recargo: 20 };
+      const pin = (per, k, dis) => `<input class="input pa-num" type="number" min="0" max="100000" step="${per === 'semana' ? 'any' : '1'}" id="pr_${per}_${k}" value="${esc(per === 'mes' && k === 'E' ? 0 : (pr[per] && pr[per][k] != null ? pr[per][k] : ''))}"${dis || (per === 'semana' && sa.activo) ? ' disabled' : ''} data-input="prodPrecioHint" aria-label="${PLAN_NOMBRE[k]} por ${per}">`;
       const hint = (k) => { const m = Number((pr.mes || {})[k]) || 0; const s = Number((pr.semana || {})[k]) || 0; if (!m || !s) return ''; const base = m / 4; const rec = Math.round((s / base - 1) * 100); return `cuarta parte ${money(Math.round(base * 100) / 100)} · recargo ${rec}% · 4 semanas = ${money(s * 4)}`; };
       const ds = a.destacado || {};
       const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="0.5" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'dia' ? '1 día' : '7 días'}">`;
       const ct = a.contacto || {}; const co = a.cotizacion || {}; const cm = a.comision || {}; const ms = a.mensajes || { whatsapp: {} };
       const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
-      body = `<section class="card stack" style="gap:12px">
+      // Home provisoria (app/lib/prelanzamiento.js): sin guardar, prendida
+      const pl = a.prelanzamiento || { activo: true, publicados: 0 };
+      body = `<section class="card stack" style="gap:12px" id="prodPre">
+          <div class="row between"><div class="card-title">${icon('home')} Home provisoria</div>${upd('prelanzamiento')}</div>
+          <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div style="font-weight:700;font-size:14px">${pl.activo ? 'Prendida' : 'Apagada: el sitio está abierto'}</div><div class="small muted">Mientras está prendida, el sitio muestra solo una portada para que las acompañantes publiquen su perfil (sin perfiles, lugares ni registro de interesados).</div></div><button type="button" class="switch" role="switch" aria-checked="${!!pl.activo}" aria-label="Home provisoria" data-action="prodPreToggle"></button></div>
+          <p class="small">Perfiles publicados ahora: <strong class="num">${Number(pl.publicados) || 0}</strong></p>
+        </section>
+        <section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('dollar')} Precios de los planes (créditos = USD)</div>${upd('precios')}</div>
           <p class="small muted">Precio por mes de Plata, Oro y Star, y por semana de Oro y Star. Bronce es gratis. Conviene que la semana sea <strong>la cuarta parte del mes + 20 %</strong>, así el mes sale más barato.</p>
+          <div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">
+            <label class="row" style="gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="pr_auto"${sa.activo ? ' checked' : ''} data-change="prodPrecioAuto"> <span class="small">Calcular la semana sola: cuarta parte del mes +</span></label>
+            <span class="row" style="gap:6px;align-items:center"><input class="input pa-num" type="number" min="0" max="200" step="1" id="pr_recargo" value="${esc(sa.recargo != null ? sa.recargo : 20)}" data-input="prodPrecioAuto" aria-label="Recargo de la semana (%)" style="width:80px"${sa.activo ? '' : ' disabled'}><span class="small">%</span></span>
+          </div>
           <div class="table-wrap"><table class="table pa-prices"><thead><tr><th>Plan</th><th>Por mes</th><th>Por semana</th><th></th></tr></thead><tbody>
             ${PLANES.map((k) => `<tr><td>${planBadge(k)}</td><td>${pin('mes', k, k === 'E')}</td><td>${PLANES_SEMANA.includes(k) ? pin('semana', k) : '<span class="tiny muted">—</span>'}</td><td class="tiny muted" id="prh_${k}">${PLANES_SEMANA.includes(k) ? hint(k) : ''}</td></tr>`).join('')}
           </tbody></table></div>
@@ -1112,7 +1124,7 @@
         ${ventaContenidoCard(cm, upd('comision'))}
         ${textosInicioCard()}`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Precios, packs de créditos, Destacado, cotización, contacto, mensajes y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, precios, packs de créditos, Destacado, cotización, contacto, mensajes y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Acciones de Fase 1+2 ---------- */
@@ -1371,8 +1383,22 @@
           .catch((e) => HH.modal({ title: 'No se puede borrar', body: `<div class="notice warn">${icon('alert')}<span>${esc(e.message)}</span></div>`, actions: [{ label: 'Entendido', action: 'closeModal' }] }));
       } });
     },
+    // Semana calculada sola: mismo cálculo que semanaDeMes en lib/planes.js (mes / 4 × (1 + recargo %), 2 decimales)
+    prodPrecioAuto() {
+      const auto = !!(document.getElementById('pr_auto') || {}).checked;
+      const rIn = document.getElementById('pr_recargo'); if (rIn) rIn.disabled = !auto;
+      const rec = Number(rIn && rIn.value);
+      for (const k of PLANES_SEMANA) {
+        const w = document.getElementById('pr_semana_' + k); if (!w) continue;
+        w.disabled = auto;
+        const mes = Number((document.getElementById('pr_mes_' + k) || {}).value);
+        if (auto && mes > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mes / 4) * (1 + rec / 100) * 100) / 100);
+        HH.actions.prodPrecioHint(w);
+      }
+    },
     prodPrecioHint(el) {
       const m = /^pr_(mes|semana)_([A-Z])$/.exec(el.id || ''); if (!m) return; const k = m[2]; if (!PLANES_SEMANA.includes(k)) return;
+      if (m[1] === 'mes' && (document.getElementById('pr_auto') || {}).checked) { const w = document.getElementById('pr_semana_' + k); const rec = Number((document.getElementById('pr_recargo') || {}).value); const mesV = Number(el.value); if (w && mesV > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mesV / 4) * (1 + rec / 100) * 100) / 100); }
       const mes = Number((document.getElementById('pr_mes_' + k) || {}).value) || 0; const sem = Number((document.getElementById('pr_semana_' + k) || {}).value) || 0;
       const h = document.getElementById('prh_' + k); if (!h) return;
       if (!mes || !sem) { h.textContent = ''; return; }
@@ -1393,6 +1419,18 @@
         })
         .catch((e) => { el.disabled = false; fail(e); });
     },
+    // Ajustes → Home provisoria: se guarda al tocar el interruptor
+    prodPreToggle(el) {
+      const next = el.getAttribute('aria-checked') !== 'true';
+      el.disabled = true;
+      HH.api('PUT', '/ajustes/prelanzamiento', { valor: { activo: next } })
+        .then((r) => {
+          if (S.aj && r) S.aj.prelanzamiento = r.valor;
+          HH.toast(next ? 'Home provisoria prendida' : 'Home provisoria apagada: el sitio está abierto', { type: 'ok' });
+          HH.refresh();
+        })
+        .catch((e) => { el.disabled = false; fail(e); });
+    },
     prodAjSave(el) {
       const k = el.dataset.k; let valor;
       const val = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
@@ -1404,6 +1442,9 @@
         for (const p of PLANES_SEMANA) valor.semana[p] = num('pr_semana_' + p);
         const bad = [].concat(Object.entries(valor.mes), Object.entries(valor.semana)).find(([, n]) => !Number.isFinite(n) || n < 0);
         if (bad) { warn(`Revisá el precio de ${PLAN_NOMBRE[bad[0]]}: tiene que ser un número de 0 o más.`); return; }
+        valor.semanaAuto = { activo: !!(document.getElementById('pr_auto') || {}).checked, recargo: num('pr_recargo') };
+        if (valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0 && valor.semanaAuto.recargo <= 200)) { warn('El recargo de la semana tiene que estar entre 0 y 200 %.'); return; }
+        if (!valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0)) valor.semanaAuto.recargo = 20;
       } else if (k === 'packs') {
         const list = pkEdit();
         for (const [i, p] of list.entries()) {
@@ -1429,9 +1470,9 @@
           valor = { modo: 'manual', arsPorUsd: raw ? n : null, nota: val('ajCotNota') };
         } else valor = { modo: 'auto', valor: e.valor, nota: val('ajCotNota') };
       } else if (k === 'comision') {
-        valor = { porcentaje: num('ajComP'), saldoNegativoMax: num('ajComN') };
-        if (!Number.isFinite(valor.porcentaje) || !Number.isFinite(valor.saldoNegativoMax)) { warn('Completá la comisión y el saldo negativo máximo.'); return; }
-        if (!Number.isFinite(valor.porcentaje)) { warn('Completá la comisión.'); return; }
+        valor = { porcentaje: num('ajComP'), costoMp: num('ajComMp'), saldoNegativoMax: num('ajComN') };
+        if (!Number.isFinite(valor.porcentaje) || !Number.isFinite(valor.costoMp) || !Number.isFinite(valor.saldoNegativoMax)) { warn('Completá el descuento total, el costo de Mercado Pago y el saldo negativo máximo.'); return; }
+        if (valor.costoMp > valor.porcentaje) { warn('El costo de Mercado Pago no puede ser mayor que el descuento total.'); return; }
       } else if (k === 'mensajes') {
         valor = { whatsapp: { es: val('ajMsg_es'), en: val('ajMsg_en'), pt: val('ajMsg_pt') }, admin: val('ajMsgAdmin') };
         const sin = ['es', 'en', 'pt'].find((l) => valor.whatsapp[l].trim() && !valor.whatsapp[l].includes('{codigo}'));
@@ -1463,6 +1504,20 @@
   /* ---------- Venta de contenido (Mercado Pago) ---------- */
   const pesosAr = (m) => '$ ' + (Number(m && m.centavos != null ? m.centavos : 0) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 });
   const VC_ESTADO = { aprobada: ['ok', 'Aprobada'], en_proceso: ['warn', 'En proceso'], rechazada: ['danger', 'Rechazada'], reembolsada: ['neutral', 'Devuelta'], pendiente: ['neutral', 'Sin pagar'] };
+  // Comisión de SexyRose = descuento total − costo de Mercado Pago (igual que comisionPlataforma en lib/creditos.js)
+  const coma = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
+  function comTu(cm) {
+    const t = Number(cm && cm.porcentaje != null ? cm.porcentaje : 10); const mp = Number(cm && cm.costoMp != null ? cm.costoMp : 7.61);
+    if (!Number.isFinite(t) || !Number.isFinite(mp)) return '';
+    return `Tu comisión por venta: <strong>${esc(coma(Math.max(0, t - mp)))} %</strong>${mp > t ? ' <span class="pa-danger">(el costo de Mercado Pago supera el total)</span>' : ''}`;
+  }
+  Object.assign(HH.actions, {
+    prodComCalc() {
+      const el = document.getElementById('ajComTu'); if (!el) return;
+      const n = (id) => { const v = document.getElementById(id); return v && v.value !== '' ? Number(v.value) : NaN; };
+      el.innerHTML = comTu({ porcentaje: n('ajComP'), costoMp: n('ajComMp') });
+    },
+  });
   function ventaContenidoCard(cm, actualizado) {
     load('vc', PATHS.vc);
     const vc = S.vc;
@@ -1481,7 +1536,10 @@
     return `<section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('bag')} Venta de contenido</div>${actualizado}</div>
           <p class="small muted">Quien compra paga con Mercado Pago. El dinero va a la cuenta de Mercado Pago de la acompañante y la comisión, a la cuenta elegida acá. Si cambiás la cuenta, cada acompañante tiene que volver a conectar Mercado Pago desde su panel: hasta entonces, sus contenidos no se pueden comprar.</p>
-          <div class="grid-2"><div class="field"><label for="ajComP">Comisión (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.5" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}"></div>
+          <div class="grid-2"><div class="field"><label for="ajComP">Descuento total a la acompañante (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.01" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}" data-input="prodComCalc"><span class="tiny muted">Tu comisión más el costo de Mercado Pago.</span></div>
+          <div class="field"><label for="ajComMp">Costo de Mercado Pago, con IVA (%)</label><input class="input" id="ajComMp" type="number" min="0" max="90" step="0.01" value="${esc(cm.costoMp != null ? cm.costoMp : '')}" data-input="prodComCalc"><span class="tiny muted">7,61 % = cobro al instante (6,29 % + IVA).</span></div></div>
+          <p class="small" id="ajComTu" style="margin:0">${comTu(cm)}</p>
+          <div class="grid-2">
           <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
           <div class="card-title" style="font-size:15px">Cuenta que recibe la comisión</div>

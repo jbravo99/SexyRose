@@ -209,7 +209,7 @@ describe('/api/sitio/estado: caché HTTP y compresión', () => {
     tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-rend-data-'));
     tmpPublic = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-rend-pub-'));
     await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
       adminPath: '/panel-rendimiento-0123456789', adminUser: 'adm', adminPassword: 'clave-de-prueba-larga-789', ipHashSalt: 'sal',
       siteUrl: 'https://sexyrose.net', telegramToken: '', telegramChatId: '', mailgunApiKey: '', log: () => {}, tareaPlanes: false,
@@ -288,7 +288,7 @@ describe('build del sitio (app/scripts/build-sitio.py)', () => {
       assert.ok(pre.some((u) => /manrope-latin-400\./.test(u)) && pre.some((u) => /poppins-latin-600\./.test(u)), pre.join(','));
       const seoDatos = JSON.parse(await fs.readFile(path.join(out, 'seo-datos.json'), 'utf8'));
       assert.ok(seoDatos.defaults.tpl.es.place.title.includes('{lugar}'));
-      assert.equal(seoDatos.lugares['Ciudad de Buenos Aires'].slug, 'buenos-aires');
+      assert.equal(seoDatos.lugares['Ciudad de Buenos Aires'].slug, 'capital-federal');
       assert.deepEqual(seoDatos.dict['Provincia de Buenos Aires'], ['Buenos Aires Province', 'Província de Buenos Aires']);
       // Sin actividades en el sitio (12/11/2026): sus nombres no viajan en el diccionario ni hay plantilla de lugar + actividad
       assert.equal(seoDatos.dict.Cena, undefined); assert.equal(seoDatos.defaults.tpl.es.placeAct, undefined);

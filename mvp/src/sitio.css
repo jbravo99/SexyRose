@@ -207,3 +207,16 @@ html.sh-on main#app{padding-bottom:0!important;min-height:0}
 .hero-btns .btn .lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:359px){.hero-btns{gap:6px}.hero-btns .btn{padding:9px 9px;font-size:13px;gap:4px}.hero-btns .btn svg{width:14px;height:14px}}
 @media(min-width:900px){.hero{padding-block:22px 20px}.hero .hero-grid>.stack{gap:10px!important}.hero .eyebrow{font-size:12px}.hero .lead{font-size:15px}.hero-btns{max-width:440px}.hero-btns .btn{flex:0 1 auto;padding:11px 18px;font-size:15px}.hero-cards{height:250px;max-width:320px}}
+
+/* Home provisoria (prod-prelanzamiento.js): portada para acompañantes mientras el sitio no abre */
+html[data-prelanzamiento] main#app{padding-bottom:0}
+.hero.sr-pre{display:flex;align-items:center;min-height:calc(100svh - var(--header-h) - 132px);padding-block:44px 52px;text-align:center}
+.sr-pre .sr-pre-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:680px}
+.sr-pre-mark{width:60px;height:60px;border-radius:19px;background:linear-gradient(135deg,var(--berry),var(--pink));display:grid;place-items:center;color:#fff;box-shadow:0 12px 34px rgba(255,92,138,.32);margin-bottom:6px}
+.sr-pre-mark svg{width:30px;height:30px}
+.hero.sr-pre .eyebrow{font-size:12px}
+.hero.sr-pre h1{font-size:clamp(34px,9vw,60px);line-height:1.04;max-width:14ch}
+.hero.sr-pre .lead{font-size:16px;line-height:1.5;color:var(--fg-2);max-width:42ch}
+.sr-pre-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%;margin-top:10px}
+.sr-pre-btns .btn{flex:1 1 220px;max-width:280px;justify-content:center}
+@media(min-width:900px){.hero.sr-pre{padding-block:72px 80px}.hero.sr-pre h1{max-width:20ch}.hero.sr-pre .lead{font-size:18px}.sr-pre-mark{width:68px;height:68px;border-radius:21px}.sr-pre-mark svg{width:34px;height:34px}}

@@ -49,7 +49,7 @@ const admPost = (p, body, { method = 'POST', headers = {} } = {}) => adm(p, {
 
 before(async () => {
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'srcot-data-'));
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
     ipHashSalt: 'sal-de-prueba', siteUrl: 'https://sexyrose.test', dataDir: tmpData,
     log: () => {}, tareaPlanes: false, tareaCotizacion: false,

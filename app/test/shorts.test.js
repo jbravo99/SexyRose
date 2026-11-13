@@ -150,7 +150,7 @@ describe('servidor: estado, ajuste y /shorts', () => {
     await fs.writeFile(path.join(tmpSpa, 'seo-datos.json'), JSON.stringify({ defaults: { siteUrl: 'https://sexyrose.test', minProfiles: 1, home: Object.fromEntries(['es', 'en', 'pt'].map((l) => [l, { title: 'Inicio', description: 'd' }])), tpl }, lugares: {}, dict: {} }));
     await fs.writeFile(path.join(tmpSpa, 'assets', 'fuentes.0123456789ab.css'), "@font-face{font-family:'Poppins';src:url(/assets/fonts/x.0123456789ab.woff2)}");
     process.env.SITIO_SPA_PATH = path.join(tmpSpa, 'index.html');
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
       ipHashSalt: 'sal', siteUrl: 'https://sexyrose.test', dataDir: tmpData, log: () => {}, tareaPlanes: false, sendMail: async () => {},
     });

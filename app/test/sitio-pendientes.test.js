@@ -177,6 +177,51 @@ describe('SEO en el servidor (lib/seo-sitio.js) con un estado de prueba', () => 
     assert.match(xml, /<xhtml:link rel="alternate" hreflang="pt" href="https:\/\/sexyrose\.net\/pt\/perfil\/ana"\/>/);
     assert.equal(slugify('Zona Norte (GBA)'), 'zona-norte-gba');
   });
+  test('sitemap: los perfiles llevan sus fotos (image:image, hasta 5); los lugares no', async () => {
+    const xml = await seo.sitemap();
+    assert.match(xml, /xmlns:image="http:\/\/www\.google\.com\/schemas\/sitemap-image\/1\.1"/);
+    assert.match(xml, /<loc>https:\/\/sexyrose\.net\/perfil\/ana<\/loc>[^\n]*<image:image><image:loc>https:\/\/cdn\.example\/f\.jpg<\/image:loc><\/image:image><\/url>/);
+    assert.doesNotMatch(xml, /<loc>https:\/\/sexyrose\.net\/argentina\/san-isidro<\/loc>[^\n]*<image:image>/);
+  });
+  test('JSON-LD en el <head>: portada (WebSite + Organization con logo, sin SearchAction), lugar (migas + lista de perfiles), perfil (ProfilePage + migas)', async () => {
+    const ld = (m) => [...seo.etiquetas(m).matchAll(/<script type="application\/ld\+json" data-hh-ld>([^\n]*?)<\/script>/g)].map((x) => JSON.parse(x[1]));
+    const home = ld(await seo.meta('/'));
+    assert.deepEqual(home.map((o) => o['@type']), ['WebSite', 'Organization']);
+    assert.equal(home[0].url, 'https://sexyrose.net/'); assert.equal(home[0].potentialAction, undefined);
+    assert.equal(home[1].logo, 'https://sexyrose.net/icon-512.png');
+    const lugar = ld(await seo.meta('/en/argentina/san-isidro'));
+    assert.deepEqual(lugar.map((o) => o['@type']), ['BreadcrumbList', 'ItemList']);
+    assert.deepEqual(lugar[0].itemListElement.map((x) => x.item), ['https://sexyrose.net/en/', 'https://sexyrose.net/en/argentina', 'https://sexyrose.net/en/argentina/provincia-de-buenos-aires', 'https://sexyrose.net/en/argentina/zona-norte-gba', 'https://sexyrose.net/en/argentina/san-isidro']);
+    assert.deepEqual(lugar[1].itemListElement.map((x) => x.url).sort(), ['https://sexyrose.net/en/profile/ana', 'https://sexyrose.net/en/profile/bea']); // sin hombres
+    const men = ld(await seo.meta('/argentina/san-isidro/hombres'));
+    assert.equal(men[0].itemListElement.at(-1).name, 'Hombres');
+    assert.deepEqual(men[1].itemListElement.map((x) => x.name), ['Dani']);
+    const m = await seo.meta('/perfil/ana');
+    const perfil = ld(m);
+    assert.deepEqual(perfil.map((o) => o['@type']), ['ProfilePage', 'BreadcrumbList']);
+    assert.equal(perfil[0].mainEntity['@type'], 'Person'); assert.equal(perfil[0].mainEntity.name, 'Ana'); assert.equal(perfil[0].mainEntity.image, 'https://cdn.example/f.jpg');
+    assert.equal(perfil[1].itemListElement.at(-1).item, 'https://sexyrose.net/perfil/ana');
+    // Ni Product, ni Offer, ni Service para personas; y nada sin escapar en el <head>
+    assert.doesNotMatch(JSON.stringify([home, lugar, perfil]), /"(Product|Offer|Service)"/);
+    const raro = await seo.meta('/perfil/ana'); raro.ld = [{ '@type': 'Thing', name: '</script><script>alert(1)</script>' }];
+    assert.doesNotMatch(seo.etiquetas(raro), /<\/script><script>/);
+    // 404: sin datos estructurados
+    assert.equal(ld(await seo.meta('/perfil/nadie')).length, 0);
+  });
+  test('og:image: el logo en las páginas sin foto propia (tarjeta chica); la foto en los perfiles (tarjeta grande)', async () => {
+    const h = seo.etiquetas(await seo.meta('/argentina'));
+    assert.match(h, /<meta property="og:image" content="https:\/\/sexyrose\.net\/icon-512\.png">/);
+    assert.match(h, /<meta name="twitter:card" content="summary">/);
+    assert.match(seo.etiquetas(await seo.meta('/perfil/ana')), /<meta name="twitter:card" content="summary_large_image">/);
+  });
+  test('"{cantidad} perfiles" con un solo perfil dice "1 perfil" (es/en/pt)', async () => {
+    const { fill } = await import('../lib/seo-sitio.js');
+    assert.equal(fill('{cantidad} perfiles en {lugar}', { cantidad: 1, lugar: 'Tigre' }), '1 perfil en Tigre');
+    assert.equal(fill('Hay {cantidad} perfiles', { cantidad: 21 }), 'Hay 21 perfiles');
+    assert.equal(fill('{cantidad} profiles with photos', { cantidad: 1 }), '1 profile with photos');
+    assert.equal(fill('{cantidad} perfis com fotos', { cantidad: 1 }), '1 perfil com fotos');
+    assert.equal(fill('{cantidad} perfiles', { cantidad: 11 }), '11 perfiles');
+  });
   test('sin seo-datos.json no inventa nada (la cáscara sale como siempre)', async () => {
     const s2 = createSeoSitio({ datosPath: path.join(dir, 'no-existe.json'), estado: async () => estado });
     assert.equal(await s2.meta('/'), null);
@@ -222,7 +267,7 @@ describe('servidor: 404, SEO, sitemap, textos del inicio y videos del admin', ()
     await fs.writeFile(path.join(tmpPublic, 'terminos.html'), '<!doctype html><title>t</title>');
     await fs.writeFile(path.join(tmpSpa, 'index.html'), '<!doctype html><html lang="es-AR" data-prod="sitio" data-routing="path"><head><meta charset="utf-8"><title>SexyRose — Acompañantes</title><meta name="description" content="vieja">\n<!--SR:SEO-->\n<!--SR:PRECONNECT-->\n<link rel="stylesheet" href="/assets/app.0123456789ab.css">\n</head><body><main id="app"></main>' + 'x'.repeat(1500) + '<script src="/assets/app.0123456789ab.js" defer></script></body></html>');
     await fs.writeFile(path.join(tmpSpa, 'seo-datos.json'), JSON.stringify(DATOS));
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local', sitioSpaPath: path.join(tmpSpa, 'index.html'),
       adminUser: 'zzpadmin', adminPassword: 'clave-larga-zzp-123', adminPath: ADMIN, ipHashSalt: 'sal', siteUrl: 'https://sexyrose.net',
       telegramToken: '', telegramChatId: '', mailgunApiKey: '', tareaPlanes: false, log: () => {},

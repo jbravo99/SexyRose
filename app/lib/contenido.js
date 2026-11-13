@@ -16,10 +16,12 @@
 // - Solo packs (y, más adelante, pedidos a medida). Cantidad de packs a la venta por plan: LIMITES[plan].packs (Juan
 //   12/11: Bronce 0, Plata 1, Oro 5, Star ilimitados). Si baja de plan, los primeros que entran (por fecha de carga)
 //   siguen a la venta; el resto queda guardado y no se puede comprar (en su panel figura así).
+// - Comisión (Juan, 13/11/2026): a la acompañante se le descuenta un total de 10 % por venta entre SexyRose y Mercado
+//   Pago. marketplace_fee = total − costo estimado de Mercado Pago (Admin → Ajustes; por defecto 7,61 %, "al instante").
 // - La comisión NO se descuenta de los créditos (Mercado Pago ya la retiene en el cobro): queda registrada en cada
 //   venta (ventas_contenido.comision_centavos) solo para los reportes.
 import crypto from 'node:crypto';
-import { COMISION_DEFAULT } from './creditos.js';
+import { COMISION_DEFAULT, comisionPlataforma } from './creditos.js';
 import { cuentaCompleta, firmaValida, MpError } from './mercadopago.js';
 import { limitesDe } from './planes-ref.js';
 
@@ -111,10 +113,17 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
     return elegida || cuentas[0] || null;
   }
   async function disponible(db = pool) { return cuentaCompleta(await cuentaActiva(db)); }
-  async function comisionPct(db = pool) {
+  // Ajuste 'comision': descuento total a la acompañante y costo estimado de Mercado Pago (ver creditos.js)
+  async function comisionCfg(db = pool) {
     const c = await leerAjuste('comision', db);
-    const p = Number(c && typeof c === 'object' && c.porcentaje != null ? c.porcentaje : COMISION_DEFAULT.porcentaje);
-    return Number.isFinite(p) && p >= 0 && p <= 90 ? p : COMISION_DEFAULT.porcentaje;
+    const v = { ...COMISION_DEFAULT, ...(c && typeof c === 'object' ? c : {}) };
+    const ok = (x) => Number.isFinite(Number(x)) && Number(x) >= 0 && Number(x) <= 90;
+    return { total: ok(v.porcentaje) ? Number(v.porcentaje) : COMISION_DEFAULT.porcentaje, costoMp: ok(v.costoMp) ? Number(v.costoMp) : COMISION_DEFAULT.costoMp };
+  }
+  // % de SexyRose (marketplace_fee) = total − costo de Mercado Pago
+  async function comisionPct(db = pool) {
+    const c = await comisionCfg(db);
+    return comisionPlataforma({ porcentaje: c.total, costoMp: c.costoMp });
   }
 
   // ---------- Conexión de la vendedora con Mercado Pago ----------
@@ -270,9 +279,9 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
   }
   async function panel(cuentaId) {
     const lim = await limitePacks(cuentaId);
-    const [disp, pct, con, its, vs] = await Promise.all([disponible(), comisionPct(), estadoConexion(cuentaId), items(cuentaId, lim), ventasDe(cuentaId)]);
+    const [disp, pct, cfg, con, its, vs] = await Promise.all([disponible(), comisionPct(), comisionCfg(), estadoConexion(cuentaId), items(cuentaId, lim), ventasDe(cuentaId)]);
     // max: packs que permite su plan (null = ilimitados; 0 = su plan no incluye la venta de packs)
-    return { disponible: disp, comisionPct: pct, conexion: disp ? con : { estado: 'sin_conectar', desde: null }, items: its, ventas: vs, max: lim };
+    return { disponible: disp, comisionPct: pct, descuentoTotal: cfg.total, costoMp: cfg.costoMp, conexion: disp ? con : { estado: 'sin_conectar', desde: null }, items: its, ventas: vs, max: lim };
   }
 
   // ---------- Público ----------

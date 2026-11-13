@@ -31,7 +31,7 @@
     'Desconectar': ['Disconnect', 'Desconectar'],
     'Desconectar Mercado Pago': ['Disconnect Mercado Pago', 'Desconectar Mercado Pago'],
     'Tus packs dejan de poder comprarse hasta que vuelvas a conectar.': ['Your packs can no longer be bought until you reconnect.', 'Seus packs não poderão ser comprados até você conectar de novo.'],
-    'Por cada venta, SexyRose cobra una comisión del {n} % y Mercado Pago descuenta su costo; el resto se acredita en tu cuenta.': ['For each sale, SexyRose charges a {n} % commission and Mercado Pago deducts its fee; the rest goes to your account.', 'Em cada venda, a SexyRose cobra uma comissão de {n} % e o Mercado Pago desconta a sua taxa; o restante vai para sua conta.'],
+    'Por cada venta se descuenta un {n} % en total, entre la comisión de SexyRose y el costo de Mercado Pago por recibir el dinero al instante. Si en Mercado Pago elegís recibirlo a más días, el descuento es menor. El resto se acredita en tu cuenta.': ['For each sale, a total of {n} % is deducted, covering the SexyRose commission and the Mercado Pago fee for receiving the money instantly. If you choose to receive it later in Mercado Pago, the deduction is lower. The rest goes to your account.', 'Em cada venda é descontado um total de {n} %, entre a comissão da SexyRose e a taxa do Mercado Pago para receber o dinheiro na hora. Se no Mercado Pago você escolher receber em mais dias, o desconto é menor. O restante vai para sua conta.'],
     'Tus packs': ['Your packs', 'Seus packs'],
     'Todavía no cargaste packs': ['You have not added packs yet', 'Você ainda não adicionou packs'],
     'Tu plan no incluye la venta de packs.': ['Your plan does not include selling packs.', 'Seu plano não inclui a venda de packs.'],
@@ -188,7 +188,7 @@
     const ventas = d.ventas || [];
     return titulo + `
       <div class="card stack" style="gap:10px">${mpCard}
-        <p class="tiny muted" style="margin:0"><span>Por cada venta, SexyRose cobra una comisión del ${esc(String(d.comisionPct))} % y Mercado Pago descuenta su costo; el resto se acredita en tu cuenta.</span></p>
+        <p class="tiny muted" style="margin:0"><span>Por cada venta se descuenta un ${esc(String(d.descuentoTotal != null ? d.descuentoTotal : d.comisionPct).replace('.', ','))} % en total, entre la comisión de SexyRose y el costo de Mercado Pago por recibir el dinero al instante. Si en Mercado Pago elegís recibirlo a más días, el descuento es menor. El resto se acredita en tu cuenta.</span></p>
       </div>
       <div class="card stack" style="gap:10px">
         <div class="row between"><div class="card-title">${icon('bag')} Tus packs</div><span class="tiny muted">${limiteTxt}</span></div>

@@ -1905,6 +1905,10 @@ HH.I18N = {
 "Choose up to {n} interests",
 "Escolha até {n} interesses"
 ],
+"Elegí hasta {n} servicios": [
+"Choose up to {n} services",
+"Escolha até {n} serviços"
+],
 "Elegí historias": [
 "Choose stories",
 "Escolha os stories"
@@ -3761,6 +3765,10 @@ HH.I18N = {
 "No profiles with that interest yet",
 "Ainda não há perfis com esse interesse"
 ],
+"No hay perfiles con ese servicio todavía": [
+"No profiles with that service yet",
+"Ainda não há perfis com esse serviço"
+],
 "No hay perfiles con esos filtros": [
 "No profiles match those filters",
 "Não há perfis com esses filtros"
@@ -4721,9 +4729,17 @@ HH.I18N = {
 "Try removing an interest or widening the age range.",
 "Tente remover algum interesse ou ampliar a faixa de idade."
 ],
+"Probá quitando algún servicio o ampliando el rango de edad.": [
+"Try removing a service or widening the age range.",
+"Tente remover algum serviço ou ampliar a faixa de idade."
+],
 "Probá quitando la ciudad o el interés.": [
 "Try removing the city or the interest.",
 "Tente remover a cidade ou o interesse."
+],
+"Probá quitando la ciudad o el servicio.": [
+"Try removing the city or the service.",
+"Tente remover a cidade ou o serviço."
 ],
 "Probá quitando la ciudad o la actividad.": [
 "Try removing the city or the activity.",
@@ -5261,6 +5277,10 @@ HH.I18N = {
 "Shown for {n} h on your profile and the home page",
 "Fica visível por {n} h no seu perfil e no início"
 ],
+"Se ven en tu perfil, en Sobre mí, y sirven para que te encuentren con los filtros.": [
+"They show on your profile, under About me, and help people find you with the filters.",
+"Aparecem no seu perfil, em Sobre mim, e ajudam a te encontrar pelos filtros."
+],
 "Secciones del panel": [
 "Dashboard sections",
 "Seções do painel"
@@ -5340,6 +5360,10 @@ HH.I18N = {
 "Separados por coma.": [
 "Separated by commas.",
 "Separados por vírgula."
+],
+"Servicios": [
+"Services",
+"Serviços"
 ],
 "Sesión": [
 "Session",

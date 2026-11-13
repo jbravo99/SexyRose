@@ -146,7 +146,7 @@ const ventaDe = async (token) => (await db.query('SELECT * FROM ventas_contenido
 
 before(async () => {
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'srct-data-'));
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
     ipHashSalt: 'sal', siteUrl: SITE, dataDir: tmpData, log: () => {}, tareaPlanes: false, tareaContenido: false, tareaCotizacion: false,
     sendMail: async () => {}, mpCuentas: [CUENTA_A, CUENTA_B], mpFetch,
@@ -210,7 +210,7 @@ describe('conexión con Mercado Pago (OAuth)', () => {
   test('conectar guarda los tokens cifrados por aplicación; el estado de otra cuenta no sirve', async () => {
     const v = await vendedora(); const otra = await vendedora();
     let p = await (await cta(v.id, '/contenido')).json();
-    assert.equal(p.disponible, true); assert.equal(p.conexion.estado, 'sin_conectar'); assert.equal(p.comisionPct, 10);
+    assert.equal(p.disponible, true); assert.equal(p.conexion.estado, 'sin_conectar'); assert.equal(p.comisionPct, 2.39); assert.equal(p.descuentoTotal, 10); assert.equal(p.costoMp, 7.61);
     const access = await conectar(v, { user: 777 });
     const post = MP.tokenPosts.at(-1);
     assert.equal(post.client_secret, CUENTA_A.clientSecret); assert.equal(post.grant_type, 'authorization_code');
@@ -306,7 +306,7 @@ describe('contenidos y compra', () => {
   });
 
   test('comprar crea la preferencia con el token de la vendedora y la comisión; el webhook firmado aprueba y entrega el link', async () => {
-    await admPut('/ajustes/comision', { valor: { porcentaje: 12.5, saldoNegativoMax: 20 } });
+    await admPut('/ajustes/comision', { valor: { porcentaje: 15, costoMp: 2.5, saldoNegativoMax: 20 } }); // SexyRose: 15 − 2,5 = 12,5 %
     const v = await vendedora();
     const access = await conectar(v);
     const it = await crearItem(v, { precio: 8000 });
@@ -352,7 +352,7 @@ describe('contenidos y compra', () => {
     await notificar(venta.id, '5001');
     c = await (await pub('/sitio/compra/' + token)).json();
     assert.equal(c.estado, 'reembolsada'); assert.equal(c.link, null);
-    await admPut('/ajustes/comision', { valor: { porcentaje: 10, saldoNegativoMax: 20 } });
+    await admPut('/ajustes/comision', { valor: { porcentaje: 10, costoMp: 7.61, saldoNegativoMax: 20 } });
   });
 
   test('un pago con otro monto o de otra venta no aprueba', async () => {

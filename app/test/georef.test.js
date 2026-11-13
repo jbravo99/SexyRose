@@ -199,7 +199,7 @@ describe('Georef: base de datos, API y admin', { skip: !process.env.DATABASE_URL
     await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
     // Base ya migrada por otras pruebas o vacía: limpiar lo de corridas anteriores (si las tablas existen)
     try { await limpiar(); } catch { /* primera vez: las tablas se crean al arrancar */ }
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
       sitioSpaPath: path.join(tmpPublic, 'no-existe.html'), adminPath: A, adminUser: 'admin-g', adminPassword: 'clave-de-prueba-larga-g-123', ipHashSalt: 'sal',
       siteUrl: 'https://sexyrose.net', telegramToken: '', telegramChatId: '', mailgunApiKey: '', tareaPlanes: false, log: () => {},

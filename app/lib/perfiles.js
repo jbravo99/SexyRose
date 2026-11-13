@@ -156,10 +156,10 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
     else d.contextura = body.contextura;
   }
   if (has('intereses')) {
-    if (!Array.isArray(body.intereses)) return { error: 'Formato de intereses inválido.' };
+    if (!Array.isArray(body.intereses)) return { error: 'Formato de servicios inválido.' };
     const v = [...new Set(body.intereses.map(String))];
-    if (v.length > 6) return { error: 'Podés elegir hasta 6 intereses.' };
-    if (v.some((x) => !catalogos.intereses.has(x))) return { error: 'Hay un interés que no está en la lista.' };
+    if (v.length > 6) return { error: 'Podés elegir hasta 6 servicios.' };
+    if (v.some((x) => !catalogos.intereses.has(x))) return { error: 'Hay un servicio que no está en la lista.' };
     d.intereses = v;
   }
   if (has('salidas')) {

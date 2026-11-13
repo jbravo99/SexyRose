@@ -108,7 +108,7 @@ async def main():
         # Intereses (Sobre mí)
         await ev("HH.logout(); HH.ui.city = undefined; HH.go('#perfil.valentina')"); await pg.wait_for_timeout(300)
         about = await ev("[...document.querySelectorAll('.pf-about dt')].map(x => x.textContent)")
-        check('Sobre mí muestra Intereses y no Salidas', 'Intereses' in about and 'Salidas' not in about)
+        check('Sobre mí muestra Servicios y no Salidas', 'Servicios' in about and 'Salidas' not in about)
         await ev("HH.login('u_admin'); HH.go('#admin.categorias')"); await pg.wait_for_timeout(300)
         check('admin: lista de intereses', await pg.query_selector('#admIntCard .adm-int') is not None)
         await ev("HH.actions.admIntEdit({ dataset: {} })"); await pg.wait_for_timeout(150)

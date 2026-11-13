@@ -2,10 +2,10 @@
    - Cada sección tiene una dirección legible por idioma:
        /                                  /en/                         /pt/
        /argentina                         /en/argentina                /pt/argentina
-       /argentina/buenos-aires            /en/argentina/buenos-aires   …
-       /argentina/buenos-aires/cena       /en/argentina/buenos-aires/dinner   /pt/argentina/buenos-aires/jantar
+       /argentina/capital-federal         /en/argentina/capital-federal   …
+       /argentina/capital-federal/cena    /en/argentina/capital-federal/dinner   /pt/argentina/capital-federal/jantar
        /perfil/valentina                  /en/profile/valentina        /pt/perfil/valentina
-   - Internamente las vistas siguen usando claves con puntos ("perfil.valentina", "lugar.argentina.buenos-aires.cena").
+   - Internamente las vistas siguen usando claves con puntos ("perfil.valentina", "lugar.argentina.capital-federal.cena").
    - Modo "path" (servidor, <html data-routing="path">): la barra de direcciones muestra /argentina/… y el servidor entrega
      cada página ya armada. Modo "hash" (demo en un solo archivo): las mismas direcciones van después de "#" (#/argentina/…).
    - Las claves viejas (#perfil.valentina) siguen funcionando. */
@@ -18,8 +18,9 @@
     registro: { es: 'registro', en: 'sign-up', pt: 'cadastro' },
     login: { es: 'ingresar', en: 'login', pt: 'entrar' },
   };
-  // Nombre de ubicación más corto para direcciones y títulos (editable en Admin → SEO → Lugares)
-  HH.SEO_PLACE_DEFAULTS = { 'Capital Federal (CABA)': { slug: 'buenos-aires', name: 'Buenos Aires' }, 'Ciudad de Buenos Aires': { slug: 'buenos-aires', name: 'Buenos Aires' }, 'Ciudad de México': { name: 'Ciudad de México' } };
+  // Nombre de ubicación más corto para direcciones y títulos (editable en Admin → SEO → Lugares). Capital Federal (Juan,
+  // 13/11/2026): /argentina/capital-federal; la dirección anterior /argentina/buenos-aires redirige (oldSlugs).
+  HH.SEO_PLACE_DEFAULTS = { 'Capital Federal (CABA)': { slug: 'capital-federal', name: 'Capital Federal', oldSlugs: ['buenos-aires'] }, 'Ciudad de Buenos Aires': { slug: 'capital-federal', name: 'Capital Federal', oldSlugs: ['buenos-aires'] }, 'Ciudad de México': { name: 'Ciudad de México' } };
   const slug = (s) => HH.slugify(s || '');
   const seoPlaces = () => ((HH.db && HH.settings().seo) || {}).places || {};
 
@@ -37,8 +38,8 @@
     const inside = locs().filter(l => l.id !== country.id && HH.isActiveLoc(l) && HH.locPath(l)[0] && HH.locPath(l)[0].id === country.id);
     return inside.find(l => HH.locSlug(l) === s) || inside.find(l => (placeCfg(l).oldSlugs || []).includes(s) || slug(l.name) === s) || null;
   };
-  // Páginas propias de hombres (v56): /argentina/hombres, /argentina/buenos-aires/hombres (en: men, pt: homens).
-  // Clave interna: "pais.argentina.hombres" / "lugar.argentina.buenos-aires.hombres".
+  // Páginas propias de hombres (v56): /argentina/hombres, /argentina/capital-federal/hombres (en: men, pt: homens).
+  // Clave interna: "pais.argentina.hombres" / "lugar.argentina.capital-federal.hombres".
   HH.GENDER_PAGE = { key: 'hombres', gender: 'hombre', words: { es: 'hombres', en: 'men', pt: 'homens' } };
   const isGenderWord = (s) => LANGS.some(l => HH.GENDER_PAGE.words[l] === String(s || '').toLowerCase());
   HH.isGenderWord = isGenderWord;

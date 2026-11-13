@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { start } from '../server.js';
-import { nuevaReferencia, mezclarPrecios, validarPrecios, PRECIOS_DEFAULT } from '../lib/planes.js';
+import { nuevaReferencia, mezclarPrecios, validarPrecios, semanaDeMes, PRECIOS_DEFAULT } from '../lib/planes.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, '..');
@@ -77,7 +77,7 @@ async function invariante(cuentaId) {
 before(async () => {
   await aplicarEsquema();
   tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'srb-data-'));
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, adminPath: A, adminUser: USER, adminPassword: PASS,
     ipHashSalt: 'sal-de-prueba', siteUrl: 'https://sexyrose.test', dataDir: tmpData,
     log: () => {}, tareaPlanes: false,
@@ -107,7 +107,7 @@ describe('precios y utilidades', () => {
   test('defaults v2, mezcla y validación', async () => {
     assert.deepEqual(PRECIOS_DEFAULT.mes, { E: 0, D: 35, C: 90, S: 350 });
     assert.deepEqual(PRECIOS_DEFAULT.semana, { C: 27, S: 105 });
-    assert.deepEqual(mezclarPrecios(null), { mes: { ...PRECIOS_DEFAULT.mes }, semana: { ...PRECIOS_DEFAULT.semana } });
+    assert.deepEqual(mezclarPrecios(null), { mes: { ...PRECIOS_DEFAULT.mes }, semana: { ...PRECIOS_DEFAULT.semana }, semanaAuto: { activo: true, recargo: 20 } });
     assert.equal(mezclarPrecios({ mes: { D: 25, Z: 9 }, semana: { C: -1 } }).mes.D, 25);
     assert.equal(mezclarPrecios({ semana: { C: -1 } }).semana.C, 27);
     // los B/A viejos se ignoran
@@ -120,6 +120,26 @@ describe('precios y utilidades', () => {
     assert.ok(validarPrecios({ mes: { E: 0, D: 'x', C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error);
     assert.match(validarPrecios({ mes: { E: 0, D: 95, C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error, /subir con el plan/);
     assert.match(validarPrecios({ mes: { E: 5, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 } }).error, /gratis/);
+  });
+  test('semana calculada sola: mes / 4 + recargo, o a mano', () => {
+    // Los defaults ya cumplen la regla del 20 %
+    assert.equal(semanaDeMes(90, 20), 27); assert.equal(semanaDeMes(350, 20), 105); assert.equal(semanaDeMes(95, 20), 28.5);
+    // Prendida: lo que venga en "semana" se ignora y se calcula
+    let v = validarPrecios({ mes: { E: 0, D: 40, C: 100, S: 400 }, semana: { C: 1, S: 1 }, semanaAuto: { activo: true, recargo: 25 } }).valor;
+    assert.deepEqual(v.semana, { C: 31.25, S: 125 }); assert.deepEqual(v.semanaAuto, { activo: true, recargo: 25 });
+    assert.deepEqual(mezclarPrecios(v).semana, { C: 31.25, S: 125 });
+    // Cambiar solo el mes en lo guardado (prendida) recalcula la semana al leer
+    assert.deepEqual(mezclarPrecios({ ...v, mes: { ...v.mes, C: 120 } }).semana, { C: 37.5, S: 125 });
+    // Apagada: quedan las semanas escritas a mano
+    v = validarPrecios({ mes: { E: 0, D: 40, C: 100, S: 400 }, semana: { C: 33, S: 110 }, semanaAuto: { activo: false, recargo: 20 } }).valor;
+    assert.deepEqual(mezclarPrecios(v).semana, { C: 33, S: 110 });
+    // Precios guardados antes de esto (sin semanaAuto): apagada, no cambia nada de lo que Juan tenía
+    const antes = mezclarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 30, S: 100 } });
+    assert.deepEqual(antes.semana, { C: 30, S: 100 }); assert.equal(antes.semanaAuto.activo, false);
+    assert.deepEqual(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 30, S: 100 } }).valor.semanaAuto, { activo: false, recargo: 20 });
+    // Validación
+    assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 }, semanaAuto: { activo: true, recargo: 500 } }).error, /recargo/);
+    assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 }, semanaAuto: 'si' }).error, /semana calculada/);
   });
   test('GET /api/cuenta/planes: 4 planes, límites, saldo y sin datos bancarios', async () => {
     const c = await nuevaCuenta();
@@ -609,5 +629,19 @@ describe('admin: ajustes y catálogos', () => {
     assert.equal((await admPost('/categorias/zzb-picnic', {}, { method: 'DELETE' })).status, 200);
     assert.equal((await admPost('/intereses/zzb-astro', {}, { method: 'DELETE' })).status, 200);
     assert.equal((await admPost('/categorias/zzb-nada', {}, { method: 'DELETE' })).status, 404);
+  });
+
+  test('servicios (tabla intereses): el admin puede cargar formas de pago como «Acepta tarjeta» y nombres de hasta 40 letras', async () => {
+    // En pantalla se llaman "Servicios"; ids, tabla y API siguen siendo intereses. El id se arma solo con el nombre.
+    let r = await admPost('/intereses', { nombre: 'Zzb Acepta tarjeta', nombre_en: 'Accepts cards', nombre_pt: 'Aceita cartão' });
+    assert.equal(r.status, 201);
+    const it = (await r.json()).item;
+    assert.equal(it.id, 'zzb-acepta-tarjeta'); assert.equal(it.nombre, 'Zzb Acepta tarjeta'); assert.equal(it.nombre_pt, 'Aceita cartão');
+    const largo = 'Zzb Acepta transferencia y Mercado Pago'; // 39 letras
+    r = await admPost('/intereses', { nombre: largo });
+    assert.equal(r.status, 201); assert.equal((await r.json()).item.nombre, largo);
+    const e = await (await fetch(BASE + '/api/sitio/estado')).json();
+    assert.ok(e.intereses.some((x) => x.id === 'zzb-acepta-tarjeta' && x.nombreEn === 'Accepts cards'));
+    for (const id of ['zzb-acepta-tarjeta', 'zzb-acepta-transferencia-y-mercado-pago']) assert.equal((await admPost('/intereses/' + id, {}, { method: 'DELETE' })).status, 200);
   });
 });

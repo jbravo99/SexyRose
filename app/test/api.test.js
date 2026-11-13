@@ -112,7 +112,7 @@ before(async () => {
   ADMIN_PASSWORD = 'clave-de-pruebas-123';
   A = '/p-' + crypto.randomBytes(12).toString('hex');
   const { start } = await import('../server.js');
-  instance = await start({
+  instance = await start({ prelanzamientoPorDefecto: false,
     port: 0,
     host: '127.0.0.1',
     databaseUrl: DATABASE_URL,
@@ -584,7 +584,7 @@ describe('dirección secreta del admin (ADMIN_PATH)', () => {
     const candidatos = [undefined, '', 'p-' + hex, '/p-corta', '/P-' + hex.toUpperCase(), '/p_' + hex, '/p-' + hex + '/', '/p-' + hex + '/sub'];
     for (const v of candidatos) {
       const lineas = [];
-      const { app, shutdown } = createApp({
+      const { app, shutdown } = createApp({ prelanzamientoPorDefecto: false,
         ...loadConfig({ DATABASE_URL }),
         publicDir: tmpPublic,
         adminUser: ADMIN_USER,

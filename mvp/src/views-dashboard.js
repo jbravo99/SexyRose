@@ -1034,7 +1034,7 @@
     dashStDays(el) { HH.ui.stDays = Number(el.dataset.d) || 30; HH.save(); HH.refresh(); },
     dashToggleInt(el) {
       const on = el.getAttribute('aria-pressed') === 'true';
-      if (!on && document.querySelectorAll('#dashInts .chip[aria-pressed="true"]').length >= (HH.INTERESTS_MAX || 6)) { HH.toast('Elegí hasta ' + (HH.INTERESTS_MAX || 6) + ' intereses', { type: 'warn' }); return; }
+      if (!on && document.querySelectorAll('#dashInts .chip[aria-pressed="true"]').length >= (HH.INTERESTS_MAX || 6)) { HH.toast('Elegí hasta ' + (HH.INTERESTS_MAX || 6) + ' servicios', { type: 'warn' }); return; }
       el.setAttribute('aria-pressed', on ? 'false' : 'true');
     },
     dashToggleChip(el) {

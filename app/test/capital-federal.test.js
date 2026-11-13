@@ -1,5 +1,6 @@
-// "Ciudad de Buenos Aires" pasa a llamarse "Capital Federal (CABA)" (Juan, 13/11/2026). Solo cambia el nombre visible:
-// el id ('ciudad-de-buenos-aires') y las direcciones (/argentina/buenos-aires) quedan iguales.
+// "Ciudad de Buenos Aires" pasa a llamarse "Capital Federal (CABA)" (Juan, 13/11/2026). El id ('ciudad-de-buenos-aires')
+// queda igual; la dirección pasa a /argentina/capital-federal (título "Capital Federal") y /argentina/buenos-aires
+// redirige con 301.
 //   DATABASE_URL=postgres://... node --test test/capital-federal.test.js
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,8 +32,10 @@ function lugaresSeo() {
 describe('Capital Federal (CABA): SEO y direcciones', () => {
   test('el nombre nuevo y el viejo tienen el mismo slug y el mismo nombre para buscadores', () => {
     const L = lugaresSeo();
-    assert.equal(L[NUEVO].slug, 'buenos-aires'); assert.equal(L[NUEVO].name, 'Buenos Aires');
-    assert.equal(L[VIEJO].slug, 'buenos-aires'); assert.equal(L[VIEJO].name, 'Buenos Aires');
+    for (const n of [NUEVO, VIEJO]) {
+      assert.equal(L[n].slug, 'capital-federal'); assert.equal(L[n].name, 'Capital Federal');
+      assert.deepEqual([...L[n].oldSlugs], ['buenos-aires']);
+    }
   });
 
   let dir;
@@ -62,16 +65,22 @@ describe('Capital Federal (CABA): SEO y direcciones', () => {
   after(() => fs.rm(dir, { recursive: true, force: true }));
 
   for (const nombre of [NUEVO, VIEJO]) {
-    test(`con el nombre "${nombre}": /argentina/buenos-aires sigue andando y el sitemap no cambia`, async () => {
+    test(`con el nombre "${nombre}": /argentina/capital-federal es la dirección y /argentina/buenos-aires redirige`, async () => {
       const seo = createSeoSitio({ datosPath: path.join(dir, 'seo-datos.json'), siteUrl: 'https://sexyrose.net', estado: async () => estadoCon(nombre) });
-      const m = await seo.meta('/argentina/buenos-aires');
-      assert.notEqual(m.status, 404);
-      assert.equal(m.title, 'Avisos en Buenos Aires', 'el título para buscadores sigue con "Buenos Aires"');
+      const m = await seo.meta('/argentina/capital-federal');
+      assert.equal(m.status, 200);
+      assert.equal(m.title, 'Avisos en Capital Federal');
+      assert.equal(m.canonical, 'https://sexyrose.net/argentina/capital-federal');
+      for (const [viejo, nuevo] of [['/argentina/buenos-aires', '/argentina/capital-federal'], ['/en/argentina/buenos-aires', '/en/argentina/capital-federal'],
+        ['/argentina/buenos-aires/hombres', '/argentina/capital-federal/hombres'], ['/argentina/buenos-aires/cena', '/argentina/capital-federal']]) {
+        const r = await seo.meta(viejo);
+        assert.equal(r.status, 301, viejo); assert.equal(r.location, nuevo, viejo);
+      }
       const xml = await seo.sitemap();
-      assert.match(xml, /https:\/\/sexyrose\.net\/argentina\/buenos-aires</);
-      assert.doesNotMatch(xml, /capital-federal/);
+      assert.match(xml, /https:\/\/sexyrose\.net\/argentina\/capital-federal</);
+      assert.doesNotMatch(xml, /\/argentina\/buenos-aires/);
       const p = await seo.meta('/perfil/ana');
-      assert.equal(p.title, 'ana en Buenos Aires');
+      assert.equal(p.title, 'ana en Capital Federal');
     });
   }
 
@@ -98,7 +107,7 @@ describe('Capital Federal (CABA): base de datos', () => {
     tmpData = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-caba-data-'));
     tmpPublic = await fs.mkdtemp(path.join(os.tmpdir(), 'sr-caba-pub-'));
     await fs.writeFile(path.join(tmpPublic, 'index.html'), '<!doctype html><title>x</title>');
-    instance = await start({
+    instance = await start({ prelanzamientoPorDefecto: false,
       port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
       sitioSpaPath: path.join(tmpPublic, 'no-existe.html'), adminUser: 'zzcadmin', adminPassword: 'clave-larga-zzc-123', ipHashSalt: 'sal',
       siteUrl: 'https://sexyrose.net', telegramToken: '', telegramChatId: '', mailgunApiKey: '', tareaPlanes: false, log: () => {},

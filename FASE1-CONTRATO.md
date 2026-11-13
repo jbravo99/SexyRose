@@ -462,8 +462,7 @@ contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; 
   **301** a `/<pais>/<lugar>` en el mismo idioma (con la consulta). Más de 3 tramos sigue siendo 404. No hay
   lugar × actividad en el mapa del sitio, ni plantilla `placeAct` en SEO, ni enlaces "Búsquedas frecuentes". En la
   demo (rutas con #) la dirección vieja abre la página del lugar.
-- Plantillas SEO por defecto: "Acompañantes en {pais|lugar}", "Hombres acompañantes en {…}", perfil
-  "{nombre}, {edad} años, acompañante en {lugar}. {bio}" (sin `{salidas}`/`{actividad}`).
+- Plantillas SEO por defecto: ver «SEO: escorts y acompañantes» (13/11/2026) más abajo (sin `{salidas}`/`{actividad}`).
 - `ajustes.portada`: el valor viejo por defecto (salidas / perfiles verificados) se cambia en `db/100-textos-sin-actividades.sql`
   solo si sigue igual al de siempre.
 
@@ -482,6 +481,13 @@ contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; 
   acompañante (sin cambios).
 - Admin: la sección se titula "Intereses y categorías", con Intereses primero ("los eligen las acompañantes (hasta 6) y
   se usan como filtro en el sitio") y Salidas después ("No se muestran en el sitio").
+- **13/11/2026 (Juan): en pantalla "Intereses" pasa a ser "Servicios"** (EN "Services", PT "Serviços"): filtro del
+  inicio, Cerca y Swipe, perfil (Sobre mí → Servicios), panel de la acompañante, ficha y menú del admin, mensajes de
+  error del servidor (`lib/perfiles.js`: "Podés elegir hasta 6 servicios.", "Hay un servicio que no está en la lista.",
+  "Formato de servicios inválido."). Ids, tabla `intereses`, campo `datos.intereses`, API (`/intereses`,
+  `estado.intereses`) y `HH.FILTRO_INTERESES` siguen igual; ninguna dirección pública usa la palabra. El admin carga
+  formas de pago como "Acepta tarjeta" o "Efectivo" (nombre 2–40 letras, id armado con el nombre); siguen siendo
+  máximo 6 por acompañante.
 
 ## Admin: moderación, créditos e interesados — desde el 13/11/2026 (decisiones de Juan)
 
@@ -614,7 +620,8 @@ Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que 
   `georef_importaciones` (inicio, fin, ok, origen, motivo, conteos, error).
 - **Importador** `app/lib/georef.js` (`createGeoref`, `planificar` puro): provincias por código INDEC (tabla
   `PROVINCIAS`, conservan su id); localidades tipo `ciudad` bajo su provincia; las de los 24 partidos del GBA (tabla
-  `GBA`, por nombre de partido) bajo Zona Norte / Oeste / Sur (GBA); una ciudad ya cargada con el mismo nombre en la
+  `GBA`, por nombre de partido) bajo Zona Norte / Oeste / Sur (GBA); el resto (Pilar, Escobar, La Plata…) queda sin zona
+  (Juan, 13/11/2026); una ciudad ya cargada con el mismo nombre en la
   misma provincia se **vincula** (mismo id y nombre) en vez de duplicarse; coordenadas = centroide del área. Nunca
   borra, renombra, mueve ni reactiva nada; se puede correr las veces que haga falta. Nombres de BAHRA (vienen en
   MAYÚSCULAS) → nombre normal con acentos tomados de los nombres oficiales de departamentos/municipios.
@@ -637,6 +644,10 @@ Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que 
   antepasados, con `slug` (dirección pública). Si dos lugares dan el mismo slug, lo conserva el que tiene ese mismo
   id; los demás usan su id (`santa-rosa-mendoza`) (`slugsPublicos` en `lib/catalogos.js`). Un lugar sin perfiles no
   tiene página (404). Barrio = nivel ciudad para SEO.
+- **Capital Federal en direcciones** (Juan, 13/11/2026): `/argentina/capital-federal`, título "Capital Federal"
+  (`HH.SEO_PLACE_DEFAULTS` en `mvp/src/urls.js`). La dirección anterior `/argentina/buenos-aires` (y `/hombres`, `/en/…`,
+  `/pt/…`) responde 301 a la nueva (`oldSlugs`; `parse` en `lib/seo-sitio.js` marca `redirect` cuando el lugar se
+  encontró por una dirección que no es la principal).
 - **Nombres repetidos** (dos "Santa Rosa" con perfiles): el estado manda `aclaracion` (la provincia; si también se
   repite, provincia y departamento) y el sitio usa el nombre "Santa Rosa · Mendoza" (`HH.ubic.lugarDeEstado`; en el
   selector la aclaración va como texto secundario). La ciudad de cada perfil sale de sus ids (`HH.ubic.lugarDePerfil`),
@@ -648,3 +659,63 @@ Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que 
   perfiles pasan al destino —ciudad, barrio o Capital Federal— con su provincia y país, y el lugar queda oculto).
   `GET /georef` (estado) y `POST /georef/importar` (202, corre en segundo plano).
 - Tests: `app/test/georef.test.js` (fixtures sintéticos con la forma real en `app/test/fixtures/georef/`).
+
+## Home provisoria (pre-lanzamiento) — desde el 13/11/2026 (decisión de Juan)
+
+Mientras el sitio está vacío, en `/` se ve solo una portada que invita a las acompañantes a publicar su perfil. Solo
+acompañantes: el registro de interesados queda cerrado hasta abrir el sitio.
+
+- **Ajuste** `prelanzamiento` = `{ activo: bool }` en `ajustes` (`app/lib/prelanzamiento.js`). **Si nunca se guardó,
+  está prendida.** `config.prelanzamientoPorDefecto: false` existe solo en las pruebas (las de modo normal la pasan).
+- **Admin → Ajustes** (primera tarjeta, «Home provisoria»): interruptor que guarda al tocarlo
+  (`PUT ${A}/api/ajustes/prelanzamiento { valor: { activo } }`, mismas reglas que los otros ajustes; invalida
+  catálogos y estado), una línea de explicación y «Perfiles publicados ahora» (`GET /ajustes` →
+  `prelanzamiento: { activo, publicados }`, mismo criterio que el estado público).
+- **Prendida**:
+  - `GET /api/sitio/estado`: `perfiles`, `historias` y `ubicaciones` vacíos, `ajustes.prelanzamiento: true` (precios y
+    demás ajustes siguen). `GET /api/sitio/perfil/:slug` y `GET /api/sitio/contenido/perfil/:slug` → 404.
+  - `routes/spa-sitio.js`: lugares (`/<país>…`, `/hombres`), `/perfil`, `/cerca`, `/swipe`, `/shorts`, `/stars`,
+    `/favoritos`, `/links` y `/cliente/registro` (y sus versiones en/pt) → **302** a `/`, `/en/` o `/pt/`
+    (`Cache-Control: no-store`). Abiertos: portada, registro, ingreso, `/panel/…`, `/cuenta/…` (confirmar email, nueva
+    contraseña), `/compra/…`, `/cliente/…` salvo el registro, páginas legales, admin y `/demo/` (sin cambios).
+  - SEO: la portada sale `index,follow` con título y descripción propios (`SEO_PRELANZAMIENTO`, es/en/pt; el resto
+    del `<head>` lo arma `lib/seo-sitio.js` como siempre, sin cambios en ese archivo). `/sitemap.xml` (server.js): solo
+    `/`, `/en/`, `/pt/` (con hreflang) y las páginas legales.
+  - `POST /api/cliente/registro` → 403 `{ error: 'Por ahora no se pueden crear cuentas nuevas. Probá de nuevo más
+    adelante.', registroCerrado: true }`. Las cuentas que ya existen ingresan igual. El registro de acompañantes, igual.
+  - Front: `mvp/src/prod-prelanzamiento.js` (solo sitio real; la demo no lo usa: su estado nunca trae el ajuste).
+    Portada con logo, «Muy pronto», «Acompañantes y escorts en *Argentina*.», texto corto, «Publicá tu perfil»
+    (registro) y «Ya tengo cuenta» (ingreso); con sesión de acompañante, «Ir a mi panel». Pie legal de siempre.
+    Encabezado solo con logo, idioma, Ingresar y Publicá tu perfil; sin barra inferior. Dentro del sitio, lo oculto
+    vuelve al inicio; el ingreso de interesados no ofrece crear cuenta. Traducciones en el mismo archivo
+    (`HH.I18N`). Estilos: `.sr-pre` en `mvp/src/sitio.css`.
+- **Apagada**: todo como antes.
+- Tests: `app/test/prelanzamiento.test.js`.
+
+## SEO: escorts y acompañantes — desde el 13/11/2026 (decisión de Juan; su abogado aprobó la palabra "escort")
+
+- Plantillas por defecto (`mvp/src/seo.js` `HH.SEO_DEFAULTS` → `seo-datos.json`; Admin → SEO las muestra como "Por
+  defecto" y "Volver al texto por defecto" vuelve a ellas):
+  - Portada: "Escorts y acompañantes en Argentina | SexyRose" / EN "Escorts and companions in Argentina" / PT
+    "Acompanhantes e escorts na Argentina". Bloque al pie: "Avisos de escorts y acompañantes en tu ciudad". El H1 de la
+    portada sigue siendo el de Ajustes → Textos del inicio (no cambia).
+  - País y lugar: título "Escorts y acompañantes en {lugar} | SexyRose", H1 "Escorts y acompañantes en {lugar}",
+    descripción "Avisos de escorts y acompañantes en {lugar}: {cantidad} perfiles con fotos y contacto directo por
+    WhatsApp o Telegram." Hombres: "Escorts hombres y acompañantes en {lugar}". EN "Escorts and companions in …" /
+    "Male escorts and companions in …"; PT "Acompanhantes e escorts em …" / "Acompanhantes homens e escorts em …" (país:
+    "na {pais}").
+  - Perfil: "{nombre}, escort en {lugar} | SexyRose" y "{nombre}, {edad} años, escort y acompañante en {lugar}. {bio}"
+    (EN "escort in", PT "acompanhante em").
+  - Con un solo perfil, "{cantidad} perfiles" sale "1 perfil" (también profiles/perfis) en el servidor y en el sitio.
+- Sin "verificados", garantías, precios ni actividades en estos textos (test en `admin-seo.test.js`).
+- JSON-LD también en el HTML del servidor (`lib/seo-sitio.js`, `<script type="application/ld+json" data-hh-ld>`, con
+  `<` escapado; el SPA los reemplaza por los suyos): portada WebSite (sin SearchAction: no hay búsqueda por texto) +
+  Organization con logo `/icon-512.png`; país/lugar/hombres BreadcrumbList + ItemList (hasta 24 perfiles); perfil
+  ProfilePage (Person con nombre, foto, lugar e idiomas) + BreadcrumbList. Nunca Product/Offer/Service para personas.
+- `og:image`: la foto del perfil (tarjeta grande); en las demás páginas el logo (tarjeta chica).
+- `sitemap.xml` con `xmlns:image`: cada perfil lleva hasta 5 fotos (`image:image`).
+- Texto alternativo de las fotos (`HH.fotoAlt`, `prod-sitio.js`): "Valentina, escort en Palermo" (+ " · foto 2"),
+  EN "escort in", PT "acompanhante em". Las tarjetas que todavía no cargaron la foto la ocultan (no se ve el texto).
+- Robots en el navegador igual que en el servidor: /registro, /favoritos, /compra y /cliente `noindex,nofollow`.
+- Recuadro de las páginas de lugar: "¿Sos escort o acompañante en {lugar}?".
+

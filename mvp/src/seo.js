@@ -15,31 +15,31 @@
   HH.SEO_DEFAULTS = {
     siteUrl: 'https://sexyrose.net', minProfiles: 1,
     home: {
-      es: { title: 'SexyRose · Avisos de acompañantes', description: 'Avisos de acompañantes en tu ciudad. Contacto directo con cada anunciante por WhatsApp o Telegram.', h1: '', blockTitle: 'Avisos de acompañantes en tu ciudad', blockText: 'SexyRose es un sitio de anuncios. Cada acompañante publica su aviso con su ciudad, sus idiomas y su tarifa, y es responsable de lo que publica. El contacto es directo con cada anunciante por WhatsApp o Telegram; SexyRose no interviene.\n\nSi estás de viaje, buscá por ciudad: también aparecen quienes están de visita.' },
-      en: { title: 'SexyRose · Companion ads', description: 'Companion ads in your city. Direct contact with each advertiser on WhatsApp or Telegram.', h1: 'Companions in your *city*.', blockTitle: 'Companion ads in your city', blockText: 'SexyRose is an ads site. Each companion publishes her own ad with her city, languages and rates, and is responsible for what she publishes. You contact each advertiser directly on WhatsApp or Telegram; SexyRose does not take part.\n\nIf you are traveling, search by city: people who are visiting show up too.' },
-      pt: { title: 'SexyRose · Anúncios de acompanhantes', description: 'Anúncios de acompanhantes na sua cidade. Contato direto com cada anunciante pelo WhatsApp ou Telegram.', h1: 'Acompanhantes na sua *cidade*.', blockTitle: 'Anúncios de acompanhantes na sua cidade', blockText: 'O SexyRose é um site de anúncios. Cada acompanhante publica o seu anúncio com a cidade, os idiomas e o valor, e é responsável pelo que publica. O contato é direto com cada anunciante pelo WhatsApp ou Telegram; o SexyRose não intervém.\n\nSe estiver viajando, busque por cidade: quem está de visita também aparece.' },
+      es: {"title": "Escorts y acompañantes en Argentina | SexyRose", "description": "Avisos de escorts y acompañantes en Capital Federal, GBA y todo el país. Contacto directo con cada anunciante por WhatsApp o Telegram.", "h1": "", "blockTitle": "Avisos de escorts y acompañantes en tu ciudad", "blockText": "SexyRose es un sitio de avisos de escorts y acompañantes. Cada anunciante publica su aviso con su ciudad, sus idiomas y su tarifa, y es responsable de lo que publica. El contacto es directo con cada anunciante por WhatsApp o Telegram; SexyRose no interviene.\n\nBuscá por ciudad: Capital Federal y sus barrios, Zona Norte, Zona Oeste y Zona Sur del GBA y el resto del país. Si estás de viaje, también aparecen quienes están de visita."},
+      en: {"title": "Escorts and companions in Argentina | SexyRose", "description": "Escort and companion ads in Buenos Aires and across Argentina. Contact each advertiser directly on WhatsApp or Telegram.", "h1": "Companions in your *city*.", "blockTitle": "Escort and companion ads in your city", "blockText": "SexyRose is an escort and companion ads site. Each advertiser publishes their own ad with their city, languages and rates, and is responsible for what they publish. You contact each advertiser directly on WhatsApp or Telegram; SexyRose does not take part.\n\nSearch by city: Buenos Aires (Capital Federal) and its neighborhoods, Greater Buenos Aires (North, West and South) and the rest of the country. If you are traveling, people who are visiting show up too."},
+      pt: {"title": "Acompanhantes e escorts na Argentina | SexyRose", "description": "Anúncios de acompanhantes e escorts em Buenos Aires e em toda a Argentina. Contato direto com cada anunciante pelo WhatsApp ou Telegram.", "h1": "Acompanhantes na sua *cidade*.", "blockTitle": "Anúncios de acompanhantes e escorts na sua cidade", "blockText": "O SexyRose é um site de anúncios de acompanhantes e escorts. Cada anunciante publica o seu anúncio com a cidade, os idiomas e o valor, e é responsável pelo que publica. O contato é direto com cada anunciante pelo WhatsApp ou Telegram; o SexyRose não intervém.\n\nBusque por cidade: Buenos Aires (Capital Federal) e seus bairros, a Grande Buenos Aires (zonas Norte, Oeste e Sul) e o resto do país. Se estiver viajando, quem está de visita também aparece."},
     },
     tpl: {
       es: {
-        country: { title: 'Acompañantes en {pais} | SexyRose', description: 'Avisos de acompañantes en {pais}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Acompañantes en {pais}', intro: 'Avisos de acompañantes en {pais}. Elegí una ciudad, mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
-        place: { title: 'Acompañantes en {lugar} | SexyRose', description: 'Avisos de acompañantes en {lugar}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Acompañantes en {lugar}', intro: 'Avisos de acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
-        countryMen: { title: 'Hombres acompañantes en {pais} | SexyRose', description: 'Avisos de hombres acompañantes en {pais}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Hombres acompañantes en {pais}', intro: 'Avisos de hombres acompañantes en {pais}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
-        placeMen: { title: 'Hombres acompañantes en {lugar} | SexyRose', description: 'Avisos de hombres acompañantes en {lugar}: {cantidad} perfiles con contacto directo por WhatsApp o Telegram.', h1: 'Hombres acompañantes en {lugar}', intro: 'Avisos de hombres acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.' },
-        profile: { title: '{nombre}, acompañante en {lugar} | SexyRose', description: '{nombre}, {edad} años, acompañante en {lugar}. {bio}' },
+        country: {"title": "Escorts y acompañantes en {pais} | SexyRose", "description": "Avisos de escorts y acompañantes en {pais}: {cantidad} perfiles con fotos y contacto directo por WhatsApp o Telegram. Buscá por ciudad.", "h1": "Escorts y acompañantes en {pais}", "intro": "Avisos de escorts y acompañantes en {pais}. Elegí una ciudad, mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram."},
+        place: {"title": "Escorts y acompañantes en {lugar} | SexyRose", "description": "Avisos de escorts y acompañantes en {lugar}: {cantidad} perfiles con fotos y contacto directo por WhatsApp o Telegram.", "h1": "Escorts y acompañantes en {lugar}", "intro": "Avisos de escorts y acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram."},
+        countryMen: {"title": "Escorts hombres y acompañantes en {pais} | SexyRose", "description": "Avisos de escorts hombres y acompañantes en {pais}: {cantidad} perfiles con fotos y contacto directo por WhatsApp o Telegram. Buscá por ciudad.", "h1": "Escorts hombres y acompañantes en {pais}", "intro": "Avisos de escorts hombres y acompañantes en {pais}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram."},
+        placeMen: {"title": "Escorts hombres y acompañantes en {lugar} | SexyRose", "description": "Avisos de escorts hombres y acompañantes en {lugar}: {cantidad} perfiles con fotos y contacto directo por WhatsApp o Telegram.", "h1": "Escorts hombres y acompañantes en {lugar}", "intro": "Avisos de escorts hombres y acompañantes en {lugar}. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram."},
+        profile: {"title": "{nombre}, escort en {lugar} | SexyRose", "description": "{nombre}, {edad} años, escort y acompañante en {lugar}. {bio}"},
       },
       en: {
-        country: { title: 'Companions in {pais} | SexyRose', description: 'Companion ads in {pais}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Companions in {pais}', intro: 'Companion ads in {pais}. Choose a city, browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
-        place: { title: 'Companions in {lugar} | SexyRose', description: 'Companion ads in {lugar}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Companions in {lugar}', intro: 'Companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
-        countryMen: { title: 'Male companions in {pais} | SexyRose', description: 'Male companion ads in {pais}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Male companions in {pais}', intro: 'Male companion ads in {pais}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
-        placeMen: { title: 'Male companions in {lugar} | SexyRose', description: 'Male companion ads in {lugar}: {cantidad} profiles with direct contact on WhatsApp or Telegram.', h1: 'Male companions in {lugar}', intro: 'Male companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram.' },
-        profile: { title: '{nombre}, companion in {lugar} | SexyRose', description: '{nombre}, {edad}, companion in {lugar}. {bio}' },
+        country: {"title": "Escorts and companions in {pais} | SexyRose", "description": "Escort and companion ads in {pais}: {cantidad} profiles with photos and direct contact on WhatsApp or Telegram. Search by city.", "h1": "Escorts and companions in {pais}", "intro": "Escort and companion ads in {pais}. Choose a city, browse the profiles and contact whoever you choose directly on WhatsApp or Telegram."},
+        place: {"title": "Escorts and companions in {lugar} | SexyRose", "description": "Escort and companion ads in {lugar}: {cantidad} profiles with photos and direct contact on WhatsApp or Telegram.", "h1": "Escorts and companions in {lugar}", "intro": "Escort and companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram."},
+        countryMen: {"title": "Male escorts and companions in {pais} | SexyRose", "description": "Male escort and companion ads in {pais}: {cantidad} profiles with photos and direct contact on WhatsApp or Telegram. Search by city.", "h1": "Male escorts and companions in {pais}", "intro": "Male escort and companion ads in {pais}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram."},
+        placeMen: {"title": "Male escorts and companions in {lugar} | SexyRose", "description": "Male escort and companion ads in {lugar}: {cantidad} profiles with photos and direct contact on WhatsApp or Telegram.", "h1": "Male escorts and companions in {lugar}", "intro": "Male escort and companion ads in {lugar}. Browse the profiles and contact whoever you choose directly on WhatsApp or Telegram."},
+        profile: {"title": "{nombre}, escort in {lugar} | SexyRose", "description": "{nombre}, {edad}, escort and companion in {lugar}. {bio}"},
       },
       pt: {
-        country: { title: 'Acompanhantes em {pais} | SexyRose', description: 'Anúncios de acompanhantes em {pais}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes em {pais}', intro: 'Anúncios de acompanhantes em {pais}. Escolha uma cidade, veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
-        place: { title: 'Acompanhantes em {lugar} | SexyRose', description: 'Anúncios de acompanhantes em {lugar}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes em {lugar}', intro: 'Anúncios de acompanhantes em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
-        countryMen: { title: 'Acompanhantes homens em {pais} | SexyRose', description: 'Anúncios de acompanhantes homens em {pais}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes homens em {pais}', intro: 'Anúncios de acompanhantes homens em {pais}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
-        placeMen: { title: 'Acompanhantes homens em {lugar} | SexyRose', description: 'Anúncios de acompanhantes homens em {lugar}: {cantidad} perfis com contato direto pelo WhatsApp ou Telegram.', h1: 'Acompanhantes homens em {lugar}', intro: 'Anúncios de acompanhantes homens em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram.' },
-        profile: { title: '{nombre}, acompanhante em {lugar} | SexyRose', description: '{nombre}, {edad} anos, acompanhante em {lugar}. {bio}' },
+        country: {"title": "Acompanhantes e escorts na {pais} | SexyRose", "description": "Anúncios de acompanhantes e escorts na {pais}: {cantidad} perfis com fotos e contato direto pelo WhatsApp ou Telegram. Busque por cidade.", "h1": "Acompanhantes e escorts na {pais}", "intro": "Anúncios de acompanhantes e escorts na {pais}. Escolha uma cidade, veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram."},
+        place: {"title": "Acompanhantes e escorts em {lugar} | SexyRose", "description": "Anúncios de acompanhantes e escorts em {lugar}: {cantidad} perfis com fotos e contato direto pelo WhatsApp ou Telegram.", "h1": "Acompanhantes e escorts em {lugar}", "intro": "Anúncios de acompanhantes e escorts em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram."},
+        countryMen: {"title": "Acompanhantes homens e escorts na {pais} | SexyRose", "description": "Anúncios de acompanhantes homens e escorts na {pais}: {cantidad} perfis com fotos e contato direto pelo WhatsApp ou Telegram. Busque por cidade.", "h1": "Acompanhantes homens e escorts na {pais}", "intro": "Anúncios de acompanhantes homens e escorts na {pais}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram."},
+        placeMen: {"title": "Acompanhantes homens e escorts em {lugar} | SexyRose", "description": "Anúncios de acompanhantes homens e escorts em {lugar}: {cantidad} perfis com fotos e contato direto pelo WhatsApp ou Telegram.", "h1": "Acompanhantes homens e escorts em {lugar}", "intro": "Anúncios de acompanhantes homens e escorts em {lugar}. Veja os perfis e fale direto com quem escolher pelo WhatsApp ou Telegram."},
+        profile: {"title": "{nombre}, acompanhante em {lugar} | SexyRose", "description": "{nombre}, {edad} anos, acompanhante e escort em {lugar}. {bio}"},
       },
     },
   };
@@ -55,7 +55,10 @@
   HH.seoGet = get;
   HH.seoSite = () => String(cfg().siteUrl == null ? HH.SEO_DEFAULTS.siteUrl : cfg().siteUrl).trim().replace(/\/$/, '');
   HH.seoMin = () => Math.max(1, Number(cfg().minProfiles) || HH.SEO_DEFAULTS.minProfiles);
-  const fill = (t, v) => String(t || '').replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m)).replace(/\s+/g, ' ').replace(/\s([.,:;])/g, '$1').trim();
+  // "1 perfiles" → "1 perfil" (las plantillas dicen "{cantidad} perfiles"); igual en app/lib/seo-sitio.js
+  const UNO = { perfiles: 'perfil', perfis: 'perfil', profiles: 'profile', avisos: 'aviso', 'anúncios': 'anúncio', ads: 'ad' };
+  const uno = (s) => s.replace(/(^|[^\d.,])1 (perfiles|perfis|profiles|avisos|anúncios|ads)(?![\wáéíóúñ])/g, (m, a, w) => a + '1 ' + UNO[w]);
+  const fill = (t, v) => uno(String(t || '').replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m)).replace(/\s+/g, ' ').replace(/\s([.,:;])/g, '$1').trim());
   const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
   const low = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
   const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…'; };
@@ -91,7 +94,7 @@
   };
 
   /* ---------- Metadatos de cada página ---------- */
-  const PRIVATE = ['panel', 'admin', 'cuenta', 'chat'];
+  const PRIVATE = ['panel', 'admin', 'cuenta', 'chat', 'favoritos', 'compra', 'cliente'];
   const NOINDEX = ['swipe', 'shorts', 'cerca', 'links', 'login', '404'];
   HH.seoMeta = function (key, lang) {
     lang = lang || HH.lang || 'es'; key = key || 'inicio';
@@ -103,8 +106,9 @@
     const homeName = { es: 'Inicio', en: 'Home', pt: 'Início' }[lang];
     if (top === 'inicio') {
       m.title = get('home.title', lang); m.description = get('home.description', lang); m.alternates = alts('inicio');
-      m.ld.push({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'SexyRose', url: abs('inicio', lang), inLanguage: lang });
-      m.ld.push({ '@context': 'https://schema.org', '@type': 'Organization', name: 'SexyRose', url: abs('inicio', 'es') });
+      // Sin SearchAction: el sitio no tiene una dirección de búsqueda por texto
+      m.ld.push({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'SexyRose', url: abs('inicio', lang), inLanguage: lang, description: m.description, publisher: { '@type': 'Organization', name: 'SexyRose', url: abs('inicio', 'es') } });
+      m.ld.push({ '@context': 'https://schema.org', '@type': 'Organization', name: 'SexyRose', url: abs('inicio', 'es'), logo: site + '/icon-512.png' });
     } else if (top === 'pais' || top === 'lugar') {
       const pl = HH.seoPlaceOf(key);
       if (!pl) { m.status = 404; m.robots = 'noindex,follow'; m.title = { es: 'Página no encontrada', en: 'Page not found', pt: 'Página não encontrada' }[lang] + ' | SexyRose'; return m; }
@@ -116,7 +120,7 @@
       const path = HH.locPath(pl.loc);
       m.ld.push(crumbsLd([{ name: homeName, url: abs('inicio', lang) }].concat(path.map(l => ({ name: HH.locSeoName(l, lang), url: abs(HH.placeKey(l), lang) }))).concat(pl.g ? [{ name: menLabel(lang), url: abs(key, lang) }] : [])));
       const list = HH.placeProfiles(pl.loc, null, pl.g).slice(0, 24);
-      if (list.length) m.ld.push({ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: list.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: abs('perfil.' + p.slug, lang), name: p.displayName })) });
+      if (list.length) m.ld.push({ '@context': 'https://schema.org', '@type': 'ItemList', name: fill(get('tpl.' + type + '.h1', lang), v), numberOfItems: list.length, itemListElement: list.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: abs('perfil.' + p.slug, lang), name: p.displayName })) });
     } else if (top === 'perfil') {
       const p = HH.profileBySlug(key.split('.')[1]);
       const pub = p && HH.publishedProfiles().includes(p);
@@ -126,11 +130,13 @@
       m.title = fill(get('tpl.profile.title', lang), v); m.description = clip(fill(get('tpl.profile.description', lang), v), 160);
       m.alternates = alts(key); m.type = 'profile'; if (!pub) { m.robots = 'noindex,follow'; m.status = 404; }
       const path = loc ? HH.locPath(loc).filter(HH.isActiveLoc) : [];
-      m.ld.push({ '@context': 'https://schema.org', '@type': 'ProfilePage', url: abs(key, lang), inLanguage: lang, dateModified: p.updatedAt || undefined, mainEntity: { '@type': 'Person', name: p.displayName, homeLocation: loc ? { '@type': 'Place', name: HH.locSeoName(loc, lang) } : undefined, knowsLanguage: p.languages || undefined } });
+      const foto = (p.photos || []).find(x => /^https?:\/\//.test(String(x || ''))) || undefined;
+      m.ld.push({ '@context': 'https://schema.org', '@type': 'ProfilePage', url: abs(key, lang), name: m.title, inLanguage: lang, dateModified: p.updatedAt || undefined, mainEntity: { '@type': 'Person', name: p.displayName, image: foto, homeLocation: loc ? { '@type': 'Place', name: HH.locSeoName(loc, lang) } : undefined, knowsLanguage: p.languages || undefined } });
       m.ld.push(crumbsLd([{ name: homeName, url: abs('inicio', lang) }].concat(path.map(l => ({ name: HH.locSeoName(l, lang), url: abs(HH.placeKey(l), lang) }))).concat([{ name: p.displayName, url: abs(key, lang) }])));
     } else if (top === 'stars') {
       m.title = { es: 'Stars: perfiles destacados por provincia', en: 'Stars: featured profiles by region', pt: 'Stars: perfis em destaque por região' }[lang] + ' | SexyRose'; m.alternates = alts('stars');
     } else if (top === 'registro') {
+      m.robots = 'noindex,nofollow'; // como en el servidor (lib/seo-sitio.js)
       m.title = { es: 'Publicá tu perfil de acompañante', en: 'Publish your companion profile', pt: 'Publique seu perfil' }[lang] + ' | SexyRose';
       m.description = { es: 'Publicá tu aviso en SexyRose: planes mensuales y contacto directo por WhatsApp o Telegram.', en: 'Publish your ad on SexyRose: monthly plans and direct contact on WhatsApp or Telegram.', pt: 'Publique seu anúncio no SexyRose: planos mensais e contato direto pelo WhatsApp ou Telegram.' }[lang];
       m.alternates = alts('registro');
@@ -218,7 +224,7 @@
         : `<div class="empty" data-noi18n>${icon('search')}<h4>${L('Todavía no hay perfiles acá', 'No profiles here yet', 'Ainda não há perfis aqui')}</h4>${parent ? `<a class="btn secondary sm" href="#${HH.placeKey(parent, null, g)}" data-go="#${HH.placeKey(parent, null, g)}">${L('Ver ', 'See ', 'Ver ') + esc(HH.locSeoName(parent, lang))}</a>` : ''}</div>`}
       ${kids.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Lugares en ', 'Places in ', 'Lugares em ') + esc(placeName)}</h2><div class="chips">${kids.map(x => linkChip(HH.placeKey(x.l, null, g), HH.locSeoName(x.l, lang), x.n)).join('')}</div></div>` : ''}
       ${sibs.length ? `<div class="seo-sub" data-noi18n><h2 class="seo-h2">${L('Más lugares en ', 'More places in ', 'Mais lugares em ') + esc(HH.locSeoName(parent, lang))}</h2><div class="chips">${sibs.map(x => linkChip(HH.placeKey(x.l, null, g), HH.locSeoName(x.l, lang), x.n)).join('')}</div></div>` : ''}
-      <aside class="card seo-recruit" data-noi18n><div class="grow"><strong>${L('¿Sos acompañante en ', 'Are you a companion in ', 'Você é acompanhante em ') + esc(placeName)}?</strong><p class="small muted">${L('Publicá tu aviso: contacto directo con quien te escribe, sin intermediarios.', 'Publish your ad: direct contact with whoever writes to you, no middlemen.', 'Publique seu anúncio: contato direto com quem escreve para você, sem intermediários.')}</p></div><a class="btn sm" href="#registro" data-go="#registro">${L('Publicar mi perfil', 'Publish my profile', 'Publicar meu perfil')}</a></aside>
+      <aside class="card seo-recruit" data-noi18n><div class="grow"><strong>${L('¿Sos escort o acompañante en ', 'Are you an escort or companion in ', 'Você é acompanhante ou escort em ') + esc(placeName)}?</strong><p class="small muted">${L('Publicá tu aviso: contacto directo con quien te escribe, sin intermediarios.', 'Publish your ad: direct contact with whoever writes to you, no middlemen.', 'Publique seu anúncio: contato direto com quem escreve para você, sem intermediários.')}</p></div><a class="btn sm" href="#registro" data-go="#registro">${L('Publicar mi perfil', 'Publish my profile', 'Publicar meu perfil')}</a></aside>
     </div>${HH.seoHubFooter ? HH.seoHubFooter() : ''}${HH.pubFooter ? HH.pubFooter() : ''}`;
   }
   function notFound() {

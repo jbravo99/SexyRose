@@ -2,7 +2,7 @@
    SexyRose — prod-admin-mod.js (admin real, 13/11/2026)
    Secciones nuevas del panel: Pedidos personalizados (moderación de chats), Créditos (todas las cuentas),
    Interesados (clientes con cuenta) y, en la ficha de cada acompañante, Destacadas, Packs, Mercado Pago y
-   sus pedidos personalizados. Limpieza del menú: sin Soporte ni «WhatsApp / Avisos automáticos»; Categorías → Intereses.
+   sus pedidos personalizados. Limpieza del menú: sin Soporte ni «WhatsApp / Avisos automáticos»; Categorías → Servicios (antes «Intereses»).
    Usa las piezas de prod-admin.js (HH.pa). API: app/routes/admin-moderacion.js (+ /creditos de admin-creditos.js).
    ============================================================ */
 (function () {
@@ -16,7 +16,7 @@
   const TABS = HH.adminTabs;
   const quitar = (id) => { const i = TABS.findIndex((t) => t.id === id); if (i >= 0) TABS.splice(i, 1); };
   quitar('soporte'); quitar('whatsapp'); // WhatsApp y Telegram se configuran en Ajustes
-  { const t = TABS.find((x) => x.id === 'categorias'); if (t) Object.assign(t, { label: 'Intereses', icon: 'heart' }); }
+  { const t = TABS.find((x) => x.id === 'categorias'); if (t) Object.assign(t, { label: 'Servicios', icon: 'heart' }); }
   { const t = TABS.find((x) => x.id === 'clientes'); if (t) Object.assign(t, { label: 'Interesados', icon: 'user' }); }
   const insertarDespues = (despues, tab) => { if (TABS.some((t) => t.id === tab.id)) return; const i = TABS.findIndex((t) => t.id === despues); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, tab); };
   insertarDespues('ventas', { id: 'solicitudes', label: 'Pedidos personalizados', icon: 'chat' });

@@ -11,6 +11,7 @@ import {
   validarPacks, validarContacto, validarCotizacion, validarComision, validarMensajes,
   CONTACTO_DEFAULT, COTIZACION_DEFAULT, COMISION_DEFAULT, MENSAJES_DEFAULT, montoJson,
 } from '../lib/creditos.js';
+import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, validarPrelanzamiento } from '../lib/prelanzamiento.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
@@ -19,7 +20,8 @@ const ESTADOS_ADMIN = ['publicado', 'pausado', 'suspendido', 'rechazado'];
 const ESTADOS_PEDIDO = ['pendiente', 'informado', 'confirmado', 'rechazado', 'cancelado', 'vencido'];
 const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona', 'barrio'];
 // Planes v2: 'transferencia' (datos bancarios) se quitó: no se muestran datos bancarios en ninguna parte de la web.
-const AJUSTES = ['precios', 'portada', 'promo', 'packs', 'destacado', 'contacto', 'cotizacion', 'comision', 'mensajes'];
+// prelanzamiento: home provisoria { activo } (lib/prelanzamiento.js); al leerlo suma cuántos perfiles hay publicados.
+const AJUSTES = ['precios', 'portada', 'promo', 'packs', 'destacado', 'contacto', 'cotizacion', 'comision', 'mensajes', CLAVE_PRELANZAMIENTO];
 
 export function slugify(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -290,6 +292,10 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const precios = mezclarPrecios(v('precios', null));
     const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
     const msj = obj(v('mensajes', {}));
+    // Perfiles que se verían en el sitio (mismo criterio que routes/sitio.js), para saber cuándo apagar la home provisoria
+    const { rows: [pub] } = await pool.query(
+      `SELECT count(*)::int AS n FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
+        WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'`);
     return {
       precios,
       packs: await planes.creditos.packs({ precios, crudo: true }),
@@ -300,6 +306,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       mensajes: { whatsapp: { ...MENSAJES_DEFAULT.whatsapp, ...obj(msj.whatsapp) }, admin: msj.admin || MENSAJES_DEFAULT.admin },
       portada: { titulo: '', subtitulo: '', ...(v('portada', {}) || {}) },
       promo: typeof v('promo', '') === 'string' ? v('promo', '') : (v('promo', {}).texto || ''),
+      prelanzamiento: { activo: prelanzamientoActivo({ [CLAVE_PRELANZAMIENTO]: v(CLAVE_PRELANZAMIENTO, null) }), publicados: pub.n },
       actualizado: Object.fromEntries(rows.map((x) => [x.clave, x.actualizado])),
     };
   };
@@ -317,6 +324,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (clave === 'cotizacion') return validarCotizacion(v);
     if (clave === 'comision') return validarComision(v);
     if (clave === 'mensajes') return validarMensajes(v);
+    if (clave === CLAVE_PRELANZAMIENTO) return validarPrelanzamiento(v);
     if (clave === 'promo') {
       const max = 500;
       if (typeof v !== 'string') return { error: 'Tiene que ser texto.' };

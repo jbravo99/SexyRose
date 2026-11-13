@@ -25,6 +25,10 @@ const NO_INDEX_NO_FOLLOW = new Set(['panel', 'admin', 'cuenta', 'chat', 'favorit
 const NO_INDEX = new Set(['swipe', 'shorts', 'cerca', 'links', '404']);
 const LOCALE = { es: 'es_AR', en: 'en_US', pt: 'pt_BR' };
 const HTML_LANG = { es: 'es-AR', en: 'en', pt: 'pt-BR' };
+const HOME_NAME = { es: 'Inicio', en: 'Home', pt: 'Início' };
+const MEN_LABEL = { es: 'Hombres', en: 'Men', pt: 'Homens' };
+const LOGO = '/icon-512.png'; // public/icon-512.png (512 × 512): logo de Organization y og:image de las páginas sin foto propia
+const LD = 'https://schema.org';
 const NO_ENCONTRADA = { es: 'Página no encontrada', en: 'Page not found', pt: 'Página não encontrada' };
 const PERFIL_NO = { es: 'Perfil no encontrado', en: 'Profile not found', pt: 'Perfil não encontrado' };
 const STARS = { es: 'Stars: perfiles destacados por provincia', en: 'Stars: featured profiles by region', pt: 'Stars: perfis em destaque por região' };
@@ -35,7 +39,10 @@ const REGISTRO = {
 
 // Igual que HH.slugify (core.js)
 export const slugify = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-const fill = (t, v) => String(t || '').replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m)).replace(/\s+/g, ' ').replace(/\s([.,:;])/g, '$1').trim();
+// "1 perfiles" → "1 perfil" (las plantillas dicen "{cantidad} perfiles"); igual que mvp/src/seo.js
+const UNO = { perfiles: 'perfil', perfis: 'perfil', profiles: 'profile', avisos: 'aviso', 'anúncios': 'anúncio', ads: 'ad' };
+const uno = (s) => s.replace(/(^|[^\d.,])1 (perfiles|perfis|profiles|avisos|anúncios|ads)(?![\wáéíóúñ])/g, (m, a, w) => a + '1 ' + UNO[w]);
+export const fill = (t, v) => uno(String(t || '').replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m)).replace(/\s+/g, ' ').replace(/\s([.,:;])/g, '$1').trim());
 const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…'; };
 const dia = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10); };
 const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -65,7 +72,8 @@ function modelo(estado, datos) {
   const locBySlug = (country, s) => {
     if (!country || !s) return null;
     const inside = locs.filter((l) => l.id !== country.id && pathOf(l)[0] && pathOf(l)[0].id === country.id);
-    return inside.find((l) => locSlug(l) === s) || inside.find((l) => slugify(l.name) === s) || null;
+    // Dirección anterior (oldSlugs de mvp/src/urls.js, ej. /argentina/buenos-aires → capital-federal) o nombre entero
+    return inside.find((l) => locSlug(l) === s) || inside.find((l) => (cfgOf(l).oldSlugs || []).includes(s) || slugify(l.name) === s) || null;
   };
 
   const perfiles = (estado.perfiles || []).map((p) => {
@@ -123,10 +131,12 @@ function modelo(estado, datos) {
     if (segs.length === 2 && isG(segs[1])) return { key: placeKey(country, null, GENDER.gender), lang };
     const loc = locBySlug(country, segs[1].toLowerCase());
     if (!loc || segs.length > 3) return { key: '404', lang };
-    if (segs[2] && isG(segs[2])) return { key: placeKey(loc, null, GENDER.gender), lang };
+    // Encontrado por una dirección que ya no es la principal (slug anterior): 301 a la actual
+    const viejo = locSlug(loc) !== segs[1].toLowerCase();
+    if (segs[2] && isG(segs[2])) return { key: placeKey(loc, null, GENDER.gender), lang, redirect: viejo };
     // Direcciones viejas de lugar + actividad (/argentina/san-isidro/cena): ya no existen → 301 a la página del lugar
     if (segs[2]) return { key: placeKey(loc), lang, redirect: true };
-    return { key: placeKey(loc), lang };
+    return { key: placeKey(loc), lang, redirect: viejo };
   };
   const placeOf = (key) => {
     const parts = key.split('.');
@@ -165,15 +175,21 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
     const a = await actual(); if (!a) return null;
     const { m: M, d } = a;
     const { key, lang, redirect } = M.parse(pathname);
-    // Dirección vieja de actividad → 301 a la página del lugar (en el mismo idioma)
+    // Dirección vieja (de actividad o slug anterior del lugar) → 301 a la página del lugar (en el mismo idioma)
     if (redirect) return { key, lang, status: 301, location: M.urlOf(key, lang) };
     const top = key.split('.')[0]; const base = site(d);
     const abs = (k, l) => base + M.urlOf(k, l);
     const alts = (k) => { const o = {}; LANGS.forEach((l) => { o[l] = abs(k, l); }); o['x-default'] = abs(k, 'es'); return o; };
-    const r = { key, lang, status: 200, title: 'SexyRose', description: get(d, 'home.description', lang), robots: 'index,follow', canonical: abs(key, lang), alternates: null, type: 'website', image: null };
-    const no = (titulo) => Object.assign(r, { status: 404, robots: 'noindex,follow', title: titulo[lang] + ' | SexyRose', canonical: null, alternates: null });
+    const r = { key, lang, status: 200, title: 'SexyRose', description: get(d, 'home.description', lang), robots: 'index,follow', canonical: abs(key, lang), alternates: null, type: 'website', image: base + LOGO, ld: [] };
+    const no = (titulo) => Object.assign(r, { status: 404, robots: 'noindex,follow', title: titulo[lang] + ' | SexyRose', canonical: null, alternates: null, ld: [] });
+    // Datos estructurados (los mismos que arma mvp/src/seo.js en el navegador, que los reemplaza al dibujar la página)
+    const crumbs = (items) => ({ '@context': LD, '@type': 'BreadcrumbList', itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, item: it.url })) });
+    const lugarCrumbs = (loc) => [{ name: HOME_NAME[lang], url: abs('inicio', lang) }].concat(M.pathOf(loc).map((l) => ({ name: M.locSeoName(l, lang), url: abs(M.placeKey(l), lang) })));
     if (top === 'inicio') {
       Object.assign(r, { title: get(d, 'home.title', lang), alternates: alts('inicio') });
+      // Sin SearchAction: el sitio no tiene una dirección de búsqueda por texto
+      r.ld.push({ '@context': LD, '@type': 'WebSite', name: 'SexyRose', url: abs('inicio', lang), inLanguage: lang, description: r.description, publisher: { '@type': 'Organization', name: 'SexyRose', url: abs('inicio', 'es') } });
+      r.ld.push({ '@context': LD, '@type': 'Organization', name: 'SexyRose', url: abs('inicio', 'es'), logo: base + LOGO });
     } else if (top === 'pais' || top === 'lugar') {
       const pl = M.placeOf(key);
       if (!pl) return no(NO_ENCONTRADA);
@@ -185,6 +201,9 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       r.description = clip(fill(get(d, 'tpl.' + type + '.description', lang), v), 160);
       r.alternates = alts(key);
       if (!M.indexable(pl.loc, pl.act && pl.act.id, pl.g)) r.robots = 'noindex,follow';
+      r.ld.push(crumbs(lugarCrumbs(pl.loc).concat(pl.g ? [{ name: MEN_LABEL[lang], url: abs(key, lang) }] : [])));
+      const list = M.placeProfiles(pl.loc, null, pl.g).slice(0, 24);
+      if (list.length) r.ld.push({ '@context': LD, '@type': 'ItemList', name: fill(get(d, 'tpl.' + type + '.h1', lang), v), numberOfItems: list.length, itemListElement: list.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: abs('perfil.' + p.slug, lang), name: p.displayName })) });
     } else if (top === 'perfil') {
       const p = M.bySlug.get(key.split('.')[1]);
       if (!p) return no(PERFIL_NO);
@@ -194,7 +213,10 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       r.title = fill(get(d, 'tpl.profile.title', lang), v);
       r.description = clip(fill(get(d, 'tpl.profile.description', lang), v), 160);
       r.alternates = alts(key); r.type = 'profile';
-      const f = (p.fotos || [])[0]; r.image = f ? (f.urlMini || f.url) : null;
+      const f = (p.fotos || [])[0]; r.image = f ? (f.urlMini || f.url) : base + LOGO;
+      const foto = f && /^https?:\/\//.test(f.url || '') ? f.url : undefined;
+      r.ld.push({ '@context': LD, '@type': 'ProfilePage', url: abs(key, lang), name: r.title, inLanguage: lang, dateModified: p.actualizado || undefined, mainEntity: { '@type': 'Person', name: p.displayName, image: foto, homeLocation: p.loc ? { '@type': 'Place', name: lugar } : undefined, knowsLanguage: Array.isArray(p.idiomas) && p.idiomas.length ? p.idiomas : undefined } });
+      r.ld.push(crumbs((p.loc ? lugarCrumbs(p.loc) : [{ name: HOME_NAME[lang], url: abs('inicio', lang) }]).concat([{ name: p.displayName, url: abs(key, lang) }])));
     } else if (top === 'stars') {
       Object.assign(r, { title: STARS[lang] + ' | SexyRose', alternates: alts('stars') });
     } else if (top === 'registro') {
@@ -225,7 +247,9 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
     out.push(`<meta property="og:locale" content="${LOCALE[m.lang]}">`);
     if (m.canonical) out.push(`<meta property="og:url" content="${escAttr(m.canonical)}">`);
     if (m.image && /^https?:\/\//.test(m.image)) out.push(`<meta property="og:image" content="${escAttr(m.image)}">`);
-    out.push(`<meta name="twitter:card" content="${m.image ? 'summary_large_image' : 'summary'}">`);
+    out.push(`<meta name="twitter:card" content="${m.type === 'profile' && m.image && !m.image.endsWith(LOGO) ? 'summary_large_image' : 'summary'}">`);
+    // JSON-LD (data-hh-ld: el SPA los reemplaza por los suyos, sin duplicar). "<" escapado: no puede cerrar el <script>.
+    for (const o of m.ld || []) out.push(`<script type="application/ld+json" data-hh-ld>${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`);
     return out.join('\n');
   }
   // Cáscara con el <head> de esa página: idioma, título y etiquetas en el marcador <!--SR:SEO-->
@@ -249,10 +273,11 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
     const hoy = new Date().toISOString().slice(0, 10);
     const ultimo = (list) => list.map((p) => dia(p.actualizado)).filter(Boolean).sort().pop() || hoy;
     const filas = [];
-    const add = (key, lastmod, prio) => {
+    const add = (key, lastmod, prio, imagenes = []) => {
       const urls = Object.fromEntries(LANGS.map((l) => [l, base + M.urlOf(key, l)]));
       const alt = LANGS.map((o) => `<xhtml:link rel="alternate" hreflang="${o}" href="${escXml(urls[o])}"/>`).join('') + `<xhtml:link rel="alternate" hreflang="x-default" href="${escXml(urls.es)}"/>`;
-      LANGS.forEach((l) => filas.push(`  <url><loc>${escXml(urls[l])}</loc><lastmod>${lastmod || hoy}</lastmod><priority>${prio}</priority>${alt}</url>`));
+      const img = imagenes.map((u) => `<image:image><image:loc>${escXml(u)}</image:loc></image:image>`).join('');
+      LANGS.forEach((l) => filas.push(`  <url><loc>${escXml(urls[l])}</loc><lastmod>${lastmod || hoy}</lastmod><priority>${prio}</priority>${alt}${img}</url>`));
     };
     const pub = M.perfiles;
     add('inicio', ultimo(pub), '1.0');
@@ -267,8 +292,10 @@ export function createSeoSitio({ datosPath, siteUrl = '', estado }) {
       if (!M.indexable(l)) continue;
       add(M.placeKey(l), ultimo(M.placeProfiles(l)), '0.8');
     }
-    for (const p of pub) add('perfil.' + p.slug, dia(p.actualizado) || hoy, '0.7');
-    sm = { seo: seoKey, xml: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${filas.join('\n')}\n</urlset>\n`, at: Date.now() };
+    // Perfiles con sus fotos públicas (hasta 5; las mismas que se ven en la página)
+    const fotosDe = (p) => (p.fotos || []).map((f) => f && f.url).filter((u) => /^https?:\/\//.test(String(u || ''))).slice(0, 5);
+    for (const p of pub) add('perfil.' + p.slug, dia(p.actualizado) || hoy, '0.7', fotosDe(p));
+    sm = { seo: seoKey, xml: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${filas.join('\n')}\n</urlset>\n`, at: Date.now() };
     return sm.xml;
   }
   return { meta, aplicar, etiquetas, sitemap, invalidar: () => { sm = { xml: null, at: 0, seo: '' }; } };
