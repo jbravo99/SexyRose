@@ -86,8 +86,8 @@ svg.ico { width: 18px; height: 18px; flex: none; }
 /* Botones de género en la barra principal: centrados entre la marca y las acciones (mobile) o entre Stars e Iniciar sesión (web) */
 .hdr-genders, .hdr-spacer { flex: 1; display: flex; justify-content: center; gap: 6px; min-width: 0; }
 .hdr-genders + .header-actions, .hdr-spacer + .header-actions { margin-left: 0; }
-.hdr-g { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--pink); display: grid; place-items: center; cursor: pointer; flex: none; transition: transform .12s, border-color .12s; }
-.hdr-g svg { width: 17px; height: 17px; }
+.hdr-g { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1.5px solid var(--line-2); background: var(--surface); color: var(--pink); display: grid; place-items: center; cursor: pointer; flex: none; transition: transform .12s, border-color .12s; }
+.hdr-g svg { width: 17px; height: 17px; display: block; }
 .hdr-g:hover { border-color: var(--pink); transform: translateY(-1px); }
 .hdr-g.on { background: linear-gradient(135deg, var(--berry), var(--pink)); border-color: transparent; color: #fff; }
 @media (min-width: 900px) { .hdr-genders { gap: 8px; } .hdr-g { width: 36px; height: 36px; } .hdr-g svg { width: 19px; height: 19px; } }
