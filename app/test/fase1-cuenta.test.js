@@ -444,7 +444,10 @@ describe('enviar a revisión y sitio público', () => {
     const pub = new Cliente();
     invalidarSitio();
     let e = (await pub.get('/api/sitio/estado')).body;
-    assert.ok(Array.isArray(e.perfiles) && e.ubicaciones.length > 50 && e.intereses.length === 16);
+    assert.ok(Array.isArray(e.perfiles) && e.intereses.length === 16);
+    // Georef (13/11/2026): el estado solo trae los lugares con perfiles publicados y los que los contienen
+    const usados = new Set(e.perfiles.flatMap((x) => Object.values(x.ubicacionIds || {})));
+    assert.ok(e.ubicaciones.filter((u) => u.tipo === 'ciudad' || u.tipo === 'barrio').every((u) => usados.has(u.id)));
     assert.equal(e.categorias, undefined); // el sitio no publica actividades (12/11/2026)
     assert.ok(e.ajustes.precios.mes.S === 350 && e.ajustes.precios.semana.C === 27 && !('B' in e.ajustes.precios.mes));
     assert.ok(!e.perfiles.some((p) => p.cuentaId === a.yo.id));
@@ -461,6 +464,7 @@ describe('enviar a revisión y sitio público', () => {
     const p = e.perfiles.find((x) => x.cuentaId === a.yo.id);
     assert.ok(p);
     assert.equal(p.ciudad, 'Córdoba'); assert.equal(p.provincia, 'Provincia de Córdoba'); assert.equal(p.pais, 'Argentina');
+    assert.ok(['cordoba', 'provincia-de-cordoba', 'argentina'].every((id) => e.ubicaciones.some((u) => u.id === id)), 'su ciudad, su provincia y el país viajan al sitio');
     assert.equal(p.edad > 18, true); assert.equal(p.plan, 'E'); assert.equal(p.star, false);
     assert.equal(p.fotos.length, 3); assert.equal(p.contacto.whatsapp, '+5493511234567');
     assert.ok(!('fechaNacimiento' in p) && !('email' in p));

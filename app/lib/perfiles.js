@@ -97,11 +97,13 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
   // Ubicación: ids del catálogo. pais → provincia → (zona) → ciudad. La ciudad tiene que estar dentro de la provincia.
   const ubic = catalogos.ubic;
   const enCadena = (id, ancestroId) => { let cur = ubic.get(id); let g = 0; while (cur && g++ < 8) { if (cur.id === ancestroId) return true; cur = cur.padre ? ubic.get(cur.padre) : null; } return false; };
-  for (const [k, tipos] of [['pais', ['pais']], ['provincia', ['provincia']], ['ciudad', ['ciudad', 'provincia']]]) {
+  for (const [k, tipos] of [['pais', ['pais']], ['provincia', ['provincia']], ['ciudad', ['ciudad', 'barrio', 'provincia']]]) {
     if (!has(k)) continue;
     if (vacio(body[k])) { d[k] = undefined; continue; }
     const u = ubic.get(String(body[k]));
-    if (!u || !u.activa || !tipos.includes(u.tipo)) return { error: `Elegí ${k === 'pais' ? 'un país' : k === 'provincia' ? 'una provincia' : 'una ciudad'} de la lista.` };
+    // Activo él y los lugares que lo contienen (un lugar oculto o unido con otro desde el admin ya no se puede elegir)
+    let act = !!u; for (let cur = u, g = 0; act && cur && g < 10; g++, cur = cur.padre ? ubic.get(cur.padre) : null) act = cur.activa !== false;
+    if (!u || !act || !tipos.includes(u.tipo)) return { error: `Elegí ${k === 'pais' ? 'un país' : k === 'provincia' ? 'una provincia' : 'tu localidad'} de la lista.` };
     d[k] = u.id;
   }
   if (has('ciudadSugerida')) {
@@ -111,7 +113,7 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
   }
   if (d.ciudad) {
     const c = ubic.get(d.ciudad);
-    // Ciudad de Buenos Aires: es provincia y ciudad a la vez.
+    // Capital Federal (CABA): es provincia y ciudad a la vez.
     if (c && c.tipo === 'provincia') d.provincia = c.id;
     if (d.provincia && !enCadena(d.ciudad, d.provincia)) return { error: 'La ciudad no pertenece a la provincia elegida.' };
     if (!d.provincia) { let cur = c; while (cur && cur.tipo !== 'provincia') cur = cur.padre ? ubic.get(cur.padre) : null; if (cur) d.provincia = cur.id; }

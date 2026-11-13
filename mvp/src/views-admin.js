@@ -376,7 +376,7 @@
   /* ---------- Tab: Stars ---------- */
   function tabStars(me) {
     const countries = HH.starRegions();
-    if (S.starCountry === undefined || (S.starCountry && !countries.includes(S.starCountry))) S.starCountry = countries.includes('Ciudad de Buenos Aires') ? 'Ciudad de Buenos Aires' : (countries[0] || '');
+    if (S.starCountry === undefined || (S.starCountry && !countries.includes(S.starCountry))) S.starCountry = countries.find(c => c === 'Capital Federal (CABA)' || c === 'Ciudad de Buenos Aires') || countries[0] || '';
     const country = S.starCountry;
     const active = HH.activeStarsIn(country).slice().sort(HH.by('activeUntil', 1));
     const candidates = HH.publishedProfiles().filter(p => !HH.isStar(p.userId) && HH.starRegionOf(p.userId) === country).sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -528,7 +528,7 @@
   /* ---------- Tab: Portada de inicio ---------- */
   // Borrador de la portada (vive mientras dura la pestaña). null → se carga de HH.settings() al abrir la tab.
   const AP = { draft: null, saved: false };
-  const heroDraft = () => { if (!AP.draft) { const st = HH.settings(); AP.draft = Object.assign({}, HH.DEFAULT_SETTINGS.hero, st.hero, { defaultCity: (st.nearby && st.nearby.defaultCity) || HH.DEFAULT_SETTINGS.nearby.defaultCity }); } return AP.draft; };
+  const heroDraft = () => { if (!AP.draft) { const st = HH.settings(); AP.draft = Object.assign({}, HH.DEFAULT_SETTINGS.hero, st.hero, { defaultCity: HH.defaultCity() || HH.DEFAULT_SETTINGS.nearby.defaultCity }); } return AP.draft; };
   const heroTitle = (t) => esc(t || '').replace(/\*([^*]+)\*/g, '<em>$1</em>');
   function heroPreview(d) {
     return `<div class="adm-hero-prev" aria-live="polite">

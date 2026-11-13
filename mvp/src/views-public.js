@@ -55,6 +55,8 @@
 .pp-go{width:40px;height:40px;flex:none;border:0;background:none;color:var(--fg-2);display:grid;place-items:center;cursor:pointer;border-radius:10px}.pp-go:hover{background:var(--surface-2)}.pp-go svg{width:18px;height:18px}
 .pp-sep{height:1px;background:var(--line);margin:4px 0}
 .pp-path{margin:-8px 0 6px 40px}
+.pp-top .pp-search{flex:1;min-width:0}.pp-ok{flex:none;border-radius:999px}
+.pp-name.on{font-weight:700}span.pp-go:hover{background:none;cursor:default}.pp-empty{padding:14px 6px}
 .km-sel{position:relative;display:inline-flex;align-items:center;gap:6px;padding:0 12px;height:38px;border-radius:999px;background:var(--surface);border:1px solid var(--line-2);color:var(--fg);font-weight:700;font-size:14px;cursor:pointer}
 .km-sel select{appearance:none;-webkit-appearance:none;background:none;border:0;color:inherit;font:inherit;padding:0 2px;cursor:pointer;outline:none}
 .km-sel select option{background:var(--surface);color:var(--fg)}
@@ -579,45 +581,67 @@
     );
     return HH.geo() ? HH.byDistance(base) : orderByCity(base, cityCurrent());
   }
-  /* ---------- Selector de ubicación por niveles (país → provincia/estado → zona → ciudad) ---------- */
+  /* ---------- Selector de ubicación por niveles (país → provincia/estado → zona → ciudad) ----------
+     Al estilo distintas.net (13/11/2026): arriba el camino elegido con ✓ (tocar uno vuelve a ese nivel), abajo los
+     lugares de ese nivel en orden alfabético con su cantidad de perfiles (los vacíos no se muestran) y la flecha si
+     tienen lugares adentro. Tocar un lugar lo elige y entra; "Confirmar" aplica. La lógica pura está en ubicaciones.js. */
   const placeLabel = (name) => name || "Todas las ubicaciones";
-  const PP = { cur: "", node: null, q: "", then: "" };
-  const placeCount = (name) => HH.publishedProfiles().filter(HH.genderOk).filter((p) => HH.inCity(p, name)).length;
-  const activeKids = (id) => (HH.db.locations || []).filter((l) => l.parentId === id && HH.isActiveLoc(l)).sort((a, b) => (a.level === "city") - (b.level === "city") || a.name.localeCompare(b.name));
+  const PP = { cur: "", sel: null, q: "", then: "" };
+  const placeCount = (name) => HH.publishedProfiles().filter(HH.genderOk).filter((p) => !HH.tipoOk || HH.tipoOk(p)).filter((p) => HH.inCity(p, name)).length;
+  const ppLocs = () => HH.db.locations || [];
+  const ppById = (id) => ppLocs().find((l) => l.id === id) || null;
   HH.placePill = (current, then, opts = {}) => `<button type="button" class="place-pill${opts.block ? " block" : ""}" data-action="placePick" data-then="${then}" data-cur="${esc(current || "")}">${HH.icon("pin")}<span class="ellipsis">${esc(placeLabel(current))}</span>${HH.icon("chevronDown")}</button>`;
+  // Nombre repetido ("Santa Rosa · Mendoza"): la aclaración va como texto secundario
+  const ppNombre = (l) => (l.extra ? `${esc(l.base)}<span class="muted" style="font-weight:500"> · ${esc(l.extra)}</span>` : esc(l.name));
+  const ppCheck = (on) => (on ? `<span class="pp-check">${HH.icon("check")}</span>` : '<span class="pp-check off"></span>');
   function placeBody() {
-    const node = PP.node ? (HH.db.locations || []).find((l) => l.id === PP.node) : null;
-    const row = (loc, sel) => { const n = placeCount(loc.name); const kids = activeKids(loc.id).length;
-      return `<div class="pp-row${n ? "" : " dim"}"><button type="button" class="pp-name" data-action="placeChoose" data-v="${esc(loc.name)}">${sel ? `<span class="pp-check">${HH.icon("check")}</span>` : '<span class="pp-check off"></span>'}<span class="grow ellipsis">${esc(loc.name)}</span><span class="num muted">${n}</span></button>${kids ? `<button type="button" class="pp-go" data-action="placeDrill" data-id="${loc.id}" aria-label="Ver dentro de ${esc(loc.name)}">${HH.icon("chevronRight")}</button>` : '<span class="pp-go"></span>'}</div>`; };
+    const curId = (PP.cur && (HH.locByName(PP.cur) || {}).id) || null;
+    const v = HH.ubic.vista(ppLocs(), PP.sel, HH.isActiveLoc, (l) => placeCount(l.name));
+    const row = (r, extra) => `<div class="pp-row"><button type="button" class="pp-name" data-action="placeSel" data-id="${r.loc.id}">${ppCheck(r.elegido)}<span class="grow ellipsis">${ppNombre(r.loc)}</span><span class="num muted">${r.n}</span></button>${r.tieneHijos ? `<button type="button" class="pp-go" data-action="placeSel" data-id="${r.loc.id}" aria-label="Ver dentro de ${esc(r.loc.name)}">${HH.icon("chevronRight")}</button>` : '<span class="pp-go" aria-hidden="true"></span>'}</div>${extra || ""}`;
     let list;
     if (PP.q.trim().length >= 2) {
-      const qn = PP.q.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const hits = (HH.db.locations || []).filter((l) => HH.isActiveLoc(l) && l.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(qn)).slice(0, 30);
-      list = hits.length ? hits.map((l) => row(l, l.name === PP.cur).replace('class="grow ellipsis">', `class="grow ellipsis">`) + `<div class="tiny muted pp-path">${esc(HH.locLabel(l, { country: true }))}</div>`).join("") : `<div class="small muted" style="padding:14px 4px">No encontramos esa ubicación.</div>`;
-    } else if (node) {
-      list = row(node, node.name === PP.cur) + `<div class="pp-sep"></div>` + activeKids(node.id).map((l) => row(l, l.name === PP.cur)).join("");
+      const qn = HH.ubic.norm(PP.q.trim());
+      const hits = HH.ubic.ordenar(ppLocs().filter((l) => HH.isActiveLoc(l) && HH.ubic.norm(l.name).includes(qn)))
+        .map((l) => ({ loc: l, n: placeCount(l.name), tieneHijos: false, elegido: l.id === PP.sel }))
+        .filter((r) => r.n > 0 || r.elegido).slice(0, 30);
+      list = hits.length ? hits.map((r) => row(r, `<div class="tiny muted pp-path">${esc(HH.locLabel(r.loc, { country: true }))}</div>`)).join("") : `<div class="small muted pp-empty">No encontramos esa ubicación.</div>`;
     } else {
-      list = `<div class="pp-row"><button type="button" class="pp-name" data-action="placeChoose" data-v="">${!PP.cur ? `<span class="pp-check">${HH.icon("check")}</span>` : '<span class="pp-check off"></span>'}<span class="grow">Todas las ubicaciones</span><span class="num muted">${placeCount("")}</span></button><span class="pp-go"></span></div><div class="pp-sep"></div>` + activeKids(null).map((l) => row(l, l.name === PP.cur)).join("");
+      const top = v.camino.map((l) => `<div class="pp-row"><button type="button" class="pp-name on" data-action="placeUp" data-id="${l.id}">${ppCheck(true)}<span class="grow ellipsis">${ppNombre(l)}</span></button><span class="pp-go" aria-hidden="true"></span></div>`).join("");
+      const todas = v.nivel ? "" : `<div class="pp-row"><button type="button" class="pp-name" data-action="placeUp" data-id="">${ppCheck(!PP.sel)}<span class="grow">Todas las ubicaciones</span><span class="num muted">${placeCount("")}</span></button><span class="pp-go" aria-hidden="true"></span></div>`;
+      list = top + todas + (v.vacia ? `<div class="small muted pp-empty">No hay perfiles en esta zona todavía.</div>` : v.lista.map((r) => row(r)).join(""));
     }
+    const confirmar = v.camino.length >= 2 || (PP.sel || null) !== curId;
     return `<div class="pp">
-      <div class="pp-top">${node || PP.q ? `<button type="button" class="pp-back" data-action="placeBack" aria-label="Volver">${HH.icon("chevronLeft")}</button>` : ""}<input class="input pp-search" id="ppSearch" type="search" placeholder="Buscar ciudad, provincia o país" value="${esc(PP.q)}" data-input="placeSearch" aria-label="Buscar ubicación"></div>
+      <div class="pp-top">${PP.sel || PP.q ? `<button type="button" class="pp-back" data-action="placeBack" aria-label="Volver">${HH.icon("chevronLeft")}</button>` : ""}<input class="input pp-search" id="ppSearch" type="search" placeholder="Buscar ciudad, provincia o país" value="${esc(PP.q)}" data-input="placeSearch" aria-label="Buscar ubicación">${confirmar ? `<button type="button" class="btn sm pp-ok" data-action="placeOk">Confirmar</button>` : ""}</div>
       <div class="pp-list" id="ppList">${list}</div></div>`;
   }
-  function placeRender(keepFocus) { const box = document.querySelector("#modalBox .modal-body"); if (box) box.innerHTML = placeBody(); if (keepFocus) { const i = document.getElementById("ppSearch"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } } }
+  function placeRender(keepFocus) {
+    const box = document.querySelector("#modalBox .modal-body"); if (!box) return;
+    box.innerHTML = placeBody();
+    if (keepFocus) { const i = document.getElementById("ppSearch"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }
+  }
   HH.openPlacePicker = function (current, then) {
     PP.cur = current || ""; PP.q = ""; PP.then = then;
     const loc = PP.cur && HH.locByName(PP.cur);
-    const path = loc ? HH.locPath(loc) : [];
-    PP.node = path.length > 1 ? path[path.length - 2].id : path.length === 1 ? path[0].id : null;
-    if (loc && activeKids(loc.id).length) PP.node = loc.id;
+    PP.sel = loc ? loc.id : null;
     HH.modal({ title: "Ubicación", body: placeBody(), actions: [] });
   };
+  function placeApply(name) { HH.closeModal(); const fn = HH.actions[PP.then]; if (fn) fn({ value: name || "", dataset: {} }); }
   Object.assign(HH.actions, {
     placePick(el) { HH.openPlacePicker(el.dataset.cur || "", el.dataset.then); },
-    placeDrill(el) { PP.node = el.dataset.id; PP.q = ""; placeRender(); },
-    placeBack() { if (PP.q) { PP.q = ""; } else { const n = (HH.db.locations || []).find((l) => l.id === PP.node); PP.node = n && n.parentId ? n.parentId : null; } placeRender(); },
-    placeSearch(el) { PP.q = el.value; const box = document.getElementById("ppList"); if (box) { const tmp = document.createElement("div"); tmp.innerHTML = placeBody(); box.innerHTML = tmp.querySelector("#ppList").innerHTML; } },
-    placeChoose(el) { HH.closeModal(); const fn = HH.actions[PP.then]; if (fn) fn({ value: el.dataset.v || "", dataset: {} }); },
+    placeSel(el) { PP.sel = el.dataset.id || null; PP.q = ""; placeRender(); },
+    placeUp(el) { PP.sel = el.dataset.id || null; PP.q = ""; placeRender(); },
+    placeBack() {
+      if (PP.q) { PP.q = ""; placeRender(); return; }
+      const v = HH.ubic.vista(ppLocs(), PP.sel, HH.isActiveLoc, (l) => placeCount(l.name));
+      const nivel = v.nivel ? ppById(v.nivel) : null;
+      PP.sel = nivel ? nivel.parentId || null : null;
+      placeRender();
+    },
+    placeSearch(el) { PP.q = el.value; const box = document.getElementById("ppList"); if (box) { const tmp = document.createElement("div"); tmp.innerHTML = placeBody(); box.innerHTML = tmp.querySelector("#ppList").innerHTML; } const top = document.querySelector("#modalBox .pp-top"); if (top) { const tmp2 = document.createElement("div"); tmp2.innerHTML = placeBody(); const nt = tmp2.querySelector(".pp-top"); const ok = top.querySelector(".pp-ok"), nok = nt.querySelector(".pp-ok"); if (ok && !nok) ok.remove(); if (!ok && nok) top.appendChild(nok); const back = top.querySelector(".pp-back"), nback = nt.querySelector(".pp-back"); if (back && !nback) back.remove(); if (!back && nback) top.insertBefore(nback, top.firstChild); } },
+    placeOk() { const l = PP.sel ? ppById(PP.sel) : null; placeApply(l ? l.name : ""); },
+    // Compatibilidad: otros lugares llaman placeChoose con data-v (nombre) para elegir y aplicar
+    placeChoose(el) { placeApply(el.dataset.v || ""); },
     pubHomePlace(el) { setCity(el.value); S.gridShown = GRID_PAGE; S.tierShown = {}; HH.refresh(); },
   });
   function openCityModal() {

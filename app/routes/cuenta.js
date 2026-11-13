@@ -144,6 +144,14 @@ export function createCuentaRouter(ctx) {
     const lim = limitesDe(efectivo);
     const faltantes = faltantesDe({ datos: p.datos, fotosN: fs.length, emailVerificado: Boolean(c.email_verificado), verificacion: p.verificacion });
     const datos = { ...p.datos };
+    // Nombres de la ubicación elegida (el panel no tiene la lista completa de lugares: la busca de a poco)
+    const cat = await cargarCatalogos(pool);
+    const u = (id) => (id && cat.ubic.get(id)) || null;
+    const ciu = u(datos.ciudad); const prov = u(datos.provincia);
+    const ubicacion = {
+      provincia: prov ? { id: prov.id, nombre: prov.nombre } : null,
+      ciudad: ciu ? { id: ciu.id, nombre: ciu.nombre, tipo: ciu.tipo, camino: (cat.indiceUbic.find((l) => l.id === ciu.id) || {}).camino || ciu.nombre } : null,
+    };
     return {
       id: c.id,
       email: c.email,
@@ -161,6 +169,7 @@ export function createCuentaRouter(ctx) {
         publicadoEn: p.publicado_en || null,
         edad: edadDe(datos.fechaNacimiento),
         datos,
+        ubicacion,
         fotos: fs.map((f) => ({ id: f.id, url: f.url, urlMini: f.url_mini || f.url, orden: f.orden, ancho: f.ancho, alto: f.alto })),
         videos: vids.map(videoJson),
         preview: prv[0] ? { videoId: prv[0].video_id, inicio: Number(prv[0].inicio), elegido: prv[0].elegido, estado: prv[0].estado, url: prv[0].url || null, error: prv[0].error || null } : null,

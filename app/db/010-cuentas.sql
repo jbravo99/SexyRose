@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS ajustes (
 -- Semillas (solo si no existen: el admin puede editarlas después)
 INSERT INTO ubicaciones (id, nombre, tipo, padre, lat, lng, orden) VALUES
   ('argentina', 'Argentina', 'pais', NULL, -38.4, -63.6, 0),
-  ('ciudad-de-buenos-aires', 'Ciudad de Buenos Aires', 'provincia', 'argentina', -34.6037, -58.3816, 1),
+  ('ciudad-de-buenos-aires', 'Capital Federal (CABA)', 'provincia', 'argentina', -34.6037, -58.3816, 1),
   ('provincia-de-buenos-aires', 'Provincia de Buenos Aires', 'provincia', 'argentina', -36.6, -60, 2),
   ('zona-norte-gba', 'Zona Norte (GBA)', 'zona', 'provincia-de-buenos-aires', -34.47, -58.6, 3),
   ('zona-oeste-gba', 'Zona Oeste (GBA)', 'zona', 'provincia-de-buenos-aires', -34.68, -58.72, 4),

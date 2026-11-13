@@ -19,14 +19,14 @@
     login: { es: 'ingresar', en: 'login', pt: 'entrar' },
   };
   // Nombre de ubicación más corto para direcciones y títulos (editable en Admin → SEO → Lugares)
-  HH.SEO_PLACE_DEFAULTS = { 'Ciudad de Buenos Aires': { slug: 'buenos-aires', name: 'Buenos Aires' }, 'Ciudad de México': { name: 'Ciudad de México' } };
+  HH.SEO_PLACE_DEFAULTS = { 'Capital Federal (CABA)': { slug: 'buenos-aires', name: 'Buenos Aires' }, 'Ciudad de Buenos Aires': { slug: 'buenos-aires', name: 'Buenos Aires' }, 'Ciudad de México': { name: 'Ciudad de México' } };
   const slug = (s) => HH.slugify(s || '');
   const seoPlaces = () => ((HH.db && HH.settings().seo) || {}).places || {};
 
   /* ---------- Ubicaciones y actividades ↔ slugs ---------- */
   const locs = () => (HH.db && HH.db.locations) || [];
   const placeCfg = (loc) => Object.assign({}, HH.SEO_PLACE_DEFAULTS[loc.name] || {}, seoPlaces()[loc.id] || {});
-  HH.locSlug = (loc) => (loc ? placeCfg(loc).slug || slug(loc.name) : '');
+  HH.locSlug = (loc) => (loc ? placeCfg(loc).slug || loc.slug || slug(loc.name) : ''); // loc.slug: lo manda el servidor (único aunque se repita el nombre)
   HH.locSeoName = (loc, lang) => { if (!loc) return ''; const c = placeCfg(loc); const n = c.name || loc.name; return lang && lang !== 'es' && HH.t ? HH.t(n, lang) : n; };
   HH.countryLocs = () => locs().filter(l => l.level === 'country' && HH.isActiveLoc(l));
   const countrySlug = (loc, lang) => (!lang || lang === 'es') ? HH.locSlug(loc) : slug(HH.locSeoName(loc, lang));

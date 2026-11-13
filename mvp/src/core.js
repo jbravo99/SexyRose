@@ -82,7 +82,7 @@ window.HH = (function () {
   HH.uniqueActivityId = function (base) { let s = base || 'cat', i = 2; while (HH.db.activities.some(a => a.id === s)) s = base + '-' + (i++); return s; };
   HH.activityUsage = (id) => HH.db.profiles.filter(p => (p.activities || []).includes(id)).length;
   // Ajustes del sitio editables desde admin (portada de inicio, etc.)
-  HH.DEFAULT_SETTINGS = { hero: { eyebrow: 'Sitio de anuncios', title: 'Acompañantes en tu *ciudad*.', subtitle: 'Avisos de acompañantes en tu ciudad. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.', image: null, ctaPrimary: 'Explorar perfiles', ctaSecondary: 'Cerca de mí' }, nearby: { defaultCity: 'Ciudad de Buenos Aires' } };
+  HH.DEFAULT_SETTINGS = { hero: { eyebrow: 'Sitio de anuncios', title: 'Acompañantes en tu *ciudad*.', subtitle: 'Avisos de acompañantes en tu ciudad. Mirá los perfiles y contactá directo a quien elijas por WhatsApp o Telegram.', image: null, ctaPrimary: 'Explorar perfiles', ctaSecondary: 'Cerca de mí' }, nearby: { defaultCity: 'Capital Federal (CABA)' } };
   HH.settings = () => { if (!HH.db.settings) HH.db.settings = JSON.parse(JSON.stringify(HH.DEFAULT_SETTINGS)); return HH.db.settings; };
   HH.saveSettings = (patch) => { const st = HH.settings(); Object.keys(patch).forEach(k => { st[k] = Object.assign({}, st[k] || {}, patch[k]); }); HH.save(); return st; };
   // Ficha del perfil (datos neutros: nada de medidas ni datos del cuerpo)
@@ -344,12 +344,17 @@ window.HH = (function () {
   // País del visitante: el de su ubicación, o el de la ciudad elegida
   // HH.CITY_COUNTRY y HH.CITY_COORDS se derivan de HH.db.locations (ver geo.js)
   // Lugar por defecto al entrar: el país del visitante (por su ubicación o por la ciudad por defecto de ajustes)
-  HH.defaultPlace = () => { const g = HH.geo && HH.geo(); const c = (g && g.city) || ((HH.settings().nearby || {}).defaultCity); return (c && HH.CITY_COUNTRY[c]) || ''; };
+  // Lugares que cambiaron de nombre (13/11/2026: "Ciudad de Buenos Aires" → "Capital Federal (CABA)"): lo guardado con
+  // el nombre viejo (ajustes, filtros del visitante) sigue andando. Solo cambia si el nombre guardado ya no existe.
+  HH.PLACE_RENAMES = { 'Ciudad de Buenos Aires': 'Capital Federal (CABA)', 'Capital Federal (CABA)': 'Ciudad de Buenos Aires' };
+  HH.placeName = (c) => { const o = HH.PLACE_RENAMES[c]; if (!c || !o) return c; const cc = HH.CITY_COUNTRY; return !cc[c] && cc[o] ? o : c; };
+  HH.defaultCity = () => HH.placeName((HH.settings().nearby || {}).defaultCity);
+  HH.defaultPlace = () => { const g = HH.geo && HH.geo(); const c = (g && g.city) || HH.defaultCity(); return (c && HH.CITY_COUNTRY[c]) || ''; };
   HH.currentPlace = () => (HH.ui.city === undefined || HH.ui.city === null ? HH.defaultPlace() : HH.ui.city);
   HH.starsInPlace = (place) => HH.activeStars().filter(s => { const p = HH.profileOf(s.workerId); return p && HH.inCity(p, place); });
-  HH.viewerCity = () => { const g = HH.geo && HH.geo(); return (g && g.city) || (HH.ui.city === undefined ? ((HH.settings().nearby || {}).defaultCity) : HH.ui.city) || ''; };
+  HH.viewerCity = () => { const g = HH.geo && HH.geo(); return (g && g.city) || (HH.ui.city === undefined ? HH.defaultCity() : HH.ui.city) || ''; };
   HH.viewerRegion = () => HH.regionOfCity(HH.viewerCity());
-  HH.viewerCountry = () => { const g = HH.geo && HH.geo(); const city = (g && g.city) || (HH.ui.city === undefined ? ((HH.settings().nearby || {}).defaultCity) : HH.ui.city); return HH.CITY_COUNTRY[city] || ''; };
+  HH.viewerCountry = () => { const g = HH.geo && HH.geo(); const city = (g && g.city) || (HH.ui.city === undefined ? HH.defaultCity() : HH.ui.city); return HH.CITY_COUNTRY[city] || ''; };
   HH.publishedProfiles = function () {
     return HH.db.profiles.filter(p => p.status === 'active' && !p.hidden && HH.levelOf(p.userId) && HH.requirementsOf(p).ok);
   };

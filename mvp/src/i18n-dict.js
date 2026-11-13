@@ -3765,6 +3765,10 @@ HH.I18N = {
 "No profiles match those filters",
 "Não há perfis com esses filtros"
 ],
+"No hay perfiles en esta zona todavía.": [
+"No profiles in this area yet.",
+"Ainda não há perfis nesta região."
+],
 "No hay perfiles para {x} todavía": [
 "No profiles for {x} yet",
 "Ainda não há perfis para {x}"

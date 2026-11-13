@@ -23,6 +23,46 @@ export function invalidarSitio() { cache = null; }
 let destacadasInst = null;
 export function configurarDestacadas(d) { destacadasInst = d; }
 
+// Lugares activos donde hay perfiles publicados, con sus antepasados (país, provincia, zona), en el orden del catálogo
+export function ubicacionesUsadas(cat, perfiles) {
+  const usados = new Set();
+  for (const p of perfiles) {
+    const ids = p.ubicacionIds || {};
+    for (const id of [ids.ciudad, ids.provincia, ids.pais]) {
+      let cur = id ? cat.ubic.get(id) : null; let g = 0;
+      while (cur && g++ < 10 && !usados.has(cur.id)) { usados.add(cur.id); cur = cur.padre ? cat.ubic.get(cur.padre) : null; }
+    }
+  }
+  const lista = cat.ubicaciones.filter((u) => u.activa && usados.has(u.id));
+  const acl = aclaraciones(lista, cat.ubic);
+  return lista.map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden, slug: cat.slugs.get(u.id), ...(acl.has(u.id) ? { aclaracion: acl.get(u.id) } : {}) }));
+}
+
+/* Nombres repetidos entre los lugares que viajan al sitio (dos "Santa Rosa" en distintas provincias): cada uno lleva
+   una aclaración (la provincia; si también se repite, el departamento; si no, el lugar que lo contiene) y el sitio
+   muestra "Santa Rosa · Mendoza". Así el selector, los contadores, Cerca y los filtros, que trabajan con el nombre,
+   nunca juntan dos lugares distintos. → Map(id → aclaración) */
+export function aclaraciones(lista, ubic) {
+  const clave = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const grupos = new Map();
+  for (const u of lista) { const k = clave(u.nombre); if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(u); }
+  const out = new Map();
+  const corto = (n) => String(n || '').replace(/^\s*provincia\s+de(l)?\s+/i, '');
+  const provDe = (u) => { let cur = u.padre ? ubic.get(u.padre) : null; let g = 0; while (cur && g++ < 10) { if (cur.tipo === 'provincia') return corto(cur.nombre); cur = cur.padre ? ubic.get(cur.padre) : null; } return ''; };
+  for (const g of grupos.values()) {
+    if (g.length < 2) continue;
+    const quien = g.filter((u) => u.tipo !== 'pais' && u.tipo !== 'provincia');
+    const prov = new Map(quien.map((u) => [u.id, provDe(u)]));
+    const veces = new Map(); for (const v of prov.values()) veces.set(v, (veces.get(v) || 0) + 1);
+    for (const u of quien) {
+      let a = prov.get(u.id);
+      if (!a || veces.get(a) > 1) { const padre = u.padre ? ubic.get(u.padre) : null; a = [a, u.departamento || (padre && padre.tipo !== 'provincia' ? padre.nombre : '') || u.id].filter(Boolean).join(', '); }
+      out.set(u.id, a);
+    }
+  }
+  return out;
+}
+
 export async function armarEstado(pool, planesInst) {
   const cat = await cargarCatalogos(pool);
   const { rows: perfiles } = await pool.query(
@@ -74,7 +114,9 @@ export async function armarEstado(pool, planesInst) {
     // Vista Mapa de Cerca (MAP_TILES_URL; sin ella no viene y el sitio muestra solo el radar)
     ...(mapa ? { mapa } : {}),
     ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null, seo: aj.seo ?? null },
-    ubicaciones: cat.ubicaciones.filter((u) => u.activa).map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden })),
+    // Solo los lugares con al menos un perfil visible y los lugares que los contienen (con Georef hay más de 4000:
+    // el selector, los contadores, el sitemap y el SEO solo necesitan estos). slug: dirección pública (/argentina/<slug>).
+    ubicaciones: ubicacionesUsadas(cat, lista),
     // Las actividades (tabla categorias) no se publican: el sitio es de anuncios y no menciona qué se ofrece
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),
     perfiles: lista,

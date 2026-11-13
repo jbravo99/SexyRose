@@ -13,6 +13,8 @@ import { invalidarCatalogos } from './lib/catalogos.js';
 import * as storage from './lib/storage.js';
 import { createCuentaRouter } from './routes/cuenta.js';
 import { createSitioRouter, invalidarSitio, configurarDestacadas } from './routes/sitio.js';
+import { createUbicacionesRouter } from './routes/ubicaciones.js';
+import { createGeoref } from './lib/georef.js';
 import { createVideos } from './lib/videos.js';
 
 // ---- Fase 1 (agente B): imports ----
@@ -503,6 +505,14 @@ export function createApp(config) {
   const destacadas = createDestacadas({ pool, storage, videos, planes: () => planes, invalidar: () => invalidarSitio(), log });
   configurarDestacadas(destacadas);
   const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth };
+  // Ubicaciones oficiales (Georef): importa en segundo plano al arrancar si nunca se importó y revisa una vez por
+  // semana (lib/georef.js). En los tests no usa la red salvo que inyecten georefFetch.
+  const georef = createGeoref({
+    pool, log, urls: config.georefUrls, ...(config.georefMinLocalidades != null ? { minLocalidades: config.georefMinLocalidades } : {}),
+    fetchImpl: config.georefFetch !== undefined ? config.georefFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
+    alCambiar: () => { invalidarCatalogos(); invalidarSitio(); },
+  });
+  ctx.georef = georef;
   // Venta de contenido (Mercado Pago). En las pruebas se inyecta mpFetch: nunca se sale a la red.
   const mp = createMercadoPago({
     fetchImpl: config.mpFetch !== undefined ? config.mpFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
@@ -648,6 +658,7 @@ export function createApp(config) {
   app.use('/api/cliente', createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log, dormirAuth: config.dormirAuth }));
   app.use('/api/sitio', createContenidoSitioRouter({ contenido, authCli, rl, ipHash, state, log }));
   app.use('/api/sitio', createSitioRouter(ctx));
+  app.use('/api/ubicaciones', createUbicacionesRouter(ctx));
   app.use('/api/mp', createMpWebhookRouter({ contenido, log }));
   app.use('/api', api);
 
@@ -1101,12 +1112,13 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // Selfie y documento: se recomprimen al decidir y se borran a los 3 meses de la decisión.
   const retencionVerif = createRetencionVerif({ pool, storage, log });
   ctx.retencionVerif = retencionVerif;
-  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log, retencionVerif, historias });
+  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log, retencionVerif, historias, georef });
   admin.use('/api', fase1Admin.router);
   // Planes v2: créditos, pedidos de créditos, vencimientos, pausadas por saldo y Destacados.
   const creditosAdmin = createAdminCreditosRouter({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });
   admin.use('/api', creditosAdmin.router);
   if (config.tareaPlanes !== false) planes.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
+  if (config.tareaGeoref !== false) georef.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
   // ---- fin Fase 1 (agente B) ----
   admin.use('/api', createAdminTextosSitioRouter({ pool, apiPost }), createAdminVideosRouter({ pool })); // Ajustes → Textos del inicio; videos en la ficha
   admin.use('/api', createAdminSeoRouter({ pool, apiPost, datosPath: datosSeoDe(archivoSpaSitio(config)), siteUrl: config.siteUrl || '' })); // Admin → SEO
@@ -1433,6 +1445,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const shutdown = async () => {
     planes.detenerTarea();
     cotizacion.detenerTarea();
+    georef.detenerTarea();
     telegram.detener();
     contenido.detenerTarea();
     videos.detener();

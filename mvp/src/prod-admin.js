@@ -333,8 +333,8 @@
   const ESTADO_PERFIL = { borrador: ['Borrador', 'neutral'], en_revision: ['En revisión', 'warn'], publicado: ['Publicado', 'ok'], rechazado: ['Rechazado', 'danger'], pausado: ['Pausado', 'info'], suspendido: ['Suspendido', 'danger'] };
   const VERIF = { sin_enviar: ['Sin enviar', 'neutral'], pendiente: ['Verificación pendiente', 'warn'], verificada: ['Verificada', 'ok'], rechazada: ['Verificación rechazada', 'danger'] };
   const ESTADO_SUS = { activa: ['Activa', 'ok'], vencida: ['Vencida', 'neutral'], cancelada: ['Cancelada', 'danger'] };
-  const TIPO_UBIC = { pais: 'País', provincia: 'Provincia', ciudad: 'Ciudad', zona: 'Zona' };
-  const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona'];
+  const TIPO_UBIC = { pais: 'País', provincia: 'Provincia', ciudad: 'Ciudad', zona: 'Zona', barrio: 'Barrio' };
+  const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona', 'barrio'];
   const MOTIVOS_VERIF = ['La selfie no se ve bien (luz, foco o cara tapada).', 'El documento no se lee completo.', 'La cara de la selfie no coincide con la del documento.', 'El documento está vencido o no es válido.', 'Según el documento, no es mayor de 18 años.'];
   const MOTIVOS_PERFIL = ['Hay fotos que no cumplen las normas del sitio.', 'Los datos del perfil están incompletos o no son reales.', 'La descripción tiene contenido no permitido.', 'El perfil ofrece servicios que el sitio no permite.'];
   const DAY = 864e5;
@@ -350,11 +350,14 @@
   // Catálogos (para mostrar nombres en vez de ids)
   const cat = { ub: () => (S.ub && S.ub.items) || [], ca: () => (S.cat && S.cat.items) || [], in: () => (S.int && S.int.items) || [] };
   const loadCatalogos = (force) => { load('ub', '/ubicaciones', force); load('cat', '/categorias', force); load('int', '/intereses', force); };
-  const ubNombre = (v) => { if (!v) return ''; const u = cat.ub().find((x) => x.id === v); return u ? u.nombre : String(v); };
+  // Con Georef hay más de 4000 lugares: búsqueda por id con un índice que se rearma cuando cambia la lista
+  let ubIdx = { items: null, map: new Map() };
+  const ubDe = (v) => { const items = cat.ub(); if (ubIdx.items !== items) ubIdx = { items, map: new Map(items.map((x) => [x.id, x])) }; return ubIdx.map.get(v) || null; };
+  const ubNombre = (v) => { if (!v) return ''; const u = ubDe(v); return u ? u.nombre : String(v); };
   const nombreDe = (list, v) => { const x = list.find((y) => y.id === v); return x ? x.nombre : String(v); };
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
-  const PATHS = { vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
+  const PATHS = { geo: '/georef', vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
   // Para prod-admin-integraciones.js (Ajustes → cuentas de Mercado Pago)
   HH.adminRecargar = (k) => load(k, PATHS[k], true);
   HH.adminVc = () => S.vc;
@@ -844,7 +847,30 @@
   }
 
   /* ---------- Ubicaciones ---------- */
+  // Con Georef (13/11/2026): fuente de cada lugar (Georef o manual), cantidad de perfiles, "Unir con…" y la última
+  // importación con "Importar ahora".
   S.uf = S.uf || 'all'; S.uq = S.uq || '';
+  const FUENTE = (u) => (u.fuente === 'georef' ? '<span class="badge info">Georef</span>' : u.georef_id ? '<span class="badge neutral" title="Cargado a mano, vinculado con Georef">Manual · Georef</span>' : '<span class="badge neutral">Manual</span>');
+  const nrmUb = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const caminoUb = (u) => { const out = []; let cur = u && u.padre ? ubDe(u.padre) : null; let g = 0; while (cur && cur.tipo !== 'pais' && g++ < 10) { out.push(cur.nombre); cur = cur.padre ? ubDe(cur.padre) : null; } return out.join(', '); };
+  function georefCard() {
+    load('geo', '/georef');
+    const g = S.geo;
+    const head0 = `<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="card-title">${icon('pin')} Lugares oficiales (Georef)</div><button type="button" class="btn sm secondary" data-action="prodGeoImportar"${g && g.corriendo ? ' disabled' : ''}>${icon('refresh')} ${g && g.corriendo ? 'Importando…' : 'Importar ahora'}</button></div>`;
+    if (!g) return `<section class="card stack" style="gap:8px">${head0}${S.err.geo ? `<div class="small muted">${esc(S.err.geo)}</div>` : '<div class="small muted">Cargando…</div>'}</section>`;
+    const u = g.ultima; const ok = g.ultimaOk; const c = (ok && ok.conteos) || {};
+    const linea = !u ? 'Todavía no se importó. El servidor lo intenta solo al arrancar; si no hay conexión con datos.gob.ar, reintenta más tarde.'
+      : u.ok ? `Última importación: ${fecha(u.fin || u.inicio)} · bien`
+        : `Último intento: ${fecha(u.inicio)} · falló: ${esc(u.error || 'sin detalle')}${ok ? ` · la última que salió bien fue el ${fecha(ok.fin || ok.inicio)}` : ''}`;
+    const conteos = ok ? `${c.provincias || 0} provincias · ${c.localidades || 0} localidades (${c.localidadesNuevas || 0} nuevas, ${c.localidadesVinculadas || 0} unidas con las cargadas a mano) · ${c.barrios || 0} barrios de CABA · Zona Norte ${((c.gba || {})['zona-norte-gba']) || 0}, Oeste ${((c.gba || {})['zona-oeste-gba']) || 0}, Sur ${((c.gba || {})['zona-sur-gba']) || 0}` : '';
+    const n = g.lugares || {};
+    return `<section class="card stack" style="gap:8px">${head0}
+      <p class="small" style="margin:0">${linea}</p>
+      ${conteos ? `<p class="tiny muted" style="margin:0">${conteos}</p>` : ''}
+      <p class="tiny muted" style="margin:0">${n.total || 0} lugares en total · ${n.georef || 0} de Georef. Se revisa sola una vez por semana. Nunca borra ni cambia lo que editaste acá.</p>
+      ${ok && c.avisos && c.avisos.length ? `<details class="tiny"><summary>Avisos (${c.avisos.length})</summary><ul>${c.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></details>` : ''}
+    </section>`;
+  }
   function vUbicaciones() {
     load('ub', '/ubicaciones');
     let body;
@@ -852,16 +878,28 @@
     else if (!S.ub) body = loadingCard(4);
     else {
       const all = S.ub.items || [];
-      const q = S.uq.trim().toLowerCase();
-      const items = all.filter((u) => (S.uf === 'all' || u.tipo === S.uf) && (!q || String(u.nombre).toLowerCase().includes(q) || String(u.id).includes(q)));
-      body = `<div class="adm-filters">
+      const q = nrmUb(S.uq.trim()); const nrm = nrmUb;
+      const items = all.filter((u) => (S.uf === 'all' || u.tipo === S.uf || (S.uf === 'georef' && u.fuente === 'georef') || (S.uf === 'manual' && u.fuente !== 'georef') || (S.uf === 'usados' && u.perfiles > 0))
+        && (!q || nrm(u.nombre).includes(q) || String(u.id).includes(q)));
+      const MAX = 300;
+      const fila = (u) => `<div class="list-item"><span class="badge neutral" style="min-width:74px;justify-content:center">${TIPO_UBIC[u.tipo] || esc(u.tipo)}</span><div class="grow" style="min-width:0"><div class="title" data-noi18n>${esc(u.nombre)}${u.activa ? '' : ' <span class="badge warn">Oculta</span>'} ${FUENTE(u)}${u.perfiles ? ` <span class="badge ok">${u.perfiles} ${HH.plural(u.perfiles, 'perfil', 'perfiles')}</span>` : ''}</div><div class="sub ellipsis">${caminoUb(u) ? 'en ' + esc(caminoUb(u)) + ' · ' : ''}${u.departamento ? esc(u.departamento) + ' · ' : ''}<code>${esc(u.id)}</code></div></div><button type="button" class="switch" role="switch" aria-checked="${!!u.activa}" aria-label="Visible" data-action="prodUbActiva" data-id="${esc(u.id)}"></button>${u.tipo === 'ciudad' || u.tipo === 'barrio' ? `<button type="button" class="btn ghost sm" data-action="prodUbUnir" data-id="${esc(u.id)}">Unir con…</button>` : ''}<button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="ubicaciones" data-id="${esc(u.id)}" aria-label="Editar ${esc(u.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="ubicaciones" data-id="${esc(u.id)}" aria-label="Borrar ${esc(u.nombre)}">${icon('trash')}</button></div>`;
+      body = `${georefCard()}<div class="adm-filters">
           <label class="sr-only" for="prodUbQ">Buscar lugar</label><input class="input" id="prodUbQ" type="search" placeholder="Buscar lugar" value="${esc(S.uq)}" data-input="prodUbSearch" autocomplete="off">
-          <div class="chips scroll" style="flex:1 1 auto;min-width:0">${filtro('prodUbFilter', S.uf, 'all', 'Todos', all.length)}${TIPOS_UBIC.map((t) => filtro('prodUbFilter', S.uf, t, TIPO_UBIC[t], all.filter((u) => u.tipo === t).length)).join('')}</div>
+          <div class="chips scroll" style="flex:1 1 auto;min-width:0">${filtro('prodUbFilter', S.uf, 'all', 'Todos', all.length)}${filtro('prodUbFilter', S.uf, 'usados', 'Con perfiles', all.filter((u) => u.perfiles > 0).length)}${TIPOS_UBIC.map((t) => filtro('prodUbFilter', S.uf, t, TIPO_UBIC[t], all.filter((u) => u.tipo === t).length)).join('')}${filtro('prodUbFilter', S.uf, 'georef', 'Georef', all.filter((u) => u.fuente === 'georef').length)}${filtro('prodUbFilter', S.uf, 'manual', 'Manuales', all.filter((u) => u.fuente !== 'georef').length)}</div>
         </div>
-        <div id="prodUbRows">${items.length ? `<div class="list card" style="padding:4px">${items.slice(0, 400).map((u) => `<div class="list-item"><span class="badge neutral" style="min-width:74px;justify-content:center">${TIPO_UBIC[u.tipo] || esc(u.tipo)}</span><div class="grow" style="min-width:0"><div class="title" data-noi18n>${esc(u.nombre)}${u.activa ? '' : ' <span class="badge warn">Inactiva</span>'}</div><div class="sub ellipsis">${u.padre ? 'en ' + esc(ubNombre(u.padre)) + ' · ' : ''}<code>${esc(u.id)}</code> · orden ${u.orden || 0}</div></div><button type="button" class="switch" role="switch" aria-checked="${!!u.activa}" aria-label="Activa" data-action="prodUbActiva" data-id="${esc(u.id)}"></button><button type="button" class="icon-btn sm" data-action="prodCatEdit" data-t="ubicaciones" data-id="${esc(u.id)}" aria-label="Editar ${esc(u.nombre)}">${icon('edit')}</button><button type="button" class="icon-btn sm" data-action="prodCatDel" data-t="ubicaciones" data-id="${esc(u.id)}" aria-label="Borrar ${esc(u.nombre)}">${icon('trash')}</button></div>`).join('')}</div>` : `<div class="card"><div class="empty">${icon('pin')}<h4>Sin resultados</h4></div></div>`}</div>`;
+        <div id="prodUbRows">${items.length ? `<div class="list card" style="padding:4px">${items.slice(0, MAX).map(fila).join('')}</div>${items.length > MAX ? `<p class="tiny muted">Se muestran ${MAX} de ${items.length}. Buscá por nombre para encontrar el resto.</p>` : ''}` : `<div class="card"><div class="empty">${icon('pin')}<h4>Sin resultados</h4></div></div>`}</div>`;
     }
     const right = `<div class="row" style="gap:8px">${actualizar('ub')}<button type="button" class="btn sm" data-action="prodCatEdit" data-t="ubicaciones">${icon('plus')} Nuevo lugar</button></div>`;
-    return layout('ubicaciones', `${head('Ubicaciones', right, 'Países, provincias, ciudades y zonas que pueden elegir las acompañantes. Desactivar oculta el lugar sin borrarlo.')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ubicaciones', `${head('Ubicaciones', right, 'Lugares que pueden elegir las acompañantes: los oficiales de Georef (datos.gob.ar) y los que cargues a mano. Ocultar un lugar lo saca de la lista sin borrarlo; «Unir con…» pasa sus perfiles a otro lugar y lo oculta.')}<div class="stack" style="gap:14px">${body}</div>`);
+  }
+  // Ventana "Unir con…": buscar el lugar destino entre las ciudades y barrios visibles
+  function unirLista(origen, q) {
+    const nrm = nrmUb; const k = nrm(q || '');
+    if (k.length < 2) return '<p class="tiny muted">Escribí al menos 2 letras.</p>';
+    const cand = cat.ub().filter((u) => u.id !== origen.id && u.activa && (u.tipo === 'ciudad' || u.tipo === 'barrio' || u.id === 'ciudad-de-buenos-aires') && nrm(u.nombre).includes(k))
+      .sort((a, b) => (nrm(a.nombre).startsWith(k) ? 0 : 1) - (nrm(b.nombre).startsWith(k) ? 0 : 1) || a.nombre.length - b.nombre.length || a.nombre.localeCompare(b.nombre)).slice(0, 30);
+    if (!cand.length) return '<p class="tiny muted">No hay lugares con ese nombre.</p>';
+    return `<div class="stack" style="gap:4px">${cand.map((u) => `<label class="row nowrap small" style="gap:8px;align-items:flex-start"><input type="radio" name="umDest" value="${esc(u.id)}"><span><strong data-noi18n>${esc(u.nombre)}</strong> <span class="muted">${esc(caminoUb(u))}${u.departamento ? ' · ' + esc(u.departamento) : ''}</span>${u.perfiles ? ` · ${u.perfiles} ${HH.plural(u.perfiles, 'perfil', 'perfiles')}` : ''}</span></label>`).join('')}</div>`;
   }
 
   /* ---------- Categorías (salidas) e Intereses ---------- */
@@ -875,17 +913,19 @@
       </div>`);
   }
   const CAT_ICONOS = ['coffee', 'icecream', 'walk', 'museum', 'cine', 'dinner', 'ticket', 'languages', 'bag', 'dumbbell', 'music', 'globe', 'heart', 'star', 'camera', 'sparkles'];
+  // Lugares que pueden contener a uno de este tipo (sin las miles de localidades de Georef, salvo el padre actual)
+  const padresUb = (tipo, it) => cat.ub().filter((u) => u.id === it.padre || (TIPOS_UBIC.indexOf(u.tipo) < TIPOS_UBIC.indexOf(tipo) && u.id !== it.id && (u.fuente !== 'georef' || u.tipo !== 'ciudad')));
   function catForm(t, it) {
     it = it || {};
     if (t === 'ubicaciones') {
       const ub = cat.ub();
-      const padres = (tipo) => ub.filter((u) => TIPOS_UBIC.indexOf(u.tipo) < TIPOS_UBIC.indexOf(tipo) && u.id !== it.id);
+      const padres = (tipo) => padresUb(tipo, it);
       const tipo = it.tipo || 'ciudad';
       return `<div class="stack" style="gap:12px">
         <div class="field"><label for="cfNombre">Nombre</label><input class="input" id="cfNombre" maxlength="80" value="${esc(it.nombre || '')}" placeholder="Ej.: Mar del Plata"></div>
         <div class="grid-2"><div class="field"><label for="cfTipo">Tipo</label><select class="select" id="cfTipo" data-change="prodUbTipo">${TIPOS_UBIC.map((x) => `<option value="${x}"${x === tipo ? ' selected' : ''}>${TIPO_UBIC[x]}</option>`).join('')}</select></div>
         <div class="field"><label for="cfOrden">Orden</label><input class="input" id="cfOrden" type="number" min="0" max="9999" value="${esc(it.orden != null ? it.orden : 0)}"></div></div>
-        <div class="field"><label for="cfPadre">Pertenece a</label><select class="select" id="cfPadre">${tipo === 'pais' ? '<option value="">(ninguno)</option>' : ''}${padres(tipo).map((u) => `<option value="${esc(u.id)}"${u.id === it.padre ? ' selected' : ''}>${esc(u.nombre)} (${TIPO_UBIC[u.tipo]})</option>`).join('')}</select><span class="hint">Una ciudad pertenece a una provincia; una zona, a una ciudad.</span></div>
+        <div class="field"><label for="cfPadre">Pertenece a</label><select class="select" id="cfPadre">${tipo === 'pais' ? '<option value="">(ninguno)</option>' : ''}${padres(tipo).map((u) => `<option value="${esc(u.id)}"${u.id === it.padre ? ' selected' : ''}>${esc(u.nombre)} (${TIPO_UBIC[u.tipo]})</option>`).join('')}</select><span class="hint">Una ciudad pertenece a una provincia o a una zona; un barrio, a Capital Federal.</span></div>
         <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="cfActiva"${it.activa === false ? '' : ' checked'}> Activa (se puede elegir y se muestra en el sitio)</label>
         ${it.id ? `<p class="tiny muted">Identificador: <code>${esc(it.id)}</code> (no cambia)</p>` : '<p class="tiny muted">El identificador se arma solo con el nombre.</p>'}
       </div>`;
@@ -1262,10 +1302,44 @@
       } });
     },
     prodUbActiva(el) { toggleActiva('ubicaciones', el); },
+    prodUbUnir(el) {
+      const o = ubDe(el.dataset.id); if (!o) return;
+      HH.modal({ title: 'Unir «' + o.nombre + '» con otro lugar', body: `<div class="stack" style="gap:12px">
+          <p class="small">Los perfiles de <strong data-noi18n>${esc(o.nombre)}</strong> (${o.perfiles || 0}) pasan al lugar que elijas y «${esc(o.nombre)}» queda oculto (no se borra).</p>
+          <div class="field"><label for="umQ">Buscar el lugar</label><input class="input" id="umQ" type="search" autocomplete="off" data-input="prodUnirQ" data-id="${esc(o.id)}" placeholder="Ej.: Oberá"></div>
+          <div id="umRes">${unirLista(o, '')}</div>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Unir', onClick: (btn) => {
+        const r = document.querySelector('input[name=umDest]:checked');
+        if (!r) { HH.toast('Elegí con qué lugar unirlo.', { type: 'warn' }); return; }
+        if (btn) btn.disabled = true;
+        HH.api('POST', '/ubicaciones/' + encodeURIComponent(o.id) + '/unir', { destino: r.value })
+          .then((x) => { HH.closeModal(); HH.toast(`Listo: ${x.movidos} ${HH.plural(x.movidos, 'perfil movido', 'perfiles movidos')}.`, { type: 'ok' }); after(['ub', 'ac']); })
+          .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+      } }] });
+      setTimeout(() => { const i = document.getElementById('umQ'); if (i) i.focus(); }, 50);
+    },
+    prodUnirQ(el) { const o = ubDe(el.dataset.id); const box = document.getElementById('umRes'); if (o && box) box.innerHTML = unirLista(o, el.value); },
+    prodGeoImportar(el) {
+      if (el) el.disabled = true;
+      HH.api('POST', '/georef/importar', {})
+        .then(() => {
+          HH.toast('Importando los lugares oficiales. Tarda uno o dos minutos.', { type: 'ok' });
+          S.geo = Object.assign({}, S.geo || {}, { corriendo: true }); HH.refresh();
+          let n = 0;
+          const mirar = () => HH.api('GET', '/georef').then((g) => {
+            S.geo = g;
+            if (g.corriendo && n++ < 100) { setTimeout(mirar, 3000); return; }
+            HH.toast(g.ultima && g.ultima.ok ? 'Importación terminada.' : 'La importación no salió bien: ' + ((g.ultima && g.ultima.error) || 'sin detalle'), { type: g.ultima && g.ultima.ok ? 'ok' : 'warn' });
+            after(['ub']); HH.refresh();
+          }).catch(() => { if (n++ < 100) setTimeout(mirar, 5000); });
+          setTimeout(mirar, 3000);
+        })
+        .catch((e) => { if (el) el.disabled = false; fail(e); });
+    },
     prodCatActiva(el) { toggleActiva('categorias', el); },
     prodUbTipo(el) {
       const sel = document.getElementById('cfPadre'); if (!sel) return; const tipo = el.value; const cur = sel.value;
-      const ub = cat.ub().filter((u) => TIPOS_UBIC.indexOf(u.tipo) < TIPOS_UBIC.indexOf(tipo));
+      const ub = padresUb(tipo, { padre: cur });
       sel.innerHTML = `${tipo === 'pais' ? '<option value="">(ninguno)</option>' : ''}${ub.map((u) => `<option value="${esc(u.id)}"${u.id === cur ? ' selected' : ''}>${esc(u.nombre)} (${TIPO_UBIC[u.tipo]})</option>`).join('')}`;
     },
     prodCatIcono(el) { const h = document.getElementById('cfIcono'); if (h) h.value = el.dataset.v; el.parentElement.querySelectorAll('.chip').forEach((c) => { const on = c === el; c.classList.toggle('active', on); c.setAttribute('aria-pressed', String(on)); }); },

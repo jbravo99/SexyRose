@@ -593,3 +593,58 @@ Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que 
   paquetes del mapa en `/mapa` y arma el sitio con `REQUIRE_MAPA=1`.
 - Textos nuevos en ES/EN/PT: Radar, Mapa, Cargando mapa…, No se pudo cargar el mapa…, Acompañantes a menos de {n} km,
   Acercar / Alejar / Créditos del mapa. Tests: `app/test/cerca-radar-mapa.test.js`.
+
+## Selector de ubicación al estilo distintas.net — desde el 13/11/2026
+
+- Mismo componente en todo el sitio y la demo (`HH.openPlacePicker`, `mvp/src/views-public.js`); lógica pura en
+  `mvp/src/ubicaciones.js` (`HH.ubic`: `ordenar`, `camino`, `hijos`, `vista`; tests en `app/test/ubicaciones.test.js`).
+- Arriba el camino elegido con ✓ (país, provincia, ciudad…); tocar uno vuelve a ese nivel. Abajo los lugares de ese
+  nivel en orden alfabético sin importar el nivel ni los acentos (antes "Ciudad de Buenos Aires" quedaba última), con
+  la cantidad de perfiles (género y tipo elegidos) y la flecha si tienen lugares adentro. Los lugares sin perfiles no
+  se muestran (salvo los del camino). Tocar un lugar lo elige y entra; "Confirmar" (junto a la búsqueda) aplica.
+  "Volver" sube un nivel; en la raíz está "Todas las ubicaciones". La búsqueda (2+ letras) lista los lugares con
+  perfiles y su camino; elegir uno lo pone en el camino.
+
+## Ubicaciones oficiales (Georef) — desde el 13/11/2026 (decisión de Juan)
+
+- **Datos**: base completa de Georef (datos.gob.ar) + los 48 barrios oficiales de la Ciudad de Buenos Aires, en la
+  misma tabla `ubicaciones` (migración `app/db/160-georef.sql`): columnas `georef_id` (id de Georef, o
+  `gcba:<barrio>`; único), `fuente` (`georef` | `manual`) y `departamento` (solo para distinguir nombres repetidos);
+  tipo nuevo `barrio` (hijos de `ciudad-de-buenos-aires`); `nombre` deja de ser único. Historial en
+  `georef_importaciones` (inicio, fin, ok, origen, motivo, conteos, error).
+- **Importador** `app/lib/georef.js` (`createGeoref`, `planificar` puro): provincias por código INDEC (tabla
+  `PROVINCIAS`, conservan su id); localidades tipo `ciudad` bajo su provincia; las de los 24 partidos del GBA (tabla
+  `GBA`, por nombre de partido) bajo Zona Norte / Oeste / Sur (GBA); una ciudad ya cargada con el mismo nombre en la
+  misma provincia se **vincula** (mismo id y nombre) en vez de duplicarse; coordenadas = centroide del área. Nunca
+  borra, renombra, mueve ni reactiva nada; se puede correr las veces que haga falta. Nombres de BAHRA (vienen en
+  MAYÚSCULAS) → nombre normal con acentos tomados de los nombres oficiales de departamentos/municipios.
+- **Cuándo corre**: al arrancar el servidor si nunca salió bien (en segundo plano: el sitio atiende mientras tanto),
+  y una vez por semana; si falla reintenta a los 5 min, 30 min, 2 h 30 y después cada 6 h. Admin → Ubicaciones →
+  "Importar ahora". A mano: `cd app && DATABASE_URL=… node scripts/importar-georef.js` (o `--dir=carpeta` con
+  `provincias.json`, `departamentos.json`, `localidades.json`, `barrios.geojson` para importar sin internet).
+- **Fuentes**: `https://infra.datos.gob.ar/georef/{provincias,departamentos,localidades}.json` (confirmadas en el código
+  de datosgobar/georef-ar-api y georef-ar-etl) y el GeoJSON de barrios del GCBA (`URLS.barrios`, sin confirmar; si no
+  baja, se usan los 48 nombres oficiales con un centro aproximado).
+- **API para el panel** (`app/routes/ubicaciones.js`, límite por IP): `GET /api/ubicaciones/provincias`,
+  `GET /api/ubicaciones/buscar?provincia=&q=` (hasta 10, sin acentos, primero los que empiezan con lo escrito,
+  `{id, nombre, tipo, camino: "Oberá, Misiones", detalle?}`), `GET /api/ubicaciones/barrios` (CABA).
+  `GET /api/cuenta/yo` → `perfil.ubicacion: { provincia: {id, nombre}, ciudad: {id, nombre, tipo, camino} }`.
+- **Panel → Mi perfil → Dónde estás**: Provincia (lista) + Localidad (se escribe y se elige de la lista; flechas,
+  Enter, Escape) y, en Capital Federal, Barrio (opcional). Escribirla sin elegirla no se guarda. El servidor valida que
+  el lugar exista, esté activo (él y los que lo contienen) y sea de la provincia (`validarDatos`, tipos `ciudad`,
+  `barrio` o Capital Federal).
+- **Sitio público**: `/api/sitio/estado` → `ubicaciones` trae solo los lugares con perfiles publicados y sus
+  antepasados, con `slug` (dirección pública). Si dos lugares dan el mismo slug, lo conserva el que tiene ese mismo
+  id; los demás usan su id (`santa-rosa-mendoza`) (`slugsPublicos` en `lib/catalogos.js`). Un lugar sin perfiles no
+  tiene página (404). Barrio = nivel ciudad para SEO.
+- **Nombres repetidos** (dos "Santa Rosa" con perfiles): el estado manda `aclaracion` (la provincia; si también se
+  repite, provincia y departamento) y el sitio usa el nombre "Santa Rosa · Mendoza" (`HH.ubic.lugarDeEstado`; en el
+  selector la aclaración va como texto secundario). La ciudad de cada perfil sale de sus ids (`HH.ubic.lugarDePerfil`),
+  así el selector, los contadores, Cerca, los filtros y el SEO (títulos y "2 ciudades distintas") nunca juntan dos
+  lugares distintos.
+- **Admin → Ubicaciones**: tarjeta "Lugares oficiales (Georef)" (última importación, conteos, "Importar ahora"),
+  fuente de cada lugar (Georef / Manual / Manual · Georef), cantidad de perfiles, filtros (Con perfiles, tipo, Georef,
+  Manuales), Ocultar (interruptor), Editar (renombrar) y **Unir con…** (`POST /ubicaciones/:id/unir {destino}`: los
+  perfiles pasan al destino —ciudad, barrio o Capital Federal— con su provincia y país, y el lugar queda oculto).
+  `GET /georef` (estado) y `POST /georef/importar` (202, corre en segundo plano).
+- Tests: `app/test/georef.test.js` (fixtures sintéticos con la forma real en `app/test/fixtures/georef/`).

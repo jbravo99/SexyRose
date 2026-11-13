@@ -17,7 +17,7 @@ const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
 const ESTADOS_PERFIL = ['borrador', 'en_revision', 'publicado', 'rechazado', 'pausado', 'suspendido'];
 const ESTADOS_ADMIN = ['publicado', 'pausado', 'suspendido', 'rechazado'];
 const ESTADOS_PEDIDO = ['pendiente', 'informado', 'confirmado', 'rechazado', 'cancelado', 'vencido'];
-const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona'];
+const TIPOS_UBIC = ['pais', 'provincia', 'ciudad', 'zona', 'barrio'];
 // Planes v2: 'transferencia' (datos bancarios) se quitó: no se muestran datos bancarios en ninguna parte de la web.
 const AJUSTES = ['precios', 'portada', 'promo', 'packs', 'destacado', 'contacto', 'cotizacion', 'comision', 'mensajes'];
 
@@ -32,7 +32,7 @@ const bool = (v, def) => (typeof v === 'boolean' ? v : def);
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; this.expose = true; } }
 const he = (s, m) => new HttpError(s, m);
 
-export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {}, retencionVerif = null, historias = null }) {
+export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {}, retencionVerif = null, historias = null, georef = null }) {
   const r = express.Router();
   r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -346,12 +346,12 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
   }));
 
   // ---------- Ubicaciones, categorías, intereses ----------
-  const crud = ({ tabla, campos, orden, validar, enUso }) => {
+  const crud = ({ tabla, campos, orden, validar, enUso, listar }) => {
     const base = '/' + tabla;
     const fila = (x) => x;
     r.get(base, ah(async (req, res) => {
       const { rows } = await pool.query(`SELECT * FROM ${tabla} ORDER BY ${orden}`);
-      res.json({ items: rows.map(fila) });
+      res.json({ items: listar ? await listar(rows) : rows.map(fila) });
     }));
     r.post(base, apiPost, ah(async (req, res) => {
       const b = body(req);
@@ -394,14 +394,24 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
   };
 
   crud({
-    tabla: 'ubicaciones', campos: ['nombre', 'tipo', 'padre', 'activa', 'orden'], orden: "array_position(ARRAY['pais','provincia','ciudad','zona'], tipo), orden, nombre",
+    tabla: 'ubicaciones', campos: ['nombre', 'tipo', 'padre', 'activa', 'orden'], orden: "array_position(ARRAY['pais','provincia','zona','ciudad','barrio'], tipo), orden, nombre",
+    // Cada lugar con la cantidad de perfiles que lo eligieron (provincia: todos los de la provincia)
+    listar: async (rows) => {
+      const { rows: n } = await pool.query(
+        `SELECT 'c' AS k, datos->>'ciudad' AS id, count(*)::int AS n FROM perfiles WHERE datos->>'ciudad' IS NOT NULL GROUP BY 2
+         UNION ALL SELECT 'p', datos->>'provincia', count(*)::int FROM perfiles WHERE datos->>'provincia' IS NOT NULL GROUP BY 2`);
+      const de = { c: new Map(), p: new Map() };
+      for (const x of n) de[x.k].set(x.id, x.n);
+      return rows.map((u) => ({ ...u, perfiles: (u.tipo === 'provincia' ? de.p.get(u.id) : de.c.get(u.id)) || 0 }));
+    },
     validar: async (b, cur) => {
       const nombre = str(b.nombre, 80);
       if (nombre.length < 2) throw he(400, 'Escribí el nombre (mínimo 2 letras).');
       if (!TIPOS_UBIC.includes(b.tipo)) throw he(400, `Tipo inválido: ${TIPOS_UBIC.join(', ')}.`);
       const padre = b.padre ? String(b.padre) : null;
       if (b.tipo !== 'pais' && !padre) throw he(400, 'Elegí a qué lugar pertenece (padre).');
-      if (padre) {
+      // Renombrar u ocultar un lugar no revisa de nuevo su padre (Zona Norte contiene ciudades desde la lista original)
+      if (padre && !(cur && padre === cur.padre && b.tipo === cur.tipo)) {
         if (cur && padre === cur.id) throw he(400, 'Un lugar no puede ser su propio padre.');
         const p = await pool.query('SELECT tipo FROM ubicaciones WHERE id = $1', [padre]);
         if (!p.rows[0]) throw he(400, 'El lugar padre no existe.');
@@ -418,6 +428,56 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       return p.rows[0].n ? `No se puede borrar: lo usan ${p.rows[0].n} perfiles. Podés desactivarlo.` : null;
     },
   });
+  // Unir un lugar con otro: sus perfiles pasan al otro lugar y este queda oculto (no se borra: las importaciones de
+  // Georef no lo vuelven a crear). Solo ciudades y barrios; el destino puede ser una ciudad, un barrio o Capital Federal.
+  r.post('/ubicaciones/:id/unir', apiPost, ah(async (req, res) => {
+    const destinoId = String(body(req).destino || '');
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      const { rows: us } = await c.query('SELECT id, nombre, tipo, padre, activa FROM ubicaciones WHERE id = ANY($1) FOR UPDATE', [[req.params.id, destinoId]]);
+      const o = us.find((u) => u.id === req.params.id); const d = us.find((u) => u.id === destinoId);
+      if (!o) throw he(404, 'No encontrado.');
+      if (!d) throw he(400, 'Elegí con qué lugar unirlo.');
+      if (o.id === d.id) throw he(400, 'Elegí otro lugar.');
+      if (!['ciudad', 'barrio'].includes(o.tipo)) throw he(400, 'Solo se pueden unir ciudades o barrios.');
+      if (!['ciudad', 'barrio'].includes(d.tipo) && !(d.tipo === 'provincia' && d.id === 'ciudad-de-buenos-aires')) throw he(400, 'El destino tiene que ser una ciudad o un barrio.');
+      const h = await c.query('SELECT count(*)::int AS n FROM ubicaciones WHERE padre = $1', [o.id]);
+      if (h.rows[0].n) throw he(409, `No se puede unir: tiene ${h.rows[0].n} lugares adentro.`);
+      // Provincia y país del destino (los perfiles quedan coherentes: la ciudad siempre dentro de su provincia)
+      const { rows: cadena } = await c.query(
+        `WITH RECURSIVE x AS (SELECT id, tipo, padre, activa, 0 AS g FROM ubicaciones WHERE id = $1
+           UNION ALL SELECT u.id, u.tipo, u.padre, u.activa, x.g + 1 FROM ubicaciones u JOIN x ON u.id = x.padre WHERE x.g < 10)
+         SELECT id, tipo, activa FROM x`, [d.id]);
+      if (cadena.some((u) => !u.activa)) throw he(400, 'El destino está oculto: activalo primero.');
+      const prov = (cadena.find((u) => u.tipo === 'provincia') || {}).id || null;
+      const pais = (cadena.find((u) => u.tipo === 'pais') || {}).id || null;
+      const m = await c.query(
+        `UPDATE perfiles SET datos = datos || jsonb_strip_nulls(jsonb_build_object('ciudad', $2::text, 'provincia', $3::text, 'pais', $4::text))
+          WHERE datos->>'ciudad' = $1`, [o.id, d.id, prov, pais]);
+      await c.query('UPDATE ubicaciones SET activa = false WHERE id = $1', [o.id]);
+      await c.query('COMMIT');
+      log(`admin: ubicación "${o.nombre}" (${o.id}) unida con "${d.nombre}" (${d.id}): ${m.rowCount} perfiles movidos`);
+      invalidar();
+      res.json({ ok: true, movidos: m.rowCount });
+    } catch (e) {
+      await c.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally { c.release(); }
+  }));
+
+  // Importación de Georef: estado (última importación y conteos) e "Importar ahora" (corre en segundo plano)
+  r.get('/georef', ah(async (req, res) => {
+    if (!georef) throw he(404, 'No disponible.');
+    res.json(await georef.estado());
+  }));
+  r.post('/georef/importar', apiPost, ah(async (req, res) => {
+    if (!georef) throw he(404, 'No disponible.');
+    if (georef.corriendo) return res.status(202).json({ ok: true, corriendo: true });
+    georef.importar({ motivo: 'admin' }).catch(() => {});
+    res.status(202).json({ ok: true, corriendo: true });
+  }));
+
   crud({
     tabla: 'categorias', campos: ['nombre', 'icono', 'orden', 'activa'], orden: 'orden, nombre',
     validar: async (b, cur) => {

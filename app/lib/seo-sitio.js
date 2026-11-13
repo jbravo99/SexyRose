@@ -49,13 +49,15 @@ function modelo(estado, datos) {
     return (hit && hit[lang === 'en' ? 0 : 1]) || text;
   };
   const locs = (estado.ubicaciones || []).filter((u) => u.activa !== false).map((u) => ({
-    id: u.id, name: u.nombre, padre: u.padre || null,
-    level: u.tipo === 'pais' ? 'country' : u.tipo === 'provincia' ? (/^Ciudad (de|Autónoma)/i.test(u.nombre) ? 'city' : 'region') : u.tipo === 'zona' ? 'zone' : 'city',
+    // Nombres repetidos: "Santa Rosa · Mendoza" (aclaración que manda el estado, ver routes/sitio.js)
+    id: u.id, name: u.aclaracion ? `${u.nombre} · ${u.aclaracion}` : u.nombre, padre: u.padre || null, slug: u.slug || null,
+    // barrio (CABA) cuenta como ciudad, igual que en prod-sitio.js
+    level: u.tipo === 'pais' ? 'country' : u.tipo === 'provincia' ? ((u.id === 'ciudad-de-buenos-aires' || /^Ciudad (de|Autónoma)/i.test(u.nombre)) ? 'city' : 'region') : u.tipo === 'zona' ? 'zone' : 'city',
   }));
   const byId = new Map(locs.map((l) => [l.id, l]));
   const pathOf = (loc) => { const out = []; let cur = loc; let g = 0; while (cur && g++ < 8) { out.unshift(cur); cur = cur.padre ? byId.get(cur.padre) : null; } return out; };
   const cfgOf = (loc) => (datos.lugares || {})[loc.name] || {};
-  const locSlug = (loc) => (loc ? cfgOf(loc).slug || slugify(loc.name) : '');
+  const locSlug = (loc) => (loc ? cfgOf(loc).slug || loc.slug || slugify(loc.name) : '');
   const locSeoName = (loc, lang) => { if (!loc) return ''; const n = cfgOf(loc).name || loc.name; return t(n, lang); };
   const countrySlug = (loc, lang) => (!lang || lang === 'es' ? locSlug(loc) : slugify(locSeoName(loc, lang)));
   const countries = locs.filter((l) => l.level === 'country');
@@ -69,7 +71,7 @@ function modelo(estado, datos) {
   const perfiles = (estado.perfiles || []).map((p) => {
     const ids = p.ubicacionIds || {};
     const loc = byId.get(ids.ciudad) || byId.get(ids.provincia) || null;
-    return { ...p, loc, dentro: new Set(loc ? pathOf(loc).map((l) => l.id) : []), cityName: p.ciudad || p.provincia || '' };
+    return { ...p, loc, dentro: new Set(loc ? pathOf(loc).map((l) => l.id) : []), cityName: loc ? loc.id : (p.ciudad || p.provincia || '') }; // por id: dos ciudades con el mismo nombre son dos
   });
   const bySlug = new Map(perfiles.map((p) => [p.slug, p]));
   const placeProfiles = (loc, actId, g) => perfiles.filter((p) => (g ? (p.genero || 'mujer') === g : VISIBLES.has(p.genero || 'mujer'))
