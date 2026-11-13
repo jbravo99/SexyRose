@@ -116,7 +116,7 @@ export function loadConfig(env = process.env) {
     cookieSecure: str(env.COOKIE_SECURE) === '' ? undefined : str(env.COOKIE_SECURE) === '1',
     // Panel de administración (SPA del MVP) generado por app/scripts/build-admin.py.
     adminSpaPath: path.resolve(str(env.ADMIN_SPA_PATH) || path.join(HERE, 'admin-spa', 'index.html')),
-    fechaLegal: '11 de noviembre de 2026',
+    fechaLegal: '13 de noviembre de 2026', // 13/11: Términos sin la mención a la demostración
     log: (...a) => console.log(new Date().toISOString(), ...a),
   };
 }
