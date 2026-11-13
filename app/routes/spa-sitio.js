@@ -204,19 +204,23 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
         // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
         const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
         let m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
-        if (!m) return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, headers);
+        // Home provisoria: <html data-prelanzamiento> desde la cáscara, así la ventana de +18 no aparece ni antes de que
+        // llegue /api/sitio/estado (agegate.js y gateTemprano en prod-sitio.js lo miran)
+        const marcar = (t) => (pre ? t.replace(/<html\b/i, '<html data-prelanzamiento') : t);
+        if (!m) return enviar(req, res, pre ? paquetePagina(marcar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'))) : (otroIdioma ? spa.pqI18n : spa.pq), headers);
         // Portada provisoria: título y descripción propios, indexable
         if (pre && !segs.length && m.status === 200) m = { ...m, ...(SEO_PRELANZAMIENTO[m.lang] || SEO_PRELANZAMIENTO.es), robots: 'index,follow' };
         // Dirección vieja de lugar + actividad: 301 a la página del lugar (las actividades ya no se muestran)
         if (m.status === 301 && m.location) { const q = req.originalUrl.indexOf('?'); return res.redirect(301, m.location + (q >= 0 ? req.originalUrl.slice(q) : '')); }
         if (m.status === 404) headers['X-Robots-Tag'] = 'noindex';
-        return enviar(req, res, paquetePagina(seo.aplicar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'), m)), headers, m.status);
+        return enviar(req, res, paquetePagina(marcar(seo.aplicar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'), m))), headers, m.status);
       }
       const nonce = crypto.randomBytes(16).toString('base64');
       res.setHeader('Content-Security-Policy', cspSitio(nonce, mediaOrigin, mapaOrig));
       res.setHeader('Cache-Control', 'no-cache');
       res.type('html');
-      const out = html.replace(/<script\b/gi, `<script nonce="${nonce}"`);
+      let out = html.replace(/<script\b/gi, `<script nonce="${nonce}"`);
+      if (pre) out = out.replace(/<html\b/i, '<html data-prelanzamiento');
       if (req.method === 'HEAD') { res.setHeader('Content-Length', Buffer.byteLength(out)); return res.status(200).end(); }
       return res.status(200).send(out);
     } catch (e) { return next(e); }

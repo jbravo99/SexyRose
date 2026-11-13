@@ -15,8 +15,10 @@
   const T = (s) => (HH.t ? HH.t(s) : s);
   const PRIVATE = ['panel', 'admin', 'cuenta', 'chat'];
   const curKey = () => String((HH.current && HH.current.path) || (HH.currentHash && HH.currentHash()) || 'inicio').replace(/^#/, '');
+  // Home provisoria (prod-prelanzamiento.js; el servidor marca <html data-prelanzamiento>): sin ventana de +18
+  const prelanzamiento = () => document.documentElement.hasAttribute('data-prelanzamiento');
   function shouldShow() {
-    if (HH.SSR || isOk()) return false;
+    if (HH.SSR || isOk() || prelanzamiento()) return false;
     const me = HH.me && HH.me(); if (me && (me.role === 'worker' || me.role === 'admin')) return false;
     if (PRIVATE.includes(curKey().split('.')[0])) return false;
     return true;

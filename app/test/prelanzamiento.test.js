@@ -143,7 +143,8 @@ describe('servidor con la home provisoria', () => {
       assert.ok(html.includes(`<title>${SEO_PRELANZAMIENTO[l].title}</title>`), p);
       assert.ok(html.includes(`<meta name="description" content="${SEO_PRELANZAMIENTO[l].description.replace(/'/g, '&#39;')}">`) || html.includes(SEO_PRELANZAMIENTO[l].description), p);
       assert.match(html, /<meta name="robots" content="index,follow">/, p);
-      assert.match(html, new RegExp(`<html lang="${lang}"`), p);
+      assert.match(html, /<html[^>]*\bdata-prelanzamiento\b/, p + ': marca para no mostrar la ventana de +18');
+      assert.match(html, new RegExp(`<html[^>]*lang="${lang}"`), p);
       assert.match(html, /hreflang="pt" href="https:\/\/sexyrose\.test\/pt\/"/, p);
       assert.doesNotMatch(html, /Inicio normal/, p);
     }
@@ -236,6 +237,7 @@ describe('servidor con la home provisoria', () => {
     assert.notEqual((await get('/api/sitio/contenido/perfil/' + slug)).status, 404);
     const home = await (await get('/')).text();
     assert.match(home, /<title>Inicio normal<\/title>/);
+    assert.doesNotMatch(home, /data-prelanzamiento/, 'apagada: la ventana de +18 vuelve');
     for (const p of ['/perfil/' + slug, '/swipe', '/cerca', '/stars', '/favoritos', '/cliente/registro', '/en/profile/' + slug]) {
       assert.equal((await get(p)).status, 200, p);
     }

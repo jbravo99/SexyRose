@@ -70,7 +70,8 @@
   const render0 = HH.render;
   HH.render = function (forcePath) {
     const on = activo();
-    document.documentElement.toggleAttribute('data-prelanzamiento', on);
+    // Solo cuando ya llegó el estado: antes manda la marca que puso el servidor en la cáscara (sin ventana de +18)
+    if (HH.db && HH.db._ajustes) document.documentElement.toggleAttribute('data-prelanzamiento', on);
     if (!on) return render0.apply(this, arguments);
     if (!forcePath && HH.syncLangFromUrl) HH.syncLangFromUrl();
     const key = forcePath || HH.currentHash() || 'inicio';

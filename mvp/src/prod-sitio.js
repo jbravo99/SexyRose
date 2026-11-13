@@ -571,7 +571,9 @@
   let gateHecho = false;
   function gateTemprano(key) {
     // En inglés/portugués espera al diccionario (si no, la ventana aparecería un instante en español)
-    if (gateHecho || SIN_GATE.test(key) || !HH.ageGateShow || (HH.lang !== 'es' && !dictListo)) return; gateHecho = true;
+    if (gateHecho || SIN_GATE.test(key) || !HH.ageGateShow || (HH.lang !== 'es' && !dictListo)) return;
+    if (document.documentElement.hasAttribute('data-prelanzamiento')) return; // home provisoria: sin +18
+    gateHecho = true;
     try { if (sessionStorage.getItem('hh_age_ok') === '1' || hasHint()) return; } catch (e) { return; }
     HH.current = { path: key, params: {}, name: key.split('.')[0] };
     HH.ageGateShow();
