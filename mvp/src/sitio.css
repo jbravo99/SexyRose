@@ -191,3 +191,15 @@ html.sh-on main#app{padding-bottom:0!important;min-height:0}
 .cl-row .grow{display:grid;gap:2px;flex:1 1 auto;min-width:0}
 .cl-row .grow>span{display:block;min-width:0}
 .cl-row .badge{flex-shrink:0}
+/* Portada compacta (12/11/2026): se ven las fotos al entrar; los dos botones siempre uno al lado del otro */
+.hero{padding-block:12px 14px}
+.hero .hero-grid>.stack{gap:8px!important}
+.hero .eyebrow{font-size:11px}
+.hero h1{font-size:clamp(21px,6vw,40px);line-height:1.12}
+.hero .lead{font-size:13.5px;line-height:1.42}
+.hero-btns{flex-wrap:nowrap;gap:8px;margin-top:2px}
+.hero-btns .btn{flex:1 1 auto;min-width:0;padding:10px 14px;font-size:14px;gap:6px}
+.hero-btns .btn svg{width:16px;height:16px;flex:none}
+.hero-btns .btn .lbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:359px){.hero-btns{gap:6px}.hero-btns .btn{padding:9px 9px;font-size:13px;gap:4px}.hero-btns .btn svg{width:14px;height:14px}}
+@media(min-width:900px){.hero{padding-block:22px 20px}.hero .hero-grid>.stack{gap:10px!important}.hero .eyebrow{font-size:12px}.hero .lead{font-size:15px}.hero-btns{max-width:440px}.hero-btns .btn{flex:0 1 auto;padding:11px 18px;font-size:15px}.hero-cards{height:250px;max-width:320px}}

@@ -492,10 +492,19 @@
   /* Filtro del inicio, Cerca y Swipe: en el prototipo son las categorías (actividades); en el sitio real
      (HH.FILTRO_INTERESES, prod-sitio.js) son los intereses que define el admin y eligen las acompañantes. */
   const FI = () => !!HH.FILTRO_INTERESES;
-  const filtList = () =>
-    FI()
-      ? (HH.interestList ? HH.interestList() : []).map((x) => ({ id: x.id, label: HH.interestLabel(x.id), icon: "" }))
-      : HH.ACTIVITIES;
+  // Intereses: solo los que tiene al menos un perfil publicado (pedido de Juan, 12/11/2026)
+  const interesesUsados = () => {
+    const s = new Set();
+    (HH.publishedProfiles ? HH.publishedProfiles() : []).forEach((p) => (p.interests || []).forEach((id) => s.add(id)));
+    return s;
+  };
+  const filtList = () => {
+    if (!FI()) return HH.ACTIVITIES;
+    const usados = interesesUsados();
+    return (HH.interestList ? HH.interestList() : [])
+      .filter((x) => usados.has(x.id))
+      .map((x) => ({ id: x.id, label: HH.interestLabel(x.id), icon: "" }));
+  };
   const filtOf = (p) => (FI() ? p.interests || [] : p.activities || []);
   const filtLabel = (id) => (FI() ? HH.interestLabel(id) || id : HH.activity(id).label);
   const filtIcon = (a) => (a.icon ? HH.icon(a.icon) + " " : "");
@@ -855,9 +864,9 @@
           ${hero.eyebrow ? `<span class="eyebrow">${esc(hero.eyebrow)}</span>` : ""}
           <h1>${heroTitle(HH.seoH1 ? HH.seoH1(hero.title) : hero.title)}</h1>
           ${hero.subtitle ? `<p class="lead">${esc(hero.subtitle)}</p>` : ""}
-          <div class="row">
-            <button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} ${esc(hero.ctaPrimary || "Explorar perfiles")}</button>
-            <button type="button" class="btn secondary" data-go="${worker ? "#panel" : "#cerca"}">${worker ? HH.icon("dashboard") + " Ir a mi panel" : HH.icon("pin") + " " + esc(hero.ctaSecondary || "Cerca de mí")}</button>
+          <div class="row hero-btns">
+            <button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} <span class="lbl">${esc(hero.ctaPrimary || "Explorar perfiles")}</span></button>
+            <button type="button" class="btn secondary" data-go="${worker ? "#panel" : "#cerca"}">${worker ? HH.icon("dashboard") + ' <span class="lbl">Ir a mi panel</span>' : HH.icon("pin") + ' <span class="lbl">' + esc(hero.ctaSecondary || "Cerca de mí") + "</span>"}</button>
           </div>
           <div class="row small muted hero-trust" style="gap:6px 16px">
             <span class="pub-ir">${HH.icon("shield")} Contacto directo con cada anunciante</span>
@@ -909,7 +918,6 @@
         : ""
     }
 
-    <div class="container" style="padding-top:10px">${HH.locationBar()}</div>
     ${filtList().length ? `<div class="container" style="padding-top:14px">
       <details class="pub-cats"${homeCat() ? " open" : ""}>
         <summary><span class="pub-ir">${HH.icon(FI() ? "heart" : "grid")} <strong>${FI() ? "Intereses" : "Categorías"}</strong>${homeCat() ? `<span class="badge">${esc(filtLabel(homeCat()))}</span>` : `<span class="small muted">${filtList().length}</span>`}</span>${HH.icon("chevronDown")}</summary>
