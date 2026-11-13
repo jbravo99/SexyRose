@@ -119,6 +119,10 @@ html[data-prod="sitio"] table.table.sp-dtab{min-width:0;width:100%}
 /* ---------- Shorts: feed vertical a pantalla completa (prod-shorts.js) ---------- */
 html.sh-on main#app{padding-bottom:0!important;min-height:0}
 .sh-page{position:relative;max-width:460px;margin:0 auto}
+/* Filtro de tipo de perfil arriba del video (a la izquierda del botón de sonido) */
+.sh-tipo{position:absolute;top:10px;left:10px;right:56px;z-index:6;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.sh-tipo::-webkit-scrollbar{display:none}
+.sh-tipo .chip{background:rgba(8,6,12,.55);border-color:rgba(255,255,255,.35);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sh-tipo .chip.active{background:var(--berry);border-color:var(--berry)}
 .sh-feed{height:calc(100dvh - var(--header-h) - env(safe-area-inset-top,0px) - var(--sr-demo-h,0px));overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y mandatory;scrollbar-width:none;outline:0;background:#000}
 .sh-feed::-webkit-scrollbar{display:none}
 .sh-item{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;background:#000;color:#fff;contain:strict}
@@ -151,7 +155,7 @@ html.sh-on main#app{padding-bottom:0!important;min-height:0}
 .sh-promo-in{display:grid;justify-items:center;gap:10px;max-width:300px;padding:24px;text-align:center}
 .sh-promo-in>svg{width:44px;height:44px;color:var(--berry)}
 .sh-promo-in h3{font-size:22px}.sh-promo-in p{margin:0;color:var(--fg-2)}
-.sh-aviso{position:absolute;top:10px;left:10px;right:10px;z-index:5;padding:8px 12px;border-radius:12px;background:rgba(21,19,26,.82);font-size:13px;text-align:center;pointer-events:none;animation:shAviso 5s ease forwards}
+.sh-aviso{position:absolute;top:54px;left:10px;right:10px;z-index:5;padding:8px 12px;border-radius:12px;background:rgba(21,19,26,.82);font-size:13px;text-align:center;pointer-events:none;animation:shAviso 5s ease forwards}
 @keyframes shAviso{0%,80%{opacity:1}100%{opacity:0;visibility:hidden}}
 .sh-vacio svg{width:40px;height:40px}
 @media(max-width:899px){

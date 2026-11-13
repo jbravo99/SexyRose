@@ -91,12 +91,13 @@ async function cuentaEnRevision() {
   const c = new Cliente();
   const email = `zzint-${rand()}@example.com`;
   let r = await c.json('POST', '/api/cuenta/registro', {
-    email, password: 'una-clave-larga-123', displayName: `Zz Int ${rand()}`, fechaNacimiento: '1994-02-03', genero: 'mujer', aceptaTerminos: true, mayorEdad: true,
+    email, password: 'una-clave-larga-123', displayName: `Zz Int ${rand()}`, fechaNacimiento: '1994-02-03', genero: 'mujer', tipo: 'acompanante', aceptaTerminos: true, mayorEdad: true,
   });
   assert.equal(r.status, 201, JSON.stringify(r.body));
-  c.id = r.body.cuenta.id; c.email = email;
-  r = await new Cliente().json('POST', '/api/cuenta/verificar-email', { token: tokenDe(email, '/cuenta/verificar') });
+  // El registro no abre la sesión: el link del email la abre (y confirma el email).
+  r = await c.json('POST', '/api/cuenta/verificar-email', { token: tokenDe(email, '/cuenta/verificar') });
   assert.equal(r.status, 200, JSON.stringify(r.body));
+  c.id = r.body.cuenta.id; c.email = email;
   r = await c.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Café y museos' });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   for (let i = 0; i < 3; i++) assert.equal((await c.subir('/api/cuenta/fotos', { foto: await jpeg() })).status, 201);

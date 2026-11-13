@@ -1,0 +1,12 @@
+/* Marcadores del mapa de Cerca de mí (se suma a maplibre-gl.css en assets/mapa.<hash>.css) */
+.srm-punto{padding:0;border:0;background:none;cursor:pointer;border-radius:50%;line-height:0}
+.srm-punto .avatar{width:46px!important;height:46px!important;font-size:16px!important;border:2px solid #221F28;box-shadow:0 4px 14px rgba(0,0,0,.45);border-radius:50%;overflow:hidden;display:grid;place-items:center;color:#fff;font-weight:800}
+.srm-punto .avatar img{width:100%;height:100%;object-fit:cover}
+.srm-punto.star .avatar{border:3px solid #F2B452;box-shadow:0 0 0 2px rgba(242,180,82,.3),0 4px 14px rgba(0,0,0,.45)}
+.srm-punto:focus-visible,.srm-grupo:focus-visible{outline:2px solid #FF5C8A;outline-offset:3px}
+.srm-grupo{min-width:44px;height:44px;padding:0 10px;border-radius:999px;border:3px solid rgba(255,92,138,.35);background:linear-gradient(135deg,#FF5C8A,#C76F91);color:#fff;font:800 15px/1 Manrope,system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.45);background-clip:padding-box}
+.srm-yo{width:18px;height:18px;border-radius:50%;background:#FF5C8A;border:3px solid #fff;box-shadow:0 0 0 0 rgba(255,92,138,.6);animation:srmPulso 2.2s ease-out infinite}
+@keyframes srmPulso{0%{box-shadow:0 0 0 0 rgba(255,92,138,.6)}100%{box-shadow:0 0 0 22px rgba(255,92,138,0)}}
+@media (prefers-reduced-motion:reduce){.srm-yo{animation:none}}
+.maplibregl-ctrl-attrib{font-size:11px}
+.maplibregl-ctrl-group{background:#221F28}.maplibregl-ctrl-group button{filter:invert(.85)}

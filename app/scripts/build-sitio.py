@@ -193,6 +193,47 @@ def minify(code: str, loader: str, exe):
     return r.stdout.decode('utf-8'), True
 
 
+MAPA_PAQUETES = ('maplibre-gl', 'pmtiles', '@protomaps/basemaps')
+
+
+def mapa_node_modules():
+    """Carpeta node_modules con maplibre-gl, pmtiles y @protomaps/basemaps (MAPA_NODE_MODULES o lugares de siempre)."""
+    cands = [os.environ.get('MAPA_NODE_MODULES')] if os.environ.get('MAPA_NODE_MODULES') else []
+    cands += [str(ROOT / 'node_modules'), '/mapa/node_modules']
+    for c in cands:
+        d = pathlib.Path(c)
+        if all((d / pk / 'package.json').is_file() for pk in MAPA_PAQUETES):
+            return d
+    return None
+
+
+def paquete_mapa(assets: pathlib.Path, exe, h):
+    """Vista Mapa de Cerca de mí (13/11/2026): arma assets/mapa.<hash>.js (MapLibre + PMTiles + estilo de Protomaps,
+    mvp/mapa/mapa.js), mapa.<hash>.css y el worker de MapLibre (mapa-worker.<hash>.js, mismo origen: la CSP no
+    necesita blob:). Se bajan solo al abrir la vista Mapa. Devuelve {'js','css','worker'} o None (sin mapa)."""
+    nm = mapa_node_modules()
+    if not nm or not exe:
+        return None
+    entrada = ROOT / 'mvp' / 'mapa' / 'mapa.js'
+    tmp = assets / '_mapa.tmp.js'
+    env = dict(os.environ, NODE_PATH=str(nm))
+    r = subprocess.run([exe, str(entrada), '--bundle', '--format=iife', '--minify', '--target=es2020', '--charset=utf8',
+                        '--log-level=error', f'--outfile={tmp}'], capture_output=True, env=env)
+    if r.returncode != 0 or not tmp.is_file():
+        print('aviso: no se pudo armar el mapa:', r.stderr.decode('utf-8', 'replace')[:400], file=sys.stderr)
+        return None
+    js = tmp.read_text(encoding='utf-8'); tmp.unlink()
+    css = (nm / 'maplibre-gl' / 'dist' / 'maplibre-gl.css').read_text(encoding='utf-8') + '\n' + (ROOT / 'mvp' / 'mapa' / 'mapa.css').read_text(encoding='utf-8')
+    css, _ = minify(css, 'css', exe)
+    worker = (nm / 'maplibre-gl' / 'dist' / 'maplibre-gl-worker.mjs').read_text(encoding='utf-8')
+    out = {}
+    for clave, code, ext in (('js', js, 'js'), ('css', css, 'css'), ('worker', worker, 'js')):
+        nombre = f'{"mapa-worker" if clave == "worker" else "mapa"}.{h(code)}.{ext}'
+        (assets / nombre).write_text(code, encoding='utf-8')
+        out[clave] = f'{PFX}assets/{nombre}'
+    return out
+
+
 def main() -> int:
     if not BUILD.is_file():
         print(f'error: no encuentro {BUILD}', file=sys.stderr)
@@ -282,7 +323,16 @@ def main() -> int:
         (OUT.parent / estado_name).write_text(estado, encoding='utf-8')
         demo_cfg = 'window.HH_DEMO=' + json.dumps({'estado': PFX + estado_name, 'real': REAL_URL}) + ';\n'
         css += '\n' + DEMO_CSS
-    js = scripts[0].strip() + '\n' + f'window.HH_I18N_SRC="{PFX}assets/{dic_name}";\n' + demo_cfg + app
+    # La demo lleva el paquete del mapa solo si se arma con MAP_TILES_URL (si no, ni se genera)
+    mapa = paquete_mapa(assets, exe, h) if (not DEMO or os.environ.get('MAP_TILES_URL')) else None
+    if mapa is None and os.environ.get('REQUIRE_MAPA') == '1':
+        print('error: no se pudo armar el mapa (MAPA_NODE_MODULES con maplibre-gl, pmtiles y @protomaps/basemaps, y esbuild)', file=sys.stderr)
+        return 1
+    mapa_cfg = ('window.HH_MAPA=' + json.dumps(mapa) + ';\n') if mapa else ''
+    if DEMO and mapa and os.environ.get('MAP_TILES_URL'):
+        # Demo con mapa solo si se arma con MAP_TILES_URL (la demo es estática: no pasa por /api/sitio/estado)
+        mapa_cfg += 'window.HH_DEMO_MAPA=' + json.dumps({k: os.environ.get(v, '') for k, v in (('tiles', 'MAP_TILES_URL'), ('glyphs', 'MAP_GLYPHS_URL'), ('sprite', 'MAP_SPRITE_URL'))}) + ';\n'
+    js = scripts[0].strip() + '\n' + f'window.HH_I18N_SRC="{PFX}assets/{dic_name}";\n' + demo_cfg + mapa_cfg + app
     css_fuentes, precarga = fuentes(assets / 'fonts', h)
     if css_fuentes is None:
         if os.environ.get('REQUIRE_FONTS') == '1':

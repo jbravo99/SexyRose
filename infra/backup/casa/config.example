@@ -1,0 +1,28 @@
+# SexyRose — configuración de la PC de casa para traer las copias.
+# Copiar a ~/.config/sexyrose-copias/config y completar. Solo líneas VARIABLE=valor, rutas absolutas (sin ~ ni $HOME).
+
+# IP del servidor (VPS) y puerto SSH.
+VPS=213.218.161.153
+PUERTO=22
+USUARIO_REMOTO=sr-copias
+
+# Llave SSH de esta PC solo para las copias (paso 3 del README). Ruta absoluta.
+LLAVE=/home/USUARIO/.ssh/sexyrose_copias
+
+# Huella del servidor guardada con ssh-keyscan (paso 4 del README).
+KNOWN_HOSTS=/home/USUARIO/.config/sexyrose-copias/known_hosts
+
+# Dónde se guardan las copias en esta PC (idealmente un disco aparte).
+DESTINO=/home/USUARIO/sexyrose-copias
+
+# Aviso si la última copia verificada tiene más de estas horas.
+MAX_HORAS=36
+
+# Cuántas guardar.
+KEEP_DIARIAS=14
+KEEP_SEMANALES=8
+KEEP_MENSUALES=12
+
+# Opcional: avisos por Telegram (el mismo bot del sitio). Vacío = solo log (journalctl).
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=

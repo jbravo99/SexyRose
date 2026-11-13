@@ -7,8 +7,12 @@
 // - Mutaciones (POST/PUT/DELETE): mismo origen + cabecera `X-SR: 1` + JSON o multipart.
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
+import { crearSemaforo } from './seguridad.js';
 
-const scryptAsync = promisify(crypto.scrypt);
+const scryptCrudo = promisify(crypto.scrypt);
+// Como mucho 4 cálculos de scrypt a la vez (cada uno usa ~32 MB y CPU); el resto espera en cola (tope 200 → 503).
+const semaforoScrypt = crearSemaforo(4, 200);
+const scryptAsync = (...a) => semaforoScrypt.correr(() => scryptCrudo(...a));
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, keylen: 64 };
 export const COOKIE = 'sr_sesion';
 export const SESION_DIAS = 30;

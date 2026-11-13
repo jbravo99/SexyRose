@@ -38,6 +38,19 @@ ARG FONTSOURCE_VERSION=5.3.0
 RUN npm install --prefix /fuentes --no-audit --no-fund --no-save \
       "@fontsource/poppins@${FONTSOURCE_VERSION}" "@fontsource/manrope@${FONTSOURCE_VERSION}"
 ENV FONTSOURCE_DIR=/fuentes/node_modules/@fontsource REQUIRE_FONTS=1
+# Vista "Mapa" de Cerca de mí: MapLibre GL + PMTiles + estilo de Protomaps (versiones fijas; solo en esta etapa).
+# build-sitio.py arma con esbuild assets/mapa.<hash>.js/.css y el worker, que el sitio baja solo al abrir el mapa.
+ARG MAPLIBRE_VERSION=6.16.0
+ARG PMTILES_VERSION=4.5.0
+ARG PROTOMAPS_BASEMAPS_VERSION=5.7.2
+RUN npm install --prefix /mapa --no-audit --no-fund --no-save \
+      "maplibre-gl@${MAPLIBRE_VERSION}" "pmtiles@${PMTILES_VERSION}" "@protomaps/basemaps@${PROTOMAPS_BASEMAPS_VERSION}"
+ENV MAPA_NODE_MODULES=/mapa/node_modules
+# La demo (estática) muestra el mapa solo si se arma con estas direcciones (infra/mapa/README.md). Vacías = solo radar.
+# (El sitio real no las necesita acá: las lee del .env al arrancar.)
+ARG MAP_TILES_URL=""
+ARG MAP_GLYPHS_URL=""
+ARG MAP_SPRITE_URL=""
 COPY mvp/ mvp/
 COPY app/scripts/ app/scripts/
 # La demo (/demo/) usa las semillas de la base (ubicaciones, salidas, intereses, precios) para sus datos ficticios
@@ -76,10 +89,11 @@ RUN set -e; \
 # (cáscara chica) y app/sitio-spa/assets/ (JS, CSS y diccionario con hash en el nombre).
 # esbuild minimiza el JS y el CSS (versión fija; solo en esta etapa, no queda en la imagen final).
 # (esbuild y las fuentes se instalaron arriba, antes de la demo)
-RUN python3 app/scripts/build-sitio.py \
+RUN REQUIRE_MAPA=1 python3 app/scripts/build-sitio.py \
     && test -s app/sitio-spa/index.html \
     && test -s app/sitio-spa/seo-datos.json \
     && ls app/sitio-spa/assets/app.*.js app/sitio-spa/assets/app.*.css app/sitio-spa/assets/i18n.*.js app/sitio-spa/assets/fonts/*.woff2 \
+       app/sitio-spa/assets/mapa.*.js app/sitio-spa/assets/mapa.*.css app/sitio-spa/assets/mapa-worker.*.js \
     && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
 # ---------- Etapa 2: runtime ----------

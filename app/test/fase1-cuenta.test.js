@@ -18,6 +18,7 @@ if (!DATABASE_URL) { console.error('Falta DATABASE_URL.'); process.exit(1); }
 
 const db = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
 let instance; let BASE; let tmpData; let tmpPublic;
+const demoras = []; // demoras del ingreso por email (no se duerme de verdad en las pruebas)
 const rand = () => crypto.randomBytes(4).toString('hex');
 const ip = () => `2001:db8:${rand().slice(0, 4)}::${rand().slice(0, 4)}`;
 const emailNuevo = () => `zztest-${rand()}@example.com`;
@@ -30,6 +31,7 @@ before(async () => {
     port: 0, host: '127.0.0.1', databaseUrl: DATABASE_URL, publicDir: tmpPublic, dataDir: tmpData, storage: 'local',
     adminUser: '', adminPassword: '', adminPath: '', ipHashSalt: 'sal', siteUrl: 'https://sexyrose.net',
     telegramToken: '', telegramChatId: '', mailgunApiKey: '', log: () => {},
+    dormirAuth: async (ms) => { demoras.push(ms); },
   });
   BASE = `http://127.0.0.1:${instance.port}`;
   await instance.ready;
@@ -78,16 +80,21 @@ class Cliente {
 }
 
 const datosRegistro = (over = {}) => ({
-  email: emailNuevo(), password: 'una-clave-larga-123', displayName: `Zz Test ${rand()}`, fechaNacimiento: '1995-04-10', genero: 'mujer',
+  email: emailNuevo(), password: 'una-clave-larga-123', displayName: `Zz Test ${rand()}`, fechaNacimiento: '1995-04-10', genero: 'mujer', tipo: 'acompanante',
   aceptaTerminos: true, mayorEdad: true, ...over,
 });
 
+// El registro no abre la sesión (no revela si el email ya existía): la cuenta entra con su contraseña
+// (o con el link del email). Así quedan sin email confirmado, como antes.
 async function registrar(over = {}) {
   const c = new Cliente();
   const d = datosRegistro(over);
   const r = await c.json('POST', '/api/cuenta/registro', d);
   assert.equal(r.status, 201, JSON.stringify(r.body));
-  c.email = d.email; c.password = d.password; c.yo = r.body.cuenta;
+  assert.equal(r.body.revisarEmail, true);
+  const l = await c.json('POST', '/api/cuenta/login', { email: d.email, password: d.password });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  c.email = d.email; c.password = d.password; c.yo = l.body.cuenta;
   return c;
 }
 
@@ -101,23 +108,28 @@ const ultimoLink = (email, ruta) => {
 };
 
 describe('registro, login y sesión', () => {
-  test('registro crea cuenta + perfil borrador + cookie segura + email de verificación', async () => {
+  test('registro crea cuenta + perfil borrador + email de verificación; el link abre la sesión (cookie segura)', async () => {
     const c = new Cliente();
     const d = datosRegistro();
     const r = await fetch(BASE + '/api/cuenta/registro', { method: 'POST', headers: c.headers({ 'content-type': 'application/json' }), body: JSON.stringify(d) });
     assert.equal(r.status, 201);
-    const sc = r.headers.getSetCookie().find((x) => x.startsWith('sr_sesion='));
-    assert.ok(sc, 'falta la cookie');
+    assert.ok(!r.headers.getSetCookie().some((x) => x.startsWith('sr_sesion=')), 'el registro no abre la sesión');
+    assert.deepEqual(await r.json(), { ok: true, revisarEmail: true, mensaje: 'Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.' });
+    const tok = ultimoLink(d.email, '/cuenta/verificar');
+    assert.ok(tok, 'no se mandó el email de verificación');
+    const v = await fetch(BASE + '/api/cuenta/verificar-email', { method: 'POST', headers: c.headers({ 'content-type': 'application/json' }), body: JSON.stringify({ token: tok }) });
+    assert.equal(v.status, 200);
+    const sc = v.headers.getSetCookie().find((x) => x.startsWith('sr_sesion='));
+    assert.ok(sc, 'el link del email abre la sesión');
     for (const flag of ['HttpOnly', 'SameSite=Lax', 'Path=/', 'Secure', 'Max-Age=2592000']) assert.ok(sc.includes(flag), flag);
-    const body = await r.json();
+    const body = await v.json();
     assert.equal(body.cuenta.email, d.email);
-    assert.equal(body.cuenta.emailVerificado, false);
+    assert.equal(body.cuenta.emailVerificado, true);
     assert.equal(body.cuenta.perfil.estado, 'borrador');
     assert.equal(body.cuenta.perfil.verificacion, 'sin_enviar');
     assert.equal(body.cuenta.plan.efectivo, 'E');
     assert.equal(body.cuenta.perfil.completo, false);
-    assert.ok(body.cuenta.perfil.faltantes.length >= 4);
-    assert.ok(ultimoLink(d.email, '/cuenta/verificar'), 'no se mandó el email de verificación');
+    assert.ok(body.cuenta.perfil.faltantes.length >= 3);
     const { rows } = await db.query('SELECT pass_hash FROM cuentas WHERE email = $1', [d.email]);
     assert.match(rows[0].pass_hash, /^scrypt\$32768\$8\$1\$/);
     assert.ok(!rows[0].pass_hash.includes(d.password));
@@ -132,9 +144,34 @@ describe('registro, login y sesión', () => {
     assert.equal(r.status, 400); assert.match(r.body.error, /18/);
     assert.equal((await c.json('POST', '/api/cuenta/registro', datosRegistro({ aceptaTerminos: false }))).status, 400);
     assert.equal((await c.json('POST', '/api/cuenta/registro', datosRegistro({ mayorEdad: false }))).status, 400);
+    // Tipo de perfil (virtual / acompañante / ambas): obligatorio y de la lista
+    for (const tipo of [undefined, '', 'otra']) {
+      const rt = await c.json('POST', '/api/cuenta/registro', datosRegistro({ tipo }));
+      assert.equal(rt.status, 400, String(tipo)); assert.match(rt.body.error, /acompañante, virtual o ambas/);
+    }
+    // Email que ya tiene cuenta: la misma respuesta que un registro nuevo (no revela que existe) y un aviso al dueño
     const a = await registrar();
+    const antes = mailsEnviados.filter((m) => m.to === a.email).length;
     const dup = await new Cliente().json('POST', '/api/cuenta/registro', datosRegistro({ email: a.email.toUpperCase() }));
-    assert.equal(dup.status, 409);
+    assert.equal(dup.status, 201);
+    assert.deepEqual(dup.body, { ok: true, revisarEmail: true, mensaje: 'Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.' });
+    assert.ok(!dup.res.headers.getSetCookie().some((x) => x.startsWith('sr_sesion=')));
+    const nuevos = mailsEnviados.filter((m) => m.to === a.email).slice(antes);
+    assert.equal(nuevos.length, 1); assert.match(nuevos[0].subject, /intentó crear una cuenta/);
+    const { rows: [n] } = await db.query('SELECT count(*)::int AS n FROM cuentas WHERE email = $1', [a.email]);
+    assert.equal(n.n, 1, 'no se crea otra cuenta');
+  });
+
+  test('migración 140: los perfiles que ya existían quedan como acompañante (tipo de perfil)', async () => {
+    const a = await registrar({ tipo: 'virtual' });
+    const b = await registrar();
+    await db.query("UPDATE perfiles SET datos = datos - 'tipo' WHERE cuenta_id = $1", [b.yo.id]);
+    const sql = await fs.readFile(new URL('../db/140-tipo-perfil.sql', import.meta.url), 'utf8');
+    await db.query(sql);
+    const { rows } = await db.query('SELECT cuenta_id, datos->>\'tipo\' AS tipo FROM perfiles WHERE cuenta_id = ANY($1)', [[a.yo.id, b.yo.id]]);
+    const tipo = Object.fromEntries(rows.map((r) => [r.cuenta_id, r.tipo]));
+    assert.equal(tipo[a.yo.id], 'virtual', 'no pisa lo que eligió');
+    assert.equal(tipo[b.yo.id], 'acompanante');
   });
 
   test('login, contraseña incorrecta, yo y logout', async () => {
@@ -152,14 +189,25 @@ describe('registro, login y sesión', () => {
     assert.equal((await b.get('/api/cuenta/yo')).status, 401);
   });
 
-  test('límite de intentos de login por cuenta', async () => {
+  test('intentos fallidos: nadie puede bloquear la cuenta de otra (solo demora); por IP sí hay límite', async () => {
     const a = await registrar();
-    let last;
-    for (let i = 0; i < 11; i++) {
-      const c = new Cliente(); // IP distinta: el límite que corta es el de la cuenta
-      last = await c.json('POST', '/api/cuenta/login', { email: a.email, password: 'incorrecta-' + i });
+    demoras.length = 0;
+    // 12 intentos fallidos desde IPs distintas: ninguno se corta, pero a partir del 6.º hay una demora creciente
+    for (let i = 0; i < 12; i++) {
+      const r = await new Cliente().json('POST', '/api/cuenta/login', { email: a.email, password: 'incorrecta-' + i });
+      assert.equal(r.status, 401);
     }
+    assert.ok(demoras.length >= 6, 'demora por email');
+    assert.ok(demoras[demoras.length - 1] > demoras[0], 'la demora crece');
+    assert.ok(Math.max(...demoras) <= 4000, 'con tope');
+    // La dueña entra igual con su contraseña
+    assert.equal((await new Cliente().json('POST', '/api/cuenta/login', { email: a.email, password: a.password })).status, 200);
+    // Desde una misma IP: 10 fallos con ese email → el 11.º se corta (429) solo para esa IP
+    const atacante = new Cliente();
+    let last;
+    for (let i = 0; i < 11; i++) last = await atacante.json('POST', '/api/cuenta/login', { email: a.email, password: 'otra-mala-' + i });
     assert.equal(last.status, 429);
+    assert.equal((await new Cliente().json('POST', '/api/cuenta/login', { email: a.email, password: a.password })).status, 200);
   });
 
   test('verificar email con el link y restablecer contraseña (cierra las otras sesiones)', async () => {
@@ -253,6 +301,8 @@ describe('perfil', () => {
       { displayName: 'x' },
       { alturaCm: 300 },
       { bio: 'a'.repeat(1501) },
+      { tipo: 'otra' },
+      { tipo: '' },
     ];
     for (const c of casos) assert.equal((await a.json('PUT', '/api/cuenta/perfil', c)).status, 400, JSON.stringify(c));
   });
@@ -417,6 +467,12 @@ describe('enviar a revisión y sitio público', () => {
     assert.ok(!('salidas' in p)); // las actividades no se publican
     // Intereses: el sitio filtra por ellos (inicio, Cerca y Swipe): la lista del admin con nombres por idioma y los ids de cada perfil
     assert.deepEqual(p.intereses, ['arte', 'vinos']);
+    // Tipo de perfil: el de la registración, y se cambia desde el panel
+    assert.equal(p.tipo, 'acompanante');
+    assert.equal((await a.json('PUT', '/api/cuenta/perfil', { tipo: 'ambas' })).status, 200);
+    assert.equal((await a.get('/api/cuenta/yo')).body.cuenta.perfil.datos.tipo, 'ambas');
+    invalidarSitio();
+    assert.equal((await pub.get('/api/sitio/estado')).body.perfiles.find((x) => x.cuentaId === a.yo.id).tipo, 'ambas');
     const arte = e.intereses.find((x) => x.id === 'arte');
     assert.ok(arte && arte.nombre === 'Arte' && arte.nombreEn === 'Art' && arte.nombrePt === 'Arte');
     assert.ok(e.historias.some((h) => h.cuentaId === a.yo.id && h.texto === 'Hoy'));

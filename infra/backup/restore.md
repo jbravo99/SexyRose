@@ -1,94 +1,93 @@
-# Copias de la base: cómo restaurar
+# Restaurar una copia
 
-Las copias las hace `infra/backup/backup.sh` (timer `sexyrose-backup.timer`, todos los días a las 03:15 UTC) y quedan en `~/backups/` del servidor:
+Las copias están en la PC de casa, en `DESTINO` (por defecto `~/sexyrose-copias`), dentro de `diarias/`, `semanales/` o `mensuales/`. Cada juego es una carpeta `sexyrose-AAAAMMDDTHHMMSSZ/` con:
 
-- `sexyrose-db-AAAAMMDDTHHMMSSZ.sql.gz.age` — cifrada con `age` (si `AGE_RECIPIENT` está en `.env`).
-- `sexyrose-db-AAAAMMDDTHHMMSSZ.sql.gz` — sin cifrar (solo si falta `AGE_RECIPIENT`; el script avisa).
+- `…-db.dump.age` — base (pg_dump formato custom), cifrada.
+- `…-data.tar.gz.age` — archivos privados de `/data`, cifrados.
+- `….sha256` — sumas de control.
 
-Se conservan las últimas 14. Es un volcado SQL plano (`pg_dump --clean --if-exists`): al restaurarlo borra y recrea las tablas que contiene.
+La clave para abrirlas está en la PC de casa: `~/.config/sexyrose-copias/age.key`. También tiene que estar en tu gestor de contraseñas.
 
-## Clave de cifrado (una vez)
-
-En tu Mac, no en el servidor:
-
-```bash
-brew install age
-age-keygen -o ~/.config/sexyrose/backup-age.key   # crear la carpeta antes si no existe
-```
-
-El comando muestra la clave pública (`age1...`). Esa línea va en el `.env` del servidor como `AGE_RECIPIENT=age1...`.
-El archivo `backup-age.key` es la clave privada: guardala en el gestor de contraseñas. Sin ella las copias no se pueden abrir. Nunca la subas al servidor ni al repo.
-
-## Traer una copia a la Mac
+En los comandos de abajo, `J` es la carpeta del juego que querés restaurar y `ID` su nombre. Por ejemplo:
 
 ```bash
-scp -i ~/.ssh/sexyrose_srv1 USUARIO@IP:backups/sexyrose-db-20261105T031500Z.sql.gz.age .
-age -d -i ~/.config/sexyrose/backup-age.key sexyrose-db-20261105T031500Z.sql.gz.age | gunzip > dump.sql
+J=~/sexyrose-copias/diarias/sexyrose-20261113T031500Z
+ID=$(basename "$J")
 ```
 
-## Restaurar en el servidor
+## 1. Comprobar y descifrar (en la PC de casa)
 
-1. Frenar el app para que nadie escriba mientras restaurás (la base sigue arriba):
+```bash
+cd "$J" && sha256sum -c "$ID.sha256"            # tiene que decir OK dos veces
+age -d -i ~/.config/sexyrose-copias/age.key "$ID-db.dump.age"      > /tmp/db.dump
+age -d -i ~/.config/sexyrose-copias/age.key "$ID-data.tar.gz.age"  > /tmp/data.tar.gz
+```
 
-   ```bash
-   cd ~/SexyRose
-   docker compose -f infra/docker-compose.yml stop app cloudflared
-   ```
+## 2. Subir al servidor
 
-2. Hacer una copia del estado actual por las dudas:
+```bash
+scp -o IdentitiesOnly=yes -i ~/.ssh/TU_LLAVE_PERSONAL /tmp/db.dump /tmp/data.tar.gz shelbyadm@213.218.161.153:/tmp/
+shred -u /tmp/db.dump /tmp/data.tar.gz
+```
 
-   ```bash
-   bash infra/backup/backup.sh
-   ```
+Usá tu llave personal de administración, no la de copias: el usuario `sr-copias` solo puede leer.
 
-3. Restaurar. Si la copia está cifrada, la descifrás en tu Mac (paso anterior) y subís el `.sql.gz`, o subís la clave privada temporalmente y la borrás después. Lo más simple es subir el `.sql.gz` descifrado:
+## 3. Restaurar en el servidor
 
-   ```bash
-   # desde la Mac
-   gzip -9 dump.sql
-   scp -i ~/.ssh/sexyrose_srv1 dump.sql.gz USUARIO@IP:/tmp/
-   ```
+```bash
+cd ~/SexyRose
+DC="docker compose -f infra/docker-compose.yml"
+$DC stop app cloudflared                      # nadie escribe mientras restaurás (la base sigue arriba)
+bash infra/backup/backup.sh                   # copia del estado actual, por las dudas
 
-   ```bash
-   # en el servidor
-   cd ~/SexyRose
-   PGU="$(grep -m1 '^POSTGRES_USER=' .env | cut -d= -f2-)"
-   PGD="$(grep -m1 '^POSTGRES_DB=' .env | cut -d= -f2-)"
-   gunzip -c /tmp/dump.sql.gz \
-     | docker compose -f infra/docker-compose.yml exec -T db \
-         psql -v ON_ERROR_STOP=1 -U "$PGU" -d "$PGD"
-   shred -u /tmp/dump.sql.gz
-   ```
+PGU="$(grep -m1 '^POSTGRES_USER=' .env | cut -d= -f2-)"
+PGD="$(grep -m1 '^POSTGRES_DB=' .env | cut -d= -f2-)"
+$DC exec -T db pg_restore -U "$PGU" -d "$PGD" --clean --if-exists --no-owner --exit-on-error < /tmp/db.dump
 
-4. Levantar todo de nuevo:
+# Archivos privados: se descomprimen sobre el volumen /data con la imagen del app
+$DC run --rm -T --no-deps --entrypoint tar app -xzf - -C /data < /tmp/data.tar.gz
 
-   ```bash
-   bash infra/server/deploy.sh --no-pull
-   ```
+shred -u /tmp/db.dump /tmp/data.tar.gz
+bash infra/server/deploy.sh --no-pull         # vuelve a levantar todo
+```
 
-5. Revisar el panel de admin y que los datos estén (la dirección: `bash infra/server/admin-path.sh`).
+Revisá el admin y algunos perfiles (la dirección del admin: `bash infra/server/admin-path.sh`).
 
 ## Restaurar desde cero (servidor nuevo)
 
-Seguir el README de infra hasta tener `.env` y el deploy hecho (la base arranca vacía y el app crea las tablas). Después aplicar los pasos 1 a 4. **Usar el mismo `.env`** (sobre todo `IP_HASH_SALT`) si querés conservar la continuidad de los hashes de IP.
+1. Seguí el README de `infra/` hasta tener `.env` y el primer deploy hecho. La base arranca vacía y el app crea las tablas.
+2. Hacé los pasos 1 a 3 de arriba.
+3. Usá el **mismo `.env`** de antes: guardalo en tu gestor de contraseñas. Importan sobre todo:
+   - `SECRETS_KEY`: sin ella no se pueden leer las cuentas de Mercado Pago cargadas desde el admin.
+   - `IP_HASH_SALT`: mantiene la continuidad de los hashes de IP.
+   - `ADMIN_PATH`: la dirección del admin.
+4. Volvé a habilitar las copias: `habilitar-copias.sh`, paso 4 de `README.md`.
 
-Ojo: `POSTGRES_PASSWORD` solo se aplica la primera vez que se crea el volumen `pgdata`. Si cambiás la clave en `.env` con un volumen existente, el app no va a poder conectarse: cambiala también adentro de Postgres (`ALTER USER sexyrose PASSWORD '...'`) o recreá el volumen y restaurá.
+Ojo: `POSTGRES_PASSWORD` solo se aplica la primera vez que se crea el volumen `pgdata`. Si la cambiás en `.env` con un volumen existente, el app no va a poder conectarse. En ese caso cambiala también adentro de Postgres (`ALTER USER sexyrose PASSWORD '...'`).
 
-## Probar que las copias sirven
+## Prueba mensual (en la PC de casa, 10 minutos)
 
-Una vez por mes, restaurar la última copia en la Mac:
+Una copia que nunca se probó no es una copia. Una vez por mes, con la última semanal:
 
 ```bash
-docker run --rm -d --name sr-restore-test -e POSTGRES_PASSWORD=test postgres:16
-sleep 5
-age -d -i ~/.config/sexyrose/backup-age.key sexyrose-db-....sql.gz.age | gunzip \
-  | docker exec -i sr-restore-test psql -U postgres -d postgres
-docker exec sr-restore-test psql -U postgres -c 'select count(*) from preregistros;'
-docker rm -f sr-restore-test
+J=$(ls -d ~/sexyrose-copias/semanales/sexyrose-* | sort | tail -1); ID=$(basename "$J")
+cd "$J" && sha256sum -c "$ID.sha256"
+
+docker run --rm -d --name sr-prueba -e POSTGRES_PASSWORD=prueba postgres:16
+sleep 8
+age -d -i ~/.config/sexyrose-copias/age.key "$ID-db.dump.age" \
+  | docker exec -i sr-prueba pg_restore -U postgres -d postgres --no-owner
+docker exec sr-prueba psql -U postgres -c 'select count(*) as cuentas from cuentas;' -c 'select count(*) as perfiles from perfiles;'
+docker rm -f sr-prueba
+
+age -d -i ~/.config/sexyrose-copias/age.key "$ID-data.tar.gz.age" | tar -tzf - | wc -l
 ```
 
-El volcado usa `--no-owner`, así que restaura bien con cualquier usuario.
+Lista de control:
 
-## Copia fuera del servidor (pendiente)
-
-TODO: elegir proveedor (Storj o Backblaze B2). Cuando esté, crear `infra/backup/offsite.sh` (ejecutable) que reciba la ruta de la copia como `$1` y la suba, por ejemplo con `rclone copy "$1" remoto:sexyrose-backups/`. `backup.sh` lo llama solo si existe, y solo con copias cifradas. Hasta entonces, si el servidor se pierde, se pierden las copias: bajalas a la Mac de vez en cuando con `scp`.
+- [ ] Las sumas dan OK.
+- [ ] `pg_restore` termina sin errores.
+- [ ] Las cantidades de cuentas y perfiles son las esperadas, parecidas a las del admin.
+- [ ] El `.tar.gz` se abre y lista archivos.
+- [ ] La clave `age.key` también está en el gestor de contraseñas, no solo en la PC.
+- [ ] La copia más nueva tiene menos de 36 h: `ls ~/sexyrose-copias/diarias | tail -1`.

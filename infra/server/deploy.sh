@@ -5,6 +5,7 @@
 #   bash ~/SexyRose/infra/server/deploy.sh --no-pull  # sin git pull (usa lo que hay en disco)
 #
 # Requisitos: repo clonado (por defecto en ~/SexyRose), .env en la raíz del repo con TUNNEL_TOKEN.
+# Antes de levantar reparte .env en un archivo por contenedor (infra/server/separar-env.sh).
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -38,10 +39,14 @@ if [[ "$DO_PULL" -eq 1 ]]; then
 fi
 echo "Versión: $(git log -1 --format='%h %s (%cr)' 2>/dev/null || echo 'desconocida')"
 
+echo "==> Variables por contenedor (.env → .env.app / .env.db / .env.tunnel)"
+bash "$REPO_DIR/infra/server/separar-env.sh"
+
 echo "==> Bajando imágenes base (postgres, cloudflared)"
 if ! compose pull --quiet db cloudflared; then
-  die "no pude bajar las imágenes. Si el error es del tag de cloudflared, revisá el último en
-       https://hub.docker.com/r/cloudflare/cloudflared/tags y actualizalo en infra/docker-compose.yml."
+  die "no pude bajar las imágenes. Si el error es del tag de cloudflared (versión fija en infra/docker-compose.yml),
+       elegí uno existente en https://hub.docker.com/r/cloudflare/cloudflared/tags, cambialo ahí y volvé a desplegar.
+       Los contenedores que ya estaban corriendo siguen igual."
 fi
 
 echo "==> Construyendo y levantando"

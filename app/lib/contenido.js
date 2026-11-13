@@ -89,6 +89,9 @@ export function descifrar(cuenta, guardado) {
   } catch { return null; }
 }
 
+// Notificaciones de Mercado Pago: se descartan las firmadas hace más de 10 minutos (o con el reloj adelantado).
+export const TOLERANCIA_FIRMA_SEG = 600;
+
 export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = () => {}, invalidar = () => {}, now = () => Date.now(), planDe = async () => 'E', notify = () => {} }) {
   // Packs que puede tener a la venta según su plan (null = ilimitados).
   const limitePacks = async (cuentaId) => { const l = limitesDe(await planDe(cuentaId)).packs; return l === undefined ? 0 : l; };
@@ -462,7 +465,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
     const { rows: [v] } = await pool.query('SELECT * FROM ventas_contenido WHERE id = $1', [ventaId]);
     if (!v) return { status: 200, resultado: 'ignorada' };
     const cuenta = porId(v.app_id);
-    if (!cuenta || !firmaValida({ secret: cuenta.webhookSecret, header: headers['x-signature'], requestId: headers['x-request-id'], dataId: query['data.id'] || dataId })) {
+    if (!cuenta || !firmaValida({ secret: cuenta.webhookSecret, header: headers['x-signature'], requestId: headers['x-request-id'], dataId: query['data.id'] || dataId, toleranciaSeg: TOLERANCIA_FIRMA_SEG })) {
       return { status: 401, resultado: 'firma inválida' };
     }
     try {

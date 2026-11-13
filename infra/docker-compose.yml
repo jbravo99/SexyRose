@@ -3,7 +3,9 @@
 # Uso (desde la raíz del repo):
 #   docker compose -f infra/docker-compose.yml up -d --build
 #
-# Las variables salen de ../.env (raíz del repo). Ver .env.example e infra/gen-env.sh.
+# Las variables se editan en ../.env (raíz del repo; ver .env.example e infra/gen-env.sh), pero cada
+# contenedor recibe solo las suyas: infra/server/separar-env.sh arma ../.env.app, ../.env.db y ../.env.tunnel
+# (deploy.sh lo corre solo antes de levantar). Así db y cloudflared no ven los secretos del app.
 # Nada publica puertos: el tráfico público entra solo por cloudflared (Cloudflare Tunnel),
 # que llega al app por la red interna en http://app:3000.
 
@@ -21,7 +23,7 @@ services:
       context: ..
       dockerfile: app/Dockerfile
     image: sexyrose-app:latest
-    env_file: ../.env
+    env_file: ../.env.app   # todo menos POSTGRES_*, TUNNEL_TOKEN y AGE_RECIPIENT (separar-env.sh)
     restart: unless-stopped
     depends_on:
       db:
@@ -44,7 +46,7 @@ services:
 
   db:
     image: postgres:16
-    env_file: ../.env   # usa POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+    env_file: ../.env.db   # solo POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB (separar-env.sh)
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -63,11 +65,12 @@ services:
     logging: *logging
 
   cloudflared:
-    # Imagen oficial de Cloudflare. "latest" para el lanzamiento (Cloudflare solo da soporte
-    # a versiones de hasta ~1 año). Mejora futura: fijar un tag de https://hub.docker.com/r/cloudflare/cloudflared/tags
-    image: cloudflare/cloudflared:latest
+    # Imagen oficial de Cloudflare con versión FIJA (la misma que corría en el servidor en noviembre de 2026).
+    # Se actualiza a propósito, no sola: elegir un tag de https://hub.docker.com/r/cloudflare/cloudflared/tags,
+    # cambiarlo acá y desplegar. Cloudflare da soporte a versiones de hasta ~1 año: revisarlo cada 6 meses.
+    image: cloudflare/cloudflared:2026.10.7
     command: ["tunnel", "--no-autoupdate", "run"]
-    env_file: ../.env   # usa TUNNEL_TOKEN
+    env_file: ../.env.tunnel   # solo TUNNEL_TOKEN (separar-env.sh)
     restart: unless-stopped
     depends_on:
       app:

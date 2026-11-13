@@ -1,0 +1,13 @@
+# Plantilla: la instala instalar-en-casa.sh.
+[Unit]
+Description=SexyRose: traer copias todos los días a las 05:15 UTC (02:15 en Argentina)
+
+[Timer]
+# El servidor hace la copia a las 03:15 UTC y puede reiniciarse solo a las 04:30 UTC: se trae después.
+OnCalendar=*-*-* 05:15:00 UTC
+RandomizedDelaySec=15m
+# Si la PC estuvo apagada a esa hora, corre apenas prende.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

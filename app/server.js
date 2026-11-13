@@ -2,7 +2,6 @@
 // Un solo servicio Node 22 (Express + pg). Ver V1-CONTRATO.md en la raíz del repo.
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
-import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -50,6 +49,7 @@ import { createAuthClientes } from './lib/clientes.js';
 import { createSolicitudes } from './lib/solicitudes.js';
 import { createClienteRouter } from './routes/cliente.js';
 import { createCuentaSolicitudesRouter } from './routes/cuenta-solicitudes.js';
+import { crearIpCliente, crearCfAccess } from './lib/seguridad.js';
 export { escapeHtml };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +75,12 @@ export function loadConfig(env = process.env) {
     contactEmail: str(env.CONTACT_EMAIL) || 'contacto@sexyrose.net',
     reportEmail: str(env.REPORT_EMAIL) || 'contacto@sexyrose.net',
     privacyEmail: str(env.PRIVACY_EMAIL) || 'contacto@sexyrose.net',
+    // IP real del visitante: CF-Connecting-IP solo si la conexión viene de la red interna (cloudflared). privada | nunca
+    trustProxy: str(env.TRUST_PROXY) === 'nunca' ? 'nunca' : 'privada',
+    // Cloudflare Access delante del admin: el app valida el JWT (equipo: <equipo>.cloudflareaccess.com, aud de la aplicación).
+    cfAccessTeamDomain: str(env.CF_ACCESS_TEAM_DOMAIN),
+    cfAccessAud: str(env.CF_ACCESS_AUD),
+    cfAccessRequired: str(env.CF_ACCESS_REQUIRED) === '1',
     telegramToken: str(env.TELEGRAM_BOT_TOKEN),
     telegramChatId: str(env.TELEGRAM_CHAT_ID),
     // Clave para guardar secretos en la base (cuentas de Mercado Pago cargadas desde el admin). openssl rand -hex 32
@@ -276,7 +282,8 @@ export function validateDenuncia(b) {
 // ---------------------------------------------------------------------------
 // Límite de envíos en memoria (por ip_hash)
 // ---------------------------------------------------------------------------
-function createRateLimiter() {
+const RL_MAX_CLAVES = 100000;
+export function createRateLimiter() {
   const hits = new Map();
   const recent = (key, windowMs) => {
     const now = Date.now();
@@ -286,11 +293,17 @@ function createRateLimiter() {
   };
   return {
     allowed: (key, limit, windowMs) => recent(key, windowMs).length < limit,
+    count: (key, windowMs) => recent(key, windowMs).length,
     retryAfterSec: (key, windowMs) => {
       const arr = recent(key, windowMs);
       return arr.length ? Math.max(1, Math.ceil((arr[0] + windowMs - Date.now()) / 1000)) : 1;
     },
-    hit: (key) => { const arr = hits.get(key) || []; arr.push(Date.now()); hits.set(key, arr); },
+    hit: (key) => {
+      const arr = hits.get(key) || []; arr.push(Date.now()); hits.set(key, arr);
+      // Tope de memoria: ante muchas IPs/emails distintos (ataque distribuido) se descartan las claves más viejas.
+      if (hits.size > RL_MAX_CLAVES) { for (const k of hits.keys()) { hits.delete(k); if (hits.size <= RL_MAX_CLAVES * 0.9) break; } }
+    },
+    size: () => hits.size,
     sweep: (windowMs) => { for (const key of [...hits.keys()]) recent(key, windowMs); },
   };
 }
@@ -397,13 +410,8 @@ export function createApp(config) {
   });
   pool.on('error', (e) => log('pg: error en conexión inactiva:', e.code || e.message));
 
-  const clientIp = (req) => {
-    const cf = req.headers['cf-connecting-ip'];
-    if (typeof cf === 'string' && net.isIP(cf.trim())) return cf.trim();
-    let ip = req.socket.remoteAddress || '';
-    if (ip.startsWith('::ffff:')) ip = ip.slice(7);
-    return ip || 'desconocida';
-  };
+  // CF-Connecting-IP solo se cree si el pedido llega desde la red interna (cloudflared); directo desde internet, no.
+  const clientIp = crearIpCliente(config.trustProxy || 'privada');
   const ipHash = (req) => crypto.createHash('sha256').update(salt + clientIp(req), 'utf8').digest('hex');
 
   // Avisos por Telegram (opcional). Nunca incluyen datos de contacto ni el texto de la denuncia.
@@ -494,7 +502,7 @@ export function createApp(config) {
   // Historias destacadas: las sube la acompañante desde su dispositivo; no vencen (lib/destacadas.js).
   const destacadas = createDestacadas({ pool, storage, videos, planes: () => planes, invalidar: () => invalidarSitio(), log });
   configurarDestacadas(destacadas);
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas };
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth };
   // Venta de contenido (Mercado Pago). En las pruebas se inyecta mpFetch: nunca se sale a la red.
   const mp = createMercadoPago({
     fetchImpl: config.mpFetch !== undefined ? config.mpFetch : (process.env.NODE_TEST_CONTEXT ? null : globalThis.fetch),
@@ -510,6 +518,8 @@ export function createApp(config) {
   const solicitudes = createSolicitudes({ pool, storage, contenido, videos, log, tmpDir: videos.tmpDir, notify });
   ctx.solicitudes = solicitudes;
 
+  // HSTS: el sitio se sirve solo por https (Cloudflare); en local (http) no se manda.
+  const hsts = /^https:\/\//i.test(config.siteUrl || '') && config.hsts !== false;
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', false);
@@ -523,6 +533,7 @@ export function createApp(config) {
     // En el admin, el Referer (que lleva la dirección secreta) no sale hacia otros sitios.
     res.setHeader('Referrer-Policy', isAdmin ? 'same-origin' : 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'DENY');
+    if (hsts) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Permissions-Policy', isDemo ? PERMISSIONS_DEMO : PERMISSIONS_SITE);
     res.setHeader('Content-Security-Policy', isAdmin ? cspAdmin() : isDemo ? CSP_DEMO_X : CSP_SITE_X);
@@ -634,7 +645,7 @@ export function createApp(config) {
     requireCuenta: typeof config.requireCuenta === 'function' ? config.requireCuenta : auth.requireCuenta,
   }));
   app.use('/api/cuenta', createCuentaRouter(ctx));
-  app.use('/api/cliente', createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log }));
+  app.use('/api/cliente', createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log, dormirAuth: config.dormirAuth }));
   app.use('/api/sitio', createContenidoSitioRouter({ contenido, authCli, rl, ipHash, state, log }));
   app.use('/api/sitio', createSitioRouter(ctx));
   app.use('/api/mp', createMpWebhookRouter({ contenido, log }));
@@ -663,6 +674,13 @@ export function createApp(config) {
   };
 
   const admin = express.Router();
+  // Primero Cloudflare Access (JWT firmado por Cloudflare), después la ruta secreta + usuario y contraseña.
+  const cfAccess = crearCfAccess({
+    teamDomain: config.cfAccessTeamDomain, aud: config.cfAccessAud, requerido: config.cfAccessRequired, log,
+    fetchImpl: config.cfAccessFetch || globalThis.fetch, ahora: config.cfAccessAhora,
+  });
+  admin.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+  admin.use(cfAccess.middleware);
   admin.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (!adminEnabled) {
@@ -1323,6 +1341,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     const isApi = req.path.startsWith('/api/');
     if (err.type === 'entity.too.large') return isApi ? fail(res, 413, 'Los datos enviados son demasiado grandes.') : res.status(413).end();
     if (err.type === 'entity.parse.failed') return isApi ? fail(res, 400, 'Formato de datos inválido.') : res.status(400).end();
+    if (err.code === 'SR_OCUPADO') { res.set('Retry-After', '5'); return isApi ? fail(res, 503, err.message) : res.status(503).end(); }
     log('error:', req.method, logPath(req.path), err.code || '', err.message);
     if (res.headersSent) return res.end();
     if (isApi) return fail(res, 500, 'Ocurrió un error. Probá de nuevo en unos minutos.');

@@ -4,6 +4,8 @@
 #
 # - Publica el app solo en 127.0.0.1:3000 (http://localhost:3000).
 # - Desactiva cloudflared (queda en el perfil "tunnel", que no se levanta salvo con --profile tunnel).
+# - Usa los archivos separados por contenedor (.env.app, .env.db). gen-env.sh ya los crea; si editás .env,
+#   volvé a correr:  bash infra/server/separar-env.sh
 
 services:
   app:

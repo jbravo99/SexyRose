@@ -496,8 +496,11 @@
       if (!body.mayorEdad) return showErr('clRErr', 'Tenés que confirmar que sos mayor de 18 años.');
       if (!body.aceptaTerminos) return showErr('clRErr', 'Tenés que aceptar los Términos y la Política de privacidad.');
       const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
-      try { const r = await api('POST', '/cliente/registro', body); C.yo = r.cliente || null; hint(!!C.yo); HH.renderShell(); HH.toast('Cuenta creada. Te mandamos un email para confirmarla.', { type: 'ok', ms: 5000 }); irNext('#favoritos'); }
-      catch (e) { showErr('clRErr', e.message); btn.disabled = false; }
+      // El registro no abre la sesión ni dice si el email ya tenía cuenta: la sesión se abre con el link del email.
+      try {
+        await api('POST', '/cliente/registro', body);
+        form.outerHTML = `<div class="notice ok">${icon('mail')}<span>Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.</span></div><p class="small muted">Si no te llega en unos minutos, revisá la carpeta de spam.</p>`;
+      } catch (e) { showErr('clRErr', e.message); btn.disabled = false; }
     },
     async clOlvide(form, ev, data) {
       showErr('clOErr', ''); const btn = form.querySelector('button[type=submit]'); btn.disabled = true;

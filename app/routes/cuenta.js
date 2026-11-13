@@ -9,12 +9,13 @@ import { hashPassword, sha256, tokenAleatorio, verifyDummy, verifyPassword } fro
 import { cargarCatalogos } from '../lib/catalogos.js';
 import { ImagenInvalida, MAX_BYTES, procesarFoto, procesarPrivada } from '../lib/imagenes.js';
 import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
-import { GENEROS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesDe, linea, slugify, validarDatos } from '../lib/perfiles.js';
+import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesDe, linea, slugify, validarDatos } from '../lib/perfiles.js';
 import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_V2 } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
 import { invalidarSitio } from './sitio.js';
 import { DestacadaError } from '../lib/destacadas.js';
+import { crearLimitesAuth } from '../lib/seguridad.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -25,6 +26,8 @@ export const PLANES_PREVIEW = PLANES_PREVIEW_V2;
 
 const normEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 const validEmail = (s) => s.length <= 254 && EMAIL_RE.test(s);
+// Respuesta del registro: igual exista o no el email (no se revela si ya hay una cuenta).
+export const REGISTRO_OK = { ok: true, revisarEmail: true, mensaje: 'Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.' };
 
 function errorPassword(pw, email) {
   if (typeof pw !== 'string' || [...pw].length < 10) return 'La contraseña tiene que tener al menos 10 caracteres.';
@@ -40,6 +43,8 @@ export function createCuentaRouter(ctx) {
   const r = express.Router();
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
   const fail = (res, status, error, extra = {}) => res.status(status).json({ ok: false, error, ...extra });
+  // Ingreso: límite duro por IP y por (IP, email); por email solo demora (nadie puede bloquear la cuenta de otra).
+  const limLogin = crearLimitesAuth(rl, { prefijo: 'login', dormirImpl: ctx.dormirAuth });
   const limit = (req, res, key, max, windowMs, msg) => {
     if (!rl.allowed(key, max, windowMs)) {
       res.set('Retry-After', String(rl.retryAfterSec(key, windowMs)));
@@ -198,52 +203,67 @@ export function createCuentaRouter(ctx) {
     if (b.aceptaTerminos !== true) return fail(res, 400, 'Tenés que aceptar los Términos y la Política de privacidad.');
     if (b.mayorEdad !== true) return fail(res, 400, 'Tenés que confirmar que sos mayor de 18 años.');
     const cat = await cargarCatalogos(pool);
-    const v = validarDatos({ displayName: b.displayName, fechaNacimiento: b.fechaNacimiento, genero: b.genero }, {}, cat);
+    if (!TIPOS.includes(b.tipo)) return fail(res, 400, 'Elegí si sos acompañante, virtual o ambas.');
+    const v = validarDatos({ displayName: b.displayName, fechaNacimiento: b.fechaNacimiento, genero: b.genero, tipo: b.tipo }, {}, cat);
     if (v.error) return fail(res, 400, v.error);
     if (!v.datos.displayName || !v.datos.fechaNacimiento || !GENEROS.includes(v.datos.genero)) {
       return fail(res, 400, 'Completá tu nombre artístico, tu fecha de nacimiento y tu género.');
     }
     const hash = await hashPassword(b.password);
+    // Aviso a la dueña del email: como mucho 1 por hora por email, para que no se use para mandarle spam.
+    const avisarExistente = async () => {
+      const k = 'intreg:' + sha256(email).toString('hex');
+      if (!rl.allowed(k, 1, HOUR)) return;
+      rl.hit(k);
+      await sendMail({ to: email, ...plantillas.intentoRegistro({ urlIngresar: urlSitio('/ingresar') }) })
+        .catch((e) => log('mail intento de registro:', e.message));
+    };
     const client = await pool.connect();
-    let cuentaId;
+    let cuentaId = null;
     try {
       await client.query('BEGIN');
       const ex = await client.query('SELECT 1 FROM cuentas WHERE email = $1', [email]);
-      if (ex.rowCount) { await client.query('ROLLBACK'); rl.hit(ipKey); return fail(res, 409, 'Ya existe una cuenta con ese email. Iniciá sesión o recuperá tu contraseña.'); }
-      const { rows } = await client.query(
-        `INSERT INTO cuentas (email, pass_hash, acepto_terminos, mayor_edad_declarada) VALUES ($1, $2, now(), true) RETURNING id`,
-        [email, hash],
-      );
-      cuentaId = rows[0].id;
-      const slug = await slugLibre(v.datos.displayName, client);
-      await client.query('INSERT INTO perfiles (cuenta_id, slug, datos) VALUES ($1, $2, $3)', [cuentaId, slug, { ...v.datos, pais: 'argentina' }]);
-      await client.query('COMMIT');
+      if (ex.rowCount) {
+        await client.query('ROLLBACK');
+      } else {
+        const { rows } = await client.query(
+          `INSERT INTO cuentas (email, pass_hash, acepto_terminos, mayor_edad_declarada) VALUES ($1, $2, now(), true) RETURNING id`,
+          [email, hash],
+        );
+        cuentaId = rows[0].id;
+        const slug = await slugLibre(v.datos.displayName, client);
+        await client.query('INSERT INTO perfiles (cuenta_id, slug, datos) VALUES ($1, $2, $3)', [cuentaId, slug, { ...v.datos, pais: 'argentina' }]);
+        await client.query('COMMIT');
+      }
     } catch (e) {
       await client.query('ROLLBACK').catch(() => {});
-      if (e.code === '23505') return fail(res, 409, 'Ya existe una cuenta con ese email. Iniciá sesión o recuperá tu contraseña.');
-      throw e;
+      if (e.code !== '23505') throw e;
+      cuentaId = null; // carrera: otro registro con el mismo email entró antes
     } finally {
       client.release();
     }
     rl.hit(ipKey);
-    await auth.crearSesion(res, cuentaId, req);
-    await enviarVerificacion(cuentaId, email, v.datos.displayName).catch((e) => log('mail verificación:', e.message));
-    if (ctx.notify) ctx.notify('Nueva cuenta de acompañante registrada.', 'cuenta_nueva');
-    res.status(201).json({ ok: true, cuenta: await construirYo(cuentaId) });
+    // Misma respuesta en los dos casos. La sesión se abre con el link del email (no al registrarse).
+    // En los dos casos se espera el envío de un email, así el tiempo de respuesta es parecido.
+    if (cuentaId) {
+      await enviarVerificacion(cuentaId, email, v.datos.displayName).catch((e) => log('mail verificación:', e.message));
+      if (ctx.notify) ctx.notify('Nueva cuenta de acompañante registrada.', 'cuenta_nueva');
+    } else {
+      await avisarExistente();
+    }
+    res.status(201).json(REGISTRO_OK);
   }));
 
   r.post('/login', ah(async (req, res) => {
     const b = body(req);
     const email = normEmail(b.email);
-    const ipKey = 'login:' + ipHash(req);
-    const emKey = 'loginem:' + sha256(email).toString('hex');
-    if (!limit(req, res, ipKey, 20, 15 * 60 * 1000, 'Demasiados intentos. Probá de nuevo en 15 minutos.')) return;
-    if (!limit(req, res, emKey, 10, 15 * 60 * 1000, 'Demasiados intentos para esta cuenta. Probá de nuevo en 15 minutos.')) return;
+    const quien = { ip: ipHash(req), email };
+    if (!(await limLogin.revisar(req, res, quien))) return;
     const pw = typeof b.password === 'string' ? b.password : '';
     const { rows } = validEmail(email) ? await pool.query('SELECT id, pass_hash, estado FROM cuentas WHERE email = $1', [email]) : { rows: [] };
     const c = rows[0];
     const ok = c && c.estado !== 'baja' ? await verifyPassword(pw, c.pass_hash) : await verifyDummy(pw);
-    if (!ok) { rl.hit(ipKey); rl.hit(emKey); return fail(res, 401, 'Email o contraseña incorrectos.'); }
+    if (!ok) { limLogin.fallo(quien); return fail(res, 401, 'Email o contraseña incorrectos.'); }
     await pool.query('UPDATE cuentas SET ultimo_login = now() WHERE id = $1', [c.id]);
     await auth.crearSesion(res, c.id, req);
     res.json({ ok: true, cuenta: await construirYo(c.id) });
@@ -263,8 +283,14 @@ export function createCuentaRouter(ctx) {
       [sha256(t)],
     );
     if (!rows[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo desde tu panel.');
-    await pool.query('UPDATE cuentas SET email_verificado = COALESCE(email_verificado, now()) WHERE id = $1', [rows[0].cuenta_id]);
-    res.json({ ok: true });
+    const id = rows[0].cuenta_id;
+    const { rows: cs } = await pool.query(
+      "UPDATE cuentas SET email_verificado = COALESCE(email_verificado, now()) WHERE id = $1 AND estado <> 'baja' RETURNING id", [id]);
+    if (!cs[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo desde tu panel.');
+    // El link del email abre la sesión (el registro ya no la abre, para no revelar si el email existía).
+    const actual = await auth.cuentaDeReq(req).catch(() => null);
+    if (!actual || actual.id !== id) await auth.crearSesion(res, id, req);
+    res.json({ ok: true, cuenta: await construirYo(id) });
   }));
 
   r.post('/reenviar-verificacion', auth.requireCuenta, ah(async (req, res) => {
@@ -299,16 +325,27 @@ export function createCuentaRouter(ctx) {
     const b = body(req);
     const t = String(b.token || '');
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(t)) return fail(res, 400, 'El link no es válido.');
-    const { rows: ts } = await pool.query(
-      `SELECT t.cuenta_id, c.email FROM tokens_email t JOIN cuentas c ON c.id = t.cuenta_id
+    const ipKey = 'rest:' + ipHash(req);
+    if (!limit(req, res, ipKey, 20, HOUR, 'Demasiados intentos. Probá de nuevo en una hora.')) return;
+    rl.hit(ipKey);
+    const { rows: ts0 } = await pool.query(
+      `SELECT c.email FROM tokens_email t JOIN cuentas c ON c.id = t.cuenta_id
         WHERE t.token_hash = $1 AND t.tipo = 'restablecer' AND t.usado IS NULL AND t.expira > now() AND c.estado <> 'baja'`,
       [sha256(t)],
     );
-    if (!ts[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
-    const pwErr = errorPassword(b.password, ts[0].email);
+    if (!ts0[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
+    const pwErr = errorPassword(b.password, ts0[0].email);
     if (pwErr) return fail(res, 400, pwErr);
     const hash = await hashPassword(b.password);
-    await pool.query("UPDATE tokens_email SET usado = now() WHERE token_hash = $1", [sha256(t)]);
+    // El token se consume en un solo paso: si dos pedidos llegan juntos, solo uno cambia la contraseña.
+    const { rows: ts } = await pool.query(
+      `UPDATE tokens_email t SET usado = now() FROM cuentas c
+        WHERE t.token_hash = $1 AND t.tipo = 'restablecer' AND t.usado IS NULL AND t.expira > now()
+          AND c.id = t.cuenta_id AND c.estado <> 'baja'
+        RETURNING t.cuenta_id, c.email`,
+      [sha256(t)],
+    );
+    if (!ts[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
     // Si pudo abrir el email, el email es suyo.
     await pool.query('UPDATE cuentas SET pass_hash = $2, email_verificado = COALESCE(email_verificado, now()) WHERE id = $1', [ts[0].cuenta_id, hash]);
     await auth.cerrarOtrasSesiones(ts[0].cuenta_id, null);

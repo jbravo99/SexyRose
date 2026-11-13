@@ -26,3 +26,6 @@ app/test
 # No hace falta en la imagen
 infra
 *.md
+
+# Mapa generado por infra/mapa/generar-mapa.sh (va a bunny.net)
+mapa-salida

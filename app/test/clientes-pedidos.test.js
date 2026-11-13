@@ -150,23 +150,34 @@ describe('cuentas de interesados', () => {
     const usuario = 'Zz.' + crypto.randomBytes(3).toString('hex');
     const r = await post('/cliente/registro', { usuario, email, password: 'contraseña-larga', mayorEdad: true, aceptaTerminos: true });
     assert.equal(r.status, 201, await r.clone().text());
-    const ck = cookieDe(r, 'sr_cliente');
-    assert.ok(ck, 'deja la cookie de sesión del cliente');
+    assert.ok(!cookieDe(r, 'sr_cliente'), 'el registro no abre la sesión (no revela si el email existía)');
     assert.ok(!cookieDe(r, 'sr_sesion'), 'nunca la de las acompañantes');
-    const yo = (await r.json()).cliente;
-    assert.equal(yo.usuario, usuario); assert.equal(yo.emailVerificado, false);
-    // Mismo usuario (sin importar mayúsculas) o mismo email: 409
+    assert.equal((await r.json()).revisarEmail, true);
+    // Mismo usuario (sin importar mayúsculas): 409 (el usuario es público). Mismo email: igual que un registro nuevo + aviso al dueño
     assert.equal((await post('/cliente/registro', { usuario: usuario.toUpperCase(), email: 'zzreg-otro-' + email, password: 'contraseña-larga', mayorEdad: true, aceptaTerminos: true })).status, 409);
-    assert.equal((await post('/cliente/registro', { usuario: usuario + 'x', email, password: 'contraseña-larga', mayorEdad: true, aceptaTerminos: true })).status, 409);
-    // Sin confirmar no puede pedir
+    const antes = mailsEnviados.filter((m) => m.to === email).length;
+    const dup = await post('/cliente/registro', { usuario: usuario + 'x', email, password: 'contraseña-larga', mayorEdad: true, aceptaTerminos: true });
+    assert.equal(dup.status, 201); assert.equal((await dup.json()).revisarEmail, true); assert.ok(!cookieDe(dup, 'sr_cliente'));
+    const aviso = mailsEnviados.filter((m) => m.to === email).slice(antes);
+    assert.equal(aviso.length, 1); assert.match(aviso[0].subject, /intentó crear una cuenta/);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM clientes WHERE email = $1', [email])).rows[0].n, 1);
+    // Antes de confirmar puede ingresar con su contraseña, pero no pedir
+    const l0 = await post('/cliente/login', { email, password: 'contraseña-larga' });
+    assert.equal(l0.status, 200);
+    const ck = cookieDe(l0, 'sr_cliente');
+    const yo = (await l0.json()).cliente;
+    assert.equal(yo.usuario, usuario); assert.equal(yo.emailVerificado, false);
     const v = await vendedora();
     const p0 = await post('/cliente/pedidos', { slug: v.slug, texto: 'Hola, quiero un pedido' }, ck);
     assert.equal(p0.status, 403); assert.equal((await p0.json()).requiereVerificacion, true);
-    // Email de confirmación → /cliente/verificar?token=
-    const mail = [...mailsEnviados].reverse().find((m) => m.to === email);
-    assert.ok(mail && /\/cliente\/verificar\?token=/.test(mail.links[0]));
+    // Email de confirmación → /cliente/verificar?token= (el link abre la sesión)
+    const mail = [...mailsEnviados].reverse().find((m) => m.to === email && /\/cliente\/verificar\?token=/.test(m.links[0] || ''));
+    assert.ok(mail);
     const t = new URL(mail.links[0]).searchParams.get('token');
-    assert.equal((await post('/cliente/verificar-email', { token: t })).status, 200);
+    const vr = await post('/cliente/verificar-email', { token: t });
+    assert.equal(vr.status, 200);
+    assert.ok(cookieDe(vr, 'sr_cliente'), 'el link del email abre la sesión');
+    assert.equal((await vr.json()).cliente.emailVerificado, true);
     assert.equal((await post('/cliente/verificar-email', { token: t })).status, 400, 'el link sirve una vez');
     assert.equal((await (await req('/cliente/yo', { cookie: ck })).json()).cliente.emailVerificado, true);
     // Salir e ingresar

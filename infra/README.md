@@ -15,11 +15,13 @@ El servidor expone solamente SSH. El tráfico web entra por Cloudflare y llega a
 - `app/Dockerfile` — imagen única. Contexto de build = raíz del repo (`docker build -f app/Dockerfile .`). Etapa 1 genera la demo desde `mvp/` con `app/scripts/build-demo.*` (se cambia en un solo lugar: `ARG DEMO_BUILD_SCRIPT` al principio del Dockerfile); etapa 2 es el runtime, usuario `node`, healthcheck a `/healthz`.
 - `.dockerignore` — en la raíz (es la del contexto de build).
 - `.env.example` — todas las variables, comentadas. El `.env` real nunca va al repo.
+- `infra/server/separar-env.sh` — reparte `.env` en un archivo por contenedor (`.env.app`, `.env.db`, `.env.tunnel`): Postgres y cloudflared reciben solo lo suyo. Lo corren solos `gen-env.sh` y `deploy.sh`; `.env` sigue siendo el único que se edita.
 - `infra/docker-compose.yml` — producción. `infra/docker-compose.dev.yml` — override para la Mac.
 - `infra/gen-env.sh` — crea `.env` con claves aleatorias (incluida la dirección secreta del admin, `ADMIN_PATH`).
 - `infra/server/setup.sh` — prepara y endurece el VPS. `infra/server/deploy.sh` — despliega/actualiza. `infra/server/install-timers.sh` — instala los timers de copias y monitoreo.
 - `infra/server/admin-path.sh` — muestra la dirección completa del panel de admin (y la genera si falta en `.env`).
-- `infra/backup/backup.sh` + `infra/backup/restore.md` — copias de la base.
+- `infra/backup/` — copias de la base y de los archivos privados, cifradas; la PC de casa se las lleva (`infra/backup/README.md`, `restore.md`).
+- `infra/seguridad/cloudflare.md` — ajustes de seguridad que se hacen en el panel de Cloudflare (HSTS, límite de intentos).
 - `infra/monitor/check.sh` — chequeo cada 5 minutos con aviso por Telegram.
 - `infra/systemd/` — plantillas de los timers.
 
@@ -30,7 +32,7 @@ El servidor expone solamente SSH. El tráfico web entra por Cloudflare y llega a
 Desde la raíz del repo:
 
 ```bash
-bash infra/gen-env.sh --dev        # crea .env con SITE_URL=http://localhost:3000 (una sola vez)
+bash infra/gen-env.sh --dev        # crea .env (y .env.app/.env.db/.env.tunnel) con SITE_URL=http://localhost:3000 (una sola vez)
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up --build
 ```
 
@@ -38,6 +40,7 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up --
 - Admin: en la dirección secreta que imprime `bash infra/server/admin-path.sh` (algo como `http://localhost:3000/p-…`). `gen-env.sh --dev` ya la genera; `/admin` da la página 404 normal.
 - Usuario del admin: `admin`. Clave: `grep ^ADMIN_PASSWORD= .env`
 - No necesita token del túnel: cloudflared no se levanta con el override.
+- Si editás `.env` en la Mac, volvé a separarlo antes de levantar: `bash infra/server/separar-env.sh`.
 - Frenar: `Ctrl+C` o `docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml down`
 - Borrar también la base local: agregar `-v` al `down`.
 
@@ -129,7 +132,7 @@ nano .env
 - Guardá la clave del admin en tu gestor: `grep ^ADMIN_PASSWORD= .env`
 - Guardá también la dirección del admin: `bash infra/server/admin-path.sh` (ver "Panel de admin").
 
-`gen-env.sh` no muestra las claves (salvo con `--show`), deja el archivo con permisos 600 y se niega a pisar un `.env` existente.
+`gen-env.sh` no muestra las claves (salvo con `--show`), deja el archivo con permisos 600 y se niega a pisar un `.env` existente. Además arma `.env.app`, `.env.db` y `.env.tunnel` (uno por contenedor). Esos tres no se editan: `deploy.sh` los vuelve a armar desde `.env` en cada deploy.
 
 #### 5. Desplegar
 
@@ -143,7 +146,7 @@ Construye la imagen, levanta todo, espera a que el app esté healthy y muestra e
 
 ```bash
 sudo bash ~/SexyRose/infra/server/install-timers.sh
-bash ~/SexyRose/infra/backup/backup.sh     # primera copia ya, para no esperar a las 03:15
+bash ~/SexyRose/infra/backup/backup.sh     # primera copia ya (necesita AGE_RECIPIENT: ver infra/backup/README.md)
 ```
 
 #### 7. Verificar
@@ -217,12 +220,14 @@ Cambiar la dirección (por ejemplo, si se filtró): `nano .env`, borrá la líne
 
 ### Copias de seguridad
 
-- Todos los días a las 03:15 UTC: `pg_dump` de la base, gzip y cifrado con `age`, en `~/backups/`. Se conservan 14.
-- Cifrado: generá el par de claves **en tu Mac** (`brew install age && age-keygen -o ~/.config/sexyrose/backup-age.key`), poné la clave pública (`age1...`) en `AGE_RECIPIENT` del `.env` del servidor y guardá la privada en el gestor. Sin `AGE_RECIPIENT` las copias quedan sin cifrar y el script avisa.
-- Copia a mano: `bash ~/SexyRose/infra/backup/backup.sh`
-- Ver la última ejecución: `journalctl -u sexyrose-backup.service -n 30 --no-pager`
-- Restaurar: `infra/backup/restore.md`.
-- **Pendiente:** copia fuera del servidor (Storj o Backblaze B2, sin elegir). Hasta entonces, bajá copias a la Mac de vez en cuando: `scp -o IdentitiesOnly=yes -i ~/.ssh/sexyrose_srv1 'USUARIO@IP:backups/*.age' ~/sexyrose-backups/`
+Todo el detalle, paso a paso: **[infra/backup/README.md](backup/README.md)**.
+
+- Todos los días a las 03:15 UTC el servidor arma un juego cifrado con `age`: base (`pg_dump`) + archivos privados (`/data`). Lo deja en `/srv/sexyrose-copias` y conserva los últimos 7.
+- A las 05:15 UTC tu PC de casa se conecta con el usuario `sr-copias`, que solo puede leer esa carpeta por rsync, y trae lo nuevo. Verifica las sumas y guarda 14 diarias, 8 semanales y 12 mensuales.
+- El servidor nunca tiene acceso a tu casa, y la clave para abrir las copias está solo en tu casa y en tu gestor de contraseñas.
+- Sin `AGE_RECIPIENT` en `.env` no se hace ninguna copia: el monitor avisa por Telegram.
+- Copia a mano: `bash ~/SexyRose/infra/backup/backup.sh`. Ver la última: `journalctl -u sexyrose-backup.service -n 30 --no-pager`.
+- Restaurar y prueba mensual: `infra/backup/restore.md`.
 
 ### Monitoreo
 
@@ -253,7 +258,7 @@ Los logs de los contenedores rotan solos (10 MB x 3 por contenedor) y el journal
 
 ### A tener en cuenta
 
-- `cloudflared` usa el tag `latest` (`infra/docker-compose.yml`); `deploy.sh` lo actualiza con `compose pull` en cada deploy. Mejora pendiente: fijar un tag de hub.docker.com/r/cloudflare/cloudflared/tags. Cloudflare da soporte a versiones de hasta un año.
+- `cloudflared` tiene la versión fija (`infra/docker-compose.yml`, hoy `2026.10.7`), así un deploy nunca baja una versión nueva sin que lo decidas. Para actualizar: elegí un tag en hub.docker.com/r/cloudflare/cloudflared/tags, cambialo en el compose, commit y deploy. Revisalo cada 6 meses: Cloudflare da soporte a versiones de hasta un año. Si el tag no existe, `deploy.sh` corta antes de tocar lo que está corriendo.
 - `POSTGRES_PASSWORD` solo se aplica cuando se crea el volumen `pgdata` por primera vez. Cambiarla después en `.env` rompe la conexión del app (ver `restore.md`).
 - Estar en el grupo `docker` equivale a ser root en el servidor. Solo tu usuario debe estarlo.
 - Docker se saltea ufw para los puertos que publica. En producción no se publica ninguno; no agregues `ports:` al compose de producción.

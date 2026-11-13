@@ -1,6 +1,6 @@
 # Plantilla: la instala infra/server/install-timers.sh reemplazando @USER@ y @REPO_DIR@.
 [Unit]
-Description=SexyRose: copia diaria de la base (pg_dump + age)
+Description=SexyRose: copia diaria de la base y los archivos privados (pg_dump + tar, cifradas con age)
 Wants=network-online.target docker.service
 After=network-online.target docker.service
 

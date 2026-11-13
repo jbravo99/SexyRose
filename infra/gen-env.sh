@@ -9,7 +9,8 @@
 # Genera: POSTGRES_PASSWORD, IP_HASH_SALT, ADMIN_PASSWORD, ADMIN_PATH (dirección secreta del admin)
 # y arma DATABASE_URL coherente. La dirección completa del admin: bash infra/server/admin-path.sh
 # TUNNEL_TOKEN queda vacío: lo pega el dueño a mano.
-# Nunca pisa un .env existente.
+# Nunca pisa un .env existente. Después arma .env.app / .env.db / .env.tunnel (infra/server/separar-env.sh).
+# Si editás .env a mano, deploy.sh vuelve a separarlo solo (o: bash infra/server/separar-env.sh).
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -101,7 +102,10 @@ fi
 mv "$TMP" "$OUTPUT"
 trap - EXIT
 
-echo "Listo: $OUTPUT (permisos 600)."
+# Un archivo por contenedor (.env.app, .env.db, .env.tunnel) a partir del .env recién creado.
+bash "$REPO_DIR/infra/server/separar-env.sh" --env "$OUTPUT" >/dev/null
+
+echo "Listo: $OUTPUT (permisos 600), más .env.app, .env.db y .env.tunnel (uno por contenedor)."
 echo "Generados: POSTGRES_PASSWORD, IP_HASH_SALT, ADMIN_PASSWORD, ADMIN_PATH, DATABASE_URL, SECRETS_KEY."
 echo "Falta completar a mano: TUNNEL_TOKEN (y opcionales: OPERATOR_NAME, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, AGE_RECIPIENT)."
 echo "Usuario del admin: $(grep -m1 '^ADMIN_USER=' "$OUTPUT" | cut -d= -f2-)"

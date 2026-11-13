@@ -10,6 +10,7 @@ import { perfilPublico } from '../lib/perfiles.js';
 import { limitesDe, planesEfectivos, destacadosVigentes, PLANES_PREVIEW } from '../lib/planes-ref.js';
 import { sameOrigin } from '../lib/auth.js';
 import { mezclarPrecios, mezclarDestacado } from '../lib/planes.js';
+import { mapaConfig } from '../lib/mapa.js';
 
 const TTL = 30 * 1000;
 let cache = null;
@@ -67,8 +68,11 @@ export async function armarEstado(pool, planesInst) {
     return hl ? { ...pub, destacadas: hl } : pub;
   });
   const aj = cat.ajustes;
+  const mapa = mapaConfig();
   return {
     ahora: new Date().toISOString(),
+    // Vista Mapa de Cerca (MAP_TILES_URL; sin ella no viene y el sitio muestra solo el radar)
+    ...(mapa ? { mapa } : {}),
     ajustes: { portada: aj.portada ?? null, promo: aj.promo ?? '', precios: mezclarPrecios(aj.precios ?? null), destacado: mezclarDestacado(aj.destacado ?? null), textos_sitio: aj.textos_sitio ?? null, seo: aj.seo ?? null },
     ubicaciones: cat.ubicaciones.filter((u) => u.activa).map((u) => ({ id: u.id, nombre: u.nombre, tipo: u.tipo, padre: u.padre, lat: u.lat, lng: u.lng, orden: u.orden })),
     // Las actividades (tabla categorias) no se publican: el sitio es de anuncios y no menciona qué se ofrece

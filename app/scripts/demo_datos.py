@@ -184,6 +184,7 @@ def armar(root: pathlib.Path, media_out: pathlib.Path = None, prefijo: str = '/d
                 destacadas.append({'id': f"{p['id']}-d{di + 1}", 'titulo': dd['titulo'][:16], 'creado': _iso(publicado + timedelta(days=1 + di)), 'items': its})
         perfiles.append({
             'cuentaId': p['id'], 'slug': slug, 'displayName': p['nombre'], 'edad': p['edad'], 'genero': p.get('genero', 'mujer'),
+            'tipo': p.get('tipo', 'acompanante'),
             'nacionalidad': p.get('nacionalidad', ''), 'pais': por_id['argentina']['nombre'],
             'provincia': por_id[p['provincia']]['nombre'] if p.get('provincia') else '',
             'ciudad': por_id[p['ciudad']]['nombre'] if p.get('ciudad') else '', 'zona': p.get('zona', ''),

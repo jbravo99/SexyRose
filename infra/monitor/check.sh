@@ -3,7 +3,7 @@
 #
 #   bash ~/SexyRose/infra/monitor/check.sh
 #
-# Revisa: app healthy, db y cloudflared corriendo, disco > 80 %, copia de la base con menos de 26 h.
+# Revisa: app healthy, db y cloudflared corriendo, disco > 80 %, copia (base + archivos) con menos de 26 h.
 # Avisa por Telegram solo si TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID están en .env.
 # Sin spam: avisa al fallar, recuerda cada 6 h si sigue fallando y avisa cuando se resuelve.
 set -euo pipefail
@@ -12,7 +12,10 @@ REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 COMPOSE_FILE="$REPO_DIR/infra/docker-compose.yml"
 ENV_FILE="$REPO_DIR/.env"
 STATE_DIR="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/sexyrose-monitor}"
-BACKUP_DIR="${BACKUP_DIR:-$HOME/backups}"
+# Donde deja las copias infra/backup/backup.sh (si no existe /srv/sexyrose-copias, la vieja ~/backups).
+if [[ -z "${BACKUP_DIR:-}" ]]; then
+  if [[ -d /srv/sexyrose-copias ]]; then BACKUP_DIR=/srv/sexyrose-copias; else BACKUP_DIR="$HOME/backups"; fi
+fi
 DISK_THRESHOLD="${DISK_THRESHOLD:-80}"      # %
 BACKUP_MAX_AGE_H="${BACKUP_MAX_AGE_H:-26}"  # horas
 REMIND_EVERY="${REMIND_EVERY:-21600}"       # segundos (6 h)
@@ -113,9 +116,10 @@ if [[ -n "$DOCKER_ROOT" && -d "$DOCKER_ROOT" ]] && [[ "$(df -P "$DOCKER_ROOT" | 
 fi
 
 # --- Copia de la base reciente ---
-newest="$(find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'sexyrose-db-*.sql.gz' -o -name 'sexyrose-db-*.sql.gz.age' \) -printf '%T@\n' 2>/dev/null | sort -rn | head -1 || true)"
+# Un juego completo = su .sha256 (backup.sh lo escribe al final). También acepta el formato viejo.
+newest="$(find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'sexyrose-*Z.sha256' -o -name 'sexyrose-db-*.sql.gz' -o -name 'sexyrose-db-*.sql.gz.age' \) -printf '%T@\n' 2>/dev/null | sort -rn | head -1 || true)"
 if [[ -z "$newest" ]]; then
-  report backup fail "no hay ninguna copia de la base en $BACKUP_DIR (correr infra/backup/backup.sh)"
+  report backup fail "no hay ninguna copia completa en $BACKUP_DIR (correr infra/backup/backup.sh)"
 else
   age_h=$(( (NOW - ${newest%.*}) / 3600 ))
   if (( age_h >= BACKUP_MAX_AGE_H )); then

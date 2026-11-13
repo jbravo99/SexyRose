@@ -63,6 +63,10 @@ export async function leerFirma(file) {
   } finally { await fh.close(); }
 }
 
+// Endurecimiento: ffmpeg/ffprobe solo leen archivos locales (sin red ni listas tipo HLS) y solo los formatos de video
+// que aceptamos (MP4/MOV/3GP y Matroska/WebM). Va delante de cada -i de un archivo subido.
+export const ENTRADA_SEGURA = ['-protocol_whitelist', 'file', '-format_whitelist', 'mov,mp4,m4a,3gp,3g2,mj2,matroska,webm'];
+
 function correr(bin, args, { timeoutMs, stdin = 'ignore', binario = false } = {}) {
   return new Promise((resolve, reject) => {
     const ch = spawn(bin, args, { stdio: [stdin, 'pipe', 'pipe'] });
@@ -93,7 +97,7 @@ function rotacionDe(stream) {
 export async function analizar(file, { ffprobe = 'ffprobe', maxSegundos = MAX_SEGUNDOS } = {}) {
   let info;
   try {
-    const out = await correr(ffprobe, ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', '--', file], { timeoutMs: TIMEOUT_PROBE_MS });
+    const out = await correr(ffprobe, ['-v', 'error', ...ENTRADA_SEGURA, '-print_format', 'json', '-show_streams', '-show_format', '--', file], { timeoutMs: TIMEOUT_PROBE_MS });
     info = JSON.parse(out);
   } catch {
     throw new VideoInvalido('El archivo no es un video válido.');
@@ -122,7 +126,7 @@ export function tamanoSalida(ancho, alto, max = LADO_SALIDA) {
 // tam: tamaño de salida a medida ({ ancho, alto } pares); por defecto, lado mayor ≤ 720 px (tamanoSalida).
 export async function transcodificar(entrada, salida, a, { ffmpeg = 'ffmpeg', marca = true, maxSegundos = MAX_SEGUNDOS, tam = null } = {}) {
   const { ancho, alto } = tam || tamanoSalida(a.ancho, a.alto);
-  const args = ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', '-i', entrada];
+  const args = ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y', ...ENTRADA_SEGURA, '-i', entrada];
   let filtro = `[0:v]scale=${ancho}:${alto}:flags=bicubic,setsar=1,format=yuv420p[v]`;
   let mapV = '[v]';
   let wmFile = null;
@@ -167,7 +171,7 @@ export function inicioValido(inicio, duracion) {
 export async function recortarPreview(entrada, salida, inicio, a, { ffmpeg = 'ffmpeg' } = {}) {
   const { ancho, alto } = tamanoSalida(a.ancho, a.alto, LADO_PREVIEW);
   const args = ['-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
-    '-ss', String(Math.max(0, Number(inicio) || 0)), '-i', entrada, '-t', String(PREVIEW_SEGUNDOS),
+    '-ss', String(Math.max(0, Number(inicio) || 0)), ...ENTRADA_SEGURA, '-i', entrada, '-t', String(PREVIEW_SEGUNDOS),
     '-map', '0:v:0', '-an', '-vf', `scale=${ancho}:${alto}:flags=bicubic,setsar=1,format=yuv420p`,
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-maxrate', '900k', '-bufsize', '1800k',
     '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-threads', '2', '-g', '60',
@@ -183,7 +187,7 @@ export async function recortarPreview(entrada, salida, inicio, a, { ffmpeg = 'ff
 
 export async function portada(mp4, segundos, { ffmpeg = 'ffmpeg' } = {}) {
   const t = Math.min(1, Math.max(0, segundos * 0.4)).toFixed(2);
-  const png = await correr(ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-ss', t, '-i', mp4, '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
+  const png = await correr(ffmpeg, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-ss', t, ...ENTRADA_SEGURA, '-i', mp4, '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', '-'],
     { timeoutMs: 30000, binario: true });
   const out = await sharp(png).webp({ quality: 80 }).toBuffer({ resolveWithObject: true });
   return { buffer: out.data, ancho: out.info.width, alto: out.info.height };

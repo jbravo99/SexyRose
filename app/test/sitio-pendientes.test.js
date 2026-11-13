@@ -191,7 +191,7 @@ describe('mensajes del servidor en inglés y portugués (mvp/src/prod-sitio-erro
     const D = ctx.HH.I18N; const claves = Object.keys(D);
     assert.ok(claves.length > 150, String(claves.length));
     const fuentes = [];
-    for (const f of ['server.js', 'routes/cuenta.js', 'routes/cuenta-planes.js', 'routes/sitio.js', 'lib/auth.js', 'lib/perfiles.js', 'lib/imagenes.js', 'lib/videos.js', 'lib/planes.js', 'lib/creditos.js', 'lib/catalogos.js']) {
+    for (const f of ['server.js', 'routes/cuenta.js', 'routes/cuenta-planes.js', 'routes/sitio.js', 'lib/auth.js', 'lib/seguridad.js', 'lib/perfiles.js', 'lib/imagenes.js', 'lib/videos.js', 'lib/planes.js', 'lib/creditos.js', 'lib/catalogos.js']) {
       try { fuentes.push(await fs.readFile(path.join(HERE, '..', f), 'utf8')); } catch { /* archivo opcional */ }
     }
     fuentes.push(await fs.readFile(path.join(HERE, '..', '..', 'mvp', 'src', 'prod-sitio.js'), 'utf8'));

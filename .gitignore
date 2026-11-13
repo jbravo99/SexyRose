@@ -24,3 +24,6 @@ passphrase.md
 # Panel de administración generado (app/scripts/build-admin.py)
 app/admin-spa/
 app/sitio-spa/
+
+# Mapa generado por infra/mapa/generar-mapa.sh (GB; va a bunny.net, no al repo)
+mapa-salida/

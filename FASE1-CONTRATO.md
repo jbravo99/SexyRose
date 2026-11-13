@@ -553,3 +553,43 @@ Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que 
 - **WhatsApp del sitio**: "Probar" en Contacto abre `wa.me/<número del campo>` con el mismo mensaje que arma un pedido
   de créditos real (`GET /integraciones/whatsapp/ejemplo`, primer pack activo y código `SR-0000`; no crea nada).
 - Front: `mvp/src/prod-admin-integraciones.js` (solo el paquete del admin; `HH.adminInt`).
+
+## Tipo de perfil: Acompañante / Virtual / Ambas — desde el 13/11/2026 (decisiones de Juan)
+
+- Lo elige la acompañante: obligatorio al registrarse (`POST /api/cuenta/registro` → `tipo`: `acompanante` | `virtual` | `ambas`;
+  si falta o no es de la lista, 400 "Elegí si sos acompañante, virtual o ambas.") y editable en Mi perfil (`PUT /api/cuenta/perfil { tipo }`).
+  Se guarda en `perfiles.datos.tipo`. Migración `140-tipo-perfil.sql`: los perfiles existentes (o con valor inválido) quedan `acompanante`.
+  Texto de ayuda en los formularios: "Virtual: sin encuentros en persona." (nada más).
+- Ubicación igual para todos los tipos (ciudad, Cerca y páginas de lugar como siempre). Planes y precios: los mismos.
+- `GET /api/sitio/estado` → `perfiles[].tipo`.
+- Sitio y demo (`HH.FILTRO_TIPO`, prod-sitio.js): etiqueta "Virtual" en las tarjetas (`.pc2-virt`, junto al Destacado A), en la
+  tarjeta de Swipe y en la cabecera del perfil, para `virtual` y `ambas`. Filtro "Todas / Acompañantes / Virtuales" (`HH.ui.tipo`,
+  uno solo para inicio, Swipe y Shorts): en el inicio arriba de Intereses, en Swipe dentro de Filtros y en Shorts arriba del video.
+  `ambas` entra en Acompañantes y en Virtuales. EN: All / Companions / Virtual; PT: Todas / Acompanhantes / Virtuais.
+- Demo: Sofía y Martina virtuales, Camila e Isabella ambas (`app/scripts/demo/perfiles.json`).
+
+## Cerca de mí: Radar y Mapa — desde el 13/11/2026 (decisión de Juan)
+
+- **Radar** (`mvp/src/radar.js`, funciones puras; `views-public.js` lo dibuja): con la ubicación compartida, anillos a
+  escala real del rango elegido (5 km → 1/2/5; 10 → 2/5/10; 15 → 2/5/10/15; 25 → 5/10/25; 50 → 10/25/50; 100 → 25/50/100),
+  burbujas por distancia (escala raíz cuadrada) y dirección desde "Vos", sin pisarse ni salirse, con "a X km" abajo.
+  Star con borde dorado; foto un poco más grande en los planes más altos (S > A/B/C > D > E). Hasta 18 burbujas en
+  escritorio y 10 en el teléfono (el resto en la lista de abajo). Igual en el teléfono.
+  Tocar una burbuja abre una tarjeta chica (foto, nombre y edad, ciudad · distancia, "Ver perfil"): accesible con teclado,
+  se cierra con Escape, tocando afuera o con el botón Atrás. Sin ubicación compartida: como antes (grilla).
+- **Mapa** (botón "Radar | Mapa" en la cabecera de Cerca; se recuerda en la sesión, `sessionStorage sr_cerca_vista`):
+  MapLibre GL 6.16.0 + PMTiles 4.5.0 + estilo oscuro de @protomaps/basemaps 5.7.2, empaquetados por `build-sitio.py`
+  (esbuild) en `assets/mapa.<hash>.js/.css` y `assets/mapa-worker.<hash>.js`; se bajan **solo al abrir la vista Mapa**
+  (`mvp/src/prod-mapa.js`). Fotos como marcadores con grupos (cluster) que se abren al tocarlos; tocar una foto abre la misma
+  tarjeta. El visitante es un punto que late. Zoom máximo 14. Créditos © OpenStreetMap · Protomaps.
+- Las acompañantes van siempre en su ubicación **aproximada** (`HH.profileCoords`); la del visitante no sale del navegador.
+- Configuración (`app/lib/mapa.js`): `MAP_TILES_URL` (https, termina en `.pmtiles`; en local también http://localhost),
+  `MAP_GLYPHS_URL` (plantilla con `{fontstack}` y `{range}`) y `MAP_SPRITE_URL` (las dos juntas o ninguna: sin ellas el mapa
+  no lleva nombres). Sin `MAP_TILES_URL` no hay botón Mapa. `GET /api/sitio/estado` → `mapa: { tiles, glyphs, sprite }`
+  solo si está configurado. La CSP del sitio y de la demo suma esos orígenes a `connect-src` (el worker sale del mismo sitio:
+  `script-src 'self'`, sin `blob:`).
+- Demo: el mapa aparece solo si se arma con `MAP_TILES_URL` (argumentos de build del Dockerfile); si no, solo el radar.
+- Generar y subir el mapa: `infra/mapa/README.md` y `infra/mapa/generar-mapa.sh`. Imagen: el Dockerfile instala los
+  paquetes del mapa en `/mapa` y arma el sitio con `REQUIRE_MAPA=1`.
+- Textos nuevos en ES/EN/PT: Radar, Mapa, Cargando mapa…, No se pudo cargar el mapa…, Acompañantes a menos de {n} km,
+  Acercar / Alejar / Créditos del mapa. Tests: `app/test/cerca-radar-mapa.test.js`.

@@ -84,12 +84,16 @@ class Cliente {
 
 async function registrar(base, plan = 'E') {
   const c = new Cliente(base);
+  const email = `zzds-${rand()}@example.com`;
   const r = await c.json('POST', '/api/cuenta/registro', {
-    email: `zzds-${rand()}@example.com`, password: 'una-clave-larga-123', displayName: `Zz Ds ${rand()}`, fechaNacimiento: '1994-02-03',
-    genero: 'mujer', aceptaTerminos: true, mayorEdad: true,
+    email, password: 'una-clave-larga-123', displayName: `Zz Ds ${rand()}`, fechaNacimiento: '1994-02-03',
+    genero: 'mujer', tipo: 'acompanante', aceptaTerminos: true, mayorEdad: true,
   });
   assert.equal(r.status, 201, JSON.stringify(r.body));
-  c.id = r.body.cuenta.id;
+  // El registro no abre la sesión (no revela si el email existía): entra con su contraseña.
+  const l = await c.json('POST', '/api/cuenta/login', { email, password: 'una-clave-larga-123' });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  c.id = l.body.cuenta.id;
   await db.query("UPDATE perfiles SET estado = 'publicado', verificacion = 'verificada', publicado_en = now() WHERE cuenta_id = $1", [c.id]);
   await ponerPlan(c.id, plan);
   return c;

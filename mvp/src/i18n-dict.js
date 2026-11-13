@@ -137,6 +137,10 @@ HH.I18N = {
 "Accept with a price or decline it",
 "Aceite com um preço ou recuse"
 ],
+"Acercar": [
+"Zoom in",
+"Aproximar"
+],
 "Acompañante": [
 "Companion",
 "Acompanhante"
@@ -152,6 +156,10 @@ HH.I18N = {
 "Acompañante · plan Star": [
 "Companion · Star plan",
 "Acompanhante · plano Star"
+],
+"Acompañantes a menos de {n} km": [
+"Companions within {n} km",
+"Acompanhantes a menos de {n} km"
 ],
 "Acompañantes cerca": [
 "Companions nearby",
@@ -320,6 +328,10 @@ HH.I18N = {
 "Al día": [
 "Up to date",
 "Em dia"
+],
+"Alejar": [
+"Zoom out",
+"Afastar"
 ],
 "Algo falló al mostrar esta sección": [
 "Something went wrong showing this section",
@@ -788,6 +800,10 @@ HH.I18N = {
 "Cancelar y reembolsar": [
 "Cancel and refund",
 "Cancelar e reembolsar"
+],
+"Cargando mapa…": [
+"Loading map…",
+"Carregando mapa…"
 ],
 "Cargá desde cuándo y hasta cuándo vas a estar en otra ciudad. Mientras tanto, tu perfil aparece en esa ciudad.": [
 "Enter when you'll be in another city, from and until what date. In the meantime, your profile shows up in that city.",
@@ -1280,6 +1296,10 @@ HH.I18N = {
 "Creá una passkey": [
 "Create a passkey",
 "Crie uma chave de acesso"
+],
+"Créditos del mapa": [
+"Map credits",
+"Créditos do mapa"
 ],
 "Cuando el asistente no puede resolver algo, la consulta aparece acá.": [
 "When the assistant can't resolve something, the inquiry shows up here.",
@@ -2649,6 +2669,10 @@ HH.I18N = {
 "Up to {x} characters. You can use emojis.",
 "Até {x} caracteres. Você pode usar emojis."
 ],
+"Hay mucha demanda en este momento. Probá de nuevo en unos segundos.": [
+"There is a lot of demand right now. Try again in a few seconds.",
+"Há muita demanda neste momento. Tente de novo em alguns segundos."
+],
 "Helado": [
 "Ice cream",
 "Sorvete"
@@ -2940,6 +2964,10 @@ HH.I18N = {
 "La más cercana está a": [
 "The nearest one is",
 "A mais próxima está a"
+],
+"La más cercana está {x}.": [
+"The nearest one is {x}.",
+"A mais próxima está {x}."
 ],
 "La nueva contraseña necesita al menos {n} caracteres": [
 "The new password needs at least {n} characters",
@@ -3276,6 +3304,10 @@ HH.I18N = {
 "Mantenés el horario original": [
 "You keep the original time",
 "Você mantém o horário original"
+],
+"Mapa": [
+"Map",
+"Mapa"
 ],
 "Marcar horario": [
 "Mark time slot",
@@ -3824,6 +3856,10 @@ HH.I18N = {
 "No se cobra nada.": [
 "Nothing is charged.",
 "Nada é cobrado."
+],
+"No se pudo cargar el mapa. Probá de nuevo más tarde.": [
+"The map couldn't be loaded. Please try again later.",
+"Não foi possível carregar o mapa. Tente novamente mais tarde."
 ],
 "No se pudo copiar": [
 "Couldn't copy",
@@ -4869,6 +4905,10 @@ HH.I18N = {
 "What you'll need",
 "O que você vai precisar"
 ],
+"Radar": [
+"Radar",
+"Radar"
+],
 "Ramos Mejía": [
 "Ramos Mejía",
 "Ramos Mejía"
@@ -5112,6 +5152,10 @@ HH.I18N = {
 "Revisá el link \"": [
 "Check the link \"",
 "Verifique o link \""
+],
+"Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.": [
+"Check your email to continue. We sent you a link to confirm your account.",
+"Confira seu email para continuar. Enviamos um link para confirmar sua conta."
 ],
 "Revisá y enviá": [
 "Review and send",
@@ -5384,6 +5428,10 @@ HH.I18N = {
 "Si lo dejás a mitad, retomás desde donde quedaste.": [
 "If you stop halfway, you'll pick up where you left off.",
 "Se parar no meio, você continua de onde parou."
+],
+"Si no te llega en unos minutos, revisá la carpeta de spam.": [
+"If it doesn't arrive in a few minutes, check your spam folder.",
+"Se não chegar em alguns minutos, confira a pasta de spam."
 ],
 "Si querés captar público internacional, escribí tu titular y tu presentación también en inglés. Los ven quienes navegan la web en inglés; el resto ve la versión en español.": [
 "If you want to reach an international audience, write your headline and your introduction in English too. People browsing the site in English see them; everyone else sees the Spanish version.",
@@ -6864,6 +6912,10 @@ HH.I18N = {
 "Visitas por día": [
 "Visits per day",
 "Visitas por dia"
+],
+"Vista": [
+"View",
+"Visualização"
 ],
 "Vista previa": [
 "Preview",

@@ -15,11 +15,14 @@ import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
 import { SolicitudError } from '../lib/solicitudes.js';
 import { ContenidoError } from '../lib/contenido.js';
 import * as storage from '../lib/storage.js';
+import { crearLimitesAuth } from '../lib/seguridad.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
 const normEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 const validEmail = (s) => s.length <= 254 && EMAIL_RE.test(s);
+// Respuesta del registro: igual exista o no el email (no se revela si ya hay una cuenta con ese email).
+export const REGISTRO_CLIENTE_OK = { ok: true, revisarEmail: true, mensaje: 'Revisá tu email para continuar. Te mandamos un link para confirmar tu cuenta.' };
 function errorPassword(pw, email) {
   if (typeof pw !== 'string' || [...pw].length < 10) return 'La contraseña tiene que tener al menos 10 caracteres.';
   if (pw.length > 200) return 'La contraseña es demasiado larga.';
@@ -28,10 +31,12 @@ function errorPassword(pw, email) {
   return null;
 }
 
-export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log = () => {} }) {
+export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitudes, contenido, state, log = () => {}, dormirAuth }) {
   const r = express.Router();
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
   const fail = (res, status, error, extra = {}) => res.status(status).json({ ok: false, error, ...extra });
+  // Ingreso: límite duro por IP y por (IP, email); por email solo demora (nadie puede bloquear la cuenta de otro).
+  const limLogin = crearLimitesAuth(rl, { prefijo: 'cli-login', dormirImpl: dormirAuth });
   const limit = (req, res, key, max, windowMs, msg) => {
     if (!rl.allowed(key, max, windowMs)) { res.set('Retry-After', String(rl.retryAfterSec(key, windowMs))); fail(res, 429, msg); return false; }
     return true;
@@ -75,39 +80,50 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
     if (pwErr) return fail(res, 400, pwErr);
     if (b.mayorEdad !== true) return fail(res, 400, 'Tenés que confirmar que sos mayor de 18 años.');
     if (b.aceptaTerminos !== true) return fail(res, 400, 'Tenés que aceptar los Términos y la Política de privacidad.');
+    // El nombre de usuario es público: si está tomado se avisa (con el límite por IP). El email nunca se revela.
+    const { rowCount: usado } = await pool.query('SELECT 1 FROM clientes WHERE usuario_norm = $1', [usuario.toLowerCase()]);
+    if (usado) { rl.hit(ipKey); return fail(res, 409, 'Ese nombre de usuario ya está en uso. Elegí otro.'); }
     const hash = await hashPassword(b.password);
-    let id;
-    try {
-      const { rows } = await pool.query(
-        `INSERT INTO clientes (usuario, usuario_norm, email, pass_hash, acepto_terminos, mayor_edad_declarada) VALUES ($1, $2, $3, $4, now(), true) RETURNING id`,
-        [usuario, usuario.toLowerCase(), email, hash]);
-      id = rows[0].id;
-    } catch (e) {
-      if (e.code === '23505') {
+    let id = null;
+    const { rowCount: emailUsado } = await pool.query('SELECT 1 FROM clientes WHERE email = $1', [email]);
+    if (!emailUsado) {
+      try {
+        const { rows } = await pool.query(
+          `INSERT INTO clientes (usuario, usuario_norm, email, pass_hash, acepto_terminos, mayor_edad_declarada) VALUES ($1, $2, $3, $4, now(), true) RETURNING id`,
+          [usuario, usuario.toLowerCase(), email, hash]);
+        id = rows[0].id;
+      } catch (e) {
+        if (e.code !== '23505') throw e;
         rl.hit(ipKey);
         if (String(e.constraint || '').includes('usuario')) return fail(res, 409, 'Ese nombre de usuario ya está en uso. Elegí otro.');
-        return fail(res, 409, 'Ya existe una cuenta con ese email. Iniciá sesión o recuperá tu contraseña.');
+        id = null; // carrera: el email se registró recién
       }
-      throw e;
     }
     rl.hit(ipKey);
-    await authCli.crearSesion(res, id, req);
-    await enviarVerificacion(id, email, usuario).catch((e) => log('mail verificación (cliente):', e.message));
-    res.status(201).json({ ok: true, cliente: await yoJson(await leer(id)) });
+    // Misma respuesta en los dos casos. La sesión se abre con el link del email.
+    if (id) await enviarVerificacion(id, email, usuario).catch((e) => log('mail verificación (cliente):', e.message));
+    else {
+      // Aviso a la dueña del email: como mucho 1 por hora por email (que no sirva para mandarle spam).
+      const k = 'cli-intreg:' + sha256(email).toString('hex');
+      if (rl.allowed(k, 1, HOUR)) {
+        rl.hit(k);
+        await sendMail({ to: email, ...plantillas.intentoRegistro({ urlIngresar: urlSitio('/cliente/ingresar') }) })
+          .catch((e) => log('mail intento de registro (cliente):', e.message));
+      }
+    }
+    res.status(201).json(REGISTRO_CLIENTE_OK);
   }));
 
   r.post('/login', ah(async (req, res) => {
     const b = body(req);
     const email = normEmail(b.email);
-    const ipKey = 'cli-login:' + ipHash(req);
-    const emKey = 'cli-loginem:' + sha256(email).toString('hex');
-    if (!limit(req, res, ipKey, 20, 15 * 60 * 1000, 'Demasiados intentos. Probá de nuevo en 15 minutos.')) return;
-    if (!limit(req, res, emKey, 10, 15 * 60 * 1000, 'Demasiados intentos para esta cuenta. Probá de nuevo en 15 minutos.')) return;
+    const quien = { ip: ipHash(req), email };
+    if (!(await limLogin.revisar(req, res, quien))) return;
     const pw = typeof b.password === 'string' ? b.password : '';
     const { rows } = validEmail(email) ? await pool.query('SELECT id, pass_hash, estado FROM clientes WHERE email = $1', [email]) : { rows: [] };
     const c = rows[0];
     const ok = c && c.estado !== 'baja' ? await verifyPassword(pw, c.pass_hash) : await verifyDummy(pw);
-    if (!ok) { rl.hit(ipKey); rl.hit(emKey); return fail(res, 401, 'Email o contraseña incorrectos.'); }
+    if (!ok) { limLogin.fallo(quien); return fail(res, 401, 'Email o contraseña incorrectos.'); }
     // Bloqueado desde el admin: no entra (la contraseña ya se comprobó, así no se revela si la cuenta existe)
     if (c.estado === 'suspendida') return fail(res, 403, 'Tu cuenta está suspendida. Escribinos a contacto@sexyrose.net.', { suspendida: true });
     await pool.query('UPDATE clientes SET ultimo_login = now() WHERE id = $1', [c.id]);
@@ -123,8 +139,14 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
     const { rows } = await pool.query(
       `UPDATE tokens_email_clientes SET usado = now() WHERE token_hash = $1 AND tipo = 'verificar' AND usado IS NULL AND expira > now() RETURNING cliente_id`, [sha256(t)]);
     if (!rows[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo desde Tu espacio.');
-    await pool.query('UPDATE clientes SET email_verificado = COALESCE(email_verificado, now()) WHERE id = $1', [rows[0].cliente_id]);
-    res.json({ ok: true });
+    const id = rows[0].cliente_id;
+    const { rows: cs } = await pool.query(
+      "UPDATE clientes SET email_verificado = COALESCE(email_verificado, now()) WHERE id = $1 AND estado NOT IN ('baja', 'suspendida') RETURNING id", [id]);
+    if (!cs[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo desde Tu espacio.');
+    // El link del email abre la sesión (el registro ya no la abre, para no revelar si el email existía).
+    const actual = await authCli.clienteDeReq(req).catch(() => null);
+    if (!actual || actual.id !== id) await authCli.crearSesion(res, id, req);
+    res.json({ ok: true, cliente: await yoJson(await leer(id)) });
   }));
 
   r.post('/reenviar-verificacion', authCli.requireCliente, ah(async (req, res) => {
@@ -158,14 +180,23 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
     const b = body(req);
     const t = String(b.token || '');
     if (!/^[A-Za-z0-9_-]{20,100}$/.test(t)) return fail(res, 400, 'El link no es válido.');
-    const { rows: ts } = await pool.query(
-      `SELECT t.cliente_id, c.email FROM tokens_email_clientes t JOIN clientes c ON c.id = t.cliente_id
+    const ipKey = 'cli-rest:' + ipHash(req);
+    if (!limit(req, res, ipKey, 20, HOUR, 'Demasiados intentos. Probá de nuevo en una hora.')) return;
+    rl.hit(ipKey);
+    const { rows: ts0 } = await pool.query(
+      `SELECT c.email FROM tokens_email_clientes t JOIN clientes c ON c.id = t.cliente_id
         WHERE t.token_hash = $1 AND t.tipo = 'restablecer' AND t.usado IS NULL AND t.expira > now() AND c.estado <> 'baja'`, [sha256(t)]);
-    if (!ts[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
-    const pwErr = errorPassword(b.password, ts[0].email);
+    if (!ts0[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
+    const pwErr = errorPassword(b.password, ts0[0].email);
     if (pwErr) return fail(res, 400, pwErr);
     const hash = await hashPassword(b.password);
-    await pool.query('UPDATE tokens_email_clientes SET usado = now() WHERE token_hash = $1', [sha256(t)]);
+    // El token se consume en un solo paso: si dos pedidos llegan juntos, solo uno cambia la contraseña.
+    const { rows: ts } = await pool.query(
+      `UPDATE tokens_email_clientes t SET usado = now() FROM clientes c
+        WHERE t.token_hash = $1 AND t.tipo = 'restablecer' AND t.usado IS NULL AND t.expira > now()
+          AND c.id = t.cliente_id AND c.estado <> 'baja'
+        RETURNING t.cliente_id, c.email`, [sha256(t)]);
+    if (!ts[0]) return fail(res, 400, 'El link venció o ya se usó. Pedí uno nuevo.');
     await pool.query('UPDATE clientes SET pass_hash = $2, email_verificado = COALESCE(email_verificado, now()) WHERE id = $1', [ts[0].cliente_id, hash]);
     await authCli.cerrarOtrasSesiones(ts[0].cliente_id, null);
     await authCli.crearSesion(res, ts[0].cliente_id, req);
@@ -215,6 +246,7 @@ export function createClienteRouter({ pool, rl, ipHash, auth, authCli, solicitud
   // eslint-disable-next-line no-unused-vars
   r.use((err, req, res, next) => {
     if (err instanceof SolicitudError || err instanceof ContenidoError) return fail(res, err.status, err.message, err.solicitudId ? { solicitudId: err.solicitudId } : {});
+    if (err.code === 'SR_OCUPADO') { res.set('Retry-After', '5'); return fail(res, 503, err.message); }
     if (err.type === 'entity.parse.failed') return fail(res, 400, 'Formato de datos inválido.');
     if (err.type === 'entity.too.large') return fail(res, 413, 'Los datos enviados son demasiado grandes.');
     log('error: cliente:', err.code || '', err.message);

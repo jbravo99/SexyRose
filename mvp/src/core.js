@@ -762,9 +762,11 @@ window.HH = (function () {
   HH.distanceKm = function (p) { const g = HH.geo(); const c = HH.profileCoords(p); return g && c ? HH.haversine([g.lat, g.lng], c) : null; };
   HH.fmtKm = function (km) {
     if (km == null) return '';
-    if (km < 1) return 'a menos de 1 km';
-    if (km < 10) return 'a ' + km.toLocaleString(HH.loc(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' km';
-    return 'a ' + Math.round(km).toLocaleString(HH.loc()) + ' km';
+    // En inglés va "4.2 km away" (el diccionario no puede traducir "a {n} km": es muy corto para un patrón)
+    const en = HH.lang === 'en';
+    if (km < 1) return en ? 'less than 1 km away' : 'a menos de 1 km';
+    const n = km < 10 ? km.toLocaleString(HH.loc(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : Math.round(km).toLocaleString(HH.loc());
+    return en ? n + ' km away' : 'a ' + n + ' km';
   };
   HH.byDistance = (list) => { if (!HH.geo()) return list; return list.slice().sort((a, b) => (HH.distanceKm(a) ?? 1e9) - (HH.distanceKm(b) ?? 1e9)); };
   HH.nearestCity = function (lat, lng) {

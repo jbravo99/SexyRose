@@ -9,6 +9,9 @@ export const texto = (v) => (typeof v === 'string'
   : '');
 
 export const GENEROS = ['mujer', 'trans', 'hombre'];
+// Tipo de perfil (decisión de Juan, 13/11/2026): lo elige la acompañante. 'ambas' cuenta como acompañante y como virtual.
+export const TIPOS = ['acompanante', 'virtual', 'ambas'];
+export const TIPO_DEFAULT = 'acompanante';
 export const CONTEXTURAS = ['delgada', 'atletica', 'mediana', 'robusta'];
 export const SLUGS_RESERVADOS = new Set(['admin', 'api', 'media', 'demo', 'cuenta', 'panel', 'perfil', 'profile', 'hombres', 'men', 'homens',
   'en', 'pt', 'es', 'terminos', 'privacidad', 'contenido', 'trata', 'denunciar', 'buscar', 'swipe', 'cerca', 'shorts', 'stars', 'sitemap',
@@ -72,6 +75,10 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
   if (has('genero')) {
     if (!GENEROS.includes(body.genero)) return { error: 'Elegí un género válido.' };
     d.genero = body.genero;
+  }
+  if (has('tipo')) {
+    if (!TIPOS.includes(body.tipo)) return { error: 'Elegí si sos acompañante, virtual o ambas.' };
+    d.tipo = body.tipo;
   }
   if (has('fechaNacimiento')) {
     const v = String(body.fechaNacimiento || '');
@@ -219,6 +226,7 @@ export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos =
     displayName: datos.displayName || '',
     edad: edadDe(datos.fechaNacimiento),
     genero: datos.genero || 'mujer',
+    tipo: TIPOS.includes(datos.tipo) ? datos.tipo : TIPO_DEFAULT,
     nacionalidad: datos.nacionalidad || '',
     pais: nombre(datos.pais),
     provincia: nombre(datos.provincia),

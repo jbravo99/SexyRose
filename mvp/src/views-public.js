@@ -88,6 +88,9 @@
 .pub-swipe .swipe-stage{height:clamp(240px,calc(100dvh - 415px),640px)}
 @media(min-width:900px){.pub-swipe .swipe-stage{height:clamp(480px,calc(100dvh - 230px),680px);max-width:460px}.pub-swipe-side .chips.scroll{flex-wrap:wrap;overflow:visible}}
 .pub-swipe .swipe-actions{margin-top:24px}
+.sw-chips{display:flex;flex-direction:column;gap:8px;min-width:0}.sw-chips>.chips{min-width:0}
+.pf-tags{display:flex;gap:6px;flex-wrap:wrap}
+.badge.virt{background:var(--info-tint);color:var(--info)}
 @media(max-width:899px){.pub-swipe{display:flex;flex-direction:column;height:calc(100dvh - var(--header-h) - var(--bottomnav-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--sr-demo-h,0px) - 32px);min-height:430px}.pub-swipe-side{flex:none}.pub-swipe-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}.pub-swipe .swipe-stage{flex:1 1 auto;width:100%;height:auto;min-height:200px;max-height:640px}.pub-swipe .swipe-actions{flex:none;margin-top:28px}}
 @media(max-width:899px) and (max-height:700px){.pub-swipe .swipe-actions{margin-top:22px}.pub-swipe .swipe-actions .btn.round{--sr-act:54px}}
 /* Mobile estilo Tinder (v57): una fila compacta arriba, tarjeta vertical que ocupa el resto y botones flotando sobre la foto */
@@ -97,7 +100,7 @@
 .pub-swipe-side{gap:8px!important}
 .sw-top{gap:8px}.sw-ib{width:46px;height:46px;border-radius:999px;position:relative}.sw-ib svg{width:20px;height:20px}
 .sw-ib.on{border-color:var(--berry);color:var(--berry)}.sw-dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--berry)}
-.sw-chips{display:none!important}.sw-chips.open{display:flex!important}
+.sw-chips{display:none!important}.sw-chips.open{display:flex!important;flex-direction:column;gap:8px}
 .pub-swipe-main{position:relative}
 .pub-swipe .swipe-stage{max-height:none;margin-bottom:10px}
 .pub-swipe .swipe-actions{position:absolute;left:0;right:0;bottom:24px;margin:0!important;z-index:5;pointer-events:none}
@@ -303,6 +306,51 @@
   .pub-near-more{grid-template-columns:repeat(6,minmax(0,1fr));position:absolute;left:24px;right:24px;bottom:18px;margin:0}
   .pub-near.has-more{height:940px}
 }
+/* Radar con escala real (13/11/2026) */
+.nr{position:relative;width:100%;height:min(122vw,480px);border-radius:28px;background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--surface) 80%,transparent),var(--bg-2) 70%);border:1px solid var(--line);overflow:hidden;--b-s:56px;--b-c:50px;--b-d:46px;--b-e:42px}
+.nr-rings{position:absolute;inset:0;pointer-events:none}
+.nr-ring{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:1px dashed color-mix(in srgb,var(--berry) 32%,transparent)}
+.nr-ring-t{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);padding:1px 7px;border-radius:99px;background:var(--bg-2);color:var(--fg-3,var(--muted));font-size:10.5px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.nr-me{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:3px;pointer-events:none}
+.nr-me-dot{width:16px;height:16px;border-radius:50%;background:var(--berry);border:3px solid var(--surface);box-shadow:0 0 0 0 color-mix(in srgb,var(--berry) 55%,transparent);animation:nrPulse 2.2s ease-out infinite}
+.nr-me-t{font-size:11px;font-weight:800;color:var(--fg)}
+@keyframes nrPulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--berry) 55%,transparent)}100%{box-shadow:0 0 0 18px transparent}}
+@media (prefers-reduced-motion:reduce){.nr-me-dot{animation:none}}
+.nr-b{position:absolute;left:-999px;top:0;transform:translateX(-50%);display:grid;justify-items:center;gap:2px;padding:0;border:0;background:none;color:inherit;cursor:pointer;visibility:hidden;max-width:96px;font:inherit;border-radius:12px}
+.nr-b.on{visibility:visible}
+.nr-b:focus-visible{outline:2px solid var(--berry);outline-offset:3px}
+.nr-av{position:relative;display:block;width:var(--s);height:var(--s);--s:var(--b-e)}
+.nr-s .nr-av{--s:var(--b-s)}.nr-c .nr-av{--s:var(--b-c)}.nr-d .nr-av{--s:var(--b-d)}
+.nr-av .avatar{width:var(--s)!important;height:var(--s)!important;font-size:calc(var(--s)*.36)!important;border:2px solid var(--surface);box-shadow:var(--shadow);transition:transform .15s ease}
+.nr-b:hover .nr-av .avatar{transform:scale(1.05)}
+.nr-b.star .nr-av .avatar{border:3px solid var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 30%,transparent),var(--shadow)}
+.nr-star{position:absolute;right:-3px;top:-3px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#2a1d00;display:grid;place-items:center;border:2px solid var(--surface)}.nr-star svg{width:11px;height:11px;fill:currentColor}
+.nr-n{display:flex;align-items:center;gap:3px;max-width:96px;min-width:0;font-size:11.5px;font-weight:800;line-height:1.15}
+.nr-n .ellipsis{display:block}.nr-n .ver{color:var(--info);display:inline-flex;flex:none}.nr-n .ver svg{width:12px;height:12px}
+.nr-km{font-size:10.5px;font-weight:700;color:var(--berry);line-height:1.1;white-space:nowrap}
+@media(min-width:900px){
+  .nr{height:720px;--b-s:92px;--b-c:84px;--b-d:78px;--b-e:72px}
+  .nr-b{max-width:130px}.nr-n{max-width:130px;font-size:13.5px}.nr-km{font-size:12px}.nr-ring-t{font-size:12px}
+  .nr-me-dot{width:20px;height:20px}.nr-me-t{font-size:13px}
+}
+.nr-vista{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);gap:2px}
+.nr-vista button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--fg-2,var(--fg));font:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer}
+.nr-vista button svg{width:15px;height:15px}
+.nr-vista button[aria-pressed="true"]{background:linear-gradient(135deg,var(--berry),var(--pink));color:#fff}
+.nr-vista button:focus-visible{outline:2px solid var(--berry);outline-offset:2px}
+.nr-card-wrap{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:rgba(8,6,12,.35)}
+.nr-card{position:relative;display:flex;gap:14px;align-items:center;width:100%;max-width:380px;padding:14px 16px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-lg,var(--shadow));animation:nrIn .18s ease-out}
+@keyframes nrIn{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.nr-card{animation:none}}
+.nr-card-av .avatar{border:2px solid var(--surface)}.nr-card-av.star .avatar{border:3px solid var(--gold)}
+.nr-card-body{display:grid;gap:4px;min-width:0;flex:1}
+.nr-card-n{display:flex;align-items:center;gap:5px;font-weight:800;font-size:16px;min-width:0}.nr-card-n .ver{color:var(--info);display:inline-flex}.nr-card-n .ver svg{width:15px;height:15px}
+.nr-card-body .btn{justify-self:start;margin-top:4px}
+.nr-card-x{position:absolute;right:8px;top:8px;width:30px;height:30px;border-radius:50%;border:0;background:var(--surface-2);color:var(--fg);display:grid;place-items:center;cursor:pointer}.nr-card-x svg{width:15px;height:15px}
+@media(min-width:900px){.nr-card-wrap{align-items:center;padding-bottom:16px}}
+.nr-mapa{position:relative;width:100%;height:min(122vw,480px);border-radius:28px;overflow:hidden;border:1px solid var(--line);background:var(--bg-2)}
+@media(min-width:900px){.nr-mapa{height:720px}}
+.nr-mapa-load{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:8px;color:var(--muted);font-weight:700}.nr-mapa-load svg{width:22px;height:22px;color:var(--berry)}
 .pub-near-list .list-item{padding:10px 12px;color:inherit}.pub-near-list .dist{font-weight:800;color:var(--berry);white-space:nowrap;font-size:13px}
 .pub-filt-count{min-width:18px;height:18px;border-radius:999px;background:var(--berry);color:#fff;font-size:11px;font-weight:800;display:inline-grid;place-items:center;padding:0 5px}
 `;
@@ -393,6 +441,7 @@
     const lvl = HH.levelOf(p.userId);
     const badges = [
       HH.isStar(p.userId) ? HH.starBadge() : "",
+      FT() && HH.esVirtual(p) ? HH.virtualBadge() : "",
     ]
       .filter(Boolean)
       .join("");
@@ -508,6 +557,17 @@
   const filtOf = (p) => (FI() ? p.interests || [] : p.activities || []);
   const filtLabel = (id) => (FI() ? HH.interestLabel(id) || id : HH.activity(id).label);
   const filtIcon = (a) => (a.icon ? HH.icon(a.icon) + " " : "");
+  /* Tipo de perfil (sitio real, HH.FILTRO_TIPO en prod-sitio.js): acompañante, virtual o ambas. El filtro
+     "Todas / Acompañantes / Virtuales" vale para el inicio, Swipe y Shorts; "ambas" entra en los dos. */
+  const FT = () => !!HH.FILTRO_TIPO;
+  const TIPOS_FILTRO = [["", "Todas"], ["acompanante", "Acompañantes"], ["virtual", "Virtuales"]];
+  const tipoSel = () => (FT() && (HH.ui.tipo === "acompanante" || HH.ui.tipo === "virtual") ? HH.ui.tipo : "");
+  HH.tipoSel = tipoSel;
+  HH.esVirtual = (p) => !!p && (p.tipo === "virtual" || p.tipo === "ambas");
+  HH.tipoOk = (p, t = tipoSel()) => !t || (t === "virtual" ? HH.esVirtual(p) : (p.tipo || "acompanante") !== "virtual");
+  HH.tipoLabel = (t) => (t === "virtual" ? "Virtuales" : t === "acompanante" ? "Acompañantes" : "Todas");
+  HH.virtualBadge = (cls) => `<span class="badge virt${cls ? " " + cls : ""}">Virtual</span>`;
+  HH.tipoChips = (action, extraCls) => FT() ? `<div class="chips pub-tipo${extraCls ? " " + extraCls : ""}" role="group" aria-label="Tipo de perfil">${TIPOS_FILTRO.map(([id, l]) => `<button type="button" class="chip${tipoSel() === id ? " active" : ""}" data-action="${action}" data-id="${id}" aria-pressed="${tipoSel() === id}">${l}</button>`).join("")}</div>` : "";
   const homeCat = () =>
     HH.ui.homeCat && filtList().some((a) => a.id === HH.ui.homeCat)
       ? HH.ui.homeCat
@@ -515,7 +575,7 @@
   function gridProfiles() {
     const cat = homeCat();
     const base = HH.rankedProfiles().filter(
-      (p) => !cat || filtOf(p).includes(cat),
+      (p) => (!cat || filtOf(p).includes(cat)) && HH.tipoOk(p),
     );
     return HH.geo() ? HH.byDistance(base) : orderByCity(base, cityCurrent());
   }
@@ -633,6 +693,127 @@
   const nearKm = () => (NEAR_KM.includes(Number(HH.ui.nearKm)) ? Number(HH.ui.nearKm) : 15);
   const kmLabel = (k) => "Hasta " + k + " km";
   const kmSelect = () => `<label class="km-sel${HH.geo() ? "" : " off"}" title="${HH.geo() ? "Distancia máxima" : "Compartí tu ubicación para filtrar por distancia"}">${HH.icon("pin")}<select data-change="pubNearKm" aria-label="Distancia máxima">${NEAR_KM.map((k) => `<option value="${k}"${k === nearKm() ? " selected" : ""}>${kmLabel(k)}</option>`).join("")}</select>${HH.icon("chevronDown")}</label>`;
+  /* ---------- Vista de Cerca: Radar | Mapa (13/11/2026). El mapa solo existe si el sitio lo trae configurado
+     (HH.mapaDisponible, prod-mapa.js); la elección se recuerda en la pestaña (sessionStorage). */
+  const VISTA_K = "sr_cerca_vista";
+  function nearVista() {
+    if (!(HH.mapaDisponible && HH.mapaDisponible())) return "radar";
+    try { return sessionStorage.getItem(VISTA_K) === "mapa" ? "mapa" : "radar"; } catch (e) { return "radar"; }
+  }
+  const vistaToggle = () => {
+    if (!(HH.mapaDisponible && HH.mapaDisponible())) return "";
+    const v = nearVista();
+    return `<div class="nr-vista" role="group" aria-label="Vista"><button type="button" data-action="pubNearVista" data-v="radar" aria-pressed="${v === "radar"}">${HH.icon("pin")} Radar</button><button type="button" data-action="pubNearVista" data-v="mapa" aria-pressed="${v === "mapa"}">${HH.icon("globe")} Mapa</button></div>`;
+  };
+  function nearMapaMontar() {
+    const el = document.getElementById("pubMapa");
+    if (!el || !HH.mapaMontar) return;
+    const g = HH.geo();
+    const puntos = (S.nearList || []).map((p) => {
+      const c = HH.profileCoords(p); if (!c) return null;
+      return { id: p.userId, lat: c[0], lng: c[1], nombre: p.displayName, star: HH.isStar(p.userId), av: HH.avatar(p, 48) };
+    }).filter(Boolean);
+    const city = cityCurrent();
+    const loc = city && HH.locCoords && HH.locByName ? HH.locCoords(HH.locByName(city)) : null;
+    HH.mapaMontar(el, puntos, {
+      yo: g ? { lat: g.lat, lng: g.lng } : null,
+      centro: g ? [g.lat, g.lng] : loc,
+      km: g ? nearKm() : 0,
+      onPick: (id, from) => HH.nearCard(id, from),
+    });
+  }
+  document.addEventListener("hh:rendered", () => { if (document.getElementById("pubMapa")) nearMapaMontar(); });
+
+  /* ---------- Radar con escala real (13/11/2026, mvp/src/radar.js) ----------
+     Con la ubicación del visitante: anillos con la distancia real del rango elegido y cada burbuja a su distancia y
+     rumbo (coordenadas aproximadas, HH.profileCoords). Las que no entran quedan en la lista de abajo. */
+  const RADAR_TAM = { S: "s", A: "c", B: "c", C: "c", D: "d", E: "e" };
+  const radarCap = () => (typeof matchMedia === "function" && matchMedia("(min-width:900px)").matches ? 18 : 10);
+  function radarHtml(list, km) {
+    const g = HH.geo();
+    const items = list.filter((p) => HH.distanceKm(p) !== null).slice(0, radarCap());
+    const bub = (p) => {
+      const d = HH.distanceKm(p);
+      const a = HH.radar.rumbo([g.lat, g.lng], HH.profileCoords(p));
+      const star = HH.isStar(p.userId);
+      const t = RADAR_TAM[HH.levelOf(p.userId)] || "e";
+      return `<button type="button" class="nr-b nr-${t}${star ? " star" : ""}" data-action="pubNearCard" data-id="${esc(p.userId)}" data-d="${d.toFixed(3)}" data-a="${a.toFixed(4)}" aria-label="${esc(p.displayName)}, ${esc(HH.fmtKm(d))}">
+        <span class="nr-av">${HH.avatar(p, 96)}${star ? `<span class="nr-star" title="Star">${HH.icon("star")}</span>` : ""}</span>
+        <span class="nr-n">${p.verified === "verified" ? `<span class="ver" title="Edad e identidad verificadas al publicar">${HH.icon("verified")}</span>` : ""}<span class="ellipsis">${esc(p.displayName)}</span></span>
+        <span class="nr-km">${esc(HH.fmtKm(d))}</span></button>`;
+    };
+    return `<div class="nr" id="pubRadar" data-km="${km}" role="group" aria-label="Acompañantes a menos de ${km} km">
+      <div class="nr-rings" aria-hidden="true"></div>
+      <div class="nr-me" aria-hidden="true"><span class="nr-me-dot"></span><span class="nr-me-t">Vos</span></div>
+      ${items.map(bub).join("")}
+    </div>`;
+  }
+  // Ubica las burbujas y dibuja los anillos con el tamaño real del radar (después de cada dibujo y al cambiar el ancho)
+  HH.radarPlace = function () {
+    const el = document.getElementById("pubRadar"); if (!el || !HH.radar) return;
+    const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
+    const km = Number(el.dataset.km) || 15;
+    const bs = [...el.querySelectorAll(".nr-b")];
+    const items = bs.map((b) => {
+      const av = b.querySelector(".nr-av");
+      const s = av ? av.offsetWidth : 50;
+      return { d: Number(b.dataset.d), a: Number(b.dataset.a), s, lw: b.offsetWidth, lh: Math.max(0, b.offsetHeight - s) };
+    });
+    const me = el.querySelector(".nr-me");
+    const pos = HH.radar.ubicar(items, { w, h, km, centro: Math.max(56, me ? me.offsetWidth + 16 : 0) });
+    bs.forEach((b, i) => { b.style.left = pos[i].x + "px"; b.style.top = pos[i].y - items[i].s / 2 + "px"; b.classList.add("on"); });
+    const rings = el.querySelector(".nr-rings");
+    if (rings) rings.innerHTML = HH.radar.anillos(km).map((k) => {
+      const r = HH.radar.radio(k, km, pos.R);
+      return `<span class="nr-ring" style="width:${(2 * r).toFixed(1)}px;height:${(2 * r).toFixed(1)}px"><span class="nr-ring-t">${String(k).replace(".", HH.loc && HH.loc() === "en" ? "." : ",")} km</span></span>`;
+    }).join("");
+  };
+  document.addEventListener("hh:rendered", () => { if (document.getElementById("pubRadar")) HH.radarPlace(); });
+  let radarW = 0, radarT = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(radarT);
+    radarT = setTimeout(() => {
+      const el = document.getElementById("pubRadar"); if (!el) return;
+      // Si cambió el corte celular/escritorio cambia cuántas entran: se vuelve a dibujar; si no, solo se reubica
+      const cap = radarCap();
+      if (radarW && cap !== radarW) { radarW = cap; nearRerender(); } else { radarW = cap; HH.radarPlace(); }
+    }, 150);
+  });
+  // Tarjeta chica al tocar una burbuja (foto, nombre, edad, distancia y "Ver perfil"); "atrás" la cierra
+  let nearCardOv = null;
+  function nearCardClose(fromBack) {
+    const w = document.getElementById("pubNearCard"); if (!w) return;
+    const back = w._back; w.remove();
+    document.removeEventListener("keydown", nearCardKey, true);
+    if (nearCardOv && !fromBack) HH.overlayClosed(nearCardOv);
+    nearCardOv = null;
+    if (back && back.focus) try { back.focus({ preventScroll: true }); } catch (e) { /* */ }
+  }
+  function nearCardKey(ev) { if (ev.key === "Escape") { ev.preventDefault(); nearCardClose(); } }
+  HH.nearCard = function (id, from) {
+    const p = (HH.publishedProfiles ? HH.publishedProfiles() : []).find((x) => x.userId === id) || (HH.profileOf ? HH.profileOf(id) : null);
+    if (!p) return;
+    nearCardClose();
+    const d = HH.distanceKm(p);
+    const w = document.createElement("div");
+    w.id = "pubNearCard"; w.className = "nr-card-wrap";
+    w.innerHTML = `<div class="nr-card" role="dialog" aria-modal="false" aria-label="${esc(p.displayName)}">
+      <button type="button" class="nr-card-x" data-nr-x aria-label="Cerrar">${HH.icon("x")}</button>
+      <div class="nr-card-av${HH.isStar(p.userId) ? " star" : ""}">${HH.avatar(p, 72)}</div>
+      <div class="nr-card-body"><div class="nr-card-n">${nameAge(p)}${p.verified === "verified" ? `<span class="ver" title="Edad e identidad verificadas al publicar">${HH.icon("verified")}</span>` : ""}</div>
+        <div class="small muted ellipsis">${esc(p.city || "")}${d !== null ? " · " + esc(HH.fmtKm(d)) : ""}</div>
+        <a class="btn sm" href="#perfil.${p.slug}" data-go="#perfil.${p.slug}" data-nr-go>Ver perfil</a></div></div>`;
+    w._back = from || null;
+    w.addEventListener("click", (ev) => {
+      if (ev.target === w || ev.target.closest("[data-nr-x]")) { ev.preventDefault(); nearCardClose(); return; }
+      if (ev.target.closest("[data-nr-go]")) { const ov = nearCardOv; nearCardOv = null; w.remove(); document.removeEventListener("keydown", nearCardKey, true); if (ov) HH.overlayClosed(ov, { nav: true }); }
+    });
+    document.body.appendChild(w);
+    document.addEventListener("keydown", nearCardKey, true);
+    nearCardOv = HH.overlayOpen(() => nearCardClose(true));
+    const go = w.querySelector("[data-nr-go]"); if (go) try { go.focus({ preventScroll: true }); } catch (e) { /* */ }
+  };
+  document.addEventListener("hh:rendered", () => { const w = document.getElementById("pubNearCard"); if (w && !document.getElementById("pubRadar") && !document.getElementById("pubMapa")) nearCardClose(); });
   function nearBody() {
     const city = cityCurrent();
     const km = nearKm();
@@ -642,7 +823,7 @@
       if (!inRadius.length) {
         const next = NEAR_KM.find((k) => k > km);
         const nearest = HH.byDistance(applyNearFilters(all))[0];
-        return `<div class="empty">${HH.icon("pin")}<h4>No hay acompañantes a menos de ${km} km</h4><p class="small">${nearest ? "La más cercana está a " + HH.fmtKm(HH.distanceKm(nearest)) + "." : "Probá con otra ubicación o quitando filtros."}</p>${next ? `<button type="button" class="btn secondary sm" data-action="pubNearKm" data-v="${next}">Ampliar a ${next} km</button>` : ""}</div>`;
+        return `<div class="empty">${HH.icon("pin")}<h4>No hay acompañantes a menos de ${km} km</h4><p class="small">${nearest ? "La más cercana está " + HH.fmtKm(HH.distanceKm(nearest)) + "." : "Probá con otra ubicación o quitando filtros."}</p>${next ? `<button type="button" class="btn secondary sm" data-action="pubNearKm" data-v="${next}">Ampliar a ${next} km</button>` : ""}</div>`;
       }
     }
     const ranked = HH.geo() && km ? HH.rankedProfiles().filter((p) => { const d = HH.distanceKm(p); return d !== null && d <= km; }) : HH.rankedProfiles();
@@ -657,6 +838,7 @@
         ? inCity.concat(others.slice(0, Math.max(0, 12 - inCity.length)))
         : inCity;
     const list = HH.byDistance(applyNearFilters(base));
+    S.nearList = list;
     const nCity = applyNearFilters(inCity).length;
     const cap = RING.reduce((a, r) => a + r.n, 0);
     const ring = list.slice(0, cap),
@@ -678,10 +860,14 @@
           ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles con esos filtros</h4><p class="small">${FI() ? "Probá quitando algún interés o ampliando el rango de edad." : "Probá quitando alguna actividad o ampliando el rango de edad."}</p><button type="button" class="btn secondary sm" data-action="pubNearClear">Quitar filtros</button></div>`
           : `
       ${fallback ? `<h3 style="font-size:18px">En otras ciudades</h3>` : ""}
-      <div class="pub-near${extra.length ? " has-more" : ""}" aria-label="Acompañantes cerca">
+      ${nearVista() === "mapa"
+        ? `<div class="nr-mapa" id="pubMapa" role="region" aria-label="Mapa"><div class="nr-mapa-load">${HH.icon("pin")} Cargando mapa…</div></div>`
+        : HH.geo() && km && HH.radar
+          ? radarHtml(list, km)
+          : `<div class="pub-near${extra.length ? " has-more" : ""}" aria-label="Acompañantes cerca">
         <div class="pub-near-items">${items.join("")}</div>
         ${extra.length ? `<div class="pub-near-more">${extra.map((p, i) => bubble(p, cap + i)).join("")}</div>` : ""}
-      </div>
+      </div>`}
       <div class="row between"><h3 style="font-size:18px">${HH.geo() && km && !fallback ? n + " " + HH.plural(n, "acompañante") + " a menos de " + km + " km" : fallback ? n + " " + HH.plural(n, "acompañante") + " en otras ciudades" : city ? nCity + " " + HH.plural(nCity, "acompañante") + " en " + esc(city) + (n > nCity ? " y " + (n - nCity) + " en otras ciudades" : "") : n + " " + HH.plural(n, "acompañante") + " en todas las ciudades"}</h3><span class="small muted">${HH.geo() ? "Distancia desde tu ubicación" : "Distancias aproximadas"}</span></div>
       <div class="list pub-near-list">${list
         .map(
@@ -691,12 +877,12 @@
           ) => `<a class="list-item" href="#perfil.${p.slug}" data-go="#perfil.${p.slug}">
         ${HH.avatar(p, 40)}
         <div class="grow"><div class="title pub-ir fg" style="gap:5px">${nameAge(p)}${p.verified === "verified" ? `<span style="color:var(--info);display:inline-flex">${HH.icon("verified")}</span>` : ""}${p.online ? '<span class="pub-dot"></span>' : ""}</div>
-          <div class="sub ellipsis">${esc(p.city)}${p.country ? ", " + esc(p.country) : ""} · ${
+          <div class="sub ellipsis">${esc(p.city)}${p.country ? ", " + esc(p.country) : ""}${FI() ? "" : ` · ${
             (p.activities || [])
               .slice(0, 3)
               .map((id) => esc(HH.activity(id).label))
               .join(", ") || "Sin actividades"
-          }</div></div>
+          }`}</div></div>
         <span class="dist">${HH.geo() ? HH.fmtKm(HH.distanceKm(p)) : !city || p.city === city ? fakeDist(i) : esc(HH.upcomingTrip(p) && HH.upcomingTrip(p).city === city ? "llega el " + HH.fmtDay(HH.upcomingTrip(p).from) : p.city)}</span>${HH.icon("chevronRight")}</a>`,
         )
         .join("")}</div>`
@@ -729,7 +915,7 @@
   }
   function nearRerender() {
     const body = document.getElementById("pubNearBody");
-    if (body) body.innerHTML = nearBody();
+    if (body) { body.innerHTML = nearBody(); HH.radarPlace(); nearMapaMontar(); }
     const c = document.getElementById("pubNearFiltCount");
     if (c) {
       const n = nearFilterCount();
@@ -918,22 +1104,22 @@
         : ""
     }
 
-    ${filtList().length ? `<div class="container" style="padding-top:14px">
+    ${filtList().length || FT() ? `<div class="container stack" style="padding-top:14px;gap:10px">${HH.tipoChips("pubTipo")}${filtList().length ? `
       <details class="pub-cats"${homeCat() ? " open" : ""}>
         <summary><span class="pub-ir">${HH.icon(FI() ? "heart" : "grid")} <strong>${FI() ? "Intereses" : "Categorías"}</strong>${homeCat() ? `<span class="badge">${esc(filtLabel(homeCat()))}</span>` : `<span class="small muted">${filtList().length}</span>`}</span>${HH.icon("chevronDown")}</summary>
         <div class="chips">${filtList().map((a) => `<button type="button" class="chip${homeCat() === a.id ? " active" : ""}" data-action="pubGoActivity" data-id="${a.id}" aria-pressed="${homeCat() === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}${homeCat() ? `<button type="button" class="chip" data-action="pubGoActivity" data-id="">${HH.icon("x")} Quitar</button>` : ""}</div>
-      </details>
+      </details>` : ""}
     </div>` : ""}
     <section class="section">
       <div class="container stack-lg">
         <div class="row between">
-          <div><span class="eyebrow">${gSel ? gSel + " · " : ""}${homeCat() ? esc(filtLabel(homeCat())) + " · " : ""}Perfiles cerca tuyo</span><h2>${city ? "Acompañantes en " + esc(city) : "Acompañantes en todas las ciudades"}</h2><p class="small muted" style="margin-top:4px">${city ? "Primero las de " + esc(city) + ", después el resto." : "Ordenadas por ranking: Stars y plan A primero."}</p></div>
+          <div><span class="eyebrow">${gSel ? gSel + " · " : ""}${tipoSel() ? HH.tipoLabel(tipoSel()) + " · " : ""}${homeCat() ? esc(filtLabel(homeCat())) + " · " : ""}Perfiles cerca tuyo</span><h2>${city ? "Acompañantes en " + esc(city) : "Acompañantes en todas las ciudades"}</h2><p class="small muted" style="margin-top:4px">${city ? "Primero las de " + esc(city) + ", después el resto." : "Ordenadas por ranking: Stars y plan A primero."}</p></div>
         </div>
         <button type="button" class="btn lg block pub-swipe-cta" data-action="pubSwipeMode">${HH.icon("heart")} Modo swipe${homeCat() ? `<span class="small" style="opacity:.85;font-weight:600"> · ${esc(filtLabel(homeCat()))}</span>` : ""}</button>
         ${
           gridAll.length
             ? tierSections(gridAll, new Set(stars.map((p) => p.userId)))
-            : `${homeCat() ? `<div class="empty">${HH.icon("search")}<h4>${FI() ? "No hay perfiles con ese interés todavía" : `No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía`}</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">${FI() ? "Ver todos" : "Ver todas las categorías"}</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
+            : `${!homeCat() && tipoSel() ? `<div class="empty">${HH.icon("search")}<h4>No hay perfiles de ese tipo todavía</h4><button type="button" class="btn secondary sm" data-action="pubTipo" data-id="">Ver todos</button></div>` : homeCat() ? `<div class="empty">${HH.icon("search")}<h4>${FI() ? "No hay perfiles con ese interés todavía" : `No hay perfiles para ${esc(HH.activity(homeCat()).label)} todavía`}</h4><button type="button" class="btn secondary sm" data-action="pubGoActivity" data-id="">${FI() ? "Ver todos" : "Ver todas las categorías"}</button></div>` : `<div class="empty">${HH.icon("users")}<h4>Todavía no hay perfiles publicados</h4><button type="button" class="btn sm" data-go="#registro">Publicá el tuyo</button></div>`}`
         }
       </div>
     </section>
@@ -976,6 +1162,7 @@
       (p) =>
         HH.inCity(p, f.city) &&
         (!f.activity || filtOf(p).includes(f.activity)) &&
+        HH.tipoOk(p) &&
         !swipedRight(p.userId),
     );
   }
@@ -984,6 +1171,7 @@
     const lvl = HH.levelOf(p.userId);
     const badges = [
       HH.isStar(p.userId) ? HH.starBadge() : "",
+      FT() && HH.esVirtual(p) ? HH.virtualBadge() : "",
       lvl === "A" ? priorityBadge() : "",
     ]
       .filter(Boolean)
@@ -1001,7 +1189,7 @@
   }
   function swipeEmptyHtml() {
     const f = swipeFilters();
-    const hasFilters = !!(f.city || f.activity);
+    const hasFilters = !!(f.city || f.activity || tipoSel());
     return `<div class="empty" style="height:100%;align-content:center">${HH.icon("search")}<h4>Viste todos los perfiles${hasFilters ? " con estos filtros" : ""}</h4><p class="small">${hasFilters ? (FI() ? "Probá quitando la ciudad o el interés." : "Probá quitando la ciudad o la actividad.") : "Podés volver a empezar y verlos de nuevo."}</p>
       <div class="row" style="justify-content:center">${hasFilters ? `<button type="button" class="btn secondary sm" data-action="pubSwipeClearFilters">Quitar filtros</button>` : ""}<button type="button" class="btn sm" data-action="pubSwipeRestart">${HH.icon("refresh")} Volver a empezar</button></div></div>`;
   }
@@ -1128,13 +1316,13 @@
             <div class="grow" style="min-width:0">${HH.placePill(f.city || "", "pubSwipeCity", { block: true })}</div>
             <span class="small muted num hide-mobile" id="pubSwipeCount" style="white-space:nowrap;flex:none"></span>
             <button type="button" class="icon-btn sw-ib hide-desktop" data-action="pubGridMode" aria-label="Modo grilla" title="Modo grilla">${HH.icon("grid")}</button>
-            ${filtList().length ? `<button type="button" class="icon-btn sw-ib hide-desktop${f.activity ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>` : ""}
+            ${filtList().length || FT() ? `<button type="button" class="icon-btn sw-ib hide-desktop${f.activity || tipoSel() ? " on" : ""}" id="pubSwipeFiltBtn" data-action="pubSwipeFilters" aria-expanded="${!!S.swipeFiltOpen}" aria-controls="pubSwipeChips" aria-label="Filtros" title="Filtros">${HH.icon("filter")}${f.activity || tipoSel() ? '<span class="sw-dot" aria-hidden="true"></span>' : ""}</button>` : ""}
           </div>
           <button type="button" class="btn lg block pub-swipe-cta hide-mobile" data-action="pubGridMode">${HH.icon("grid")} Modo grilla</button>
-          ${filtList().length ? `<div class="chips scroll sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">
+          ${filtList().length || FT() ? `<div class="sw-chips${S.swipeFiltOpen ? " open" : ""}" id="pubSwipeChips">${HH.tipoChips("pubSwipeTipo", "scroll")}${filtList().length ? `<div class="chips scroll" role="group" aria-label="${FI() ? "Intereses" : "Categoría"}">
             <button type="button" class="chip" data-action="pubSwipeActivity" data-id="" aria-pressed="${!f.activity}">${FI() ? "Todos" : "Todas"}</button>
             ${filtList().map((a) => `<button type="button" class="chip" data-action="pubSwipeActivity" data-id="${a.id}" aria-pressed="${f.activity === a.id}">${filtIcon(a)}${esc(a.label)}</button>`).join("")}
-          </div>` : ""}
+          </div>` : ""}</div>` : ""}
           <div class="hide-mobile">
             <div class="card soft stack" style="gap:8px;margin-top:8px">
               <div class="card-title">Cómo deslizar</div>
@@ -1166,6 +1354,7 @@
         <h1>Cerca de mí</h1>
         <div class="row" style="gap:8px">${HH.placePill(city, "pubNearCity")}${kmSelect()}</div>
         <button type="button" class="btn secondary sm pub-city-btn" data-action="pubNearFilters" aria-label="Filtros">${HH.icon("filter")} Filtros <span class="pub-filt-count" id="pubNearFiltCount"${n ? "" : ' style="display:none"'}>${n}</span></button>
+        ${vistaToggle()}
       </div>
       ${HH.locationBar()}
       <div class="stack-lg" id="pubNearBody">${nearBody()}</div>
@@ -1342,6 +1531,7 @@
         <button type="button" class="pf-thumb${stories ? " has-st" + (HH.storiesOf(p.userId).every((x) => HH.seenStories()[x.id]) ? " seen" : "") : ""}" data-action="${stories ? "openStories" : "pubLightbox"}" data-id="${p.userId}" data-idx="0" aria-label="${stories ? "Ver historias" : "Ver foto"}">${HH.photo(p, 0)}</button>
         <div class="pf-head">
           <h1>${esc(p.displayName)}${HH.isStar(p.userId) ? `<span class="pf-ic star" title="Star" aria-label="Star">${HH.icon("star")}</span>` : ""}${p.verified === "verified" ? `<span class="pf-ic ok" title="Edad e identidad verificadas al publicar" aria-label="Verificada">${HH.icon("verified")}</span>` : ""}</h1>
+          ${FT() && HH.esVirtual(p) ? `<div class="pf-tags">${HH.virtualBadge()}</div>` : ""}
           ${p.age || p.nationality ? `<div class="pf-age">${p.age ? `<span>${p.age} años</span>` : ""}${p.age && p.nationality ? " · " : ""}${p.nationality ? `<span data-noi18n>${esc(p.nationality)}</span>` : ""}${p.verified === "pending" ? ` · <span class="muted">verificación en curso</span>` : ""}</div>` : ""}
           <div class="pf-loc">${HH.icon("pin")} <span>${p.zone && !p.traveling ? `<span data-noi18n>${esc(p.zone)}</span>, ` : ""}${esc(p.city || "Ciudad a definir")}</span></div>
           ${curTrip ? `<div class="pf-loc pf-trip">${HH.icon("globe")} <span>De visita hasta el ${HH.fmtDay(curTrip.to)}${p.homeCity ? ` · vive en ${esc(p.homeCity)}` : ""}</span></div>` : ""}
@@ -1731,6 +1921,21 @@
 
   Object.assign(HH.actions, {
     // Inicio
+    pubTipo(el) {
+      const id = el.dataset.id || "";
+      HH.ui.tipo = HH.ui.tipo === id ? "" : id;
+      S.gridShown = GRID_PAGE; S.tierShown = {};
+      HH.save();
+      const y = window.scrollY;
+      HH.refresh();
+      window.scrollTo(0, y);
+    },
+    pubSwipeTipo(el) {
+      HH.ui.tipo = el.dataset.id || "";
+      S.swipeFiltOpen = false;
+      HH.save();
+      HH.refresh();
+    },
     pubGoActivity(el) {
       const id = el.dataset.id || "";
       HH.ui.homeCat = HH.ui.homeCat === id ? "" : id;
@@ -1794,6 +1999,14 @@
     pubNearFilters() {
       openNearFilters();
     },
+    pubNearCard(el) {
+      HH.nearCard(el.dataset.id, el);
+    },
+    pubNearVista(el) {
+      try { sessionStorage.setItem(VISTA_K, el.dataset.v === "mapa" ? "mapa" : "radar"); } catch (e) { /* */ }
+      document.querySelectorAll('[data-action="pubNearVista"]').forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === el.dataset.v)));
+      nearRerender();
+    },
     pubNearAct(el) {
       const f = nearFilters();
       const id = el.dataset.id;
@@ -1841,6 +2054,7 @@
     },
     pubSwipeClearFilters() {
       HH.ui.swipeFilters = {};
+      HH.ui.tipo = "";
       HH.save();
       HH.refresh();
     },

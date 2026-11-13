@@ -81,12 +81,16 @@ class Cliente {
 
 async function registrar(base) {
   const c = new Cliente(base);
+  const email = `zzprev-${rand()}@example.com`;
   const r = await c.json('POST', '/api/cuenta/registro', {
-    email: `zzprev-${rand()}@example.com`, password: 'una-clave-larga-123', displayName: `Zz Prev ${rand()}`, fechaNacimiento: '1993-05-06',
-    genero: 'mujer', aceptaTerminos: true, mayorEdad: true,
+    email, password: 'una-clave-larga-123', displayName: `Zz Prev ${rand()}`, fechaNacimiento: '1993-05-06',
+    genero: 'mujer', tipo: 'acompanante', aceptaTerminos: true, mayorEdad: true,
   });
   assert.equal(r.status, 201, JSON.stringify(r.body));
-  c.id = r.body.cuenta.id;
+  // El registro no abre la sesión (no revela si el email existía): entra con su contraseña.
+  const l = await c.json('POST', '/api/cuenta/login', { email, password: 'una-clave-larga-123' });
+  assert.equal(l.status, 200, JSON.stringify(l.body));
+  c.id = l.body.cuenta.id;
   return c;
 }
 const darPlan = (id, plan) => db.query("INSERT INTO suscripciones (cuenta_id, plan, periodo, desde, hasta) VALUES ($1, $2, 'manual', now() - interval '1 hour', now() + interval '10 days')", [id, plan]);

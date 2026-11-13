@@ -16,10 +16,11 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { paquete, enviar } from '../lib/compresion.js';
 import { cspSitio } from './spa-sitio.js';
+import { mapaConfig, mapaOrigenes } from '../lib/mapa.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MARCA = '<!--SR:DEMO-->';
-const ARCHIVO_RE = /^(?:assets\/(?:app|i18n)\.[0-9a-f]{8,64}\.(?:js|css)|assets\/fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2|media\/[0-9a-f]{8,64}\.(?:svg|mp4)|estado\.[0-9a-f]{8,64}\.json)$/;
+const ARCHIVO_RE = /^(?:assets\/(?:app|i18n|mapa|mapa-worker)\.[0-9a-f]{8,64}\.(?:js|css)|assets\/fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2|media\/[0-9a-f]{8,64}\.(?:svg|mp4)|estado\.[0-9a-f]{8,64}\.json)$/;
 const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2', svg: 'image/svg+xml', json: 'application/json; charset=utf-8' };
 
 export function createDemoSitioRouter({ config = {}, log = () => {}, dir } = {}) {
@@ -62,7 +63,7 @@ export function createDemoSitioRouter({ config = {}, log = () => {}, dir } = {})
       const comunes = { 'X-Robots-Tag': 'noindex, nofollow', 'X-Content-Type-Options': 'nosniff' };
       if (p === '/demo/' || p === '/demo/index.html') {
         if (p === '/demo/index.html') return res.redirect(301, '/demo/');
-        return enviar(req, res, pq, { ...comunes, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'Content-Security-Policy': cspSitio(null, '') });
+        return enviar(req, res, pq, { ...comunes, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache', 'Content-Security-Policy': cspSitio(null, '', mapaOrigenes(mapaConfig())) });
       }
       const rel = p.slice('/demo/'.length);
       if (!ARCHIVO_RE.test(rel)) return next();

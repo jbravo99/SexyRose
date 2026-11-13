@@ -126,6 +126,20 @@ export const plantillas = {
       boton: { texto: 'Elegir una contraseña nueva', url },
     }),
   }),
+  // Registro con un email que ya tiene cuenta: no se revela en el sitio; se le avisa al dueño del email.
+  intentoRegistro: ({ urlIngresar, urlRecuperar }) => ({
+    subject: 'Alguien intentó crear una cuenta con tu email en SexyRose',
+    ...emailBasico({
+      titulo: 'Ya tenés una cuenta con este email',
+      parrafos: [
+        'Alguien intentó crear una cuenta nueva en SexyRose con este email. Como ya tenés una, no se creó otra.',
+        'Si fuiste vos, ingresá con tu contraseña. Si no la recordás, podés elegir una nueva.',
+        ...(urlRecuperar ? [`Recuperar la contraseña: ${urlRecuperar}`] : []),
+        'Si no fuiste vos, ignorá este email: tu cuenta sigue igual.',
+      ],
+      boton: { texto: 'Ingresar', url: urlIngresar },
+    }),
+  }),
   perfilAprobado: ({ nombre, url }) => ({
     subject: 'Tu perfil de SexyRose ya está publicado',
     ...emailBasico({

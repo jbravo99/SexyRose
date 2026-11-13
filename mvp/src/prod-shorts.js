@@ -68,7 +68,7 @@
   // Videos públicos de los perfiles visibles para quien mira (tipo de perfil elegido y, si hay, su ubicación):
   // los de la galería y las historias en video activas.
   function shortsItems() {
-    const perfiles = (HH.publishedProfiles ? HH.publishedProfiles() : []).filter((p) => !HH.genderOk || HH.genderOk(p));
+    const perfiles = (HH.publishedProfiles ? HH.publishedProfiles() : []).filter((p) => (!HH.genderOk || HH.genderOk(p)) && (!HH.tipoOk || HH.tipoOk(p)));
     const ahora = Date.now();
     const de = (ps) => ps.flatMap((p) => videosDePerfil(p, HH.db.stories, ahora)
       .map((v) => ({ key: p.userId + ':' + v.id, perfilId: p.userId, star: !!(HH.isStar && HH.isStar(p.userId)), fecha: v.createdAt || p.updatedAt || p.createdAt, p, v })));
@@ -114,13 +114,15 @@
   }
 
   function view() {
-    const firma = HH.db ? (HH.db.profiles || []).length + '|' + (HH.currentPlace ? HH.currentPlace() : '') + '|' + (HH.genderSet ? HH.genderSet().join(',') : '') : '';
+    const firma = HH.db ? (HH.db.profiles || []).length + '|' + (HH.currentPlace ? HH.currentPlace() : '') + '|' + (HH.genderSet ? HH.genderSet().join(',') : '') + '|' + (HH.tipoSel ? HH.tipoSel() : '') : '';
+    // Filtro de tipo de perfil (Todas / Acompañantes / Virtuales), arriba del video
+    const tipos = HH.tipoChips ? HH.tipoChips('shTipo', 'sh-tipo') : '';
     if (!S.lista || S.firma !== firma || HH.db !== S.db) { S.lista = shortsItems(); S.firma = firma; S.db = HH.db; }
     S.n = Math.min(LOTE, S.lista.length); S.actual = -1;
     if (!S.lista.length) {
-      return `<div class="container section"><div class="empty sh-vacio">${REELS}<h4>Pronto vas a ver videos acá</h4><p class="small">Cuando las acompañantes suban videos, aparecen en Shorts.</p><a class="btn" href="#inicio" data-go="#inicio">Explorar perfiles</a></div></div>`;
+      return `<div class="container section">${HH.tipoSel && HH.tipoSel() ? `<div style="margin-bottom:14px">${tipos}</div>` : ''}<div class="empty sh-vacio">${REELS}<h4>Pronto vas a ver videos acá</h4><p class="small">Cuando las acompañantes suban videos, aparecen en Shorts.</p><a class="btn" href="#inicio" data-go="#inicio">Explorar perfiles</a></div></div>`;
     }
-    return `<div class="sh-page">
+    return `<div class="sh-page">${tipos}
       ${S.aviso ? `<div class="sh-aviso" role="status"><span>Todavía no hay videos en ${esc(S.aviso)}: te mostramos los de todas las ubicaciones.</span></div>` : ''}
       <div class="sh-feed" id="shFeed" tabindex="0" role="feed" aria-label="Shorts" aria-busy="false">${tanda(0, S.n)}${S.n >= S.lista.length ? finHtml() : ''}</div>
     </div>`;
@@ -210,6 +212,12 @@
       if (v) { v.muted = S.muted; if (v.paused) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } }
       pintarSonido();
       if (it) { it.classList.remove('sh-flash'); void it.offsetWidth; it.classList.add('sh-flash'); }
+    },
+    shTipo(el) {
+      HH.ui.tipo = el.dataset.id || '';
+      if (HH.save) HH.save();
+      S.lista = null;
+      HH.refresh();
     },
     shInicio() { const feed = document.getElementById('shFeed'); if (feed) feed.scrollTo({ top: 0, behavior: 'smooth' }); },
   });

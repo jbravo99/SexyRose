@@ -23,6 +23,7 @@ import * as storage from '../lib/storage.js';
 import { paquete, enviar } from '../lib/compresion.js';
 import { createSeoSitio } from '../lib/seo-sitio.js';
 import { estadoSitio } from './sitio.js';
+import { mapaConfig, mapaOrigenes } from '../lib/mapa.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_SPA = path.join(HERE, '..', 'sitio-spa', 'index.html');
@@ -39,8 +40,10 @@ export const slugify = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 // nonce: solo para la cáscara vieja con JS en línea. La nueva (JS y CSS en /assets) usa script-src 'self'.
-export function cspSitio(nonce, mediaOrigin) {
+export function cspSitio(nonce, mediaOrigin, mapaOrigenes = []) {
   const media = mediaOrigin ? ' ' + mediaOrigin : '';
+  // Vista Mapa de Cerca: el .pmtiles (y glyphs/sprite) se piden con fetch a bunny.net (lib/mapa.js)
+  const mapa = (mapaOrigenes || []).filter((o) => /^https?:\/\/[a-z0-9.[\]:-]+$/i.test(o)).map((o) => ' ' + o).join('');
   return [
     "default-src 'none'",
     nonce ? `script-src 'nonce-${nonce}'` : "script-src 'self'",
@@ -48,7 +51,7 @@ export function cspSitio(nonce, mediaOrigin) {
     "font-src 'self' data:",
     `img-src 'self' data: blob:${media}`,
     `media-src 'self' data: blob:${media}`,
-    "connect-src 'self'",
+    `connect-src 'self'${mapa}`,
     "manifest-src 'self'",
     "base-uri 'none'",
     "form-action 'self'",
@@ -68,12 +71,13 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
   const adminPath = config.adminPath || '';
   // Mismo origen de medios que el resto del sitio (lib/storage.js ya validó la configuración de bunny.net).
   const mediaOrigin = storage.mediaOrigin() || (config.storage === 'bunny' ? originOf(config.bunnyCdnUrl) : '');
+  const mapaOrig = mapaOrigenes(mapaConfig());
   const spa = { html: null, mtimeMs: -1, size: -1, pq: null, pqI18n: null, inline: false };
   let warned = false;
   // JS y CSS del sitio (app/sitio-spa/assets/app.<hash>.js|css): el nombre cambia con el contenido, así que se
   // guardan en caché un año. Se leen una vez y se comprimen en segundo plano (brotli/gzip).
   const assetsDir = path.join(path.dirname(file), 'assets');
-  const ASSET_RE = /^(?:(app|i18n|fuentes)\.[0-9a-f]{8,64}\.(js|css)|fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2)$/;
+  const ASSET_RE = /^(?:(app|i18n|fuentes|mapa|mapa-worker)\.[0-9a-f]{8,64}\.(js|css)|fonts\/[a-z0-9-]{1,60}\.[0-9a-f]{8,64}\.woff2)$/;
   const TIPOS = { js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', woff2: 'font/woff2' };
   const assets = new Map();
   async function leerAsset(name) {
@@ -190,7 +194,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       if (segs.length && PRIVATE.has(segs[0])) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       if (spa.pq) {
         // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
-        const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
+        const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
         const m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
         if (!m) return enviar(req, res, otroIdioma ? spa.pqI18n : spa.pq, headers);
         // Dirección vieja de lugar + actividad: 301 a la página del lugar (las actividades ya no se muestran)
@@ -199,7 +203,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
         return enviar(req, res, paquetePagina(seo.aplicar((otroIdioma ? spa.pqI18n : spa.pq).buf.toString('utf8'), m)), headers, m.status);
       }
       const nonce = crypto.randomBytes(16).toString('base64');
-      res.setHeader('Content-Security-Policy', cspSitio(nonce, mediaOrigin));
+      res.setHeader('Content-Security-Policy', cspSitio(nonce, mediaOrigin, mapaOrig));
       res.setHeader('Cache-Control', 'no-cache');
       res.type('html');
       const out = html.replace(/<script\b/gi, `<script nonce="${nonce}"`);
