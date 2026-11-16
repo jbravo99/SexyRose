@@ -501,6 +501,8 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
       return {
         ...pedidoJson(r),
         cuenta: { email: r.email, slug: r.slug, displayName: r.display_name || '' },
+        // Moneda que eligió en el chat del asistente para transferir (null = no pasó por esa pregunta)
+        monedaAsistente: r.moneda_asistente || null,
         arsSugerido: ars,
         mensajeSugerido: ars === null ? null : rellenar(msj.admin, {
           codigo: r.codigo, pack: r.pack_nombre, creditos: fmtNum(total / 100), monto: fmtNum(r.paga_usd),

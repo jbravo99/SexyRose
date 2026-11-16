@@ -1,7 +1,8 @@
 // Asistente de cuenta por WhatsApp: el núcleo (corre en el contenedor "agente", app/agente.js).
 // Recibe los mensajes ya traducidos de WhatsApp (lib/asistente-whatsapp.js) y responde con enviar(jid, texto).
 //
-// Primero lo determinístico (sin IA): código de pedido SR-1234 → datos para transferir; foto/PDF → comprobante adjunto
+// Primero lo determinístico (sin IA): código de pedido SR-1234 → datos para transferir (con cuenta en dólares cargada,
+// antes pregunta "¿pesos o dólares?" y toma la respuesta); foto/PDF → comprobante adjunto
 // al pedido + aviso a Juan por Telegram con botones; código de 6 números → identificación por email. Lo demás va a
 // Claude (lib/asistente-llm.js), que solo actúa con herramientas cuyos permisos se controlan acá:
 //   - chat sin identificar: precios, ayuda y SOLO los pedidos cuyo código se escribió en este chat;
@@ -10,9 +11,9 @@
 // Logs sin datos personales (ni teléfonos, ni textos, ni emails).
 import crypto from 'node:crypto';
 import {
-  CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, leerAjustes, sinContacto, telefonoComparable,
+  CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, hayCuentaUsd, leerAjustes, sinContacto, telefonoComparable,
 } from './asistente-comun.js';
-import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto } from './asistente-textos.js';
+import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
 import { promptSistema, limpiarRespuesta } from './asistente-llm.js';
 import { tipoPorFirma } from './privado.js';
@@ -27,6 +28,7 @@ const fmtFecha = (d) => (d ? new Intl.DateTimeFormat('es-AR', { timeZone: 'Ameri
 const ESTADO_PERFIL = { borrador: 'Borrador (todavía no se envió a revisión)', en_revision: 'En revisión', publicado: 'Publicado', rechazado: 'Rechazado', pausado: 'Pausado', suspendido: 'Suspendido' };
 const ESTADO_VERIF = { sin_enviar: 'Sin enviar', pendiente: 'Enviada, en revisión', verificada: 'Verificada', rechazada: 'Rechazada' };
 const SIN_IA_CADA_MS = 30 * 60 * 1000;
+const MAX_RESPUESTA_MONEDA = 80; // "en pesos", "mejor en dólares": más largo (o ambiguo) lo resuelve la IA
 
 export class NoConectado extends Error { constructor() { super('WhatsApp no está conectado'); this.code = 'NO_CONECTADO'; } }
 
@@ -137,21 +139,65 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   const packDe = (p, lang) => (p.pack_id ? p.pack_nombre : texto(lang, 'cargaMedida'));
   const creditosDe = (p) => fmtNum((Number(p.base_centavos) + Number(p.bonus_centavos)) / 100);
 
-  async function textoDatos(conv, p) {
+  const basePedido = (conv, p) => ({ codigo: p.codigo, pack: packDe(p, conv.idioma), creditos: creditosDe(p) });
+  // moneda 'USD' = cuenta en dólares (monto = lo que paga en USD); si no, la de pesos con el monto pasado a pesos.
+  async function textoDatos(conv, p, moneda) {
     const [aj, cot] = await Promise.all([leerAjustes(pool), creditos.cotizacion()]);
+    const base = basePedido(conv, p);
+    if (moneda === 'USD' && hayCuentaUsd(aj)) {
+      return { completo: true, texto: texto(conv.idioma, 'datosPedidoUsd', { ...base, usd: fmtNum(p.paga_usd), alias: aj.aliasUsd, titular: aj.titularUsd }) };
+    }
     const ars = arsSugerido(p.paga_usd, cot.arsPorUsd);
-    const base = { codigo: p.codigo, pack: packDe(p, conv.idioma), creditos: creditosDe(p) };
     if (!aj.alias || !aj.titular || !ars) return { completo: false, texto: texto(conv.idioma, 'datosEnUnRato', base) };
     return { completo: true, texto: texto(conv.idioma, 'datosPedido', { ...base, ars: fmtArs(ars), usd: fmtNum(p.paga_usd), alias: aj.alias, titular: aj.titular }) };
   }
-  async function mandarDatos(conv, p) {
-    const d = await textoDatos(conv, p);
+  async function mandarDatos(conv, p, moneda = 'ARS') {
+    const d = await textoDatos(conv, p, moneda);
     await responder(conv, d.texto);
     if (!d.completo) {
       await avisarJuan(conv, `Asistente: no pude pasar los datos para transferir del pedido ${p.codigo}.`,
-        'Falta cargar el alias o el titular (Admin → Asistente) o la cotización (Admin → Ajustes). Pasale el monto y los datos vos.', 'asistente_derivacion');
+        'Falta cargar el alias o el titular en pesos (Admin → Asistente) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
     }
     return d.completo;
+  }
+  // Datos para pagar un pedido pendiente. Sin cuenta en dólares: los de pesos, como siempre (no se guarda moneda).
+  // Con cuenta en dólares: la moneda pedida o la que ya eligió para ese pedido; si no hay ninguna, pregunta
+  // "¿Vas a transferir en pesos o en dólares?" y queda esperando la respuesta. Devuelve 'pregunta' | 'datos'.
+  async function ofrecerPago(conv, p, { moneda = null } = {}) {
+    const aj = await leerAjustes(pool);
+    if (!hayCuentaUsd(aj)) { await mandarDatos(conv, p, 'ARS'); return 'datos'; }
+    const m = moneda === 'ARS' || moneda === 'USD' ? moneda : (p.moneda_asistente || null);
+    if (!m) {
+      await pool.query('UPDATE asistente_conversaciones SET pago_pedido_id = $2, pago_esperando_moneda = true, actualizado = now() WHERE id = $1', [conv.id, p.id]);
+      await decir(conv, 'preguntaMoneda', basePedido(conv, p));
+      return 'pregunta';
+    }
+    await elegirMoneda(conv, p, m);
+    return 'datos';
+  }
+  async function elegirMoneda(conv, p, m) {
+    await pool.query("UPDATE pedidos_creditos SET moneda_asistente = $2 WHERE id = $1 AND estado = 'pendiente'", [p.id, m]);
+    await pool.query('UPDATE asistente_conversaciones SET pago_pedido_id = $2, pago_esperando_moneda = false, actualizado = now() WHERE id = $1', [conv.id, p.id]);
+    log('asistente: moneda elegida para un pedido');
+    return mandarDatos(conv, { ...p, moneda_asistente: m }, m);
+  }
+  // Respuesta "pesos" / "dólares" (sin código de pedido): a la pregunta de la moneda, o para cambiarla después
+  // ("mejor en dólares"). Solo con cuenta en dólares y el pedido del chat todavía pendiente. Devuelve true si la tomó.
+  async function respuestaMoneda(conv, txt) {
+    if (txt.length > MAX_RESPUESTA_MONEDA) return false;
+    const m = monedaEnTexto(txt);
+    if (m !== 'ARS' && m !== 'USD') return false;
+    const c = await releer(conv.id);
+    if (!c.pago_pedido_id) return false;
+    const aj = await leerAjustes(pool);
+    if (!hayCuentaUsd(aj)) return false;
+    const { rows } = await pool.query('SELECT * FROM pedidos_creditos WHERE id = $1', [c.pago_pedido_id]);
+    const p = rows[0];
+    if (!p || p.estado !== 'pendiente' || p.comprobante_ruta || !(await autorizado(c, p))) return false;
+    // Ya eligió esa misma moneda y no se le preguntó nada: no repite los datos (lo charla la IA)
+    if (!c.pago_esperando_moneda && p.moneda_asistente === m) return false;
+    await elegirMoneda(c, p, m);
+    return true;
   }
 
   async function manejarCodigo(conv, codigo) {
@@ -165,7 +211,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       const buf = ruta ? await leerPrivado(ruta) : null;
       if (buf) return adjuntar(c, p, { ruta, buf, ext: ruta.split('.').pop() });
     }
-    if (p.estado === 'pendiente') return mandarDatos(c, p);
+    if (p.estado === 'pendiente') return ofrecerPago(c, p);
     if (p.estado === 'confirmado') return decir(c, 'pedidoConfirmado', { codigo });
     if (p.estado === 'vencido') return decir(c, 'pedidoVencido', { codigo });
     if (p.estado === 'rechazado') return decir(c, 'pedidoRechazadoYa', { codigo });
@@ -197,7 +243,11 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     const cot = await creditos.cotizacion();
     const ars = arsSugerido(p.paga_usd, cot.arsPorUsd);
     const nombre = await nombreCuenta(p.cuenta_id);
-    const caption = `Comprobante recibido por WhatsApp\nPedido ${p.codigo} · ${packDe(p, 'es')}\n${creditosDe(p)} créditos · USD ${fmtNum(p.paga_usd)}${ars ? ` · ARS ${fmtArs(ars)}` : ''}\n`
+    // Con moneda elegida por el asistente, el monto en esa moneda; si no (sin cuenta en dólares), como siempre.
+    const monto = p.moneda_asistente === 'USD' ? `en dólares: USD ${fmtNum(p.paga_usd)}`
+      : p.moneda_asistente === 'ARS' ? `en pesos: ${ars ? `ARS ${fmtArs(ars)} (USD ${fmtNum(p.paga_usd)})` : `USD ${fmtNum(p.paga_usd)}, sin cotización para pasarlo a pesos`}`
+        : `USD ${fmtNum(p.paga_usd)}${ars ? ` · ARS ${fmtArs(ars)}` : ''}`;
+    const caption = `Comprobante recibido por WhatsApp\nPedido ${p.codigo} · ${packDe(p, 'es')}\n${creditosDe(p)} créditos · ${monto}\n`
       + `Cuenta: ${nombre || 'sin nombre artístico'}\nAcreditá solo cuando el pago esté en tu cuenta.`;
     await telegram.enviar({
       texto: caption, tipo: 'asistente_comprobante',
@@ -313,7 +363,11 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         const p = codigo ? await pedidoPorCodigo(codigo) : null;
         if (!p || !(await autorizado(conv, p))) return { resultado: { error: 'No hay un pedido con ese código en este chat.' } };
         if (p.estado !== 'pendiente') return { resultado: { error: `El pedido está ${p.estado}: no se paga.` } };
-        await mandarDatos(conv, p);
+        const moneda = input.moneda === 'USD' || input.moneda === 'ARS' ? input.moneda : null;
+        const aj = await leerAjustes(pool);
+        if (moneda === 'USD' && !hayCuentaUsd(aj)) return { resultado: { error: 'No hay una cuenta en dólares: por ahora solo se puede transferir en pesos.' } };
+        const r = await ofrecerPago(conv, p, { moneda });
+        if (r === 'pregunta') return { resultado: { enviado: true, nota: 'Ya se le preguntó en un mensaje aparte si va a transferir en pesos o en dólares. No repitas la pregunta.' } };
         return { resultado: { enviado: true, nota: 'Ya se le mandaron los datos en un mensaje aparte. No los repitas.' } };
       }
       case 'enviar_codigo_email': {
@@ -364,9 +418,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         }
         await asociar(conv, pedido.id);
         const { rows } = await pool.query('SELECT * FROM pedidos_creditos WHERE id = $1', [pedido.id]);
-        await mandarDatos(conv, rows[0]);
+        const r = await ofrecerPago(conv, rows[0]);
         log('asistente: pedido de créditos creado por chat');
-        return { resultado: { ok: true, codigo: pedido.codigo, nota: 'Ya se le mandaron los datos para pagar en un mensaje aparte. No los repitas.' } };
+        return { resultado: { ok: true, codigo: pedido.codigo, nota: r === 'pregunta' ? 'Ya se le preguntó en un mensaje aparte si va a transferir en pesos o en dólares. No repitas la pregunta.' : 'Ya se le mandaron los datos para pagar en un mensaje aparte. No los repitas.' } };
       }
       case 'derivar_a_juan':
         await derivar(conv, String(input.motivo || 'Pidió hablar con una persona'));
@@ -447,6 +501,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     }
     const codigo = codigoEnTexto(txt);
     if (codigo) { await manejarCodigo(conv, codigo); return { pedido: codigo }; }
+    if (await respuestaMoneda(conv, txt)) return { moneda: true };
     if (preguntaSiEsBot(txt)) { await decir(conv, 'botOPersona'); return { bot: true }; }
     await turnoIa(conv);
     return { ia: true };

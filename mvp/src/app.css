@@ -307,6 +307,8 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .dash-nav a svg { width: 18px; height: 18px; }
 .dash-nav a:hover { background: var(--berry-tint); color: var(--berry); }
 .dash-nav a.active { background: var(--berry); color: var(--berry-ink); }
+.dash-nav-h { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 14px 12px 4px; }
+.dash-nav-h:first-child { padding-top: 2px; }
 .dash-nav a .count { margin-left: auto; background: var(--surface); color: var(--berry); font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 800; }
 .dash-tabs { position: sticky; top: calc(var(--header-h) + env(safe-area-inset-top, 0px)); z-index: 40; background: var(--bg); padding-block: 8px; margin: 0 -16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 @media (min-width: 900px) { .dash-tabs { display: none; } }

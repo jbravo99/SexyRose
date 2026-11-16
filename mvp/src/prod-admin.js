@@ -84,7 +84,13 @@
   const errorCard = (msg, key) => `<div class="card"><div class="empty">${icon('alert')}<h4>No se pudo cargar</h4><p class="small">${esc(msg)}</p><button type="button" class="btn secondary sm" data-action="prodRetry" data-k="${esc(key)}">${icon('refresh')} Reintentar</button></div></div>`;
   const stat = (k, v, d, cls) => `<div class="stat ${cls || ''}"><span class="k">${k}</span><span class="v">${v}</span>${d ? `<span class="d">${d}</span>` : ''}</div>`;
   const head = (t, right, sub) => HH.adminHead(t, right, sub);
-  const layout = (tab, inner) => HH.adminLayout(HH.me(), tab, inner);
+  // Las vistas siguen llamando layout('pedidos'), layout('stars')…: acá se marca su sección del menú y, si se está
+  // armando una pestaña de una sección (vSeccion), se agregan las pestañas arriba.
+  const layout = (tab, inner) => {
+    const sec = SECCION_DE[tab] || tab;
+    const barra = subActual && subActual.sec === sec ? subtabsHtml(subActual.sec, subActual.sub) : '';
+    return HH.adminLayout(HH.me(), sec, barra + inner);
+  };
 
   /* ---------- Menú: el de la demo + Pre-registros y Textos ---------- */
   const TABS = HH.adminTabs;
@@ -97,13 +103,76 @@
   if (!TABS.some((t) => t.id === 'destacados')) { const i = TABS.findIndex((t) => t.id === 'stars'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'destacados', label: 'Destacados', icon: 'trending' }); }
   // Venta de contenido (Mercado Pago): ventas y totales
   if (!TABS.some((t) => t.id === 'ventas')) { const i = TABS.findIndex((t) => t.id === 'pedidos'); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'ventas', label: 'Ventas de contenido', icon: 'bag' }); }
+
+  /* ---------- Menú agrupado y secciones con pestañas (16/11/2026, decisión de Juan: "me marea un poco cómo está todo
+     distribuido") ----------
+     General · Acompañantes · Cobros · Sitio · Configuración. Créditos, Planes, Destacados y Contenido juntan dos
+     secciones de antes, cada una en su pestaña (#admin.<sección>.<pestaña>, con el mismo contenido de siempre). Precios
+     sale de Ajustes. Las direcciones viejas (#admin.pedidos, #admin.stars, #admin.solicitudes.<id>, #admin.creditos.<cuenta>…)
+     llevan a la sección y pestaña nuevas (aliasAdmin, en HH.render). */
+  const SECCIONES = {
+    creditos: [['pedidos', 'Pedidos'], ['movimientos', 'Movimientos']],
+    planes: [['suscripciones', 'Suscripciones'], ['renovaciones', 'Renovaciones']],
+    destacados: [['destacado', 'Destacado'], ['star', 'Star']],
+    contenido: [['ventas', 'Ventas'], ['pedidos', 'Pedidos personalizados']],
+  };
+  // Vista de antes → sección del menú (lo que pasan a layout las vistas y las fichas)
+  const SECCION_DE = { pedidos: 'creditos', pagos: 'creditos', creditos: 'creditos', suscripciones: 'planes', renovaciones: 'planes', destacados: 'destacados', stars: 'destacados', ventas: 'contenido', solicitudes: 'contenido' };
+  const esSub = (sec, sub) => Boolean(SECCIONES[sec] && SECCIONES[sec].some(([k]) => k === sub));
+  const sub0 = (sec) => SECCIONES[sec][0][0];
+  const goSec = (sec, sub) => `#admin.${sec}.${sub || sub0(sec)}`;
+  const tab = (id, label, ic) => ({ id, label, icon: ic, ...(SECCIONES[id] ? { go: goSec(id) } : {}) });
+  HH.adminMenu = [
+    { grupo: 'General', tabs: [tab('resumen', 'Resumen', 'dashboard')] },
+    { grupo: 'Acompañantes', tabs: [tab('acompanantes', 'Acompañantes', 'users'), tab('reportes', 'Reportes', 'flag'), tab('clientes', 'Interesados', 'user')] },
+    { grupo: 'Cobros', tabs: [tab('creditos', 'Créditos', 'wallet'), tab('asistente', 'Asistente', 'whatsapp'), tab('planes', 'Planes', 'card'), tab('destacados', 'Destacados', 'trending'), tab('contenido', 'Contenido', 'bag')] },
+    { grupo: 'Sitio', tabs: [tab('ubicaciones', 'Ubicaciones', 'pin'), tab('categorias', 'Servicios', 'heart'), tab('textos', 'Textos', 'edit'), tab('seo', 'SEO', 'search')] },
+    { grupo: 'Configuración', tabs: [tab('precios', 'Precios', 'dollar'), tab('ajustes', 'Ajustes', 'settings')] },
+  ];
+  // Direcciones viejas → nuevas (null = no cambia). #admin.creditos sin pestaña era la lista de saldos: Movimientos.
+  const ALIAS = { pedidos: 'creditos.pedidos', pagos: 'creditos.pedidos', suscripciones: 'planes.suscripciones', renovaciones: 'planes.renovaciones', stars: 'destacados.star', ventas: 'contenido.ventas', solicitudes: 'contenido.pedidos' };
+  function aliasAdmin(key) {
+    const seg = String(key || '').split('.');
+    if (seg[0] !== 'admin' || !seg[1]) return null;
+    const t = seg[1]; const resto = seg.slice(2);
+    if (ALIAS[t]) return ['admin', ALIAS[t], ...resto].join('.');
+    if (t === 'creditos' && !esSub('creditos', resto[0])) return ['admin', 'creditos', 'movimientos', ...resto].join('.');
+    if (SECCIONES[t] && !resto.length) return 'admin.' + t + '.' + sub0(t);
+    return null;
+  }
+  HH.adminAlias = aliasAdmin;
+
+  // Contadores: cada pestaña el suyo; la sección, la suma de sus pestañas
   const counts = {};
   TABS.forEach((t) => { counts[t.id] = () => 0; });
   counts.acompanantes = () => ((S.res && S.res.acompanantes ? S.res.acompanantes.enRevision : 0) || 0) + ((S.res && S.res.verificacionesPendientes) || 0);
-  counts.pedidos = () => (S.res && S.res.pedidosCreditos ? S.res.pedidosCreditos.pendientes : 0) || 0;
-  counts.renovaciones = () => (S.res ? (S.res.pausadasSinSaldo || 0) + ((S.res.vencen7 && S.res.vencen7.sinSaldo) || 0) : 0);
   counts.reportes = () => (S.res && S.res.denuncias ? S.res.denuncias.abiertas : 0) || 0;
+  const SUBCUENTAS = {
+    'creditos.pedidos': () => (S.res && S.res.pedidosCreditos ? S.res.pedidosCreditos.pendientes : 0) || 0,
+    'planes.renovaciones': () => (S.res ? (S.res.pausadasSinSaldo || 0) + ((S.res.vencen7 && S.res.vencen7.sinSaldo) || 0) : 0),
+    'contenido.pedidos': () => (S.res && S.res.pedidosPersonalizados ? S.res.pedidosPersonalizados.pendientes : 0) || 0,
+  };
+  const subCuenta = (sec, sub) => (SUBCUENTAS[sec + '.' + sub] ? SUBCUENTAS[sec + '.' + sub]() : 0);
+  Object.keys(SECCIONES).forEach((sec) => { counts[sec] = () => SECCIONES[sec].reduce((n, [k]) => n + subCuenta(sec, k), 0); });
   HH.adminCounts = counts;
+
+  // Pestañas de una sección: las vistas de cada una se registran en SUBVISTAS ('creditos.pedidos' → vPedidos…;
+  // prod-admin-mod.js suma Movimientos y Pedidos personalizados).
+  const SUBVISTAS = {};
+  let subActual = null;
+  function subtabsHtml(sec, sub) {
+    return `<nav class="pa-subtabs" aria-label="Pestañas">${SECCIONES[sec].map(([k, l]) => {
+      const n = subCuenta(sec, k); const on = k === sub;
+      return `<a href="${goSec(sec, k)}" data-go="${goSec(sec, k)}"${on ? ' class="on" aria-current="page"' : ''}><span class="pa-subtabs-l">${l}</span>${n ? `<span class="count">${n}</span>` : ''}</a>`;
+    }).join('')}</nav>`;
+  }
+  function vSeccion(sec, sub) {
+    const k = esSub(sec, sub) ? sub : sub0(sec);
+    const fn = SUBVISTAS[sec + '.' + k];
+    if (!fn) return vSoon(sec);
+    subActual = { sec, sub: k };
+    try { return fn(); } finally { subActual = null; }
+  }
 
   /* ---------- Resumen ---------- */
   function vResumen() {
@@ -118,22 +187,22 @@
       const pa = r.pausadasSinSaldo || 0, v7 = r.vencen7 || {};
       const dAct = S.dst ? (S.dst.items || []).filter((x) => x.estado === 'activo' && x.vigente).length : null;
       const pend = [];
-      if (pc.pendientes) pend.push({ ic: 'wallet', cls: 'warn', t: `${pc.pendientes} ${HH.plural(pc.pendientes, 'pedido de créditos pendiente', 'pedidos de créditos pendientes')}`, s: `${pc.conComprobante || 0} con comprobante. Confirmá cuando el pago esté en tu cuenta.`, go: '#admin.pedidos' });
-      if (pa) pend.push({ ic: 'clock', cls: 'danger', t: `${pa} ${HH.plural(pa, 'perfil pausado', 'perfiles pausados')} por falta de saldo`, s: 'No les alcanzaron los créditos para renovar el plan.', go: '#admin.renovaciones' });
-      if (v7.sinSaldo) pend.push({ ic: 'alert', cls: 'warn', t: `${v7.sinSaldo} ${HH.plural(v7.sinSaldo, 'plan vence', 'planes vencen')} en 7 días sin saldo para renovar`, s: 'Avisales que carguen créditos antes del vencimiento.', go: '#admin.renovaciones' });
+      if (pc.pendientes) pend.push({ ic: 'wallet', cls: 'warn', t: `${pc.pendientes} ${HH.plural(pc.pendientes, 'pedido de créditos pendiente', 'pedidos de créditos pendientes')}`, s: `${pc.conComprobante || 0} con comprobante. Confirmá cuando el pago esté en tu cuenta.`, go: '#admin.creditos.pedidos' });
+      if (pa) pend.push({ ic: 'clock', cls: 'danger', t: `${pa} ${HH.plural(pa, 'perfil pausado', 'perfiles pausados')} por falta de saldo`, s: 'No les alcanzaron los créditos para renovar el plan.', go: '#admin.planes.renovaciones' });
+      if (v7.sinSaldo) pend.push({ ic: 'alert', cls: 'warn', t: `${v7.sinSaldo} ${HH.plural(v7.sinSaldo, 'plan vence', 'planes vencen')} en 7 días sin saldo para renovar`, s: 'Avisales que carguen créditos antes del vencimiento.', go: '#admin.planes.renovaciones' });
       if (vp) pend.push({ ic: 'shield', cls: 'warn', t: `${vp} ${HH.plural(vp, 'verificación pendiente', 'verificaciones pendientes')}`, s: 'Compará la selfie con el documento y aprobá o rechazá.', go: '#admin.acompanantes' });
       if (ac.enRevision) pend.push({ ic: 'users', cls: 'info', t: `${ac.enRevision} ${HH.plural(ac.enRevision, 'perfil en revisión', 'perfiles en revisión')}`, s: 'Se publican al aprobar la identidad.', go: '#admin.acompanantes' });
       if (d.urgentes) pend.push({ ic: 'alert', cls: 'danger', t: `${d.urgentes} ${HH.plural(d.urgentes, 'denuncia urgente', 'denuncias urgentes')} sin resolver`, s: 'Abuso infantil, imágenes sin consentimiento o trata: revisar ya.', go: '#admin.reportes' });
       if (d.abiertas && d.abiertas !== d.urgentes) pend.push({ ic: 'flag', cls: 'warn', t: `${d.abiertas} ${HH.plural(d.abiertas, 'denuncia abierta', 'denuncias abiertas')}`, s: 'Marcalas como resueltas cuando las revises.', go: '#admin.reportes' });
-      if (pp.pendientes) pend.push({ ic: 'chat', cls: 'info', t: `${pp.pendientes} ${HH.plural(pp.pendientes, 'pedido personalizado sin responder', 'pedidos personalizados sin responder')}`, s: 'Esperan que la acompañante los acepte o rechace.', go: '#admin.solicitudes' });
+      if (pp.pendientes) pend.push({ ic: 'chat', cls: 'info', t: `${pp.pendientes} ${HH.plural(pp.pendientes, 'pedido personalizado sin responder', 'pedidos personalizados sin responder')}`, s: 'Esperan que la acompañante los acepte o rechace.', go: '#admin.contenido.pedidos' });
       body = `<div class="adm-stats">
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Acompañantes', (ac.total || 0).toLocaleString('es-AR'), `${ac.publicadas || 0} publicadas · ${ac.enRevision || 0} en revisión`, 'accent')}</a>
           <a class="pa-statlink" href="#admin.acompanantes" data-go="#admin.acompanantes">${stat('Verificaciones', vp, vp ? 'pendientes de revisar' : 'todo al día', vp ? 'pa-warn' : '')}</a>
-          <a class="pa-statlink" href="#admin.pedidos" data-go="#admin.pedidos">${stat('Pedidos pendientes', pc.pendientes || 0, `${pc.conComprobante || 0} con comprobante`, pc.pendientes ? 'pa-warn' : '')}</a>
-          <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Pausadas por saldo', pa, pa ? 'no les alcanzó para renovar' : 'ninguna', pa ? 'pa-danger' : '')}</a>
-          <a class="pa-statlink" href="#admin.renovaciones" data-go="#admin.renovaciones">${stat('Vencen en 7 días', v7.total || 0, `${v7.sinSaldo || 0} sin saldo para renovar`, v7.sinSaldo ? 'pa-warn' : '')}</a>
-          <a class="pa-statlink" href="#admin.destacados" data-go="#admin.destacados">${stat('Destacados activos', dAct == null ? '…' : dAct, 'ahora en el sitio')}</a>
-          <a class="pa-statlink" href="#admin.solicitudes" data-go="#admin.solicitudes">${stat('Pedidos personalizados', pp.abiertos || 0, 'abiertos (sin responder o con chat)')}</a>
+          <a class="pa-statlink" href="#admin.creditos.pedidos" data-go="#admin.creditos.pedidos">${stat('Pedidos pendientes', pc.pendientes || 0, `${pc.conComprobante || 0} con comprobante`, pc.pendientes ? 'pa-warn' : '')}</a>
+          <a class="pa-statlink" href="#admin.planes.renovaciones" data-go="#admin.planes.renovaciones">${stat('Pausadas por saldo', pa, pa ? 'no les alcanzó para renovar' : 'ninguna', pa ? 'pa-danger' : '')}</a>
+          <a class="pa-statlink" href="#admin.planes.renovaciones" data-go="#admin.planes.renovaciones">${stat('Vencen en 7 días', v7.total || 0, `${v7.sinSaldo || 0} sin saldo para renovar`, v7.sinSaldo ? 'pa-warn' : '')}</a>
+          <a class="pa-statlink" href="#admin.destacados.destacado" data-go="#admin.destacados.destacado">${stat('Destacados activos', dAct == null ? '…' : dAct, 'ahora en el sitio')}</a>
+          <a class="pa-statlink" href="#admin.contenido.pedidos" data-go="#admin.contenido.pedidos">${stat('Pedidos personalizados', pp.abiertos || 0, 'abiertos (sin responder o con chat)')}</a>
           <a class="pa-statlink" href="#admin.clientes" data-go="#admin.clientes">${stat('Interesados', (cl.total || 0).toLocaleString('es-AR'), `${cl.bloqueados || 0} ${HH.plural(cl.bloqueados || 0, 'bloqueado', 'bloqueados')}`)}</a>
           ${stat('Denuncias abiertas', d.abiertas || 0, `de ${d.total || 0} recibidas`)}
           ${stat('Urgentes', d.urgentes || 0, d.urgentes ? 'revisar ya' : 'ninguna pendiente', d.urgentes ? 'pa-danger' : '')}
@@ -147,9 +216,9 @@
           <div class="card-title">Para revisar</div>
           <div class="list">
             <a class="list-item" href="#admin.acompanantes" data-go="#admin.acompanantes">${icon('shield')}<div class="grow"><div class="title">Verificaciones pendientes</div></div><span class="badge ${vp ? 'warn' : 'ok'}">${vp}</span></a>
-            <a class="list-item" href="#admin.pedidos" data-go="#admin.pedidos">${icon('wallet')}<div class="grow"><div class="title">Pedidos de créditos pendientes</div></div><span class="badge ${pc.pendientes ? 'warn' : 'ok'}">${pc.pendientes || 0}</span></a>
+            <a class="list-item" href="#admin.creditos.pedidos" data-go="#admin.creditos.pedidos">${icon('wallet')}<div class="grow"><div class="title">Pedidos de créditos pendientes</div></div><span class="badge ${pc.pendientes ? 'warn' : 'ok'}">${pc.pendientes || 0}</span></a>
             <a class="list-item" href="#admin.reportes" data-go="#admin.reportes">${icon('flag')}<div class="grow"><div class="title">Denuncias abiertas</div></div><span class="badge ${d.abiertas ? (d.urgentes ? 'danger' : 'warn') : 'ok'}">${d.abiertas || 0}</span></a>
-            <a class="list-item" href="#admin.solicitudes" data-go="#admin.solicitudes">${icon('chat')}<div class="grow"><div class="title">Pedidos personalizados abiertos</div></div><span class="badge ${pp.abiertos ? 'info' : 'ok'}">${pp.abiertos || 0}</span></a>
+            <a class="list-item" href="#admin.contenido.pedidos" data-go="#admin.contenido.pedidos">${icon('chat')}<div class="grow"><div class="title">Pedidos personalizados abiertos</div></div><span class="badge ${pp.abiertos ? 'info' : 'ok'}">${pp.abiertos || 0}</span></a>
           </div>
         </div>`;
     }
@@ -558,7 +627,7 @@
           ${!dc ? (S.err[kc] ? `<div class="notice warn">${icon('alert')}<span>${esc(S.err[kc])}</span></div>` : loadingCard(1)) : `
             ${movs.length ? `<div class="list pa-movs">${movs.map((m) => `<div class="list-item small"><div class="grow" style="min-width:0"><div><strong>${esc(TIPO_MOV[m.tipo] || m.tipo)}</strong>${m.motivo ? ` <span class="muted">· <span data-noi18n>${esc(m.motivo)}</span></span>` : ''}</div><div class="tiny muted">${fecha(m.creado)}${m.creadoPor ? ' · ' + esc(m.creadoPor) : ''} · saldo ${cred(m.saldoDespues, false)}</div></div><strong class="pa-mov ${cnum(m) < 0 ? 'neg' : 'pos'}">${credSig(m)}</strong></div>`).join('')}</div>
               ${dc.siguiente ? `<div class="row"><button type="button" class="btn ghost sm" data-action="prodMovMas" data-id="${esc(id)}">${icon('chevronDown')} Ver movimientos anteriores</button></div>` : ''}` : '<p class="small muted">Todavía no tiene movimientos de créditos.</p>'}
-            ${pcs.length ? `<div class="small muted">Pedidos de créditos</div><div class="list">${pcs.slice(0, 8).map((x) => `<a class="list-item small" style="color:inherit" href="#admin.pedidos" data-action="prodPcVer" data-q="${esc(x.codigo)}"><code class="pa-ref">${esc(x.codigo)}</code><div class="grow">${esc(x.packNombre)} · ${cred(x.total)}<div class="tiny muted">${fecha(x.creado)}</div></div>${badge(ESTADO_PC[x.estado], x.estado)}</a>`).join('')}</div>` : ''}`}
+            ${pcs.length ? `<div class="small muted">Pedidos de créditos</div><div class="list">${pcs.slice(0, 8).map((x) => `<a class="list-item small" style="color:inherit" href="#admin.creditos.pedidos" data-action="prodPcVer" data-q="${esc(x.codigo)}"><code class="pa-ref">${esc(x.codigo)}</code><div class="grow">${esc(x.packNombre)} · ${cred(x.total)}<div class="tiny muted">${fecha(x.creado)}</div></div>${badge(ESTADO_PC[x.estado], x.estado)}</a>`).join('')}</div>` : ''}`}
           <div class="row"><button type="button" class="btn secondary sm" data-action="prodAjuste" data-id="${esc(c.id)}" data-n="${esc(datos.displayName || '')}">${icon('edit')} Ajuste manual</button></div>
         </section>`;
       const cuentaCard = `<section class="card stack" style="gap:10px">
@@ -610,7 +679,7 @@
     return all.filter(f[2]);
   };
   const pcCot = () => (S.pc && S.pc.cotizacion) || {};
-  // Ajustes → Cotización. Borrador local (modo y compra/venta) en S.cotEdit hasta tocar «Guardar».
+  // Precios → Cotización. Borrador local (modo y compra/venta) en S.cotEdit hasta tocar «Guardar».
   function cotHtml(co) {
     co = co || {};
     const e = S.cotEdit || (S.cotEdit = { modo: co.modo === 'manual' ? 'manual' : 'auto', valor: co.valor === 'compra' ? 'compra' : 'venta' });
@@ -655,7 +724,7 @@
   const cotEtq = (c) => (cotAuto(c) ? `blue ${c.valor === 'compra' ? 'compra' : 'venta'}` : 'manual');
   function pcArs(x) {
     const c = pcCot();
-    if (x.arsSugerido == null) return `<span class="tiny muted">Sin cotización: revisala en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</span>`;
+    if (x.arsSugerido == null) return `<span class="tiny muted">Sin cotización: revisala en <a href="#admin.precios" data-go="#admin.precios">Precios</a>.</span>`;
     const vieja = !hoyAR(cotFechaDato(c));
     return `<strong data-noi18n>${ars(x.arsSugerido)}</strong> <span class="badge sm" data-noi18n>${cotEtq(c)}</span><div class="tiny ${vieja ? '' : 'muted'}"${vieja ? ' style="color:var(--warn)"' : ''}>${vieja ? icon('alert') + ' ' : ''}a ${ars(c.arsPorUsd).replace('ARS ', '')} por USD · ${cotAuto(c) ? esc(c.fuente) + ' del' : 'cotización del'} ${dia(cotFechaDato(c))}${vieja ? ' (no es de hoy)' : ''}</div>`;
   }
@@ -667,6 +736,8 @@
   }
   const pcVenceCorto = (x) => (x.estado === 'pendiente' ? ` · <span${new Date(x.vence).getTime() - Date.now() < 6 * 36e5 ? ' style="color:var(--warn)"' : ''}>${quedaTxt(x.vence)}</span> (vence el ${fecha(x.vence)})` : x.estado === 'vencido' ? ` · venció el ${fecha(x.vence)}` : x.confirmado ? ` · ${x.estado === 'confirmado' ? 'confirmado' : 'cerrado'} el ${fecha(x.confirmado)}` : '');
   const pcCreditos = (x) => `<strong data-noi18n>${cred(x.total)}</strong>${cnum(x.bonus) > 0 ? `<div class="tiny muted">${cred(x.base, false)} + ${cred(x.bonus, false)} de regalo</div>` : ''}`;
+  // Moneda que eligió en el chat del asistente (solo si se lo preguntó: con la cuenta en dólares cargada)
+  const pcMoneda = (x) => (x.monedaAsistente ? `<div class="tiny"><span class="badge sm ${x.monedaAsistente === 'USD' ? 'info' : 'neutral'}">${icon('whatsapp')} Transfiere en ${x.monedaAsistente === 'USD' ? 'dólares' : 'pesos'}</span></div>` : '');
   function pcBtns(x, compact) {
     const abierto = x.estado === 'pendiente' || x.estado === 'vencido';
     const b = [];
@@ -687,12 +758,12 @@
     }
     const sub = (x) => { const bt = pcBtns(x); const extra = [x.nota ? `<span class="small"><span class="muted">Nota de ella:</span> <span class="pa-pre" data-noi18n>${esc(x.nota)}</span></span>` : '', x.motivo ? `<span class="small"><span class="muted">Motivo:</span> ${esc(x.motivo)}</span>` : ''].filter(Boolean).join(' · '); return bt || extra ? `<tr class="pa-subrow${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hlrow' : ''}"><td colspan="6"><div class="row between" style="gap:8px;align-items:center"><div class="grow" style="min-width:0">${extra}</div>${bt}</div></td></tr>` : ''; };
     const table = `<div class="table-wrap pa-table"><table class="table pa-pctable"><thead><tr><th>Código</th><th>Acompañante</th><th>Pack</th><th>Vence</th><th>En pesos</th><th>Estado</th></tr></thead><tbody>
-      ${items.map((x) => `<tr class="pa-mainrow${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hlrow' : ''}${pcBtns(x) || x.nota || x.motivo ? ' has-sub' : ''}"><td>${pcCod(x)}<div class="tiny muted">${fecha(x.creado)}</div></td><td><div class="pa-pcw">${linkCuenta(x.cuentaId, (x.cuenta || {}).displayName)}<div class="tiny muted pa-contact">${esc((x.cuenta || {}).email || '')}</div></div></td><td class="small"><div class="pa-pcw">${esc(x.packNombre)} · ${money(x.pagaUsd)}<div>${pcCreditos(x)}</div></div></td><td class="small"><div class="pa-pcw">${pcVence(x)}</div></td><td class="small"><div class="pa-pcw">${x.estado === 'pendiente' || x.estado === 'vencido' ? pcArs(x) : '<span class="muted">—</span>'}</div></td><td>${badge(ESTADO_PC[x.estado], x.estado)}${x.reaperturas ? `<div class="tiny muted">reabierto ${x.reaperturas}×</div>` : ''}</td></tr>${sub(x)}`).join('')}
+      ${items.map((x) => `<tr class="pa-mainrow${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hlrow' : ''}${pcBtns(x) || x.nota || x.motivo ? ' has-sub' : ''}"><td>${pcCod(x)}<div class="tiny muted">${fecha(x.creado)}</div></td><td><div class="pa-pcw">${linkCuenta(x.cuentaId, (x.cuenta || {}).displayName)}<div class="tiny muted pa-contact">${esc((x.cuenta || {}).email || '')}</div></div></td><td class="small"><div class="pa-pcw">${esc(x.packNombre)} · ${money(x.pagaUsd)}<div>${pcCreditos(x)}</div>${pcMoneda(x)}</div></td><td class="small"><div class="pa-pcw">${pcVence(x)}</div></td><td class="small"><div class="pa-pcw">${x.estado === 'pendiente' || x.estado === 'vencido' ? pcArs(x) : '<span class="muted">—</span>'}</div></td><td>${badge(ESTADO_PC[x.estado], x.estado)}${x.reaperturas ? `<div class="tiny muted">reabierto ${x.reaperturas}×</div>` : ''}</td></tr>${sub(x)}`).join('')}
       </tbody></table></div>`;
     const cards = `<div class="pa-cards">${items.map((x) => `<article class="card stack${x.estado === 'pendiente' && x.tieneComprobante ? ' pa-hl' : ''}" style="gap:10px">
         <div class="row between nowrap" style="gap:8px">${pcCod(x)}${badge(ESTADO_PC[x.estado], x.estado)}</div>
         <div class="stack" style="gap:2px;min-width:0">${linkCuenta(x.cuentaId, (x.cuenta || {}).displayName)}<span class="tiny muted ellipsis">${esc((x.cuenta || {}).email || '')}</span></div>
-        <div class="row between" style="gap:8px;align-items:flex-start"><div class="small">${esc(x.packNombre)} · ${money(x.pagaUsd)}</div><div class="small" style="text-align:right">${pcCreditos(x)}</div></div>
+        <div class="row between" style="gap:8px;align-items:flex-start"><div class="small">${esc(x.packNombre)} · ${money(x.pagaUsd)}${pcMoneda(x)}</div><div class="small" style="text-align:right">${pcCreditos(x)}</div></div>
         ${x.estado === 'pendiente' || x.estado === 'vencido' ? `<div class="small pa-ars">${pcArs(x)}</div>` : ''}
         <div class="tiny muted">Creado el ${fecha(x.creado)}${pcVenceCorto(x)}${x.reaperturas ? ` · reabierto ${x.reaperturas}×` : ''}</div>
         ${x.nota ? `<div class="small"><span class="muted">Nota de ella:</span> <span class="pa-pre" data-noi18n>${esc(x.nota)}</span></div>` : ''}
@@ -713,7 +784,7 @@
         : (c.modo === 'manual' ? 'Todavía no cargaste la cotización del dólar.' : 'Todavía no se pudo traer el dólar blue.');
       const cotVieja = !c.arsPorUsd || !hoyAR(cotFechaDato(c));
       const cotPide = !c.arsPorUsd ? (c.modo === 'manual' ? 'Cargala' : 'Probá «Actualizar ahora»') : (c.modo === 'manual' ? 'No es de hoy: actualizala' : 'El dato no es de hoy: revisalo');
-      body = `${cotVieja ? `<div class="notice warn">${icon('alert')}<span>${cotTxt} ${cotPide} en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a> para que el monto en pesos y el mensaje salgan bien.</span></div>` : `<div class="tiny muted">${cotTxt}</div>`}
+      body = `${cotVieja ? `<div class="notice warn">${icon('alert')}<span>${cotTxt} ${cotPide} en <a href="#admin.precios" data-go="#admin.precios">Precios</a> para que el monto en pesos y el mensaje salgan bien.</span></div>` : `<div class="tiny muted">${cotTxt}</div>`}
         <div class="adm-filters">
           <label class="sr-only" for="prodPcQ">Buscar pedido</label><input class="input" id="prodPcQ" type="search" placeholder="Código, nombre o email" value="${esc(S.pcq)}" data-input="prodPcSearch" autocomplete="off" inputmode="search">
           <div class="chips scroll" style="flex:1 1 auto;min-width:0">${PC_FILTROS.map(([k, l, fn]) => filtro('prodPcFilter', S.pcq.trim() ? '' : S.pcf, k, l, all.filter(fn).length)).join('')}</div>
@@ -1056,7 +1127,7 @@
     return `${list.length ? list.map(row).join('') : '<p class="small muted">No hay packs: las acompañantes solo pueden hacer cargas a medida.</p>'}
       <div class="row" style="gap:8px">${list.length < 12 ? `<button type="button" class="btn ghost sm" data-action="prodPkAdd">${icon('plus')} Agregar pack</button>` : '<span class="tiny muted">Máximo 12 packs.</span>'}<span class="grow"></span>${S.pkDirty ? `<button type="button" class="btn ghost sm" data-action="prodPkReset">Descartar cambios</button>` : ''}<button type="button" class="btn sm" data-action="prodAjSave" data-k="packs">${icon('check')} Guardar packs</button></div>`;
   }
-  function vAjustes() {
+  function vPrecios() {
     load('aj', '/ajustes');
     let body;
     if (!S.aj && S.err.aj) body = errorCard(S.err.aj, 'aj');
@@ -1070,16 +1141,8 @@
       const ds = a.destacado || {};
       const dsa = ds.semanaAuto || { activo: false, recargo: 20 };
       const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="${per === 'semana' ? '1' : 'any'}" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}"${per === 'semana' && dsa.activo ? ' disabled' : ''} data-input="prodDestAuto" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'mes' ? 'mes' : 'semana'}">`;
-      const ct = a.contacto || {}; const co = a.cotizacion || {}; const cm = a.comision || {}; const ms = a.mensajes || { whatsapp: {} };
-      const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
-      // Home provisoria (app/lib/prelanzamiento.js): sin guardar, prendida
-      const pl = a.prelanzamiento || { activo: true, publicados: 0 };
-      body = `<section class="card stack" style="gap:12px" id="prodPre">
-          <div class="row between"><div class="card-title">${icon('home')} Home provisoria</div>${upd('prelanzamiento')}</div>
-          <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div style="font-weight:700;font-size:14px">${pl.activo ? 'Prendida' : 'Apagada: el sitio está abierto'}</div><div class="small muted">Mientras está prendida, el sitio muestra solo una portada para que las acompañantes publiquen su perfil (sin perfiles, lugares ni registro de interesados).</div></div><button type="button" class="switch" role="switch" aria-checked="${!!pl.activo}" aria-label="Home provisoria" data-action="prodPreToggle"></button></div>
-          <p class="small">Perfiles publicados ahora: <strong class="num">${Number(pl.publicados) || 0}</strong></p>
-        </section>
-        <section class="card stack" style="gap:12px">
+      const co = a.cotizacion || {}; const cm = a.comision || {};
+      body = `<section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('dollar')} Precios de los planes (créditos = USD)</div>${upd('precios')}</div>
           <p class="small muted">Precio por mes de Plata, Oro y Star, y por semana de Oro y Star. Bronce es gratis. Conviene que la semana sea <strong>la cuarta parte del mes + 20 %</strong>, así el mes sale más barato.</p>
           <div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">
@@ -1109,6 +1172,27 @@
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="destacado">${icon('check')} Guardar precios del Destacado</button></div>
         </section>
         <section class="card stack" style="gap:12px" id="prodCot">${cotHtml(co)}</section>
+        ${comisionCard(cm, upd('comision'))}`;
+    }
+    return layout('precios', `${head('Precios', actualizar('aj'), 'Precios de los planes, packs de créditos, Destacado, cotización del dólar y comisión de la venta de contenido')}<div class="stack" style="gap:14px">${body}</div>`);
+  }
+  function vAjustes() {
+    load('aj', '/ajustes');
+    let body;
+    if (!S.aj && S.err.aj) body = errorCard(S.err.aj, 'aj');
+    else if (!S.aj) body = loadingCard(3);
+    else {
+      const a = S.aj;
+      const upd = (k) => (a.actualizado && a.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado[k])}</span>` : '');
+      const ct = a.contacto || {}; const ms = a.mensajes || { whatsapp: {} };
+      const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
+      // Home provisoria (app/lib/prelanzamiento.js): sin guardar, prendida
+      const pl = a.prelanzamiento || { activo: true, publicados: 0 };
+      body = `<section class="card stack" style="gap:12px" id="prodPre">
+          <div class="row between"><div class="card-title">${icon('home')} Home provisoria</div>${upd('prelanzamiento')}</div>
+          <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div style="font-weight:700;font-size:14px">${pl.activo ? 'Prendida' : 'Apagada: el sitio está abierto'}</div><div class="small muted">Mientras está prendida, el sitio muestra solo una portada para que las acompañantes publiquen su perfil (sin perfiles, lugares ni registro de interesados).</div></div><button type="button" class="switch" role="switch" aria-checked="${!!pl.activo}" aria-label="Home provisoria" data-action="prodPreToggle"></button></div>
+          <p class="small">Perfiles publicados ahora: <strong class="num">${Number(pl.publicados) || 0}</strong></p>
+        </section>
         <section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('whatsapp')} Contacto para comprar créditos</div>${upd('contacto')}</div>
           <p class="small muted">Las acompañantes te escriben a este WhatsApp con el código del pedido. Telegram es opcional.</p>
@@ -1126,10 +1210,10 @@
           <div class="field"><label for="ajMsgAdmin">Tu respuesta («Copiar mensaje» en Pedidos)</label><textarea class="textarea" id="ajMsgAdmin" rows="3" maxlength="1000">${esc(ms.admin || '')}</textarea><div class="tiny muted">Variables: ${ph(['codigo', 'pack', 'creditos', 'monto', 'ars', 'cotizacion', 'fecha'])}. No pongas tus datos bancarios acá: agregalos a mano en WhatsApp.</div></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
         </section>
-        ${ventaContenidoCard(cm, upd('comision'))}
+        ${ventaContenidoCard()}
         ${textosInicioCard()}`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, precios, packs de créditos, Destacado, cotización, contacto, mensajes y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, contacto, avisos por Telegram, mensajes, Mercado Pago y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Acciones de Fase 1+2 ---------- */
@@ -1154,7 +1238,7 @@
         }).catch(() => { /* la búsqueda local ya se mostró */ });
       }, 350);
     },
-    prodPcVer(el, ev) { if (ev) ev.preventDefault(); S.pcq = el.dataset.q || ''; HH.go('#admin.pedidos'); },
+    prodPcVer(el, ev) { if (ev) ev.preventDefault(); S.pcq = el.dataset.q || ''; HH.go('#admin.creditos.pedidos'); },
     prodCopy(el) {
       const v = el.dataset.v || ''; const l = el.dataset.l || 'Texto';
       const ok = () => HH.toast(l + ' copiado: ' + v, { type: 'ok' });
@@ -1543,7 +1627,22 @@
       el.innerHTML = comTu({ porcentaje: n('ajComP'), costoMp: n('ajComMp') });
     },
   });
-  function ventaContenidoCard(cm, actualizado) {
+  // Precios → comisión (descuento total, costo de Mercado Pago y saldo negativo máximo): los mismos campos y el mismo
+  // «Guardar comisión» que tenía la tarjeta de Ajustes.
+  function comisionCard(cm, actualizado) {
+    return `<section class="card stack" style="gap:12px">
+          <div class="row between"><div class="card-title">${icon('bag')} Comisión de la venta de contenido</div>${actualizado}</div>
+          <div class="grid-2"><div class="field"><label for="ajComP">Descuento total a la acompañante (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.01" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}" data-input="prodComCalc"><span class="tiny muted">Tu comisión más el costo de Mercado Pago.</span></div>
+          <div class="field"><label for="ajComMp">Costo de Mercado Pago, con IVA (%)</label><input class="input" id="ajComMp" type="number" min="0" max="90" step="0.01" value="${esc(cm.costoMp != null ? cm.costoMp : '')}" data-input="prodComCalc"><span class="tiny muted">7,61 % = cobro al instante (6,29 % + IVA).</span></div></div>
+          <p class="small" id="ajComTu" style="margin:0">${comTu(cm)}</p>
+          <div class="grid-2">
+          <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
+          <p class="tiny muted" style="margin:0">La cuenta de Mercado Pago que recibe la comisión se elige en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</p>
+        </section>`;
+  }
+  // Ajustes → Venta de contenido: la cuenta de Mercado Pago que recibe la comisión (los porcentajes están en Precios)
+  function ventaContenidoCard() {
     load('vc', PATHS.vc);
     const vc = S.vc;
     let cuentas;
@@ -1559,14 +1658,9 @@
         <p class="tiny muted" style="margin:0">En cada aplicación de Mercado Pago: dirección de redirección <code>${esc(vc.redirectUri)}</code> y notificaciones (webhooks, evento «Pagos») <code>${esc(vc.webhookUrl)}</code>.</p>`;
     }
     return `<section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('bag')} Venta de contenido</div>${actualizado}</div>
+          <div class="card-title">${icon('bag')} Venta de contenido</div>
           <p class="small muted">Quien compra paga con Mercado Pago. El dinero va a la cuenta de Mercado Pago de la acompañante y la comisión, a la cuenta elegida acá. Si cambiás la cuenta, cada acompañante tiene que volver a conectar Mercado Pago desde su panel: hasta entonces, sus contenidos no se pueden comprar.</p>
-          <div class="grid-2"><div class="field"><label for="ajComP">Descuento total a la acompañante (%)</label><input class="input" id="ajComP" type="number" min="0" max="90" step="0.01" value="${esc(cm.porcentaje != null ? cm.porcentaje : '')}" data-input="prodComCalc"><span class="tiny muted">Tu comisión más el costo de Mercado Pago.</span></div>
-          <div class="field"><label for="ajComMp">Costo de Mercado Pago, con IVA (%)</label><input class="input" id="ajComMp" type="number" min="0" max="90" step="0.01" value="${esc(cm.costoMp != null ? cm.costoMp : '')}" data-input="prodComCalc"><span class="tiny muted">7,61 % = cobro al instante (6,29 % + IVA).</span></div></div>
-          <p class="small" id="ajComTu" style="margin:0">${comTu(cm)}</p>
-          <div class="grid-2">
-          <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
+          <p class="tiny muted" style="margin:0">El descuento a la acompañante y el saldo negativo máximo están en <a href="#admin.precios" data-go="#admin.precios">Precios</a>.</p>
           <div class="card-title" style="font-size:15px">Cuenta que recibe la comisión</div>
           ${HH.adminInt ? HH.adminInt.mpCuentas(vc, S.err.vc) : cuentas}
         </section>`;
@@ -1611,9 +1705,15 @@
   // Todas las pestañas del menú pasan por acá (Object.assign sobre las vistas de la demo)
   const views = {};
   TABS.forEach((t) => { views[t.id] = () => vSoon(t.id); });
-  Object.assign(views, { ventas: vVentasContenido, resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes });
+  Object.assign(views, { ventas: vVentasContenido, resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes, precios: vPrecios });
+  // Secciones con pestañas: #admin.<sección> (sin pestaña) → la primera; #admin.<sección>.<pestaña>
+  Object.assign(SUBVISTAS, { 'creditos.pedidos': vPedidos, 'planes.suscripciones': vSuscripciones, 'planes.renovaciones': vRenovaciones, 'destacados.destacado': vDestacados, 'destacados.star': vStars, 'contenido.ventas': vVentasContenido });
+  Object.keys(SECCIONES).forEach((sec) => {
+    views[sec] = () => vSeccion(sec, null);
+    HH.route(`admin.${sec}.:sub`, ({ sub }) => (HH.requireRole('admin') ? vSeccion(sec, sub) : false));
+  });
   HH.adminViews = views;
-  HH.pa = { S, API, BASE, load, layout, head, fecha, dia, badge, loadingCard, errorCard, stat, actualizar, filtro, pedirMotivo, blobUrl, fillBlobs, cred, cnum, credSig, planBadge, linkCuenta, thumb, ext, pesosAr, refreshResumen, TIPO_MOV, PLAN_NOMBRE, views, counts };
+  HH.pa = { S, API, BASE, load, layout, head, fecha, dia, badge, loadingCard, errorCard, stat, actualizar, filtro, pedirMotivo, blobUrl, fillBlobs, cred, cnum, credSig, planBadge, linkCuenta, thumb, ext, pesosAr, refreshResumen, TIPO_MOV, PLAN_NOMBRE, views, counts, subvistas: SUBVISTAS };
   HH.route('admin.textos.:pagina', ({ pagina }) => (HH.requireRole('admin') ? vTextoPagina(pagina) : false));
   HH.route('admin.acompanantes.:id', ({ id }) => (HH.requireRole('admin') ? vAcompanante(id) : false));
 
@@ -1730,6 +1830,12 @@
   HH.render = function (forcePath) {
     const key = forcePath || HH.currentHash();
     if (!/^admin(\.|$)/.test(key)) { HH.go('#admin.resumen', { replace: true }); return; }
+    // Dirección vieja del menú (antes de agruparlo): se reemplaza por la nueva sin dejar un paso extra en el historial
+    const nuevo = aliasAdmin(key);
+    if (nuevo) {
+      try { history.replaceState(null, '', BASE + HH.href('#' + nuevo)); } catch (e) { /* sin historial: igual se muestra */ }
+      return HH.render(nuevo);
+    }
     // "Atrás" del navegador con cambios sin guardar: se queda en la página y pregunta
     if (!forcePath && dirtyCount() && key !== 'admin.textos.' + S.curPage) {
       const to = key; history.replaceState(null, '', BASE + HH.href('#admin.textos.' + S.curPage)); leaving('#' + to); return;
@@ -1816,6 +1922,18 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-pkgrid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}.pa-pkgrid .field{min-width:0}.pa-pkwide{grid-column:1/-1}
 @media(min-width:860px){.pa-pkgrid{grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr) minmax(0,.7fr) minmax(0,1.6fr)}.pa-pkwide{grid-column:auto}}
 .ico.pa-up{transform:rotate(90deg)}
+/* Menú agrupado: más compacto y, si la ventana es baja, la barra lateral se desplaza sola (siempre se llega a Ajustes) */
+html[data-prod="admin"] .adm-dash .dash-side{max-height:calc(100vh - var(--header-h) - 32px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+html[data-prod="admin"] .adm-dash .dash-side .who{padding:10px 12px;margin-bottom:6px}
+html[data-prod="admin"] .adm-dash .dash-nav a{padding:8px 12px}
+html[data-prod="admin"] .adm-dash .dash-nav-h{padding:10px 12px 2px}
+.pa-subtabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;padding:4px;border-radius:99px;background:var(--surface);border:1px solid var(--line);max-width:560px;margin-bottom:16px}
+.pa-subtabs a{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:9px 12px;border-radius:99px;color:var(--fg-2);font-weight:700;font-size:14px;text-decoration:none}
+.pa-subtabs a:hover{color:var(--berry)}
+.pa-subtabs a.on{background:var(--bg);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.pa-subtabs-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pa-subtabs .count{flex:none;background:var(--berry);color:var(--berry-ink);font-size:11px;padding:1px 7px;border-radius:999px;font-weight:800}
+@media(max-width:420px){.pa-subtabs a{padding:8px 8px;font-size:13px}}
 .pa-soon-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--berry-tint);color:var(--berry);flex:none}.pa-soon-ic svg{width:22px;height:22px}
 `;
   document.head.appendChild(st);

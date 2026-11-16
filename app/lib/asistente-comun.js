@@ -3,7 +3,8 @@
 import crypto from 'node:crypto';
 import pg from 'pg';
 
-export const AJUSTES_DEFAULT = Object.freeze({ activo: false, alias: '', titular: '' });
+// alias/titular = cuenta en pesos (como siempre); aliasUsd/titularUsd = cuenta en dólares (opcional, 16/11/2026).
+export const AJUSTES_DEFAULT = Object.freeze({ activo: false, alias: '', titular: '', aliasUsd: '', titularUsd: '' });
 export const CODIGO_EMAIL_MIN = 15;          // vence a los 15 minutos
 export const CODIGO_EMAIL_INTENTOS = 5;
 export const RETENCION_DIAS = 90;            // mensajes y archivos del chat
@@ -17,20 +18,32 @@ const str = (v, max) => (typeof v === 'string' ? v.normalize('NFC').replace(/\s+
 
 export function mezclarAjustes(v) {
   const o = esObj(v) ? v : {};
-  return { activo: o.activo === true, alias: typeof o.alias === 'string' ? o.alias : '', titular: typeof o.titular === 'string' ? o.titular : '' };
+  const s = (k) => (typeof o[k] === 'string' ? o[k] : '');
+  return { activo: o.activo === true, alias: s('alias'), titular: s('titular'), aliasUsd: s('aliasUsd'), titularUsd: s('titularUsd') };
 }
+// La cuenta en dólares cuenta como cargada con los dos datos (si no, el asistente pasa solo los datos en pesos, como antes).
+export const hayCuentaUsd = (aj) => Boolean(aj && aj.aliasUsd && aj.titularUsd);
 
 // Alias de la cuenta para transferir: 6 a 20 caracteres, letras, números, puntos y guiones (regla de los bancos).
 // Titular: nombre de la persona o empresa dueña de la cuenta (lo ve la acompañante para comprobarlo antes de transferir).
+// Las mismas reglas para la cuenta en pesos (alias, titular) y para la de dólares (aliasUsd, titularUsd; opcional).
+function validarCuenta(aliasRaw, titularRaw, deQue) {
+  const alias = str(aliasRaw, 40);
+  if (alias && !/^[A-Za-z0-9.-]{6,20}$/.test(alias)) return { error: `El alias${deQue} tiene que tener de 6 a 20 caracteres: letras, números, puntos o guiones (sin espacios).` };
+  const titular = str(titularRaw, 120);
+  if (titular && (titular.length < 3 || titular.length > 80)) return { error: `El nombre del titular${deQue} tiene que tener entre 3 y 80 caracteres.` };
+  if (titular && !/^[\p{L}\p{M} .,'&-]+$/u.test(titular)) return { error: `El nombre del titular${deQue} solo puede tener letras, espacios, puntos, comas, guiones y &.` };
+  return { alias, titular };
+}
 export function validarAjustes(v) {
-  if (!esObj(v)) return { error: 'Formato inválido: {activo, alias, titular}.' };
-  const alias = str(v.alias, 40);
-  if (alias && !/^[A-Za-z0-9.-]{6,20}$/.test(alias)) return { error: 'El alias tiene que tener de 6 a 20 caracteres: letras, números, puntos o guiones (sin espacios).' };
-  const titular = str(v.titular, 120);
-  if (titular && (titular.length < 3 || titular.length > 80)) return { error: 'El nombre del titular tiene que tener entre 3 y 80 caracteres.' };
-  if (titular && !/^[\p{L}\p{M} .,'&-]+$/u.test(titular)) return { error: 'El nombre del titular solo puede tener letras, espacios, puntos, comas, guiones y &.' };
+  if (!esObj(v)) return { error: 'Formato inválido: {activo, alias, titular, aliasUsd, titularUsd}.' };
+  const ars = validarCuenta(v.alias, v.titular, '');
+  if (ars.error) return ars;
+  const usd = validarCuenta(v.aliasUsd, v.titularUsd, ' en dólares');
+  if (usd.error) return usd;
+  if (Boolean(usd.alias) !== Boolean(usd.titular)) return { error: 'Para la cuenta en dólares completá el alias y el nombre del titular, o dejá los dos vacíos.' };
   if (v.activo !== undefined && typeof v.activo !== 'boolean') return { error: 'activo tiene que ser verdadero o falso.' };
-  return { valor: { activo: v.activo === true, alias, titular } };
+  return { valor: { activo: v.activo === true, alias: ars.alias, titular: ars.titular, aliasUsd: usd.alias, titularUsd: usd.titular } };
 }
 
 export async function leerAjustes(db) {

@@ -30,8 +30,12 @@ export const HERRAMIENTAS = [
   },
   {
     name: 'datos_transferencia',
-    description: 'Le manda a la persona, en un mensaje aparte, el monto en pesos, el alias y el titular de la cuenta para pagar un pedido pendiente. No repitas esos datos en tu respuesta.',
-    input_schema: { type: 'object', properties: { codigo: { type: 'string' } }, required: ['codigo'], additionalProperties: false },
+    description: 'Le manda a la persona, en un mensaje aparte, los datos para pagar un pedido pendiente: en pesos (monto en pesos, alias y titular) o en dólares (monto en USD, alias y titular de la cuenta en dólares, si hay una). moneda: la que eligió la persona (ARS = pesos, USD = dólares); si no la dijo, no la pongas: si hace falta, el sistema le pregunta. No repitas esos datos en tu respuesta.',
+    input_schema: {
+      type: 'object',
+      properties: { codigo: { type: 'string' }, moneda: { type: 'string', enum: ['ARS', 'USD'], description: 'ARS = pesos, USD = dólares' } },
+      required: ['codigo'], additionalProperties: false,
+    },
   },
   {
     name: 'enviar_codigo_email',
@@ -90,7 +94,7 @@ Si piden hablar con una persona, si la consulta está fuera de estos temas o si 
 Ante cualquier indicio de menores, trata, explotación, abuso, amenazas o amenazas legales: usá "alerta" (sin discutir el tema).
 
 Datos de la cuenta (estado del perfil, plan, saldo, pedidos) y pedidos nuevos solo con el chat identificado (herramientas "estado_cuenta" y "crear_pedido"). Si no está identificado, pedile el email de su cuenta y usá "enviar_codigo_email"; la persona después escribe el código de 6 números en el chat (eso lo verifica el sistema, no vos).
-Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje aparte; no los repitas. Los comprobantes de pago se mandan como foto o PDF en este chat.
+Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje aparte (con "moneda" ARS o USD si dijo en qué moneda va a transferir); no los repitas. Los comprobantes de pago se mandan como foto o PDF en este chat.
 
 Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).

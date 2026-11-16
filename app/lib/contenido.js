@@ -17,7 +17,7 @@
 //   12/11: Bronce 0, Plata 1, Oro 5, Star ilimitados). Si baja de plan, los primeros que entran (por fecha de carga)
 //   siguen a la venta; el resto queda guardado y no se puede comprar (en su panel figura así).
 // - Comisión (Juan, 13/11/2026): a la acompañante se le descuenta un total de 10 % por venta entre SexyRose y Mercado
-//   Pago. marketplace_fee = total − costo estimado de Mercado Pago (Admin → Ajustes; por defecto 7,61 %, "al instante").
+//   Pago. marketplace_fee = total − costo estimado de Mercado Pago (Admin → Precios; por defecto 7,61 %, "al instante").
 // - La comisión NO se descuenta de los créditos (Mercado Pago ya la retiene en el cobro): queda registrada en cada
 //   venta (ventas_contenido.comision_centavos) solo para los reportes.
 import crypto from 'node:crypto';
@@ -447,7 +447,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
       await client.query('COMMIT');
       // Aviso interno (Telegram): solo cuando la venta pasa a pagada. Sin datos de quien compra.
       if (nuevo === 'aprobada' && v.estado !== 'aprobada') {
-        Promise.resolve(notify(`Venta de contenido pagada: ${v.tipo === 'pedido' ? 'pedido personalizado' : 'pack'}.\nMonto: $ ${(Number(v.monto_centavos) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })}\nRevisar en Admin → Ventas de contenido.`, 'venta')).catch(() => {});
+        Promise.resolve(notify(`Venta de contenido pagada: ${v.tipo === 'pedido' ? 'pedido personalizado' : 'pack'}.\nMonto: $ ${(Number(v.monto_centavos) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 })}\nRevisar en Admin → Contenido → Ventas.`, 'venta')).catch(() => {});
       }
       return nuevo;
     } catch (e) { await client.query('ROLLBACK').catch(() => {}); throw e; } finally { client.release(); }

@@ -21,8 +21,9 @@
   const insertarDespues = (despues, tab) => { if (TABS.some((t) => t.id === tab.id)) return; const i = TABS.findIndex((t) => t.id === despues); TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, tab); };
   insertarDespues('ventas', { id: 'solicitudes', label: 'Pedidos personalizados', icon: 'chat' });
   insertarDespues('pedidos', { id: 'creditos', label: 'Créditos', icon: 'dollar' });
-  P.counts.solicitudes = () => (S.res && S.res.pedidosPersonalizados ? S.res.pedidosPersonalizados.pendientes : 0) || 0;
-  P.counts.creditos = () => 0; P.counts.clientes = () => 0;
+  // Menú agrupado (16/11/2026): Pedidos personalizados es la pestaña de Contenido y la lista de saldos, la pestaña
+  // Movimientos de Créditos (HH.adminMenu y los contadores están en prod-admin.js)
+  P.counts.clientes = () => 0;
 
   const fail = (e) => HH.toast(e.message, { type: 'danger' });
   const err = (msg, k) => `<div class="card"><div class="empty">${icon('alert')}<h4>No se pudo cargar</h4><p class="small">${esc(msg)}</p><button type="button" class="btn secondary sm" data-action="modRetry" data-k="${esc(k)}">${icon('refresh')} Reintentar</button></div></div>`;
@@ -74,9 +75,9 @@
     const all = (S.sol && S.sol.items) || [];
     if (!items.length) return `<div class="card"><div class="empty">${icon('chat')}<h4>${all.length ? 'Sin resultados' : 'Todavía no hay pedidos personalizados'}</h4><p class="small">${all.length ? 'Probá con otro filtro o búsqueda.' : 'Cuando un interesado le pida algo a una acompañante, aparece acá.'}</p></div></div>`;
     const table = `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Último movimiento</th><th>Acompañante</th><th>Interesado</th><th>Estado</th><th>Último mensaje</th><th>Pagado</th></tr></thead><tbody>
-      ${items.map((x) => `<tr class="pa-rowlink" data-go="#admin.solicitudes.${esc(x.id)}"><td class="small muted nowrap">${fecha(x.actividad)}</td><td>${linkCuenta(x.acompanante.id, x.acompanante.nombre)}</td><td class="small">${usuarioHtml(x.cliente)}</td><td>${badge(SOL_ESTADO[x.estado], x.estado)}</td><td class="small mod-ult">${ultimo(x.ultimoMensaje)}</td><td class="small nowrap">${pagadoTxt(x)}</td></tr>`).join('')}
+      ${items.map((x) => `<tr class="pa-rowlink" data-go="#admin.contenido.pedidos.${esc(x.id)}"><td class="small muted nowrap">${fecha(x.actividad)}</td><td>${linkCuenta(x.acompanante.id, x.acompanante.nombre)}</td><td class="small">${usuarioHtml(x.cliente)}</td><td>${badge(SOL_ESTADO[x.estado], x.estado)}</td><td class="small mod-ult">${ultimo(x.ultimoMensaje)}</td><td class="small nowrap">${pagadoTxt(x)}</td></tr>`).join('')}
       </tbody></table></div>`;
-    const cards = `<div class="pa-cards">${items.map((x) => `<a class="card stack pa-accard" style="gap:8px" href="#admin.solicitudes.${esc(x.id)}" data-go="#admin.solicitudes.${esc(x.id)}">
+    const cards = `<div class="pa-cards">${items.map((x) => `<a class="card stack pa-accard" style="gap:8px" href="#admin.contenido.pedidos.${esc(x.id)}" data-go="#admin.contenido.pedidos.${esc(x.id)}">
         <div class="row between nowrap" style="gap:8px"><strong class="ellipsis" data-noi18n>${esc(x.acompanante.nombre || 'Sin nombre')}</strong>${badge(SOL_ESTADO[x.estado], x.estado)}</div>
         <div class="small"><span data-noi18n>@${esc(x.cliente.usuario)}</span>${x.cliente.bloqueado ? ' <span class="badge danger">Bloqueado</span>' : ''}</div>
         <div class="small mod-ult">${ultimo(x.ultimoMensaje)}</div>
@@ -150,7 +151,7 @@
           <p class="tiny muted">El contenido bloqueado es privado: solo lo ven quien lo pagó, la acompañante y vos desde este panel.</p></section>`;
       body = `<div class="pa-detail"><div class="stack" style="gap:14px">${chat}</div><div class="stack" style="gap:14px">${cab}${accionesHtml(d.acciones)}</div></div>`;
     }
-    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.solicitudes" data-go="#admin.solicitudes">${icon('arrowLeft')} Todos</a>${recargar(k)}</div>`;
+    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.contenido.pedidos" data-go="#admin.contenido.pedidos">${icon('arrowLeft')} Todos</a>${recargar(k)}</div>`;
     return layout('solicitudes', `${head('Pedido personalizado', right, d ? `${esc(d.solicitud.acompanante.nombre || '')} · @${esc(d.solicitud.cliente.usuario)}` : '')}${body}`);
   }
 
@@ -216,7 +217,7 @@
       const compras = `<section class="card stack" style="gap:10px"><div class="row between"><div class="card-title">${icon('bag')} Compras</div><span class="small muted">${(d.compras || []).length}</span></div>
           ${(d.compras || []).length ? `<div class="list">${d.compras.map((v) => `<div class="list-item small"><div class="grow" style="min-width:0"><div><span class="badge ${v.tipo === 'pedido' ? 'info' : 'neutral'}">${v.tipo === 'pedido' ? 'Pedido' : 'Pack'}</span> <span data-noi18n>${esc(v.titulo || '')}</span> · ${pesosAr(v.monto)}</div><div class="tiny muted">${fecha(v.pagado || v.creado)} · ${v.acompanante.id ? linkCuenta(v.acompanante.id, v.acompanante.nombre) : ''}</div></div>${badge(VC[v.estado], v.estado)}</div>`).join('')}</div>` : '<p class="small muted">No compró nada todavía.</p>'}</section>`;
       const pedidos = `<section class="card stack" style="gap:10px"><div class="row between"><div class="card-title">${icon('chat')} Pedidos personalizados</div><span class="small muted">${(d.pedidos || []).length}</span></div>
-          ${(d.pedidos || []).length ? `<div class="list">${d.pedidos.map((s) => `<a class="list-item small" style="color:inherit" href="#admin.solicitudes.${esc(s.id)}" data-go="#admin.solicitudes.${esc(s.id)}"><div class="grow" style="min-width:0"><div class="ellipsis" data-noi18n>${esc(s.acompanante.nombre || '')} · ${esc(String(s.texto || '').slice(0, 80))}</div><div class="tiny muted">${fecha(s.actividad)}</div></div>${badge(SOL_ESTADO[s.estado], s.estado)}${icon('chevronRight')}</a>`).join('')}</div>` : '<p class="small muted">No hizo pedidos.</p>'}</section>`;
+          ${(d.pedidos || []).length ? `<div class="list">${d.pedidos.map((s) => `<a class="list-item small" style="color:inherit" href="#admin.contenido.pedidos.${esc(s.id)}" data-go="#admin.contenido.pedidos.${esc(s.id)}"><div class="grow" style="min-width:0"><div class="ellipsis" data-noi18n>${esc(s.acompanante.nombre || '')} · ${esc(String(s.texto || '').slice(0, 80))}</div><div class="tiny muted">${fecha(s.actividad)}</div></div>${badge(SOL_ESTADO[s.estado], s.estado)}${icon('chevronRight')}</a>`).join('')}</div>` : '<p class="small muted">No hizo pedidos.</p>'}</section>`;
       body = `<div class="pa-detail"><div class="stack" style="gap:14px">${datos}${accionesHtml(d.acciones)}</div><div class="stack" style="gap:14px">${compras}${pedidos}</div></div>`;
     }
     const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.clientes" data-go="#admin.clientes">${icon('arrowLeft')} Todos</a>${recargar(k)}</div>`;
@@ -236,9 +237,9 @@
     const items = crItems(); const ult = (S.crr && S.crr.ultimos) || {};
     if (!items.length) return `<div class="card"><div class="empty">${icon('dollar')}<h4>${((S.crl && S.crl.items) || []).length ? 'Sin resultados' : 'Todavía no hay cuentas'}</h4></div></div>`;
     const table = `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Acompañante</th><th>Plan</th><th>Saldo</th><th>Último movimiento</th><th></th></tr></thead><tbody>
-      ${items.map((x) => `<tr class="pa-rowlink" data-go="#admin.creditos.${esc(x.cuentaId)}"><td><a href="#admin.creditos.${esc(x.cuentaId)}" data-go="#admin.creditos.${esc(x.cuentaId)}"><strong data-noi18n>${esc(x.displayName || 'Sin nombre')}</strong></a><div class="tiny muted">${esc(x.email)}</div></td><td>${planBadge(x.plan)}</td><td class="nowrap"><strong>${cred(x.saldo)}</strong></td><td class="small">${ultMov(ult[x.cuentaId])}</td><td>${x.pausadoPorSaldo ? '<span class="badge danger">Pausada por saldo</span>' : ''}</td></tr>`).join('')}
+      ${items.map((x) => `<tr class="pa-rowlink" data-go="#admin.creditos.movimientos.${esc(x.cuentaId)}"><td><a href="#admin.creditos.movimientos.${esc(x.cuentaId)}" data-go="#admin.creditos.movimientos.${esc(x.cuentaId)}"><strong data-noi18n>${esc(x.displayName || 'Sin nombre')}</strong></a><div class="tiny muted">${esc(x.email)}</div></td><td>${planBadge(x.plan)}</td><td class="nowrap"><strong>${cred(x.saldo)}</strong></td><td class="small">${ultMov(ult[x.cuentaId])}</td><td>${x.pausadoPorSaldo ? '<span class="badge danger">Pausada por saldo</span>' : ''}</td></tr>`).join('')}
       </tbody></table></div>`;
-    const cards = `<div class="pa-cards">${items.map((x) => `<a class="card stack pa-accard" style="gap:6px" href="#admin.creditos.${esc(x.cuentaId)}" data-go="#admin.creditos.${esc(x.cuentaId)}"><div class="row between nowrap" style="gap:8px"><strong class="ellipsis" data-noi18n>${esc(x.displayName || 'Sin nombre')}</strong>${planBadge(x.plan)}</div><div class="row between small"><strong>${cred(x.saldo)}</strong>${x.pausadoPorSaldo ? '<span class="badge danger">Pausada por saldo</span>' : ''}</div><div class="small">${ultMov(ult[x.cuentaId])}</div></a>`).join('')}</div>`;
+    const cards = `<div class="pa-cards">${items.map((x) => `<a class="card stack pa-accard" style="gap:6px" href="#admin.creditos.movimientos.${esc(x.cuentaId)}" data-go="#admin.creditos.movimientos.${esc(x.cuentaId)}"><div class="row between nowrap" style="gap:8px"><strong class="ellipsis" data-noi18n>${esc(x.displayName || 'Sin nombre')}</strong>${planBadge(x.plan)}</div><div class="row between small"><strong>${cred(x.saldo)}</strong>${x.pausadoPorSaldo ? '<span class="badge danger">Pausada por saldo</span>' : ''}</div><div class="small">${ultMov(ult[x.cuentaId])}</div></a>`).join('')}</div>`;
     return table + cards;
   }
   function vCreditos() {
@@ -281,7 +282,7 @@
         <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('card')} Plan</div><div class="row" style="gap:8px">${planBadge(d.plan)}${d.base ? `<span class="small muted">hasta el ${dia(d.base.hasta)}${d.base.renovacionAuto ? ' · renueva sola' : ''}</span>` : '<span class="small muted">Bronce (gratis)</span>'}</div></section></div></div>`;
     }
     const nombre = d && d.cuenta ? d.cuenta.displayName : '';
-    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.creditos" data-go="#admin.creditos">${icon('arrowLeft')} Todas</a>${recargar(k)}</div>`;
+    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.creditos.movimientos" data-go="#admin.creditos.movimientos">${icon('arrowLeft')} Todas</a>${recargar(k)}</div>`;
     return layout('creditos', `${head(esc(nombre || 'Créditos'), right, d ? esc(d.cuenta.email || '') : '')}${body}`);
   }
 
@@ -319,11 +320,13 @@
   };
 
   /* ---------- Vistas y rutas ---------- */
-  Object.assign(P.views, { solicitudes: vSolicitudes, clientes: vClientes, creditos: vCreditos });
+  Object.assign(P.views, { solicitudes: vSolicitudes, clientes: vClientes });
+  Object.assign(P.subvistas, { 'creditos.movimientos': vCreditos, 'contenido.pedidos': vSolicitudes });
   HH.adminViews = P.views;
-  HH.route('admin.solicitudes.:id', ({ id }) => (HH.requireRole('admin') ? vSolicitud(id) : false));
+  // #admin.solicitudes.<id> y #admin.creditos.<cuenta> (las de antes) llegan acá por HH.adminAlias
+  HH.route('admin.contenido.pedidos.:id', ({ id }) => (HH.requireRole('admin') ? vSolicitud(id) : false));
   HH.route('admin.clientes.:id', ({ id }) => (HH.requireRole('admin') ? vCliente(id) : false));
-  HH.route('admin.creditos.:id', ({ id }) => (HH.requireRole('admin') ? vCredito(id) : false));
+  HH.route('admin.creditos.movimientos.:id', ({ id }) => (HH.requireRole('admin') ? vCredito(id) : false));
 
   /* ---------- Acciones ---------- */
   const tras = (keys) => { keys.forEach((k) => { if (k && (S[k] != null || S.err[k])) cargar(k, true); }); P.refreshResumen(); };
@@ -335,7 +338,7 @@
     modCliSearch(el) { S.clq = el.value; const b = document.getElementById('modCliRows'); if (b) b.innerHTML = cliRows(); },
     modCrSearch(el) { S.crq = el.value; const b = document.getElementById('modCrRows'); if (b) b.innerHTML = crRows(); },
     modCrDias(el) { S.crDias = Number(el.dataset.n) || 30; cargar('crr', true); HH.refresh(); },
-    modVerPedidosDe(el) { S.solq = el.dataset.n || ''; S.solf = 'todos'; HH.go('#admin.solicitudes'); },
+    modVerPedidosDe(el) { S.solq = el.dataset.n || ''; S.solf = 'todos'; HH.go('#admin.contenido.pedidos'); },
     modCerrar(el) {
       const id = el.dataset.id;
       pedirMotivo({ title: 'Cerrar pedido', intro: 'El chat queda de solo lectura para los dos. No se le avisa a nadie.', okLabel: 'Cerrar pedido', cls: 'danger', onOk: (motivo, rehab) => {

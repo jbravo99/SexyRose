@@ -1,4 +1,4 @@
-// Cotización del dólar para sugerir el monto en pesos de cada pedido de créditos (Admin → Pedidos).
+// Cotización del dólar para sugerir el monto en pesos de cada pedido de créditos (Admin → Créditos → Pedidos).
 // Modo automático: dólar blue de DolarApi (https://dolarapi.com, principal) o Bluelytics (respaldo), cada 3 horas
 // (DolarApi recomienda ~1 consulta cada 3 h por serie) y con el botón "Actualizar ahora" del admin.
 // Se usa el valor de VENTA por defecto: es lo que cuesta comprar un dólar, o sea lo que vale en pesos un precio en USD.
@@ -132,7 +132,7 @@ export function createCotizacion({ pool, log = () => {}, notify = async () => {}
         const clave = `${d.fuente}:${valorNuevo}`;
         if (ultimaAlertaAvisada !== clave) {
           ultimaAlertaAvisada = clave;
-          try { await notify(`Cotización: salto mayor a 25 %\n${d.fuente} ${actual.valor} ${valorNuevo} (en uso ${enUso}).\nNo se aplicó. Revisar en Admin → Ajustes.`, 'cotizacion'); } catch { /* */ }
+          try { await notify(`Cotización: salto mayor a 25 %\n${d.fuente} ${actual.valor} ${valorNuevo} (en uso ${enUso}).\nNo se aplicó. Revisar en Admin → Precios.`, 'cotizacion'); } catch { /* */ }
         }
         return { cotizacion: c, actualizada: false, alerta };
       }

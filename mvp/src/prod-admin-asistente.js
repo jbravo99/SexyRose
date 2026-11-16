@@ -1,7 +1,8 @@
 /* ============================================================
    SexyRose — prod-admin-asistente.js (admin real, 15/11/2026)
    Admin → Asistente: el asistente de cuenta por WhatsApp. Prender/apagar, estado de la conexión con el QR para
-   vincular el chip, "Desvincular", cuenta para transferencias (alias y titular) y las conversaciones, con
+   vincular el chip, "Desvincular", cuenta para transferencias (en pesos y, opcional, en dólares: alias y titular) y
+   las conversaciones, con
    "Pasar a humano" / "Devolver al asistente". API: app/routes/admin-asistente.js (bajo ${API}/asistente).
    ============================================================ */
 (function () {
@@ -83,15 +84,22 @@
   }
   const badgeHtml = (l, cls) => `<span class="badge ${cls}">${l}</span>`;
 
+  // En pesos (alias, titular: como siempre) y en dólares (aliasUsd, titularUsd: opcional). Con la de dólares cargada, el
+  // asistente primero pregunta si va a transferir en pesos o en dólares.
+  const camposCuenta = (pre, alias, titular, ph) => `<div class="grid-2" style="align-items:start"><div class="field"><label for="${pre}Alias">Alias</label><input class="input" id="${pre}Alias" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(alias || '')}" placeholder="${ph}" data-noi18n><span class="hint">6 a 20 caracteres: letras, números, puntos o guiones.</span></div>
+          <div class="field"><label for="${pre}Titular">Nombre del titular</label><input class="input" id="${pre}Titular" maxlength="80" autocomplete="off" value="${esc(titular || '')}" placeholder="Nombre y apellido" data-noi18n><span class="hint">Tal como aparece en la cuenta.</span></div></div>`;
   function cardCuenta(d) {
     const aj = d.ajustes || {};
     const falta = !aj.alias || !aj.titular;
     return `<section class="card stack" style="gap:12px">
         <div class="card-title">${icon('wallet')} Cuenta para las transferencias</div>
-        <p class="small muted" style="margin:0">El asistente le pasa estos dos datos y el monto en pesos a quien manda un pedido de créditos, para que verifique el nombre antes de transferir.</p>
+        <p class="small muted" style="margin:0">El asistente le pasa el alias, el titular y el monto a quien manda un pedido de créditos, para que verifique el nombre antes de transferir. Si cargás la cuenta en dólares, antes le pregunta si va a transferir en pesos o en dólares.</p>
+        <div class="asis-cta"><div class="card-title" style="font-size:15px">En pesos</div>
         ${falta ? `<div class="notice warn">${icon('alert')}<span>Sin alias o titular, el asistente responde "En un rato te paso los datos" y te avisa por Telegram.</span></div>` : ''}
-        <div class="grid-2" style="align-items:start"><div class="field"><label for="asisAlias">Alias</label><input class="input" id="asisAlias" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(aj.alias || '')}" placeholder="mi.alias.mp" data-noi18n><span class="hint">6 a 20 caracteres: letras, números, puntos o guiones.</span></div>
-          <div class="field"><label for="asisTitular">Nombre del titular</label><input class="input" id="asisTitular" maxlength="80" autocomplete="off" value="${esc(aj.titular || '')}" placeholder="Nombre y apellido" data-noi18n><span class="hint">Tal como aparece en la cuenta.</span></div></div>
+        ${camposCuenta('asis', aj.alias, aj.titular, 'mi.alias.mp')}</div>
+        <div class="asis-cta"><div class="card-title" style="font-size:15px">En dólares <span class="tiny muted" style="font-weight:600">(opcional)</span></div>
+        <p class="tiny muted" style="margin:0">Vacía, el asistente pasa solo los datos en pesos, sin preguntar.</p>
+        ${camposCuenta('asisUsd', aj.aliasUsd, aj.titularUsd, 'mi.alias.usd')}</div>
         <div class="row"><button type="button" class="btn sm" data-action="asisGuardar">${icon('check')} Guardar</button></div>
       </section>`;
   }
@@ -190,7 +198,7 @@
             : `<button type="button" class="btn secondary sm" data-action="asisHumano" data-id="${esc(c.id)}" data-v="1">${icon('user')} Pasar a humano</button>`}</div>
           <p class="tiny muted">Con una persona, el asistente no responde en este chat hasta que lo devuelvas.</p>
         </section>
-        ${(d.pedidos || []).length ? `<section class="card stack" style="gap:10px"><div class="card-title">${icon('wallet')} Pedidos nombrados en el chat</div><div class="list">${d.pedidos.map((p) => `<a class="list-item small" href="#admin.pedidos" data-go="#admin.pedidos"><div class="grow"><strong data-noi18n>${esc(p.codigo)}</strong> · <span data-noi18n>${esc(p.pack)}</span>${p.comprobante ? ` <span class="tiny muted">· con comprobante</span>` : ''}</div>${P.badge(ESTADO_PED[p.estado], p.estado)}</a>`).join('')}</div></section>` : ''}`;
+        ${(d.pedidos || []).length ? `<section class="card stack" style="gap:10px"><div class="card-title">${icon('wallet')} Pedidos nombrados en el chat</div><div class="list">${d.pedidos.map((p) => `<a class="list-item small" href="#admin.creditos.pedidos" data-go="#admin.creditos.pedidos"><div class="grow"><strong data-noi18n>${esc(p.codigo)}</strong> · <span data-noi18n>${esc(p.pack)}</span>${p.moneda ? ` <span class="tiny muted">· en ${p.moneda === 'USD' ? 'dólares' : 'pesos'}</span>` : ''}${p.comprobante ? ` <span class="tiny muted">· con comprobante</span>` : ''}</div>${P.badge(ESTADO_PED[p.estado], p.estado)}</a>`).join('')}</div></section>` : ''}`;
       body = `<div class="pa-detail"><div class="stack" style="gap:14px">${chat}</div><div class="stack" style="gap:14px">${lado}</div></div>`;
     }
     const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.asistente" data-go="#admin.asistente">${icon('arrowLeft')} Todas</a>${recargar(k)}</div>`;
@@ -222,8 +230,12 @@
     asisGuardar() {
       const val = (id) => String((document.getElementById(id) || {}).value || '').trim();
       const alias = val('asisAlias'); const titular = val('asisTitular');
-      if (alias && !/^[A-Za-z0-9.-]{6,20}$/.test(alias)) { HH.toast('El alias tiene que tener de 6 a 20 caracteres: letras, números, puntos o guiones.', { type: 'warn' }); return; }
-      guardarAjustes({ alias, titular }).then(() => HH.toast('Cuenta guardada', { type: 'ok' })).catch(fail);
+      const aliasUsd = val('asisUsdAlias'); const titularUsd = val('asisUsdTitular');
+      const aliasOk = (a) => !a || /^[A-Za-z0-9.-]{6,20}$/.test(a);
+      if (!aliasOk(alias)) { HH.toast('El alias tiene que tener de 6 a 20 caracteres: letras, números, puntos o guiones.', { type: 'warn' }); return; }
+      if (!aliasOk(aliasUsd)) { HH.toast('El alias en dólares tiene que tener de 6 a 20 caracteres: letras, números, puntos o guiones.', { type: 'warn' }); return; }
+      if (Boolean(aliasUsd) !== Boolean(titularUsd)) { HH.toast('Para la cuenta en dólares completá el alias y el nombre del titular, o dejá los dos vacíos.', { type: 'warn' }); return; }
+      guardarAjustes({ alias, titular, aliasUsd, titularUsd }).then(() => HH.toast('Cuenta guardada', { type: 'ok' })).catch(fail);
     },
     asisDesvincular() {
       HH.confirm({ title: 'Desvincular WhatsApp', text: '<span>Se cierra la sesión del asistente en el teléfono del chip.</span> <span>Para volver a conectarlo hay que escanear el QR de nuevo.</span>', okLabel: 'Desvincular', cls: 'danger', onOk: () => {
@@ -252,6 +264,7 @@
 .asis-fila{cursor:pointer}
 .asis-card{color:inherit;text-decoration:none}.asis-card .asis-ult{max-width:100%}
 .asis-juan{border-style:dashed}
+.asis-cta{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
 .asis-adj{min-height:80px;max-width:260px}.asis-adj img{max-height:260px}
 `;
   document.head.appendChild(st);

@@ -16,7 +16,7 @@ import { createAsistente } from '../lib/asistente.js';
 import { createLlm, MODELO_DEFAULT } from '../lib/asistente-llm.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
 import { telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
-import { detectarIdioma, codigoEnTexto } from '../lib/asistente-textos.js';
+import { detectarIdioma, codigoEnTexto, monedaEnTexto } from '../lib/asistente-textos.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('Falta DATABASE_URL.'); process.exit(1); }
@@ -181,7 +181,7 @@ describe('piezas sueltas', () => {
     assert.match(validarAjustes({ alias: 'con espacio', titular: 'Juan' }).error, /6 a 20/);
     assert.match(validarAjustes({ alias: 'sexyrose.pagos.muy.largo.de.mas', titular: 'Juan' }).error, /6 a 20/);
     assert.match(validarAjustes({ alias: 'sexy.rose-1', titular: 'J' }).error, /titular/);
-    assert.deepEqual(validarAjustes({ activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez' }).valor, { activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez' });
+    assert.deepEqual(validarAjustes({ activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez' }).valor, { activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
     assert.equal(detectarIdioma('Hi, I want to buy Mes Plata (35 credits, USD 35). Order SR-1234'), 'en');
     assert.equal(detectarIdioma('Olá, quero comprar Mes Plata'), 'pt');
     assert.equal(detectarIdioma('hola, cómo cambio la contraseña?'), 'es');
@@ -224,7 +224,7 @@ describe('admin y conexión', () => {
     r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
     assert.equal(r.status, 200, await r.clone().text());
     e = await r.json();
-    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
+    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
     e = await hasta(async () => { const x = await (await adm('/asistente')).json(); return x.whatsapp.estado === 'esperando_qr' && x.whatsapp.qrSvg ? x : null; });
     assert.ok(e, 'muestra el QR');
     assert.match(e.whatsapp.qrSvg, /^data:image\/svg\+xml;base64,/);
@@ -608,6 +608,169 @@ describe('IA, persona y límites', () => {
     const p = await pedido(g.id, 'inicial');
     await sinClave.recibir({ jid, telefono: '5491155550017', waId: 'k2', tipo: 'texto', texto: `Pedido ${p.codigo}` });
     assert.match(enviados.at(-1).t, /ARS 14\.500 \(USD 10\)/);
+  });
+});
+
+describe('cuenta en dólares (16/11/2026)', () => {
+  const USD = { aliasUsd: 'sexyrose.usd', titularUsd: 'Juan Pérez USD' };
+  const ponerUsd = (extra = {}) => admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', ...USD, ...extra });
+  const sinUsd = () => admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+  const PREGUNTA = /¿Vas a transferir en pesos o en dólares\?$/;
+
+  test('detección de la moneda en la respuesta (sin importar mayúsculas ni tildes)', () => {
+    for (const t of ['pesos', 'En PESOS', 'en $', 'ARS', 'peso', 'te paso en pesos porfa']) assert.equal(monedaEnTexto(t), 'ARS', t);
+    for (const t of ['dólares', 'DOLARES', 'en dolar', 'USD', 'u$s', 'US$ porfa', 'mejor en dólares', 'in dollars']) assert.equal(monedaEnTexto(t), 'USD', t);
+    for (const t of ['pesos o dólares?', 'no tengo dólares', 'no, en pesos no']) assert.equal(monedaEnTexto(t), 'ambas', t);
+    for (const t of ['hola', 'ya te transferí', 'dolarizado']) assert.equal(monedaEnTexto(t), null, t);
+  });
+
+  test('ajustes: validación de la cuenta en dólares y compatibilidad con el ajuste viejo {activo, alias, titular}', async () => {
+    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'con espacio', titularUsd: 'Juan' }).error, /alias en dólares tiene que tener de 6 a 20/);
+    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'sexyrose.usd', titularUsd: 'J' }).error, /titular en dólares/);
+    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'sexyrose.usd' }).error, /completá el alias y el nombre del titular/);
+    assert.equal((await ponerUsd({ aliasUsd: 'x y' })).status, 400);
+    // un ajuste guardado antes de la cuenta en dólares se lee igual (pesos) y sin dólares
+    await db.query("UPDATE ajustes SET valor = $1 WHERE clave = 'asistente'", [JSON.stringify({ activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' })]);
+    let e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+    // sin cuenta en dólares no pregunta nada: pesos directo, como siempre
+    const tel = '5491155550030';
+    const a = await acompanante({ nombre: 'Ana' });
+    const p = await pedido(a.id);
+    await llega(tel, p.mensaje);
+    assert.match(ultimoA(tel), /ARS 137\.800 \(USD 95\)/);
+    assert.doesNotMatch(ultimoA(tel), /dólares\?/);
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, null);
+    // guardar la cuenta en dólares; un PUT viejo (sin aliasUsd/titularUsd) no la borra
+    let r = await ponerUsd();
+    assert.equal(r.status, 200, await r.clone().text());
+    r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
+    e = await r.json();
+    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', ...USD });
+  });
+
+  test('con cuenta en dólares: pregunta la moneda, toma "en dólares" y pasa los datos en USD; Telegram muestra la moneda', async () => {
+    const tel = '5491155550031';
+    const a = await acompanante({ nombre: 'Belén' });
+    const p = await pedido(a.id);
+    const llamadas = LLM.llamadas.length;
+    await llega(tel, p.mensaje);
+    let t = ultimoA(tel);
+    assert.ok(t.startsWith(PRESENTA + '\n\n'), t);
+    assert.match(t, new RegExp(`Pedido ${p.codigo}: Trimestre Plata, 105 créditos\\.\\n¿Vas a transferir en pesos o en dólares\\?$`));
+    assert.doesNotMatch(t, /Alias|ARS/);
+    assert.equal((await conv(tel)).pago_esperando_moneda, true);
+    await llega(tel, 'En DÓLARES');
+    t = ultimoA(tel);
+    assert.match(t, new RegExp(`^Pedido ${p.codigo}: Trimestre Plata, 105 créditos\\.\\nMonto a transferir: USD 95\\.\\nAlias: sexyrose\\.usd\\nTitular: Juan Pérez USD\\n`));
+    assert.match(t, new RegExp(`fijate que el titular de la cuenta sea ese\\. Si tu banco te deja, poné ${p.codigo} como referencia\\.`));
+    assert.match(t, /Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta\. Mandame el comprobante por acá\.$/);
+    assert.doesNotMatch(t, /ARS|sexyrose\.pagos/);
+    assert.equal(LLM.llamadas.length, llamadas, 'sin IA');
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'USD');
+    assert.equal((await conv(tel)).pago_esperando_moneda, false);
+    // el mismo código otra vez: ya eligió, pasa los datos en dólares sin preguntar
+    await llega(tel, p.codigo);
+    assert.match(ultimoA(tel), /Monto a transferir: USD 95\./);
+    // comprobante → Telegram con el monto en la moneda elegida
+    await llegaFoto(tel);
+    const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p.codigo)));
+    assert.match(tg.caption, /105 créditos · en dólares: USD 95\n/);
+    assert.doesNotMatch(tg.caption, /ARS/);
+    // admin: el chat y la lista de pedidos muestran la moneda
+    const k = await conv(tel);
+    const d = await (await adm('/asistente/conversaciones/' + k.id)).json();
+    assert.equal(d.pedidos.find((x) => x.codigo === p.codigo).moneda, 'USD');
+    const l = await (await adm('/pedidos-creditos?q=' + p.codigo)).json();
+    assert.equal(l.items.find((x) => x.id === p.id).monedaAsistente, 'USD');
+  });
+
+  test('"pesos" a la pregunta y después "mejor en dólares": cambia de moneda y pasa los otros datos', async () => {
+    const tel = '5491155550032';
+    const a = await acompanante({ nombre: 'Cami' });
+    const p = await pedido(a.id);
+    await llega(tel, p.mensaje);
+    assert.match(ultimoA(tel), PREGUNTA);
+    await llega(tel, 'pesos');
+    let t = ultimoA(tel);
+    assert.match(t, /Monto a transferir: ARS 137\.800 \(USD 95\)\.\nAlias: sexyrose\.pagos\nTitular: Juan Pérez\n/);
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'ARS');
+    // repetir la misma moneda no manda los datos de nuevo (lo responde la IA)
+    const llamadas = LLM.llamadas.length;
+    await llega(tel, 'ok, en pesos');
+    assert.equal(ultimoA(tel), 'Respuesta de prueba.');
+    assert.equal(LLM.llamadas.length, llamadas + 1);
+    await llega(tel, 'mejor en dólares');
+    t = ultimoA(tel);
+    assert.match(t, /Monto a transferir: USD 95\.\nAlias: sexyrose\.usd\nTitular: Juan Pérez USD\n/);
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'USD');
+    await llega(tel, 'no, perdón, en $');
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'USD', 'con "no" lo decide la IA');
+    await llega(tel, 'en $');
+    assert.match(ultimoA(tel), /ARS 137\.800/);
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'ARS');
+    // Telegram: en pesos
+    await llegaFoto(tel);
+    const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p.codigo)));
+    assert.match(tg.caption, /105 créditos · en pesos: ARS 137\.800 \(USD 95\)\n/);
+  });
+
+  test('respuesta ambigua o sin moneda: la resuelve la IA con datos_transferencia(moneda); también en inglés', async () => {
+    const tel = '5491155550033';
+    const a = await acompanante({ nombre: 'Dalma' });
+    const p = await pedido(a.id, 'mes-plata');
+    await llega(tel, p.mensaje);
+    assert.match(ultimoA(tel), PREGUNTA);
+    LLM.guion = (body) => {
+      const ult = body.messages[body.messages.length - 1];
+      if (typeof ult.content === 'string') return usarHerramienta('datos_transferencia', { codigo: p.codigo, moneda: 'USD' });
+      return { stop_reason: 'end_turn', content: [{ type: 'text', text: '' }] };
+    };
+    await llega(tel, 'tengo pesos y dólares, pero prefiero pagar en verde');
+    assert.match(ultimoA(tel), /Monto a transferir: USD 35\.\nAlias: sexyrose\.usd/);
+    assert.equal((await estadoPedido(p.id)).moneda_asistente, 'USD');
+    const ultima = LLM.llamadas[LLM.llamadas.length - 1];
+    assert.deepEqual(ultima.tools.find((x) => x.name === 'datos_transferencia').input_schema.properties.moneda.enum, ['ARS', 'USD']);
+    LLM.guion = null;
+    // la herramienta sin moneda y sin elección: pregunta
+    const p2 = await pedido(a.id, 'inicial');
+    await llega(tel, p2.codigo);
+    const k = await conv(tel);
+    const r = await agente.asistente.herramienta(k.id, 'datos_transferencia', { codigo: p2.codigo });
+    assert.match(r.resultado.nota, /preguntó/);
+    assert.match(ultimoA(tel), PREGUNTA);
+    // crear_pedido por chat también pregunta primero
+    await db.query("UPDATE asistente_conversaciones SET cuenta_id = $2, identificado_por = 'email', identificado = now() WHERE id = $1", [k.id, a.id]);
+    const c = await agente.asistente.herramienta(k.id, 'crear_pedido', { pack_id: 'mes-plata' });
+    assert.ok(c.resultado.ok);
+    assert.match(c.resultado.nota, /preguntó/);
+    assert.match(ultimoA(tel), new RegExp(`Pedido ${c.resultado.codigo}: Mes Plata, 35 créditos\\.\\n¿Vas a transferir`));
+    // en inglés
+    const tel2 = '447700900130';
+    const b = await acompanante({ nombre: 'Emma' });
+    const p3 = await pedido(b.id, 'inicial');
+    await llega(tel2, `Hi, I want to buy Inicial. Order ${p3.codigo}`);
+    assert.match(ultimoA(tel2), /Will you transfer in pesos or in dollars\?$/);
+    await llega(tel2, 'dollars');
+    assert.match(ultimoA(tel2), /Amount to transfer: USD 10\.\nAlias: sexyrose\.usd\nAccount holder: Juan Pérez USD\n/);
+  });
+
+  test('sin cuenta en dólares, la herramienta no acepta USD y todo vuelve a ser como antes', async () => {
+    assert.equal((await sinUsd()).status, 200);
+    const tel = '5491155550034';
+    const a = await acompanante({ nombre: 'Eli' });
+    const p = await pedido(a.id, 'inicial');
+    await llega(tel, p.codigo);
+    assert.match(ultimoA(tel), /ARS 14\.500 \(USD 10\)/);
+    const k = await conv(tel);
+    assert.match((await agente.asistente.herramienta(k.id, 'datos_transferencia', { codigo: p.codigo, moneda: 'USD' })).resultado.error, /solo se puede transferir en pesos/);
+    const n = enviadosA(tel).length;
+    await llega(tel, 'dólares');
+    assert.equal(enviadosA(tel).length, n + 1);
+    assert.equal(ultimoA(tel), 'Respuesta de prueba.', 'sin cuenta en dólares, "dólares" lo responde la IA');
+    await llegaFoto(tel);
+    const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p.codigo)));
+    assert.match(tg.caption, /10 créditos · USD 10 · ARS 14\.500\n/);
   });
 });
 

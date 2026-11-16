@@ -68,7 +68,7 @@ const esObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 // Semana calculada sola (Juan, 13/11/2026): semana = mes / 4 × (1 + recargo %), redondeada a un número entero (Juan,
 // 15/11/2026: las semanas sin decimales; a mano también tienen que ser enteras). Se prende desde
-// Admin → Ajustes. Sin precios guardados, prendida con 20 % (da los mismos valores de PRECIOS_DEFAULT); con precios
+// Admin → Precios. Sin precios guardados, prendida con 20 % (da los mismos valores de PRECIOS_DEFAULT); con precios
 // guardados de antes (sin semanaAuto), apagada: quedan las semanas que Juan escribió a mano.
 export const SEMANA_AUTO_DEFAULT = Object.freeze({ activo: true, recargo: 20 });
 export const semanaDeMes = (mes, recargo) => Math.round((Number(mes) / 4) * (1 + Number(recargo) / 100));

@@ -188,7 +188,7 @@ Carga a medida: `packId: null`, sin bonificación, nombre "Carga a medida" / "Cu
 `disponible: false` con `motivo` ("Con Star ya aparecés arriba de todo.", perfil sin publicar, sin provincia). Para Star `precio`, `cupo` y `proximaFechaLibre` son `null`.
 *Destacado* = `{ id, cuentaId, plan, planNombre, provincia, dias: 7|30 (1 = Destacados viejos por día), desde, hasta, estado: "activo"|"programado"|"vencido"|"cancelado", costo: Monto, creado, vigente }`.
 
-**`POST /destacado` `{ dias: 7|30, desde?: ISO }`** → **201** `{ ok, destacado, saldo }`. Por semana (7 días) o por mes (30 días) (Juan, 13/11/2026; antes 1 o 7 días). Precios en Admin → Ajustes: el mes a mano y la semana calculada sola (cuarta parte del mes + recargo, 20 % por defecto, redondeada a entero) o a mano, siempre sin decimales (Juan, 15/11/2026; lo mismo para la semana de los planes); ajuste `destacado` = `{ E, D, C: {mes, semana}, semanaAuto: {activo, recargo} }` (`mezclarDestacado`/`validarDestacado` en lib/planes.js; la semilla vieja `{dia, semana}` sin tocar cuenta como no guardada). Migración 170-destacado-mes.sql (CHECK dias IN (1, 7, 30)).
+**`POST /destacado` `{ dias: 7|30, desde?: ISO }`** → **201** `{ ok, destacado, saldo }`. Por semana (7 días) o por mes (30 días) (Juan, 13/11/2026; antes 1 o 7 días). Precios en Admin → Precios (antes en Ajustes): el mes a mano y la semana calculada sola (cuarta parte del mes + recargo, 20 % por defecto, redondeada a entero) o a mano, siempre sin decimales (Juan, 15/11/2026; lo mismo para la semana de los planes); ajuste `destacado` = `{ E, D, C: {mes, semana}, semanaAuto: {activo, recargo} }` (`mezclarDestacado`/`validarDestacado` en lib/planes.js; la semilla vieja `{dia, semana}` sin tocar cuenta como no guardada). Migración 170-destacado-mes.sql (CHECK dias IN (1, 7, 30)).
 - Sin `desde`: empieza ahora, o cuando termina el Destacado que ya tiene (se encadena). Con `desde` (reserva): de ahora a 60 días; 409 si se superpone con uno suyo.
 - Cupo por plan y provincia = 20 % de los perfiles **publicados** con ese plan efectivo en la provincia, redondeado hacia arriba, mínimo 1. Si en algún momento del período se pasa del cupo: **409** `{ error, codigo: "cupo_lleno", proximaFechaLibre: ISO, cupo, activos }` (el front ofrece reservar esa fecha con el mismo POST + `desde`).
 - 409 Star, 409 perfil no publicado, 400 sin provincia o `dias`/`desde` inválidos, 402 saldo.
@@ -437,7 +437,7 @@ contraseña) y confirma el email con un link. Pedidos estilo OnlyFans con chat; 
     `solicitud_items.pagado` y `vence = pagado + 1 mes`.
   - Vencimiento (al arrancar y cada hora, `solicitudes.vencer()`): a 1 mes del pago (sin pagar: a 1 mes de enviado) se
     borran los archivos; el chat muestra "Este contenido venció".
-  - Ventas: el panel de la acompañante (Contenido → Ventas) y Admin → Ventas de contenido muestran el tipo (Pack/Pedido).
+  - Ventas: el panel de la acompañante (Contenido → Ventas) y Admin → Contenido → Ventas (antes «Ventas de contenido») muestran el tipo (Pack/Pedido).
 - **Front** (`mvp/src/prod-clientes.js`, solo sitio real): `/cliente/ingresar`, `/cliente/registro`,
   `/cliente/verificar`, `/cliente/restablecer`, `/cliente/compras`, `/cliente/pedidos`, `/cliente/pedido/<id>` (noindex).
   Tu espacio muestra la cuenta del interesado (Mis compras, Mis pedidos, Cerrar sesión, cómo dar de baja). Comprar y
@@ -768,15 +768,30 @@ con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Asistente 
    assistente de conta AI da SexyRose."). Idioma del chat por palabras frecuentes (es/en/pt).
 2. Código `SR-####` en el texto (el mensaje que arma el panel al pedir créditos): busca el pedido (primero el pendiente
    con ese código), lo asocia al chat (`asistente_conv_pedidos`) y responde pack, créditos, **ARS** (=`arsSugerido`:
-   USD × `cotizacion.arsPorUsd` redondeado hacia arriba a la centena, lo mismo que Admin → Pedidos), alias, titular, el
-   código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta.
-   Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los datos
-   para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
+   USD × `cotizacion.arsPorUsd` redondeado hacia arriba a la centena, lo mismo que Admin → Créditos → Pedidos), alias,
+   titular, el código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu
+   cuenta. Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los
+   datos para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
+   **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Asistente): si
+   está cargada (alias y titular en dólares), la primera respuesta a un pedido pendiente sin moneda elegida es
+   "Pedido SR-1234: Trimestre Plata, 105 créditos.\n¿Vas a transferir en pesos o en dólares?" (EN "Will you transfer in
+   pesos or in dollars?", PT "Você vai transferir em pesos ou em dólares?") y el chat queda esperando
+   (`asistente_conversaciones.pago_pedido_id` + `pago_esperando_moneda`). La respuesta se detecta sin IA
+   (`monedaEnTexto`, sin importar mayúsculas ni tildes: pesos/peso/ars/$ → ARS; dólares/dólar/dollars/usd/u$s/us$ → USD;
+   mensajes de hasta 80 caracteres, una sola moneda y sin negación; lo demás lo resuelve la IA con
+   `datos_transferencia(moneda)`). Pesos → el mensaje de siempre (ARS + alias y titular en pesos). Dólares → "Monto a
+   transferir: USD 95." + alias y titular en dólares, el mismo aviso de revisar el titular, el código como referencia y
+   el mismo cierre. Después puede cambiar ("mejor en dólares") y recibe los otros datos (repetir la misma moneda no los
+   reenvía; con el comprobante ya mandado tampoco). La moneda queda en `pedidos_creditos.moneda_asistente` ('ARS' |
+   'USD'); el mismo código otra vez pasa los datos de esa moneda sin preguntar. Los créditos no cambian (salen del pack).
+   Sin cuenta en dólares, todo como antes: pesos directo, sin pregunta y sin guardar moneda. `crear_pedido` por chat y
+   `datos_transferencia` sin moneda también preguntan primero.
 3. Foto o PDF: se guarda en `DATA_DIR/privado/comprobantes` (el mismo lugar que los de la web) y se adjunta con
    `creditos.adjuntarComprobante` al pedido pendiente del chat (código en el texto de la foto, o el único pendiente del
    chat o de la cuenta identificada). Con varios pendientes pregunta cuál y adjunta cuando responde el código; sin
    ninguno, pide el código. Después, foto/PDF a Juan por Telegram con pedido, pack, créditos, USD, ARS, nombre artístico
-   y los botones.
+   y los botones. Con moneda elegida por el asistente, el monto va en esa moneda ("105 créditos · en dólares: USD 95" o
+   "105 créditos · en pesos: ARS 137.800 (USD 95)"); sin moneda, como antes ("USD 95 · ARS 137.800").
 4. 6 números con un código de email vigente → verificación (vence a los 15 min, 5 intentos; pedir uno nuevo anula el
    anterior; máximo 3 pedidos de código por hora y chat; la respuesta no dice si el email existe).
 5. "¿Sos un bot?" (es/en/pt) → "Soy un asistente de IA (inteligencia artificial), no una persona. Si preferís hablar con
@@ -789,8 +804,9 @@ devoluciones, consejos legales o impositivos, funcionamiento interno, pedir cont
 buscan a una acompañante → contacto directo desde su perfil; fuera de tema o enojo → `derivar_a_juan`). Respuestas
 cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados en el código**:
 - `precios`, `ayuda(tema)` (textos fijos en `lib/asistente-ayuda.js`, armados con los del sitio; Juan los edita ahí).
-- `pedido_por_codigo`, `datos_transferencia` (manda el mensaje del punto 2): solo pedidos cuyo código se escribió en
-  ese chat o de la cuenta identificada.
+- `pedido_por_codigo`, `datos_transferencia(codigo, moneda?: 'ARS'|'USD')` (manda el mensaje del punto 2; USD sin
+  cuenta en dólares → error "solo se puede transferir en pesos"): solo pedidos cuyo código se escribió en ese chat o de
+  la cuenta identificada.
 - `enviar_codigo_email(email)`.
 - `estado_cuenta` (perfil, verificación, plan efectivo y plan mensual con vencimiento, saldo, últimos pedidos) y
   `crear_pedido` (reusa `creditos.crearPedido`): **solo chat identificado** — por el teléfono del perfil
@@ -808,7 +824,9 @@ persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 **Datos** — migración `db/180-asistente.sql`: `asistente_conversaciones`, `asistente_mensajes` (dir in/out, origen
 bot|juan|usuario, tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
 `asistente_salida` (+ trigger NOTIFY), `asistente_whatsapp` (estado, QR, número, latido, IA), `asistente_auth`. Ajuste
-`asistente` = `{ activo, alias, titular }` (sin fila = apagado). Limpieza en el app al arrancar y cada 6 h
+`asistente` = `{ activo, alias, titular, aliasUsd, titularUsd }` (sin fila = apagado; alias/titular = cuenta en pesos;
+un ajuste viejo `{ activo, alias, titular }` se lee igual, sin cuenta en dólares). Migración `db/190-asistente-dolares.sql`:
+`pedidos_creditos.moneda_asistente`, `asistente_conversaciones.pago_pedido_id` y `pago_esperando_moneda`. Limpieza en el app al arrancar y cada 6 h
 (`asistenteApp.purgar`): mensajes de más de 90 días y sus archivos (salvo los que quedaron como comprobante de un
 pedido), chats sin mensajes y sin actividad en 90 días, códigos de email de más de 2 días, salida procesada de más de 7
 días. Logs sin teléfonos, emails ni textos.
@@ -817,7 +835,12 @@ días. Logs sin teléfonos, emails ni textos.
 - `GET /asistente` → `{ ajustes, whatsapp: { estado: apagado|conectando|esperando_qr|conectado|desconectado, agente
   (latido < 90 s), numero (enmascarado), error, qrSvg (data:image/svg+xml, generado en el servidor con `qrcode` 1.5.4,
   solo si el QR tiene menos de 60 s) }, ia: { configurada, modelo }, conversaciones: { total, humano } }`.
-- `PUT /asistente/ajustes { activo, alias, titular }` (alias 6–20: letras, números, puntos, guiones; titular 3–80).
+- `PUT /asistente/ajustes { activo, alias, titular, aliasUsd?, titularUsd? }` (alias 6–20: letras, números, puntos,
+  guiones; titular 3–80; las mismas reglas en dólares, con los dos datos o ninguno; sin `aliasUsd`/`titularUsd` quedan
+  los guardados). Admin → Asistente → "Cuenta para las transferencias": bloques "En pesos" y "En dólares (opcional)".
+- Moneda elegida a la vista: `GET /asistente/conversaciones/:id` → `pedidos[].moneda` ("Pedidos nombrados en el chat":
+  "· en dólares"), y `GET /pedidos-creditos` → `items[].monedaAsistente` (Admin → Créditos → Pedidos: "Transfiere en
+  dólares/pesos").
 - `POST /asistente/desvincular` (el agente hace logout, borra la sesión y pide QR nuevo).
 - `GET /asistente/conversaciones[?estado=bot|humano&q=]` → teléfono enmascarado (`+54 9 11 ****-1234`), cuenta, último
   mensaje, estado. `GET /asistente/conversaciones/:id` (chat + pedidos nombrados),
@@ -826,3 +849,163 @@ días. Logs sin teléfonos, emails ni textos.
 
 Pruebas: `app/test/asistente.test.js` (Baileys, Claude y Telegram falsos). Puesta en marcha y costos: `infra/README.md`
 → "Asistente de cuenta por WhatsApp".
+
+## Admin: menú agrupado — desde el 16/11/2026 (decisión de Juan: "me marea un poco cómo está todo distribuido")
+
+Barra lateral con títulos de grupo (en el celular, la misma fila de chips en el mismo orden, sin títulos). Lo arma
+`HH.adminMenu` en `mvp/src/prod-admin.js` (`views-admin.js` lo usa si existe; la demo sin menú queda igual).
+
+- **General**: Resumen, Métricas (desde el 16/11/2026, ver "Admin → Métricas"; con Exportar a Excel y "De dónde vienen las visitas").
+- **Acompañantes**: Acompañantes (perfiles y verificación), Reportes, Interesados.
+- **Cobros**: Créditos [Pedidos | Movimientos], Asistente (WhatsApp), Planes [Suscripciones | Renovaciones],
+  Destacados [Destacado | Star], Contenido [Ventas | Pedidos personalizados].
+- **Sitio**: Ubicaciones, Servicios, Textos, SEO.
+- **Configuración**: Precios (precios de los planes, packs de créditos, precios del Destacado, cotización del dólar y
+  comisión de la venta de contenido: descuento total, costo de Mercado Pago, saldo negativo máximo) y Ajustes (Home
+  provisoria, contacto para comprar créditos, avisos por Telegram, mensajes, cuenta de Mercado Pago que recibe la
+  comisión, textos del inicio). Mismas tarjetas, botones, validaciones y "Actualizado el…"; solo cambiaron de lugar.
+
+Cada pestaña tiene su dirección (`#admin.<sección>.<pestaña>`) y su contador; la sección muestra la suma (Créditos =
+pedidos pendientes; Planes = renovaciones con problema; Contenido = pedidos personalizados sin responder). El enlace
+del menú abre la primera pestaña. Las direcciones viejas siguen andando (`aliasAdmin`, reemplaza la dirección sin sumar
+un paso al historial):
+
+| Antes | Ahora |
+| --- | --- |
+| `#admin.pedidos` (y `#admin.pagos`) | `#admin.creditos.pedidos` |
+| `#admin.creditos` | `#admin.creditos.movimientos` (era la lista de saldos) |
+| `#admin.creditos.<cuenta>` | `#admin.creditos.movimientos.<cuenta>` |
+| `#admin.suscripciones` / `#admin.renovaciones` | `#admin.planes.suscripciones` / `#admin.planes.renovaciones` |
+| `#admin.destacados` / `#admin.stars` | `#admin.destacados.destacado` / `#admin.destacados.star` |
+| `#admin.ventas` | `#admin.contenido.ventas` |
+| `#admin.solicitudes` / `#admin.solicitudes.<id>` | `#admin.contenido.pedidos` / `#admin.contenido.pedidos.<id>` |
+| `#admin.planes`, `#admin.contenido` | su primera pestaña |
+
+Enlaces internos y avisos actualizados: Resumen, ficha de la acompañante, "Pedidos nombrados en el chat", cotización
+("revisala en Precios"), Telegram ("Confirmalo en Admin → Créditos → Pedidos", "Revisar en Admin → Contenido → Ventas",
+salto de la cotización y falta de datos del asistente → "Admin → Precios").
+
+## Admin → Métricas — desde el 16/11/2026 (decisión de Juan: "En general quiero poder visualizar los KPIs con gráficos en lo posible")
+
+Sección nueva en **General**, debajo de Resumen (Resumen no cambia: sigue con los pendientes). Período en la dirección:
+`#admin.metricas.7d` · `.30d` · `.90d` · `.12m` (sin período: 30 días). Tramos en hora Argentina: por día (7 y 30 días),
+por semana de lunes a domingo (90 días = 13 semanas) y por mes (12 meses). El período arranca al comienzo de un día,
+semana o mes y termina ahora; se compara con la misma duración justo antes. Cada sección tiene un "¿Qué cuenta?" con
+las definiciones exactas.
+
+API: `GET ${A}/api/metricas?periodo=7d|30d|90d|12m` (`routes/admin-metricas.js` + `lib/metricas.js`), una consulta
+por medida (todas en paralelo; índices en `200-metricas.sql`). Cada medida trae `{ serie, total, anterior }`.
+`config.metricasAhora` (solo pruebas) fija el "ahora".
+
+| Sección | Medida | Definición |
+| --- | --- | --- |
+| Ingresos | Créditos vendidos (US$) | `pedidos_creditos` confirmados, `paga_usd`, por `confirmado`; separado por `moneda_asistente` (ARS / USD / sin dato) |
+| | Equivalente en pesos | solo referencia: total × cotización de hoy (los pedidos no guardan los pesos transferidos) |
+| | Venta de contenido / comisión ($) | `ventas_contenido` aprobadas, `monto_centavos` y `comision_centavos`, por `pagado` (reembolsadas no) |
+| Acompañantes | Registros | `cuentas.creado` |
+| | Verificadas | primera verificación aprobada de cada cuenta (`min(revisado)`) |
+| | Publicadas / verificadas ahora | foto de hoy (no hay historial exacto de despublicaciones: no se dibuja curva) |
+| | Por plan ahora | plan efectivo de cada perfil publicado (sin plan pago = Bronce) |
+| | Cuentas con plan pago | Plata/Oro/Star vigente al cierre de cada tramo según `suscripciones` (activas y vencidas; las canceladas no) |
+| Créditos | Créditos gastados por tipo | −SUM(centavos) de `renovacion_plan`, `semana`, `subida_temporal`, `destacado` (neto de devoluciones), `comision_venta`; no `ajuste_admin` |
+| | Renovaciones automáticas | suscripciones `origen = 'creditos'` con nota "Renovación automática…" o "Renovación al cargar créditos" |
+| | Bajas de plan al renovar | renovaciones con nota "Renovación automática (cambio de …)" |
+| | Pausas por falta de saldo | `avisos_plan` tipo `pausa` (por `enviado`); "ahora" = filas de `renovaciones_pendientes` |
+| | Planes terminados | suscripción mensual o manual vencida en el período sin otra mensual/manual que siga (±1 min) y sin pausa |
+| Interesados | Interesados, pedidos personalizados | `clientes.creado`, `solicitudes.creado` |
+| | Packs vendidos / contenidos de pedidos pagados | ventas aprobadas `tipo = 'pack'` / `'pedido'` |
+| | Asistente | chats nuevos (`asistente_conversaciones.creado`) y mensajes recibidos (`dir = 'in'`; se borran a los 90 días: en períodos más largos se avisa y no se compara) |
+| Tráfico | Páginas vistas, visitas a perfiles, clics WhatsApp/Telegram, contacto (clics ÷ visitas), Top 10 por visitas y por clics | tablas `metricas_sitio_dia` y `metricas_perfil_dia`; antes del primer día medido los tramos quedan "sin medición" (no en cero) y, si el período anterior no se midió entero, no se compara |
+| | De dónde vienen las visitas (desde el 16/11/2026) | páginas vistas por categoría de llegada (`metricas_origen_dia`), columnas apiladas + un tile por categoría con el total del período y cuántas fueron visitas a perfiles (`metricas_perfil_origen_dia`); "Sin dato" (gris) = páginas vistas − suma de las categorías (lo de antes de medir el origen o sin origen conocido, nunca "Directo"); se compara solo si el origen se midió en todo el período anterior |
+
+Gráficos propios en SVG (`mvp/src/prod-admin-metricas.js`, sin bibliotecas ni CDN), dibujados al ancho real de su caja
+(se redibujan al cambiar el ancho): columnas (apiladas con 2 px de separación) para montos y cantidades, líneas para
+tendencias de 2–3 series, barras horizontales para la distribución por plan. Paleta categórica validada para la
+superficie del panel (`#221F28`). Tooltip con mouse, toque y teclado (flechas, Inicio, Fin, Esc), leyenda con 2+
+series, texto para lectores de pantalla y "Ver tabla" con los mismos números (el último tramo dice "en curso": termina
+ahora). Sin datos: un aviso por gráfico, sin ejes. Desde el 16/11/2026 el motor de gráficos, los tiles con comparación y
+sus estilos están en `mvp/src/graficos.js` (`HH.graficos`), compartido con Mis números del panel de la acompañante
+(build del admin y del sitio; en el sitio, números y fechas en el idioma elegido y textos por el diccionario).
+
+### Exportar a Excel — desde el 16/11/2026 (decisión de Juan)
+
+Botón **Exportar** arriba (junto a Actualizar): descarga el período elegido como `.xlsx`
+(`GET ${A}/api/metricas/exportar?periodo=7d|30d|90d|12m`, mismo Basic Auth; 400 si el período no existe;
+`Content-Disposition: attachment; filename="sexyrose-metricas-<período>-<AAAA-MM-DD>.xlsx"` con la fecha argentina de
+generación; `Cache-Control: no-store`). Se arma en el servidor con los mismos datos de `metricasPeriodo`
+(`lib/metricas-excel.js`) y un escritor propio sin dependencias (`lib/xlsx.js`: Office Open XML en un ZIP con deflate de
+`zlib` y CRC-32 propio; la imagen de Docker no cambia). Hojas:
+
+- **Resumen**: período, desde/hasta, período anterior, granularidad, fecha de generación y cada indicador con Unidad,
+  Período, Período anterior y Variación (%) (vacía si el anterior es 0 o no se puede comparar).
+- **Ingresos**, **Acompañantes**, **Créditos y renovaciones**, **Interesados y contenido**, **Tráfico** y
+  **De dónde vienen**: filas = tramos (Día / Semana desde el lunes / Mes, como fechas de Excel), columnas = las series de
+  los gráficos y tiles con la unidad en el encabezado (USD, ARS, créditos, cantidad, %), fila "Total del período" y notas
+  (el último tramo está en curso; en Tráfico, antes del primer día medido las celdas quedan vacías). Acompañantes suma
+  abajo la foto de ahora (por plan, activas, verificadas, publicadas).
+- **Top 10 por visitas** y **Top 10 por clics**.
+
+Números como números (enteros `#,##0`, decimales `#,##0.00`, porcentajes como fracción con `0.0%`), encabezado fijo.
+Pruebas: `app/test/numeros.test.js` (lo vuelve a leer con un lector de ZIP propio y, si hay Python con openpyxl, también
+con openpyxl).
+
+### Tráfico sin datos personales (`POST /api/sitio/evento`)
+
+- El sitio real (`mvp/src/prod-metricas.js`, solo en el build del sitio; ni la demo ni el admin lo incluyen) manda
+  `{ tipo: 'pagina' }` al ver inicio, país o lugar y `{ tipo: 'vista', perfil }` al ver un perfil (una vez por perfil y
+  pestaña: `sessionStorage`; si ya lo vio, cuenta como `pagina`), y `{ tipo: 'whatsapp' | 'telegram', perfil }` al
+  tocar esos botones (la hoja de contacto). `fetch` con `keepalive`, sin cookies (`credentials: 'omit'`), `X-SR: 1`.
+  No manda nada: en la demo, antes de tener datos, en el panel, ni cuando la acompañante con sesión mira su propio perfil.
+- Servidor (`routes/sitio.js`): mismo origen + `X-SR`, JSON de hasta 1 KB, robots y navegadores automáticos → 204 sin
+  contar (`esBot`), 120 eventos cada 10 min por conexión (429), la misma conexión con el mismo evento sobre el mismo
+  perfil cuenta hasta 3 por hora, solo perfiles visibles en el sitio (404), home provisoria → 204 sin contar. La IP se
+  usa solo en memoria (con sal y hash) para esos límites, en un limitador propio para no desplazar las claves del general.
+- Se guarda solo `metricas_perfil_dia (cuenta_id, dia, vistas, whatsapp, telegram)` y `metricas_sitio_dia (dia,
+  vistas)` (`dia` = fecha argentina, suma con upsert). Nunca IP, navegador, cookie ni identificador del visitante. Los
+  totales por día se conservan; si la cuenta se borra, los de su perfil se borran con ella.
+- **Origen de la visita** (desde el 16/11/2026, solo admin): al cargar el sitio, `prod-metricas.js`
+  (`HH.origenTrafico`) clasifica la llegada de la pestaña y guarda solo la categoría en `sessionStorage` (`sr_origen`);
+  cada aviso `pagina`/`vista` lleva `origen` (los clics no). Reglas, en orden:
+  1. `utm_source` en la dirección de llegada: nombres conocidos → su categoría (google, bing, duckduckgo, yahoo, yandex,
+     ecosia, brave… → buscadores; instagram/ig, facebook/fb, x/twitter, tiktok, reddit… → redes; whatsapp/wa,
+     telegram/tg → mensajeria; un dominio como `instagram.com` se clasifica como referrer); cualquier otro → `otros`.
+  2. Sin referrer → `directo`.
+  3. Referrer del propio sitio (o `*.sexyrose.net`) → no es un origen: si la pestaña ya tenía uno guardado se usa ese;
+     si no se puede saber, el aviso va sin origen ("sin dato"), nunca "Directo".
+  4. Dominio del referrer (o app de Android `android-app://<paquete>`): Google (cualquier `google.*`), Bing,
+     DuckDuckGo, Yahoo, Yandex, Ecosia, Brave Search, Baidu, Startpage, Qwant… → `buscadores`; Instagram, Facebook
+     (`m.`, `l.`, `lm.`), fb.com/fb.me, Messenger, X/Twitter, t.co, TikTok, Reddit, Threads, LinkedIn, Pinterest,
+     YouTube, Snapchat, Tumblr, Bluesky… → `redes`; wa.me, whatsapp.com, t.me, telegram.org/.me → `mensajeria`;
+     cualquier otro sitio → `otros`.
+  El primer origen de la pestaña queda: la navegación interna y las recargas no lo cambian. Nunca viaja ni se guarda la
+  dirección ni el dominio. Servidor: `origen` opcional, si viene tiene que ser uno de
+  `buscadores | redes | mensajeria | otros | directo` (si no, 400). Tablas (`210-origen-trafico.sql`):
+  `metricas_origen_dia (dia, origen, vistas)` (todas las páginas vistas) y
+  `metricas_perfil_origen_dia (cuenta_id, dia, origen, vistas)` (visitas a perfiles; se borran con la cuenta). Lo de
+  antes de esta migración no tiene origen. Las acompañantes no ven orígenes.
+
+## Panel de la acompañante agrupado y Mis números — desde el 16/11/2026 (decisiones de Juan)
+
+Panel (`PANEL_GRUPOS` en `mvp/src/prod-sitio.js`), mismos contenidos de antes, solo reordenados: en la computadora,
+títulos de grupo en la barra lateral (como el admin, `.dash-nav-h`); en el celular, la misma fila de chips en el mismo
+orden, sin títulos. Las direcciones `/panel/<sección>` y los contadores no cambian.
+
+- **Inicio**: Resumen, Mis números (nuevo, `/panel/numeros`, `/panel/numeros/7d|30d|90d`; sin período: 30 días).
+- **Mi aviso**: Mi perfil, Fotos, Verificación, Historias.
+- **Visibilidad**: Plan, Destacado, Créditos.
+- **Ventas**: Contenido, Pedidos.
+- **Cuenta**: Avisos, Cuenta.
+
+**Mis números**: `GET /api/cuenta/numeros?periodo=7d|30d|90d` (sesión de la acompañante; 401 sin sesión, 400 con otro
+período; `lib/metricas.js → numerosCuenta`). Solo su perfil (`metricas_perfil_dia`): `vistas`, `whatsapp`,
+`telegram`, `clics` (WhatsApp + Telegram), cada uno `{ serie, total, anterior }`, y `contacto { total, anterior }`
+(toques ÷ visitas, en %, `null` sin visitas). Tramos por día (7 y 30 días) o por semana de lunes a domingo (90 días),
+en hora Argentina, comparados con la misma duración justo antes. `desdeMedicion` = el más tardío entre el primer día
+medido del sitio y el alta de su cuenta; `comparable` = el período anterior se midió entero (si no, los tiles dicen
+"Sin comparación con el período anterior"). `hayDatos` = tiene alguna fila (si no, estado vacío). Sin orígenes, sin
+datos de otras cuentas ni posiciones.
+
+Vista: selector 7 / 30 / 90 días, tiles Visitas a tu perfil, Toques en WhatsApp, Toques en Telegram y Tasa de
+contacto (con la variación como en el admin), un gráfico de líneas "Visitas y toques" (`graficos.js`, con tooltip y
+"Ver tabla") y la línea "¿Qué cuenta?" (se abrió tu perfil y toques en tus botones de WhatsApp y Telegram; no incluye
+sus propias visitas; tasa = toques ÷ visitas). Textos nuevos en inglés y portugués. Pruebas: `app/test/numeros.test.js`.

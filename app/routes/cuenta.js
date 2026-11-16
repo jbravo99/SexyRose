@@ -1,5 +1,5 @@
 // Cuenta de la acompañante: /api/cuenta/...
-// Registro, login, email, contraseña, perfil, fotos, verificación de identidad e historias.
+// Registro, login, email, contraseña, perfil, fotos, verificación de identidad, historias y Mis números (GET numeros).
 // Todas las mutaciones exigen mismo origen + cabecera X-SR: 1 (ver lib/auth.js).
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
@@ -16,6 +16,7 @@ import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '.
 import { invalidarSitio } from './sitio.js';
 import { DestacadaError } from '../lib/destacadas.js';
 import { crearLimitesAuth } from '../lib/seguridad.js';
+import { PERIODOS_CUENTA, numerosCuenta } from '../lib/metricas.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -365,6 +366,15 @@ export function createCuentaRouter(ctx) {
   // --- Con sesión ------------------------------------------------------------------
   r.get('/yo', auth.requireCuenta, ah(async (req, res) => {
     res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
+  }));
+
+  // Mis números (16/11/2026): visitas a SU perfil y toques en sus botones de WhatsApp y Telegram (lib/metricas.js).
+  // Solo la cuenta de la sesión: sin orígenes, sin datos de otras cuentas ni posiciones.
+  r.get('/numeros', auth.requireCuenta, ah(async (req, res) => {
+    const periodo = String(req.query.periodo || '30d');
+    if (!PERIODOS_CUENTA.includes(periodo)) return fail(res, 400, 'Período inválido: 7d, 30d o 90d.');
+    const t = ctx.config && typeof ctx.config.metricasAhora === 'function' ? ctx.config.metricasAhora() : null;
+    res.json({ ok: true, ...(await numerosCuenta(pool, req.cuenta.id, { periodo, ahora: t })) });
   }));
 
   r.post('/cambiar-password', auth.requireCuenta, ah(async (req, res) => {

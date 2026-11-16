@@ -35,20 +35,63 @@
   const RANK = { E: 1, D: 2, C: 3, S: 4 };
   // Etiqueta "Destacado" en la tarjeta: 'A' = arriba del nombre (por defecto), 'B' = pastilla arriba a la izquierda
   const BADGE_DESTACADO = 'A';
-  const PANEL_TABS = [
-    { id: 'resumen', label: 'Resumen', icon: 'dashboard' },
-    { id: 'perfil', label: 'Mi perfil', icon: 'user' },
-    { id: 'fotos', label: 'Fotos', icon: 'image' },
-    { id: 'verificacion', label: 'Verificación', icon: 'shield' },
-    { id: 'historias', label: 'Historias', icon: 'camera' },
-    { id: 'plan', label: 'Plan', icon: 'card' },
-    { id: 'creditos', label: 'Créditos', icon: 'wallet' },
-    { id: 'destacado', label: 'Destacado', icon: 'sparkles' },
-    { id: 'contenido', label: 'Contenido', icon: 'bag' }, // venta de contenido (prod-contenido.js)
-    { id: 'pedidos', label: 'Pedidos', icon: 'chat' }, // pedidos personalizados con chat (prod-clientes.js)
-    { id: 'avisos', label: 'Avisos', icon: 'bell' },
-    { id: 'cuenta', label: 'Cuenta', icon: 'settings' },
+  // Panel agrupado (16/11/2026, decisión de Juan): mismos contenidos, ordenados por grupo como el menú del admin.
+  // En la computadora, títulos de grupo en la barra lateral; en el celular, la misma fila de chips en el mismo orden.
+  const PANEL_GRUPOS = [
+    { grupo: 'Inicio', tabs: [
+      { id: 'resumen', label: 'Resumen', icon: 'dashboard' },
+      { id: 'numeros', label: 'Mis números', icon: 'activity' }, // visitas y toques de su perfil (panelNumeros)
+    ] },
+    { grupo: 'Mi aviso', tabs: [
+      { id: 'perfil', label: 'Mi perfil', icon: 'user' },
+      { id: 'fotos', label: 'Fotos', icon: 'image' },
+      { id: 'verificacion', label: 'Verificación', icon: 'shield' },
+      { id: 'historias', label: 'Historias', icon: 'camera' },
+    ] },
+    { grupo: 'Visibilidad', tabs: [
+      { id: 'plan', label: 'Plan', icon: 'card' },
+      { id: 'destacado', label: 'Destacado', icon: 'sparkles' },
+      { id: 'creditos', label: 'Créditos', icon: 'wallet' },
+    ] },
+    { grupo: 'Ventas', tabs: [
+      { id: 'contenido', label: 'Contenido', icon: 'bag' }, // venta de contenido (prod-contenido.js)
+      { id: 'pedidos', label: 'Pedidos', icon: 'chat' }, // pedidos personalizados con chat (prod-clientes.js)
+    ] },
+    { grupo: 'Cuenta', tabs: [
+      { id: 'avisos', label: 'Avisos', icon: 'bell' },
+      { id: 'cuenta', label: 'Cuenta', icon: 'settings' },
+    ] },
   ];
+  const PANEL_TABS = PANEL_GRUPOS.flatMap((g) => g.tabs);
+  HH.panelGrupos = PANEL_GRUPOS;
+
+  /* ---------- Mis números: textos en inglés y portugués ---------- */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Mis números': ['My numbers', 'Meus números'], 'Mi aviso': ['My ad', 'Meu anúncio'], 'Visibilidad': ['Visibility', 'Visibilidade'],
+    '7 días': ['7 days', '7 dias'], '30 días': ['30 days', '30 dias'], '90 días': ['90 days', '90 dias'], 'Período': ['Period', 'Período'],
+    'Cuántas veces se abrió tu perfil y cuántas veces tocaron tus botones de contacto.': ['How many times your profile was opened and how many times your contact buttons were tapped.', 'Quantas vezes seu perfil foi aberto e quantas vezes tocaram nos seus botões de contato.'],
+    'Visitas a tu perfil': ['Visits to your profile', 'Visitas ao seu perfil'], 'Toques en WhatsApp': ['WhatsApp taps', 'Toques no WhatsApp'],
+    'Toques en Telegram': ['Telegram taps', 'Toques no Telegram'], 'Tasa de contacto': ['Contact rate', 'Taxa de contato'],
+    'toques ÷ visitas': ['taps ÷ visits', 'toques ÷ visitas'], 'Sin comparación con el período anterior': ['No comparison with the previous period', 'Sem comparação com o período anterior'],
+    'Antes: {x}': ['Before: {x}', 'Antes: {x}'], 'Sin movimiento en los dos períodos': ['No activity in either period', 'Sem movimento nos dois períodos'],
+    'Nuevo: el período anterior fue 0': ['New: the previous period was 0', 'Novo: o período anterior foi 0'], 'Igual que el período anterior': ['Same as the previous period', 'Igual ao período anterior'],
+    'subió {n} %': ['up {n}%', 'subiu {n}%'], 'bajó {n} %': ['down {n}%', 'caiu {n}%'], 'subió {n} p.p.': ['up {n} pp', 'subiu {n} p.p.'], 'bajó {n} p.p.': ['down {n} pp', 'caiu {n} p.p.'],
+    'Visitas y toques': ['Visits and taps', 'Visitas e toques'], 'Visitas': ['Visits', 'Visitas'], 'Toques': ['Taps', 'Toques'],
+    'Todavía no hay visitas en este período.': ['No visits in this period yet.', 'Ainda não há visitas neste período.'],
+    '{n} visitas y {n} toques en el período.': ['{n} visits and {n} taps in the period.', '{n} visitas e {n} toques no período.'],
+    '¿Qué cuenta?': ['What counts?', 'O que conta?'],
+    'Contamos las veces que se abrió tu perfil y los toques en tus botones de WhatsApp y Telegram.': ['We count the times your profile was opened and the taps on your WhatsApp and Telegram buttons.', 'Contamos as vezes que seu perfil foi aberto e os toques nos seus botões de WhatsApp e Telegram.'],
+    'No incluye tus propias visitas.': ['Your own visits are not included.', 'Suas próprias visitas não são incluídas.'],
+    'La tasa de contacto es toques ÷ visitas.': ['The contact rate is taps ÷ visits.', 'A taxa de contato é toques ÷ visitas.'],
+    'Cada número se compara con el mismo tiempo justo antes.': ['Each number is compared with the same length of time just before.', 'Cada número é comparado com o mesmo tempo logo antes.'],
+    'por día': ['per day', 'por dia'], 'por semana (de lunes a domingo)': ['per week (Monday to Sunday)', 'por semana (de segunda a domingo)'],
+    'Todavía no hay números': ['No numbers yet', 'Ainda não há números'],
+    'Cuando tu perfil esté publicado, acá vas a ver cuántas veces se abrió y cuántas veces tocaron tus botones de WhatsApp y Telegram.': ['Once your profile is published, here you will see how many times it was opened and how many times your WhatsApp and Telegram buttons were tapped.', 'Quando seu perfil estiver publicado, aqui você vai ver quantas vezes ele foi aberto e quantas vezes tocaram nos seus botões de WhatsApp e Telegram.'],
+    'Todavía no hay visitas registradas en tu perfil. Acá vas a ver cuántas veces se abrió y cuántas veces tocaron tus botones de WhatsApp y Telegram.': ['There are no visits recorded on your profile yet. Here you will see how many times it was opened and how many times your WhatsApp and Telegram buttons were tapped.', 'Ainda não há visitas registradas no seu perfil. Aqui você vai ver quantas vezes ele foi aberto e quantas vezes tocaram nos seus botões de WhatsApp e Telegram.'],
+    // Gráficos (graficos.js)
+    'Ver tabla': ['View table', 'Ver tabela'], 'Semana': ['Week', 'Semana'], 'Mes': ['Month', 'Mês'], 'sin medir': ['not measured', 'sem medição'],
+    'Sin medición': ['Not measured', 'Sem medição'], '(en curso)': ['(in progress)', '(em andamento)'], 'Semana del {x}': ['Week of {x}', 'Semana de {x}'],
+  });
 
   /* ---------- Textos del sitio real en inglés y portugués (no tocan el diccionario de la demo) ---------- */
   Object.assign(HH.I18N = HH.I18N || {}, {"Videos · {n} / {n}": ["Videos · {n} / {n}", "Vídeos · {n} / {n}"], "Hasta 30 segundos y 95 MB. Les agregamos la marca de agua y les sacamos los datos de ubicación.": ["Up to 30 seconds and 95 MB. We add the watermark and remove location data.", "Até 30 segundos e 95 MB. Adicionamos a marca d’água e removemos os dados de localização."], "Subir video": ["Upload video", "Enviar vídeo"], "Subiendo video…": ["Uploading video…", "Enviando vídeo…"], "Procesando…": ["Processing…", "Processando…"], "No se pudo procesar.": ["Could not be processed.", "Não foi possível processar."], "Todavía no subiste videos": ["You have not uploaded videos yet", "Você ainda não enviou vídeos"], "Videos cortos, con la cara visible. Sin desnudos.": ["Short videos, with your face visible. No nudity.", "Vídeos curtos, com o rosto visível. Sem nudez."], "Recibimos el video. Lo estamos procesando.": ["We received the video. We are processing it.", "Recebemos o vídeo. Estamos processando."], "Borrar video": ["Delete video", "Apagar vídeo"], "¿Querés borrar este video? No se puede deshacer.": ["Delete this video? This cannot be undone.", "Apagar este vídeo? Não dá para desfazer."], "Video borrado.": ["Video deleted.", "Vídeo apagado."], "El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.": ["The video is larger than 95 MB. Trim it or record it in lower quality.", "O vídeo tem mais de 95 MB. Corte ou grave em qualidade menor."], "Video": ["Video", "Vídeo"], "Videos": ["Videos", "Vídeos"]});
@@ -431,7 +474,7 @@
   HH.me = () => (HH.session && HH.db ? HH.db.users.find((u) => u.id === HH.session.userId) || null : null);
   HH.logout = async function () {
     try { await api('POST', '/cuenta/logout'); } catch (e) { /* igual se cierra */ }
-    S.yo = null; S.planes = null; S.cred = null; S.dest = null; S.notif = null; HH.session = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
+    S.yo = null; S.planes = null; S.cred = null; S.dest = null; S.notif = null; NUM.d = {}; NUM.err = {}; HH.session = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
   };
   HH.requireRole = function () { if (!S.yo) { HH.go('#login'); return false; } return true; };
   HH.homeFor = () => '#panel';
@@ -600,7 +643,7 @@
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
     if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
     const tab = PANEL_TABS.some((t) => t.id === b) ? b : 'resumen';
-    const views = { resumen: panelResumen, perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta, contenido: () => (HH.spContenido ? HH.spContenido.panel() : ''), pedidos: () => (HH.spClientes ? HH.spClientes.panelPedidos(parts[2]) : '') };
+    const views = { resumen: panelResumen, numeros: () => panelNumeros(parts[2]), perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta, contenido: () => (HH.spContenido ? HH.spContenido.panel() : ''), pedidos: () => (HH.spClientes ? HH.spClientes.panelPedidos(parts[2]) : '') };
     if (tab === 'fotos' || tab === 'historias') setTimeout(vigilarVideos, 0);
     return panelLayout(tab, views[tab]());
   }
@@ -708,7 +751,8 @@
   function panelLayout(tab, main) {
     const p = S.yo.perfil; const d = yoDatos();
     const cnt = { resumen: (p.faltantes || []).length, verificacion: p.verificacion === 'sin_enviar' || p.verificacion === 'rechazada' ? 1 : 0, fotos: (p.fotos || []).length < 3 ? 1 : 0, avisos: noLeidas(), plan: p.pausadoPorSaldo ? 1 : 0, pedidos: S.yo.pedidosNoLeidos || 0 };
-    const nav = PANEL_TABS.map((t) => `<a href="#panel.${t.id}" data-go="#panel.${t.id}" class="${t.id === tab ? 'active' : ''}">${icon(t.icon)}<span>${t.label}</span>${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</a>`).join('');
+    const link = (t) => `<a href="#panel.${t.id}" data-go="#panel.${t.id}" class="${t.id === tab ? 'active' : ''}"${t.id === tab ? ' aria-current="page"' : ''}>${icon(t.icon)}<span>${t.label}</span>${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</a>`;
+    const nav = PANEL_GRUPOS.map((g) => `<div class="dash-nav-h">${g.grupo}</div>` + g.tabs.map(link).join('')).join('');
     const chips = PANEL_TABS.map((t) => `<button type="button" class="chip ${t.id === tab ? 'active' : ''}" data-go="#panel.${t.id}">${t.label}${cnt[t.id] ? `<span class="count">${cnt[t.id]}</span>` : ''}</button>`).join('');
     const pub = p.estado === 'publicado' && !p.oculto && p.slug;
     return `<div class="container dash-wrap"><div class="dash">
@@ -1374,6 +1418,51 @@
     renovacion_pendiente: ['warn', 'refresh', 'Renovación pendiente'], destacado: ['info', 'sparkles', 'Destacado'],
   };
   const NOTIF_LINK = { creditos_acreditados: 'creditos', pedido_rechazado: 'creditos', saldo_insuficiente: 'creditos', perfil_pausado: 'creditos', renovacion_pendiente: 'plan', plan_comprado: 'plan', plan_renovado: 'plan', plan_asignado: 'plan', plan_vence: 'plan', plan_vencio: 'plan', destacado: 'destacado' };
+  /* ---------- Mis números (16/11/2026): visitas a su perfil y toques en sus botones (GET /api/cuenta/numeros) ----------
+     Solo sus números; sin orígenes de las visitas (eso es solo del admin), sin otras cuentas ni posiciones. Período en
+     la dirección (/panel/numeros/7d · 30d · 90d; sin período: 30 días). Gráficos de graficos.js (los del admin). */
+  const NUM_PERS = [['7d', '7 días'], ['30d', '30 días'], ['90d', '90 días']];
+  const NUM = { per: '30d', d: {}, err: {} };
+  async function loadNum(per) { try { NUM.d[per] = Object.assign(await api('GET', '/cuenta/numeros?periodo=' + per), { _t: Date.now() }); NUM.err[per] = null; } catch (e) { NUM.err[per] = e.message; } }
+  function panelNumeros(perArg) {
+    if (perArg && NUM_PERS.some(([k]) => k === perArg)) NUM.per = perArg;
+    const per = NUM.per;
+    const G = HH.graficos;
+    const eb = 'Inicio', tt = 'Mis números';
+    const top = head(eb, tt, 'Cuántas veces se abrió tu perfil y cuántas veces tocaron tus botones de contacto.')
+      + `<div class="chips sp-num-per" role="group" aria-label="Período">${NUM_PERS.map(([k, l]) => `<button type="button" class="chip ${k === per ? 'active' : ''}" data-go="#panel.numeros.${k}" aria-pressed="${k === per}">${l}</button>`).join('')}</div>`;
+    const d = NUM.d[per];
+    if (!d && !NUM.err[per]) { cargar('num' + per, () => loadNum(per)); return top + `<div class="sp-skel"></div><div class="sp-skel"></div>`; }
+    if (!d) return top + errBox(NUM.err[per], 'spNumReload');
+    if (Date.now() - (d._t || 0) > 5 * 60 * 1000) cargar('num' + per, () => loadNum(per)); // al volver después de un rato: se actualiza solo
+    if (!G) return top;
+    G.reset();
+    if (!d.hayDatos) {
+      const pub = S.yo.perfil.estado === 'publicado';
+      return top + `<div class="empty sp-num-vacio">${icon('activity')}<h4>Todavía no hay números</h4><p class="small">${pub
+        ? 'Todavía no hay visitas registradas en tu perfil. Acá vas a ver cuántas veces se abrió y cuántas veces tocaron tus botones de WhatsApp y Telegram.'
+        : 'Cuando tu perfil esté publicado, acá vas a ver cuántas veces se abrió y cuántas veces tocaron tus botones de WhatsApp y Telegram.'}</p></div>`;
+    }
+    const { entero, pct, tile, tileM, delta, grafico, C, dma } = G;
+    const cmp = d.comparable;
+    const tileN = (k, m) => (cmp ? tileM(k, m, entero, 'arriba') : tile(k, entero(m.total), null, 'Sin comparación con el período anterior'));
+    const tc = d.contacto || {};
+    let sdh = 0; if (d.desdeMedicion) d.tramos.forEach((t, i) => { if (t <= d.desdeMedicion) sdh = i; });
+    const tr = (x) => (HH.t ? HH.t(x) : x);
+    const periodo = `<p class="small muted sp-num-rango"><span data-noi18n>${esc(tr(`Del ${dma(d.desde)} al ${dma(d.hasta)}`))}</span> · <span>${d.granularidad === 'semana' ? 'por semana (de lunes a domingo)' : 'por día'}</span>${cmp ? ' · <span>Cada número se compara con el mismo tiempo justo antes.</span>' : ''}</p>`;
+    return top + periodo + `<div class="mt-tiles sp-num-tiles">
+        ${tileN('Visitas a tu perfil', d.vistas)}
+        ${tileN('Toques en WhatsApp', d.whatsapp)}
+        ${tileN('Toques en Telegram', d.telegram)}
+        ${tile('Tasa de contacto', tc.total == null ? '—' : pct(tc.total), cmp && tc.total != null && tc.anterior != null ? delta(tc.total, tc.anterior, 'arriba', true) : '', 'toques ÷ visitas')}
+      </div>
+      <div class="card sp-num-graf">${grafico({ titulo: 'Visitas y toques', tipo: 'lineas', tramos: d.tramos, gran: d.granularidad, sinDatosHasta: sdh,
+        series: [{ nombre: 'Visitas', datos: d.vistas.serie, color: C[0] }, { nombre: 'Toques', datos: d.clics.serie, color: C[1] }],
+        resumen: tr(`${entero(d.vistas.total)} visitas y ${entero(d.clics.total)} toques en el período.`),
+        vacioTxt: 'Todavía no hay visitas en este período.' })}</div>
+      <p class="small muted sp-num-que"><strong>¿Qué cuenta?</strong> <span>Contamos las veces que se abrió tu perfil y los toques en tus botones de WhatsApp y Telegram.</span> <span>No incluye tus propias visitas.</span> <span>La tasa de contacto es toques ÷ visitas.</span></p>`;
+  }
+
   function panelAvisos() {
     const eb = 'Avisos', tt = 'Tus avisos';
     if (!S.notif && !S.notifErr) { cargar('notif', loadNotif); return skel(eb, tt); }
@@ -1405,6 +1494,7 @@
   const val = (o, k) => (o[k] == null ? '' : String(o[k]).trim());
   async function afterYoChange(msg) { await loadYo(true, true); if (S.yo && S.yo.perfil && S.yo.perfil.estado === 'publicado') await loadEstado(); if (msg) HH.toast(msg, { type: 'ok' }); rerender(); HH.renderShell(); }
   Object.assign(HH.actions, {
+    spNumReload() { NUM.err[NUM.per] = null; NUM.d[NUM.per] = null; rerender(); },
     spForgot(el, ev) { if (ev) ev.preventDefault(); S.forgot = el.dataset.v === '1'; HH.refresh(); },
     async spLogin(form, ev, data) {
       showErr('spLErr', ''); const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
@@ -2294,6 +2384,12 @@
   const st = document.createElement('style');
   st.textContent = `
 html[data-prod="sitio"] #supFab,html[data-prod="sitio"] #supPanel{display:none!important}
+.sp-num-per{margin:2px 0 10px}
+.sp-num-rango{margin:0 0 12px}
+.sp-num-tiles{margin:0 0 14px}
+.sp-num-graf{padding:14px;min-width:0}
+.sp-num-graf .mt-fig{border:0;padding:0}
+.sp-num-que{margin:12px 0 0;max-width:72ch;line-height:1.5}
 .sp-skel{height:84px;border-radius:14px;margin-bottom:12px;background:linear-gradient(90deg,var(--surface) 0%,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;animation:spSk 1.2s linear infinite}
 @keyframes spSk{to{background-position:-200% 0}}
 .sp-2{display:grid;gap:12px}@media(min-width:640px){.sp-2{grid-template-columns:1fr 1fr}}

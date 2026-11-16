@@ -50,6 +50,8 @@ import { createAdminIntegracionesRouter } from './routes/admin-integraciones.js'
 // Telegram, los emails con el código, los avisos de pedidos acreditados/rechazados, la limpieza y Admin → Asistente.
 import { createAsistenteApp } from './lib/asistente-app.js';
 import { createAdminAsistenteRouter } from './routes/admin-asistente.js';
+// Admin → Métricas (KPIs con gráficos) y contadores de tráfico sin datos personales (POST /api/sitio/evento)
+import { createAdminMetricasRouter } from './routes/admin-metricas.js';
 // Cuentas de interesados (clientes) y pedidos personalizados con chat
 import { createAuthClientes } from './lib/clientes.js';
 import { createSolicitudes } from './lib/solicitudes.js';
@@ -686,7 +688,9 @@ export function createApp(config) {
     next();
   }));
   app.use('/api/sitio', createContenidoSitioRouter({ contenido, authCli, rl, ipHash, state, log }));
-  app.use('/api/sitio', createSitioRouter(ctx));
+  // Contadores de tráfico (POST /api/sitio/evento) con su propio límite en memoria: sus claves (una por perfil y conexión)
+  // crecen con las visitas y no deben desplazar a las de ingreso y registro del limitador general.
+  app.use('/api/sitio', createSitioRouter({ ...ctx, rlEventos: createRateLimiter() }));
   app.use('/api/ubicaciones', createUbicacionesRouter(ctx));
   app.use('/api/mp', createMpWebhookRouter({ contenido, log }));
   app.use('/api', api);
@@ -1157,6 +1161,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   admin.use('/api', moderacionAdmin.router);
   admin.use('/api', createAdminIntegracionesRouter({ telegram, mpCuentas, creditos, apiPost, log })); // Telegram, cuentas de Mercado Pago, WhatsApp
   admin.use('/api', createAdminAsistenteRouter({ pool, privado, apiPost, log })); // Admin → Asistente (WhatsApp)
+  admin.use('/api', createAdminMetricasRouter({ pool, planes, ahora: config.metricasAhora || null })); // Admin → Métricas
   if (config.tareaContenido !== false) contenido.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
 
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });

@@ -145,7 +145,7 @@ export function createCuentaPlanesRouter({ planes, requireCuenta, privado, sameO
     });
     res.status(201).json({ ok: true, pedido });
     // Aviso interno (Telegram): solo el código y el pack, sin datos de la acompañante
-    Promise.resolve(notify(`Pedido de créditos nuevo: ${pedido.codigo}\nPack: ${pedido.packNombre}\nConfirmalo en Admin → Pedidos cuando te paguen.`, 'pedido_creditos')).catch(() => {});
+    Promise.resolve(notify(`Pedido de créditos nuevo: ${pedido.codigo}\nPack: ${pedido.packNombre}\nConfirmalo en Admin → Créditos → Pedidos cuando te paguen.`, 'pedido_creditos')).catch(() => {});
   }));
 
   r.post('/creditos/pedidos/:id/comprobante', guardPost, (req, res, next) => {

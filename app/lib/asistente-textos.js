@@ -11,6 +11,12 @@ const T = {
       + `Alias: ${alias}\nTitular: ${titular}\n`
       + `Antes de transferir, fijate que el titular de la cuenta sea ese. Si tu banco te deja, poné ${codigo} como referencia.\n`
       + 'Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta. Mandame el comprobante por acá.',
+    datosPedidoUsd: ({ codigo, pack, creditos, usd, alias, titular }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\n`
+      + `Monto a transferir: USD ${usd}.\n`
+      + `Alias: ${alias}\nTitular: ${titular}\n`
+      + `Antes de transferir, fijate que el titular de la cuenta sea ese. Si tu banco te deja, poné ${codigo} como referencia.\n`
+      + 'Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta. Mandame el comprobante por acá.',
+    preguntaMoneda: ({ codigo, pack, creditos }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\n¿Vas a transferir en pesos o en dólares?`,
     datosEnUnRato: ({ codigo, pack, creditos }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos. En un rato te paso el monto en pesos y los datos para transferir.`,
     pedidoNoEncontrado: ({ codigo, url }) => `No encontré el pedido ${codigo}. Revisá el código en tu panel: ${url}/panel/creditos`,
     pedidoConfirmado: ({ codigo, url }) => `El pedido ${codigo} ya está acreditado. Lo ves en ${url}/panel/creditos`,
@@ -45,6 +51,12 @@ const T = {
       + `Alias: ${alias}\nAccount holder: ${titular}\n`
       + `Before you transfer, check that the account holder is that name. If your bank allows it, add ${codigo} as the reference.\n`
       + 'Once you transfer and the payment is verified, the credits are added to your account. Send me the receipt here.',
+    datosPedidoUsd: ({ codigo, pack, creditos, usd, alias, titular }) => `Order ${codigo}: ${pack}, ${creditos} credits.\n`
+      + `Amount to transfer: USD ${usd}.\n`
+      + `Alias: ${alias}\nAccount holder: ${titular}\n`
+      + `Before you transfer, check that the account holder is that name. If your bank allows it, add ${codigo} as the reference.\n`
+      + 'Once you transfer and the payment is verified, the credits are added to your account. Send me the receipt here.',
+    preguntaMoneda: ({ codigo, pack, creditos }) => `Order ${codigo}: ${pack}, ${creditos} credits.\nWill you transfer in pesos or in dollars?`,
     datosEnUnRato: ({ codigo, pack, creditos }) => `Order ${codigo}: ${pack}, ${creditos} credits. I'll send you the amount in pesos and the transfer details shortly.`,
     pedidoNoEncontrado: ({ codigo, url }) => `I couldn't find order ${codigo}. Check the code in your dashboard: ${url}/panel/creditos`,
     pedidoConfirmado: ({ codigo, url }) => `Order ${codigo} has already been credited. You can see it at ${url}/panel/creditos`,
@@ -79,6 +91,12 @@ const T = {
       + `Alias: ${alias}\nTitular: ${titular}\n`
       + `Antes de transferir, confira se o titular da conta é esse. Se o seu banco permitir, coloque ${codigo} como referência.\n`
       + 'Assim que você transferir e o pagamento for verificado, os créditos entram na sua conta. Me mande o comprovante por aqui.',
+    datosPedidoUsd: ({ codigo, pack, creditos, usd, alias, titular }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\n`
+      + `Valor a transferir: USD ${usd}.\n`
+      + `Alias: ${alias}\nTitular: ${titular}\n`
+      + `Antes de transferir, confira se o titular da conta é esse. Se o seu banco permitir, coloque ${codigo} como referência.\n`
+      + 'Assim que você transferir e o pagamento for verificado, os créditos entram na sua conta. Me mande o comprovante por aqui.',
+    preguntaMoneda: ({ codigo, pack, creditos }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\nVocê vai transferir em pesos ou em dólares?`,
     datosEnUnRato: ({ codigo, pack, creditos }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos. Daqui a pouco te passo o valor em pesos e os dados para transferir.`,
     pedidoNoEncontrado: ({ codigo, url }) => `Não encontrei o pedido ${codigo}. Confira o código no seu painel: ${url}/panel/creditos`,
     pedidoConfirmado: ({ codigo, url }) => `O pedido ${codigo} já foi creditado. Você vê em ${url}/panel/creditos`,
@@ -148,6 +166,21 @@ export const preguntaSiEsBot = (txt) => {
   const s = String(txt || '');
   return s.length <= 120 && PREGUNTA_BOT.some((r) => r.test(s));
 };
+
+// Moneda en la respuesta a "¿Vas a transferir en pesos o en dólares?" (o "mejor en dólares"), sin importar mayúsculas
+// ni tildes: 'ARS' (pesos, peso, ars, $), 'USD' (dólares, dólar, dollars, usd, u$s, us$), 'ambas' si nombra las dos, o
+// null. Con una negación ("no tengo dólares") no se decide acá: devuelve 'ambas' y lo resuelve la IA.
+export function monedaEnTexto(txt) {
+  let s = ' ' + String(txt || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') + ' ';
+  let usd = false; let ars = false;
+  if (/(u\$s|us\$|u\$d)/.test(s)) { usd = true; s = s.replace(/u\$s|us\$|u\$d/g, ' '); }
+  if (/(^|[^a-z0-9])(usd|dolar|dolares|dollar|dollars)(?![a-z0-9])/.test(s)) usd = true;
+  if (/(^|[^a-z0-9])(ars|peso|pesos)(?![a-z0-9])/.test(s) || s.includes('$')) ars = true;
+  if (!usd && !ars) return null;
+  if (usd && ars) return 'ambas';
+  if (/(^|[^a-z0-9])(no|sin|nao|not|dont|don't)(?![a-z0-9])/.test(s)) return 'ambas';
+  return usd ? 'USD' : 'ARS';
+}
 
 // Código de pedido de créditos: SR-1234 (también "sr 1234" o "SR1234").
 export function codigoEnTexto(txt) {

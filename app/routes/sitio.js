@@ -3,6 +3,7 @@
 //                         Con la home provisoria prendida (ajustes.prelanzamiento: true) no trae perfiles, historias ni lugares.
 //   GET  perfil/:slug   → un perfil publicado.
 //   POST reporte        → denuncia sobre un perfil (misma tabla que /api/denuncia).
+//   POST evento         → contador de tráfico (visitas, clics en WhatsApp/Telegram) sin datos personales.
 // El estado se arma una vez cada 30 s como máximo; invalidarSitio() fuerza recalcularlo (lo llaman cuenta y admin).
 import { paquete, enviar } from '../lib/compresion.js';
 import express from 'express';
@@ -13,6 +14,11 @@ import { sameOrigin } from '../lib/auth.js';
 import { mezclarPrecios, mezclarDestacado } from '../lib/planes.js';
 import { mapaConfig } from '../lib/mapa.js';
 import { prelanzamientoActivo } from '../lib/prelanzamiento.js';
+import { ORIGENES, TIPOS_EVENTO, esBot, registrarEvento } from '../lib/metricas.js';
+
+// Límite de eventos de tráfico por conexión (en memoria): alcanza de sobra para alguien que navega el sitio.
+const EVENTOS_POR_IP = 120;
+const EVENTOS_VENTANA = 10 * 60 * 1000;
 
 const TTL = 30 * 1000;
 let cache = null;
@@ -142,6 +148,7 @@ export async function estadoSitio(pool, planesInst) {
 
 export function createSitioRouter(ctx) {
   const { pool, rl, ipHash, validateDenuncia, notify, config, state } = ctx;
+  const rlEv = ctx.rlEventos || rl; // límite de los contadores de tráfico (aparte del general, ver server.js)
   const r = express.Router();
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
   r.use((req, res, next) => {
@@ -189,6 +196,43 @@ export function createSitioRouter(ctx) {
     rl.hit(key);
     res.status(201).json({ ok: true, id: rows[0].id });
     if (d.categoria !== 'otro' && notify) notify(`Reporte urgente sobre un perfil\nID: ${rows[0].id}\nRevisar en el panel de admin.`, 'denuncia');
+  }));
+
+  /* Métricas de tráfico sin datos personales (lib/metricas.js): { tipo: 'pagina' | 'vista' | 'whatsapp' | 'telegram',
+     perfil: slug, origen?: 'buscadores' | 'redes' | 'mensajeria' | 'otros' | 'directo' } (origen: categoría de llegada
+     de la pestaña, solo para Admin → Métricas; nunca la dirección de donde vino; sin origen = "sin dato").
+     Solo se suma 1 al contador del día; la IP se usa únicamente en memoria para el límite de envíos y
+     nunca se escribe. Navegadores automáticos: 204 sin contar. Home provisoria: no hay perfiles, nada que contar.
+     Las visitas repetidas en la misma pestaña las descarta el navegador (sessionStorage). */
+  r.post('/evento', express.json({ limit: '1kb' }), ah(async (req, res) => {
+    if (!sameOrigin(req) || req.headers['x-sr'] !== '1') return res.status(403).json({ ok: false, error: 'Origen no permitido.' });
+    const b = req.body;
+    if (!req.is('application/json') || !b || typeof b !== 'object' || Array.isArray(b)) return res.status(415).json({ ok: false, error: 'Enviá los datos en formato JSON.' });
+    const tipo = typeof b.tipo === 'string' ? b.tipo : '';
+    if (!TIPOS_EVENTO.includes(tipo)) return res.status(400).json({ ok: false, error: 'Evento inválido.' });
+    const slug = tipo === 'pagina' ? '' : (typeof b.perfil === 'string' ? b.perfil : '');
+    if (tipo !== 'pagina' && !/^[a-z0-9-]{1,60}$/.test(slug)) return res.status(400).json({ ok: false, error: 'Perfil inválido.' });
+    const origen = b.origen == null ? null : b.origen;
+    if (origen !== null && !ORIGENES.includes(origen)) return res.status(400).json({ ok: false, error: 'Origen inválido.' });
+    if (esBot(req.headers['user-agent'])) return res.status(204).end();
+    const ip = ipHash(req);
+    const key = 'ev:' + ip;
+    if (!rlEv.allowed(key, EVENTOS_POR_IP, EVENTOS_VENTANA)) return res.status(429).json({ ok: false, error: 'Demasiados eventos.' });
+    rlEv.hit(key);
+    const e = await estadoSitio(pool, ctx.planes);
+    if (e.ajustes && e.ajustes.prelanzamiento) return res.status(204).end();
+    let cuentaId = null;
+    if (slug) {
+      const p = e.perfiles.find((x) => x.slug === slug);
+      if (!p) return res.status(404).json({ ok: false, error: 'Perfil no encontrado.' });
+      cuentaId = p.cuentaId;
+      // La misma conexión repitiendo el mismo evento sobre el mismo perfil: desde el 4.º en la hora no se cuenta.
+      const k2 = `ev:${tipo}:${cuentaId}:${ip}`;
+      if (!rlEv.allowed(k2, 3, 60 * 60 * 1000)) return res.status(204).end();
+      rlEv.hit(k2);
+    }
+    await registrarEvento(pool, tipo, cuentaId, origen);
+    res.status(204).end();
   }));
 
   return r;

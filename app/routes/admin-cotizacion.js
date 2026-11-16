@@ -1,4 +1,4 @@
-// Admin → Ajustes → Cotización (dólar blue automático o valor manual). Se monta ANTES de admin-fase1 bajo `${A}/api`:
+// Admin → Precios → Cotización (dólar blue automático o valor manual). Se monta ANTES de admin-fase1 bajo `${A}/api`:
 //   PUT  /ajustes/cotizacion       {valor: {modo:'auto'|'manual', valor:'venta'|'compra', arsPorUsd, nota}}
 //                                   (formato viejo {arsPorUsd, nota} sin modo = manual). Pasar a 'auto' actualiza al toque.
 //   POST /cotizacion/actualizar    consulta DolarApi/Bluelytics ahora (máximo una vez cada 5 minutos).

@@ -1,7 +1,7 @@
 // Admin → Asistente (asistente de cuenta por WhatsApp). Se monta bajo `${A}/api` (Basic Auth del admin; lo que
 // modifica, con apiPost: JSON + X-SR-Admin: 1 + mismo origen).
 //   GET  /asistente                                     → ajustes, estado de WhatsApp (QR en SVG si espera escaneo), IA
-//   PUT  /asistente/ajustes            {activo, alias, titular}
+//   PUT  /asistente/ajustes            {activo, alias, titular, aliasUsd?, titularUsd?} (sin los de dólares, quedan los guardados)
 //   POST /asistente/desvincular                         → el agente cierra la sesión de WhatsApp (pide QR nuevo)
 //   GET  /asistente/conversaciones?estado=bot|humano&q= → lista (teléfono enmascarado, cuenta, último mensaje, estado)
 //   GET  /asistente/conversaciones/:id                  → chat completo + pedidos nombrados
@@ -53,7 +53,10 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
   r.get('/asistente', ah(async (req, res) => res.json(await estado())));
 
   r.put('/asistente/ajustes', apiPost, ah(async (req, res) => {
-    const v = validarAjustes(body(req));
+    // Quien manda solo {activo, alias, titular} (como antes de la cuenta en dólares) no borra la cuenta en dólares.
+    const b = body(req);
+    const actual = (b.aliasUsd === undefined || b.titularUsd === undefined) ? await leerAjustes(pool) : null;
+    const v = validarAjustes(actual ? { ...b, aliasUsd: b.aliasUsd ?? actual.aliasUsd, titularUsd: b.titularUsd ?? actual.titularUsd } : b);
     if (v.error) throw he(400, v.error);
     await pool.query(
       `INSERT INTO ajustes (clave, valor, actualizado) VALUES ('asistente', $1::jsonb, now())
@@ -105,13 +108,13 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
     if (!rows[0]) throw he(404, 'Conversación no encontrada.');
     const [m, p] = await Promise.all([
       pool.query('SELECT id, dir, origen, tipo, texto, media_ruta, creado FROM asistente_mensajes WHERE conversacion_id = $1 ORDER BY id DESC LIMIT 300', [id]),
-      pool.query(`SELECT pc.id, pc.codigo, pc.pack_nombre, pc.estado, pc.creado, pc.comprobante_ruta IS NOT NULL AS comprobante
+      pool.query(`SELECT pc.id, pc.codigo, pc.pack_nombre, pc.estado, pc.creado, pc.comprobante_ruta IS NOT NULL AS comprobante, pc.moneda_asistente
                   FROM asistente_conv_pedidos cp JOIN pedidos_creditos pc ON pc.id = cp.pedido_id WHERE cp.conversacion_id = $1 ORDER BY pc.creado DESC`, [id]),
     ]);
     res.json({
       conversacion: conversacionJson(rows[0]),
       mensajes: m.rows.reverse().map((x) => ({ id: String(x.id), dir: x.dir, origen: x.origen, tipo: x.tipo, texto: x.texto, archivo: Boolean(x.media_ruta), creado: x.creado })),
-      pedidos: p.rows.map((x) => ({ id: x.id, codigo: x.codigo, pack: x.pack_nombre, estado: x.estado, creado: x.creado, comprobante: x.comprobante })),
+      pedidos: p.rows.map((x) => ({ id: x.id, codigo: x.codigo, pack: x.pack_nombre, estado: x.estado, creado: x.creado, comprobante: x.comprobante, moneda: x.moneda_asistente || null })),
     });
   }));
 

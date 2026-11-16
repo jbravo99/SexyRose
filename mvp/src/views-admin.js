@@ -208,11 +208,17 @@
   // Otros módulos (ops.js) suman pestañas, vistas y contadores
   HH.adminTabs = TABS; HH.adminViews = HH.adminViews || {}; HH.adminCounts = HH.adminCounts || {};
   HH.adminLayout = (me, tab, inner) => layout(me, tab, inner);
+  // HH.adminMenu (opcional; lo define el admin de producción): [{ grupo: 'Cobros', tabs: [{ id, label, icon, go? }] }].
+  // Con menú, la barra lateral muestra los títulos de cada grupo y los chips del celular siguen el mismo orden.
+  // Sin menú (la demo), las pestañas de TABS como siempre.
   function layout(me, tab, inner) {
     const counts = { acompanantes: pendingVerif().length, ubicaciones: pendingLocs().length, reportes: openReports().length };
     Object.keys(HH.adminCounts).forEach(k => { counts[k] = HH.adminCounts[k](); });
-    const nav = TABS.map(t => `<a href="#admin.${t.id}" data-go="#admin.${t.id}"${t.id === tab ? ' class="active" aria-current="page"' : ''}>${icon(t.icon)}<span>${t.label}</span>${counts[t.id] ? `<span class="count">${counts[t.id]}</span>` : ''}</a>`).join('');
-    const chips = TABS.map(t => `<a href="#admin.${t.id}" class="chip${t.id === tab ? ' active' : ''}" data-go="#admin.${t.id}">${icon(t.icon)} ${t.label}${counts[t.id] ? ` <span class="badge" style="padding:0 6px">${counts[t.id]}</span>` : ''}</a>`).join('');
+    const menu = Array.isArray(HH.adminMenu) && HH.adminMenu.length ? HH.adminMenu : [{ grupo: '', tabs: TABS }];
+    const go = (t) => t.go || `#admin.${t.id}`;
+    const link = (t) => `<a href="${go(t)}" data-go="${go(t)}"${t.id === tab ? ' class="active" aria-current="page"' : ''}>${icon(t.icon)}<span>${t.label}</span>${counts[t.id] ? `<span class="count">${counts[t.id]}</span>` : ''}</a>`;
+    const nav = menu.map(g => (g.grupo ? `<div class="dash-nav-h">${g.grupo}</div>` : '') + g.tabs.map(link).join('')).join('');
+    const chips = menu.flatMap(g => g.tabs).map(t => `<a href="${go(t)}" class="chip${t.id === tab ? ' active' : ''}" data-go="${go(t)}">${icon(t.icon)} ${t.label}${counts[t.id] ? ` <span class="badge" style="padding:0 6px">${counts[t.id]}</span>` : ''}</a>`).join('');
     return `<div class="container" style="padding-block:18px 32px">
       <div class="dash adm-dash">
         <aside class="dash-side">
