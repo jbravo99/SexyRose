@@ -7,15 +7,16 @@ Un solo servidor (VPS FlokiNET, Países Bajos, Ubuntu 24.04/26.04) con Docker Co
 | `app`         | Node 22: páginas, API, admin y demo (`app/`)       | ninguno publicado (red interna) |
 | `db`          | Postgres 16, volumen `pgdata`                      | ninguno (red sin salida a internet) |
 | `cloudflared` | Cloudflare Tunnel: la única entrada del público    | ninguno (conexión saliente a Cloudflare) |
+| `agente`      | Asistente de cuenta por WhatsApp (`app/agente.js`, misma imagen que el app) | ninguno (solo conexiones salientes: WhatsApp, Claude, Telegram) |
 
 El servidor expone solamente SSH. El tráfico web entra por Cloudflare y llega al app por el túnel en `http://app:3000`.
 
 ### Archivos
 
-- `app/Dockerfile` — imagen única. Contexto de build = raíz del repo (`docker build -f app/Dockerfile .`). Etapa 1 genera la demo desde `mvp/` con `app/scripts/build-demo.*` (se cambia en un solo lugar: `ARG DEMO_BUILD_SCRIPT` al principio del Dockerfile); etapa 2 es el runtime, usuario `node`, healthcheck a `/healthz`.
+- `app/Dockerfile` — imagen única. Contexto de build = raíz del repo (`docker build -f app/Dockerfile .`). Etapa 1 genera la demo desde `mvp/` con `app/scripts/build-demo.*` (se cambia en un solo lugar: `ARG DEMO_BUILD_SCRIPT` al principio del Dockerfile); etapa 2 instala las dependencias de Node (con git, solo para la librería de WhatsApp; no queda en la imagen); etapa 3 es el runtime, usuario `node`, healthcheck a `/healthz`. El contenedor `agente` usa la misma imagen con `node agente.js`.
 - `.dockerignore` — en la raíz (es la del contexto de build).
 - `.env.example` — todas las variables, comentadas. El `.env` real nunca va al repo.
-- `infra/server/separar-env.sh` — reparte `.env` en un archivo por contenedor (`.env.app`, `.env.db`, `.env.tunnel`): Postgres y cloudflared reciben solo lo suyo. Lo corren solos `gen-env.sh` y `deploy.sh`; `.env` sigue siendo el único que se edita.
+- `infra/server/separar-env.sh` — reparte `.env` en un archivo por contenedor (`.env.app`, `.env.db`, `.env.tunnel`, `.env.agente`): Postgres, cloudflared y el agente reciben solo lo suyo. Lo corren solos `gen-env.sh` y `deploy.sh`; `.env` sigue siendo el único que se edita.
 - `infra/docker-compose.yml` — producción. `infra/docker-compose.dev.yml` — override para la Mac.
 - `infra/gen-env.sh` — crea `.env` con claves aleatorias (incluida la dirección secreta del admin, `ADMIN_PATH`).
 - `infra/server/setup.sh` — prepara y endurece el VPS. `infra/server/deploy.sh` — despliega/actualiza. `infra/server/install-timers.sh` — instala los timers de copias y monitoreo.
@@ -128,11 +129,11 @@ nano .env
 ```
 
 - `TUNNEL_TOKEN=` pegar el token del paso anterior.
-- Opcionales: `OPERATOR_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AGE_RECIPIENT` (ver Copias y Monitoreo).
+- Opcionales: `OPERATOR_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AGE_RECIPIENT` (ver Copias y Monitoreo), `ANTHROPIC_API_KEY` y `ANTHROPIC_MODEL` (ver Asistente de cuenta por WhatsApp).
 - Guardá la clave del admin en tu gestor: `grep ^ADMIN_PASSWORD= .env`
 - Guardá también la dirección del admin: `bash infra/server/admin-path.sh` (ver "Panel de admin").
 
-`gen-env.sh` no muestra las claves (salvo con `--show`), deja el archivo con permisos 600 y se niega a pisar un `.env` existente. Además arma `.env.app`, `.env.db` y `.env.tunnel` (uno por contenedor). Esos tres no se editan: `deploy.sh` los vuelve a armar desde `.env` en cada deploy.
+`gen-env.sh` no muestra las claves (salvo con `--show`), deja el archivo con permisos 600 y se niega a pisar un `.env` existente. Además arma `.env.app`, `.env.db`, `.env.tunnel` y `.env.agente` (uno por contenedor). Esos archivos no se editan: `deploy.sh` los vuelve a armar desde `.env` en cada deploy.
 
 #### 5. Desplegar
 
@@ -255,6 +256,41 @@ ls /var/log/unattended-upgrades/                                   # actualizaci
 ```
 
 Los logs de los contenedores rotan solos (10 MB x 3 por contenedor) y el journal tiene tope de 500 MB.
+
+### Asistente de cuenta por WhatsApp
+
+Contenedor `agente` (`node agente.js`, misma imagen que el app). Atiende por WhatsApp a las acompañantes: datos para
+pagar un pedido de créditos, comprobantes (te llegan por Telegram con los botones **Acreditar** / **Rechazar**),
+estado de la cuenta y preguntas de ayuda (con Claude). Nunca acredita créditos solo: eso lo hacés vos desde Telegram o
+el admin. Si el agente se cae, el sitio sigue igual. Detalle: `FASE1-CONTRATO.md` → "Asistente de cuenta por WhatsApp".
+
+**Cómo prenderlo**
+
+1. Chip prepago dedicado con WhatsApp instalado en un teléfono (el número del asistente).
+2. En `.env` del servidor agregá la clave de la API de Claude (console.anthropic.com → API Keys):
+   `ANTHROPIC_API_KEY=...` y, si querés otro modelo, `ANTHROPIC_MODEL=...` (vacío = `claude-haiku-5-5`).
+   Tienen que estar también `SECRETS_KEY` (cifra la sesión de WhatsApp) y `TELEGRAM_BOT_TOKEN` (avisos y botones).
+   Sin `ANTHROPIC_API_KEY` funciona igual lo automático (pedidos, comprobantes, avisos) y lo demás se responde con
+   "Te va a responder una persona del equipo" + aviso por Telegram.
+3. Desplegá: `bash ~/SexyRose/infra/server/deploy.sh` (arma `.env.agente` y levanta el contenedor `agente`).
+4. Admin → **Asistente**: cargá el alias y el nombre del titular de la cuenta donde se transfiere, prendé el
+   asistente y escaneá el QR con el teléfono del chip (WhatsApp → Dispositivos vinculados → Vincular un dispositivo).
+5. Admin → Ajustes → Contacto: el WhatsApp tiene que ser el número del chip (es el que abre el panel al pedir créditos).
+6. Telegram tiene que estar vinculado (Admin → Ajustes → Avisos por Telegram) para recibir los comprobantes con botones.
+
+**A tener en cuenta**
+
+- Abrí WhatsApp en el teléfono del chip al menos cada 14 días: si el teléfono principal no se conecta, WhatsApp
+  desvincula los dispositivos vinculados y hay que volver a escanear el QR (Admin → Asistente lo muestra solo).
+- Es una conexión no oficial (WhatsApp Web, librería Baileys): WhatsApp puede bloquear el número. Por eso el bot
+  nunca empieza conversaciones y responde con pausas como una persona.
+- Si escribís vos desde el teléfono en un chat, el bot se calla 12 horas en ese chat. "Pasar a humano" en el admin lo
+  calla hasta que toques "Devolver al asistente".
+- Costos: el chip prepago y la API de Claude. Con Claude Haiku 5.5 (USD 0,10 por millón de tokens de entrada y
+  USD 0,50 por millón de salida, página de precios de Anthropic al 15/11/2026), cada pregunta libre usa unos 3.000 a
+  9.000 tokens de entrada (instrucciones + historial + herramientas): alrededor de USD 0,001 por pregunta, unos
+  USD 1 cada 1.000 preguntas. Los códigos de pedido y los comprobantes no usan la API.
+- Logs: `docker compose -f infra/docker-compose.yml logs --tail 50 agente` (sin teléfonos, emails ni textos).
 
 ### A tener en cuenta
 

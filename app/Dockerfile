@@ -96,7 +96,20 @@ RUN REQUIRE_MAPA=1 python3 app/scripts/build-sitio.py \
        app/sitio-spa/assets/mapa.*.js app/sitio-spa/assets/mapa.*.css app/sitio-spa/assets/mapa-worker.*.js \
     && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
-# ---------- Etapa 2: runtime ----------
+# ---------- Etapa 2: dependencias de Node (en la plataforma de destino: sharp trae binarios nativos) ----------
+# git solo hace falta acá: Baileys (asistente de WhatsApp) depende de libsignal publicado en GitHub (versión fijada
+# por commit en package-lock.json). No queda en la imagen final.
+FROM node:22-bookworm-slim AS deps
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY app/package.json app/package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev --no-audit --no-fund; else npm install --omit=dev --no-audit --no-fund; fi \
+ && npm cache clean --force
+
+# ---------- Etapa 3: runtime ----------
 FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
@@ -112,10 +125,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends fonts-dejavu-core ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
-# Dependencias primero (cache). Si no hay package-lock.json se usa npm install.
-COPY app/package.json app/package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
- && npm cache clean --force
+# Dependencias (etapa deps).
+COPY --from=deps /app/node_modules ./node_modules
 
 COPY app/ ./
 COPY --from=demo /out/ ./public/demo/
@@ -136,4 +147,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
+# El mismo contenedor corre el asistente de WhatsApp con `node agente.js` (servicio "agente" en
+# infra/docker-compose.yml, con su propio healthcheck).
 CMD ["node", "server.js"]

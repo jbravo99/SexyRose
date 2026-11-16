@@ -9,7 +9,7 @@
 # Genera: POSTGRES_PASSWORD, IP_HASH_SALT, ADMIN_PASSWORD, ADMIN_PATH (dirección secreta del admin)
 # y arma DATABASE_URL coherente. La dirección completa del admin: bash infra/server/admin-path.sh
 # TUNNEL_TOKEN queda vacío: lo pega el dueño a mano.
-# Nunca pisa un .env existente. Después arma .env.app / .env.db / .env.tunnel (infra/server/separar-env.sh).
+# Nunca pisa un .env existente. Después arma .env.app / .env.db / .env.tunnel / .env.agente (infra/server/separar-env.sh).
 # Si editás .env a mano, deploy.sh vuelve a separarlo solo (o: bash infra/server/separar-env.sh).
 set -euo pipefail
 

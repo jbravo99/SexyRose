@@ -1065,10 +1065,11 @@
       const a = S.aj; const pr = a.precios || { mes: {}, semana: {} };
       const upd = (k) => (a.actualizado && a.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado[k])}</span>` : '');
       const sa = pr.semanaAuto || { activo: false, recargo: 20 };
-      const pin = (per, k, dis) => `<input class="input pa-num" type="number" min="0" max="100000" step="${per === 'semana' ? 'any' : '1'}" id="pr_${per}_${k}" value="${esc(per === 'mes' && k === 'E' ? 0 : (pr[per] && pr[per][k] != null ? pr[per][k] : ''))}"${dis || (per === 'semana' && sa.activo) ? ' disabled' : ''} data-input="prodPrecioHint" aria-label="${PLAN_NOMBRE[k]} por ${per}">`;
+      const pin = (per, k, dis) => `<input class="input pa-num" type="number" min="0" max="100000" step="1" id="pr_${per}_${k}" value="${esc(per === 'mes' && k === 'E' ? 0 : (pr[per] && pr[per][k] != null ? pr[per][k] : ''))}"${dis || (per === 'semana' && sa.activo) ? ' disabled' : ''} data-input="prodPrecioHint" aria-label="${PLAN_NOMBRE[k]} por ${per}">`;
       const hint = (k) => { const m = Number((pr.mes || {})[k]) || 0; const s = Number((pr.semana || {})[k]) || 0; if (!m || !s) return ''; const base = m / 4; const rec = Math.round((s / base - 1) * 100); return `cuarta parte ${money(Math.round(base * 100) / 100)} · recargo ${rec}% · 4 semanas = ${money(s * 4)}`; };
       const ds = a.destacado || {};
-      const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="0.5" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'dia' ? '1 día' : '7 días'}">`;
+      const dsa = ds.semanaAuto || { activo: false, recargo: 20 };
+      const dpin = (k, per) => `<input class="input pa-num" type="number" min="0.5" max="10000" step="${per === 'semana' ? '1' : 'any'}" id="ds_${k}_${per}" value="${esc(ds[k] && ds[k][per] != null ? ds[k][per] : '')}"${per === 'semana' && dsa.activo ? ' disabled' : ''} data-input="prodDestAuto" aria-label="Destacado ${PLAN_NOMBRE[k]} por ${per === 'mes' ? 'mes' : 'semana'}">`;
       const ct = a.contacto || {}; const co = a.cotizacion || {}; const cm = a.comision || {}; const ms = a.mensajes || { whatsapp: {} };
       const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
       // Home provisoria (app/lib/prelanzamiento.js): sin guardar, prendida
@@ -1098,8 +1099,12 @@
         <section class="card stack" style="gap:12px">
           <div class="row between"><div class="card-title">${icon('trending')} Precios del Destacado (créditos)</div>${upd('destacado')}</div>
           <p class="small muted">Solo Bronce, Plata y Oro (Star ya tiene lugar fijo). El cupo es el 20 % de las publicadas del plan en la provincia, mínimo 1.</p>
-          <div class="table-wrap"><table class="table pa-prices"><thead><tr><th>Plan</th><th>1 día</th><th>7 días</th></tr></thead><tbody>
-            ${PLANES_DEST.map((k) => `<tr><td>${planBadge(k)}</td><td>${dpin(k, 'dia')}</td><td>${dpin(k, 'semana')}</td></tr>`).join('')}
+          <div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">
+            <label class="row" style="gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="ds_auto"${dsa.activo ? ' checked' : ''} data-change="prodDestAuto"> <span class="small">Calcular la semana sola: cuarta parte del mes +</span></label>
+            <span class="row" style="gap:6px;align-items:center"><input class="input pa-num" type="number" min="0" max="200" step="1" id="ds_recargo" value="${esc(dsa.recargo != null ? dsa.recargo : 20)}" data-input="prodDestAuto" aria-label="Recargo de la semana del Destacado (%)" style="width:80px"${dsa.activo ? '' : ' disabled'}><span class="small">%</span></span>
+          </div>
+          <div class="table-wrap"><table class="table pa-prices"><thead><tr><th>Plan</th><th>Por mes (30 días)</th><th>Por semana (7 días)</th></tr></thead><tbody>
+            ${PLANES_DEST.map((k) => `<tr><td>${planBadge(k)}</td><td>${dpin(k, 'mes')}</td><td>${dpin(k, 'semana')}</td></tr>`).join('')}
           </tbody></table></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="destacado">${icon('check')} Guardar precios del Destacado</button></div>
         </section>
@@ -1108,7 +1113,7 @@
           <div class="row between"><div class="card-title">${icon('whatsapp')} Contacto para comprar créditos</div>${upd('contacto')}</div>
           <p class="small muted">Las acompañantes te escriben a este WhatsApp con el código del pedido. Telegram es opcional.</p>
           ${!ct.whatsapp ? `<div class="notice warn">${icon('alert')}<span>Sin número de WhatsApp: el botón de pedir créditos no abre ningún chat.</span></div>` : ''}
-          <div class="grid-2"><div class="field"><label for="ajWa">WhatsApp del sitio (con código de país)</label><input class="input" id="ajWa" inputmode="tel" maxlength="20" value="${esc(ct.whatsapp || '')}" placeholder="5491122334455"></div>
+          <div class="grid-2" style="align-items:start"><div class="field"><label for="ajWa">WhatsApp del sitio (con código de país)</label><input class="input" id="ajWa" inputmode="tel" maxlength="20" value="${esc(ct.whatsapp || '')}" placeholder="5491122334455"><span class="hint">Tiene que ser el número del chip del asistente de cuenta (Admin → Asistente).</span></div>
           <div class="field"><label for="ajTg">Usuario de Telegram</label><input class="input" id="ajTg" maxlength="40" value="${esc(ct.telegram || '')}" placeholder="sexyrose_soporte"></div></div>
           <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="ajTgOn"${ct.telegramActivo ? ' checked' : ''}> Mostrar también Telegram</label>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar contacto</button>${HH.adminInt ? HH.adminInt.botonProbarWa() : ''}</div>
@@ -1383,7 +1388,19 @@
           .catch((e) => HH.modal({ title: 'No se puede borrar', body: `<div class="notice warn">${icon('alert')}<span>${esc(e.message)}</span></div>`, actions: [{ label: 'Entendido', action: 'closeModal' }] }));
       } });
     },
-    // Semana calculada sola: mismo cálculo que semanaDeMes en lib/planes.js (mes / 4 × (1 + recargo %), 2 decimales)
+    // Destacado: semana calculada sola con el mismo cálculo (mes / 4 × (1 + recargo %), entera)
+    prodDestAuto() {
+      const auto = !!(document.getElementById('ds_auto') || {}).checked;
+      const rIn = document.getElementById('ds_recargo'); if (rIn) rIn.disabled = !auto;
+      const rec = Number(rIn && rIn.value);
+      for (const k of PLANES_DEST) {
+        const w = document.getElementById('ds_' + k + '_semana'); if (!w) continue;
+        w.disabled = auto;
+        const mes = Number((document.getElementById('ds_' + k + '_mes') || {}).value);
+        if (auto && mes > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mes / 4) * (1 + rec / 100)));
+      }
+    },
+    // Semana calculada sola: mismo cálculo que semanaDeMes en lib/planes.js (mes / 4 × (1 + recargo %), redondeada a entero)
     prodPrecioAuto() {
       const auto = !!(document.getElementById('pr_auto') || {}).checked;
       const rIn = document.getElementById('pr_recargo'); if (rIn) rIn.disabled = !auto;
@@ -1392,13 +1409,13 @@
         const w = document.getElementById('pr_semana_' + k); if (!w) continue;
         w.disabled = auto;
         const mes = Number((document.getElementById('pr_mes_' + k) || {}).value);
-        if (auto && mes > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mes / 4) * (1 + rec / 100) * 100) / 100);
+        if (auto && mes > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mes / 4) * (1 + rec / 100)));
         HH.actions.prodPrecioHint(w);
       }
     },
     prodPrecioHint(el) {
       const m = /^pr_(mes|semana)_([A-Z])$/.exec(el.id || ''); if (!m) return; const k = m[2]; if (!PLANES_SEMANA.includes(k)) return;
-      if (m[1] === 'mes' && (document.getElementById('pr_auto') || {}).checked) { const w = document.getElementById('pr_semana_' + k); const rec = Number((document.getElementById('pr_recargo') || {}).value); const mesV = Number(el.value); if (w && mesV > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mesV / 4) * (1 + rec / 100) * 100) / 100); }
+      if (m[1] === 'mes' && (document.getElementById('pr_auto') || {}).checked) { const w = document.getElementById('pr_semana_' + k); const rec = Number((document.getElementById('pr_recargo') || {}).value); const mesV = Number(el.value); if (w && mesV > 0 && Number.isFinite(rec) && rec >= 0) w.value = String(Math.round((mesV / 4) * (1 + rec / 100))); }
       const mes = Number((document.getElementById('pr_mes_' + k) || {}).value) || 0; const sem = Number((document.getElementById('pr_semana_' + k) || {}).value) || 0;
       const h = document.getElementById('prh_' + k); if (!h) return;
       if (!mes || !sem) { h.textContent = ''; return; }
@@ -1445,6 +1462,9 @@
         valor.semanaAuto = { activo: !!(document.getElementById('pr_auto') || {}).checked, recargo: num('pr_recargo') };
         if (valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0 && valor.semanaAuto.recargo <= 200)) { warn('El recargo de la semana tiene que estar entre 0 y 200 %.'); return; }
         if (!valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0)) valor.semanaAuto.recargo = 20;
+        // Semanas sin decimales (Juan, 15/11/2026)
+        const decS = !valor.semanaAuto.activo && PLANES_SEMANA.find((p) => !Number.isInteger(valor.semana[p]));
+        if (decS) { warn(`La semana de ${PLAN_NOMBRE[decS]} tiene que ser un número entero, sin decimales.`); return; }
       } else if (k === 'packs') {
         const list = pkEdit();
         for (const [i, p] of list.entries()) {
@@ -1456,9 +1476,14 @@
       } else if (k === 'destacado') {
         valor = {};
         for (const p of PLANES_DEST) {
-          valor[p] = { dia: num(`ds_${p}_dia`), semana: num(`ds_${p}_semana`) };
-          if (!(valor[p].dia > 0) || !(valor[p].semana > 0)) { warn(`Revisá el Destacado de ${PLAN_NOMBRE[p]}: los precios tienen que ser mayores a 0.`); return; }
+          valor[p] = { mes: num(`ds_${p}_mes`), semana: num(`ds_${p}_semana`) };
+          if (!(valor[p].mes > 0) || !(valor[p].semana > 0)) { warn(`Revisá el Destacado de ${PLAN_NOMBRE[p]}: los precios tienen que ser mayores a 0.`); return; }
         }
+        valor.semanaAuto = { activo: !!(document.getElementById('ds_auto') || {}).checked, recargo: num('ds_recargo') };
+        if (valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0 && valor.semanaAuto.recargo <= 200)) { warn('El recargo de la semana tiene que estar entre 0 y 200 %.'); return; }
+        if (!valor.semanaAuto.activo && !(valor.semanaAuto.recargo >= 0)) valor.semanaAuto.recargo = 20;
+        const decD = !valor.semanaAuto.activo && PLANES_DEST.find((p) => !Number.isInteger(valor[p].semana));
+        if (decD) { warn(`La semana del Destacado de ${PLAN_NOMBRE[decD]} tiene que ser un número entero, sin decimales.`); return; }
       } else if (k === 'contacto') {
         valor = { whatsapp: String(val('ajWa')).replace(/\D/g, ''), telegram: String(val('ajTg')).trim(), telegramActivo: document.getElementById('ajTgOn').checked };
       } else if (k === 'cotizacion') {

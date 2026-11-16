@@ -11,7 +11,7 @@ if ONLY:
 # sin datos de demo). Sin HH_TARGET, la salida (index.html y full.html) no cambia.
 TARGET = os.environ.get('HH_TARGET')
 if TARGET == 'admin':
-    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-admin.js', 'prod-admin-mod.js', 'prod-admin-seo.js', 'prod-admin-integraciones.js', 'boot.js']
+    JS_ORDER = [n for n in JS_ORDER if n != 'boot.js'] + ['prod-admin.js', 'prod-admin-mod.js', 'prod-admin-seo.js', 'prod-admin-integraciones.js', 'prod-admin-asistente.js', 'boot.js']
 elif TARGET == 'sitio':
     # HH_TARGET=sitio → build/sitio.html: el sitio público real (datos de /api/sitio/estado, panel de la acompañante
     # contra /api/cuenta), con direcciones reales (data-routing="path"). Lo sirve app/routes/spa-sitio.js.

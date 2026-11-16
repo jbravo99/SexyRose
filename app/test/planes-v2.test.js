@@ -193,7 +193,8 @@ describe('ajustes nuevos del admin', () => {
     assert.deepEqual(all.packs.map((p) => [p.id, p.pagaUsd, p.recibe, p.bonus]),
       [['inicial', 10, 10, 0], ['mes-plata', 35, 35, 0], ['trimestre-plata', 95, 105, 10], ['trimestre-oro', 240, 280, 40], ['trimestre-star', 980, 1150, 170]]);
     assert.equal(all.packs.find((p) => p.masElegido).id, 'trimestre-plata');
-    assert.deepEqual(all.destacado, { E: { dia: 1, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } });
+    // Sin guardar (o con la semilla vieja de 1/7 días): mes + semana automática
+    assert.deepEqual(all.destacado, { E: { mes: 17, semana: 5 }, D: { mes: 30, semana: 9 }, C: { mes: 67, semana: 20 }, semanaAuto: { activo: true, recargo: 20 } });
     assert.deepEqual(all.comision, { porcentaje: 10, costoMp: 7.61, saldoNegativoMax: 20 });
     assert.equal(all.contacto.whatsapp, '');
     assert.match(all.mensajes.whatsapp.pt, /\{codigo\}/);
@@ -227,9 +228,18 @@ describe('ajustes nuevos del admin', () => {
     assert.equal((await put('comision', { porcentaje: 5, costoMp: 7.61, saldoNegativoMax: 20 })).status, 400, 'Mercado Pago no puede superar el total');
     assert.equal((await put('comision', { porcentaje: 10, saldoNegativoMax: 20 })).status, 200);
     assert.equal((await put('mensajes', { whatsapp: { es: 'Hola sin código' } })).status, 400);
-    assert.equal((await put('destacado', { E: { dia: 0, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } })).status, 400);
-    assert.equal((await put('destacado', { S: { dia: 1, semana: 1 } })).status, 400);
-    assert.equal((await put('destacado', { E: { dia: 1, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } })).status, 200);
+    assert.equal((await put('destacado', { E: { mes: 0, semana: 5 }, D: { mes: 30, semana: 9 }, C: { mes: 67, semana: 20 } })).status, 400);
+    assert.equal((await put('destacado', { S: { mes: 1, semana: 1 } })).status, 400);
+    assert.equal((await put('destacado', { E: { mes: 17, semana: 5 }, D: { mes: 30, semana: 9 }, C: { mes: 67, semana: 20 }, semanaAuto: { activo: true, recargo: 500 } })).status, 400);
+    // A mano: quedan las semanas escritas
+    assert.equal((await put('destacado', { E: { mes: 20, semana: 6 }, D: { mes: 30, semana: 9 }, C: { mes: 67, semana: 20 }, semanaAuto: { activo: false, recargo: 20 } })).status, 200);
+    assert.deepEqual((await (await adm('/ajustes')).json()).destacado.E, { mes: 20, semana: 6 });
+    // Automática: la semana se calcula del mes
+    assert.equal((await put('destacado', { E: { mes: 20, semana: 1 }, D: { mes: 30, semana: 1 }, C: { mes: 67, semana: 1 }, semanaAuto: { activo: true, recargo: 20 } })).status, 200);
+    assert.deepEqual((await (await adm('/ajustes')).json()).destacado.E, { mes: 20, semana: 6 });
+    assert.equal((await (await adm('/ajustes')).json()).destacado.C.semana, 20, 'sin decimales');
+    assert.equal((await put('destacado', { E: { mes: 20, semana: 6.5 }, D: { mes: 30, semana: 9 }, C: { mes: 67, semana: 20 }, semanaAuto: { activo: false, recargo: 20 } })).status, 400, 'a mano: entera');
+    await db.query("DELETE FROM ajustes WHERE clave = 'destacado'");
     assert.equal((await put('transferencia', 'CBU 000')).status, 404);
     all = await (await adm('/ajustes')).json();
     assert.equal(all.cotizacion.arsPorUsd, 1450);
@@ -505,21 +515,22 @@ describe('Destacado', () => {
     let info = await (await cta(a.id, '/destacado')).json();
     assert.equal(info.disponible, true);
     assert.equal(info.plan, 'D');
-    assert.deepEqual(info.precio, { dia: { centavos: 200, creditos: '2.00' }, semana: { centavos: 900, creditos: '9.00' } });
+    assert.deepEqual(info.precio, { semana: { centavos: 900, creditos: '9.00' }, mes: { centavos: 3000, creditos: '30.00' } });
     assert.deepEqual(info.cupo, { cupo: 1, activos: 3, ocupadosAhora: 0, porcentaje: 20 });
     assert.equal((await ctaPost(a.id, '/destacado', { dias: 3 })).status, 400);
-    let r = await ctaPost(a.id, '/destacado', { dias: 1 });
+    assert.equal((await ctaPost(a.id, '/destacado', { dias: 1 })).status, 400, 'ya no hay Destacado por 1 día');
+    let r = await ctaPost(a.id, '/destacado', { dias: 7 });
     assert.equal(r.status, 201);
     let j = await r.json();
     assert.equal(j.destacado.estado, 'activo');
     assert.equal(j.destacado.plan, 'D');
-    assert.equal(j.saldo.creditos, '58.00');
+    assert.equal(j.saldo.creditos, '51.00');
     const dA = j.destacado;
     let e = await estadoSitio();
     assert.equal(e.perfiles.find((x) => x.cuentaId === a.id).destacado, true);
     assert.equal(e.perfiles.find((x) => x.cuentaId === b.id).destacado, false);
     // B: cupo lleno → 409 con la próxima fecha libre y sin cobrar
-    r = await ctaPost(b.id, '/destacado', { dias: 1 });
+    r = await ctaPost(b.id, '/destacado', { dias: 7 });
     assert.equal(r.status, 409);
     j = await r.json();
     assert.equal(j.codigo, 'cupo_lleno');
@@ -532,10 +543,10 @@ describe('Destacado', () => {
     const dB = (await r.json()).destacado;
     assert.equal(dB.estado, 'programado');
     assert.equal(await saldo(b.id), 1100);
-    assert.equal((await ctaPost(b.id, '/destacado', { dias: 1, desde: new Date(Date.now() - DAY).toISOString() })).status, 400);
-    assert.equal((await ctaPost(b.id, '/destacado', { dias: 1, desde: new Date(Date.now() + 90 * DAY).toISOString() })).status, 400);
-    // A quiere encadenar otro día: choca con la reserva de B
-    r = await ctaPost(a.id, '/destacado', { dias: 1 });
+    assert.equal((await ctaPost(b.id, '/destacado', { dias: 7, desde: new Date(Date.now() - DAY).toISOString() })).status, 400);
+    assert.equal((await ctaPost(b.id, '/destacado', { dias: 7, desde: new Date(Date.now() + 90 * DAY).toISOString() })).status, 400);
+    // A quiere encadenar otra semana: choca con la reserva de B
+    r = await ctaPost(a.id, '/destacado', { dias: 7 });
     assert.equal(r.status, 409);
     assert.ok(Math.abs(new Date((await r.json()).proximaFechaLibre) - new Date(dB.hasta)) < 1000);
     info = await (await cta(b.id, '/destacado')).json();
@@ -545,20 +556,26 @@ describe('Destacado', () => {
     const s = await publicada(prov);
     await conPlan(s.id, 'S');
     await cargar(s.id, 10);
-    r = await ctaPost(s.id, '/destacado', { dias: 1 });
+    r = await ctaPost(s.id, '/destacado', { dias: 7 });
     assert.equal(r.status, 409);
     assert.match((await r.json()).error, /Star/);
     assert.equal((await (await cta(s.id, '/destacado')).json()).disponible, false);
     const borr = await nuevaCuenta({ provincia: prov });
     await cargar(borr.id, 10);
-    assert.equal((await ctaPost(borr.id, '/destacado', { dias: 1 })).status, 409);
-    // Bronce en otra provincia: 1 crédito por día
+    assert.equal((await ctaPost(borr.id, '/destacado', { dias: 7 })).status, 409);
+    // Bronce en otra provincia: semana 5 (cuarta parte de 17 + 20 % = 5,1, sin decimales) y mes 17
     const br = await publicada('zzv-dest-bronce-' + crypto.randomBytes(2).toString('hex'));
-    await cargar(br.id, 1);
-    r = await ctaPost(br.id, '/destacado', { dias: 1 });
+    await cargar(br.id, 25);
+    r = await ctaPost(br.id, '/destacado', { dias: 30 });
     assert.equal(r.status, 201);
-    assert.equal((await r.json()).saldo.centavos, 0);
-    assert.equal((await ctaPost(br.id, '/destacado', { dias: 1 })).status, 402);
+    j = await r.json();
+    assert.equal(j.saldo.creditos, '8.00');
+    assert.equal(j.destacado.dias, 30);
+    assert.equal(new Date(j.destacado.hasta) - new Date(j.destacado.desde), 30 * DAY);
+    r = await ctaPost(br.id, '/destacado', { dias: 7 }); // se encadena al mes
+    assert.equal(r.status, 201);
+    assert.equal((await r.json()).saldo.creditos, '3.00');
+    assert.equal((await ctaPost(br.id, '/destacado', { dias: 7 })).status, 402);
     // admin
     const ad = await (await adm('/destacados')).json();
     assert.ok(ad.items.some((x) => x.id === dB.id && x.cuenta.email === b.email));
@@ -580,7 +597,7 @@ describe('Destacado', () => {
     await conPlan(a.id, 'D', { dias: 20, origen: 'creditos', renov: true });
     await cargar(a.id, 100);
     const { destacado } = await (await ctaPost(a.id, '/destacado', { dias: 7 })).json();
-    const reserva = (await (await ctaPost(a.id, '/destacado', { dias: 1 })).json()).destacado; // encadenado
+    const reserva = (await (await ctaPost(a.id, '/destacado', { dias: 30 })).json()).destacado; // encadenado
     assert.equal(new Date(reserva.desde).getTime(), new Date(destacado.hasta).getTime());
     assert.equal(reserva.estado, 'programado');
     const antes = await saldo(a.id);
@@ -588,7 +605,7 @@ describe('Destacado', () => {
     assert.equal(r.status, 201);
     const j = await r.json();
     assert.equal(j.tipo, 'subida');
-    assert.ok(j.devueltoDestacado.centavos >= 200 + 890 && j.devueltoDestacado.centavos <= 1100);
+    assert.ok(j.devueltoDestacado.centavos >= 3000 + 890 && j.devueltoDestacado.centavos <= 3900);
     assert.equal(await saldo(a.id), antes - j.costo.centavos + j.devueltoDestacado.centavos);
     const est = (await db.query('SELECT estado FROM destacados WHERE cuenta_id = $1', [a.id])).rows.map((x) => x.estado);
     assert.deepEqual(est, ['cancelado', 'cancelado']);
@@ -597,7 +614,7 @@ describe('Destacado', () => {
     const b = await publicada(prov);
     await conPlan(b.id, 'D', { dias: 20 });
     await cargar(b.id, 10);
-    const res = (await (await ctaPost(b.id, '/destacado', { dias: 1, desde: new Date(Date.now() + 3600000).toISOString() })).json()).destacado;
+    const res = (await (await ctaPost(b.id, '/destacado', { dias: 7, desde: new Date(Date.now() + 3600000).toISOString() })).json()).destacado;
     assert.equal(res.estado, 'programado');
     await db.query("UPDATE destacados SET desde = desde - interval '2 hours', hasta = hasta - interval '2 hours' WHERE id = $1", [res.id]);
     const t = await createPlanes({ pool: db }).ejecutarVencimientos();

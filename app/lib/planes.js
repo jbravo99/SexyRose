@@ -28,11 +28,17 @@ export const PRECIOS_DEFAULT = Object.freeze({
   mes: Object.freeze({ E: 0, D: 35, C: 90, S: 350 }),
   semana: Object.freeze({ C: 27, S: 105 }),
 });
+// Destacado por semana (7 días) o por mes (30 días) (Juan, 13/11/2026; antes 1 o 7 días). Juan carga el mes y la
+// semana se calcula sola como en los planes (cuarta parte del mes + 20 %), salvo que la escriba a mano.
 export const DESTACADO_DEFAULT = Object.freeze({
-  E: Object.freeze({ dia: 1, semana: 5 }),
-  D: Object.freeze({ dia: 2, semana: 9 }),
-  C: Object.freeze({ dia: 4, semana: 20 }),
+  E: Object.freeze({ mes: 17, semana: 5 }),
+  D: Object.freeze({ mes: 30, semana: 9 }),
+  C: Object.freeze({ mes: 67, semana: 20 }),
 });
+export const DESTACADO_DIAS = Object.freeze({ 7: 'semana', 30: 'mes' });
+// Lo que traía la semilla antes del cambio (060-creditos.sql): si el ajuste guardado es exactamente eso, Juan nunca
+// tocó el Destacado y vale lo nuevo (mes + semana automática)
+const DESTACADO_SEMILLA_VIEJA = { E: { dia: 1, semana: 5 }, D: { dia: 2, semana: 9 }, C: { dia: 4, semana: 20 } };
 export const CUPO_STAR = 10;
 export const CUPO_DESTACADO_PCT = 20;
 export const DIAS_PERIODO = { mes: 30, semana: 7 };
@@ -60,11 +66,12 @@ export function nuevaReferencia() {
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 const esObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
-// Semana calculada sola (Juan, 13/11/2026): semana = mes / 4 × (1 + recargo %), con 2 decimales. Se prende desde
+// Semana calculada sola (Juan, 13/11/2026): semana = mes / 4 × (1 + recargo %), redondeada a un número entero (Juan,
+// 15/11/2026: las semanas sin decimales; a mano también tienen que ser enteras). Se prende desde
 // Admin → Ajustes. Sin precios guardados, prendida con 20 % (da los mismos valores de PRECIOS_DEFAULT); con precios
 // guardados de antes (sin semanaAuto), apagada: quedan las semanas que Juan escribió a mano.
 export const SEMANA_AUTO_DEFAULT = Object.freeze({ activo: true, recargo: 20 });
-export const semanaDeMes = (mes, recargo) => Math.round((Number(mes) / 4) * (1 + Number(recargo) / 100) * 100) / 100;
+export const semanaDeMes = (mes, recargo) => Math.round((Number(mes) / 4) * (1 + Number(recargo) / 100));
 function aplicarSemanaAuto(out) {
   if (!out.semanaAuto.activo) return out;
   for (const k of PLANES_SEMANA) out.semana[k] = semanaDeMes(out.mes[k], out.semanaAuto.recargo);
@@ -86,7 +93,7 @@ export function mezclarPrecios(valor) {
       if (!esObj(src)) continue;
       for (const k of Object.keys(out[p])) {
         const n = Number(src[k]);
-        if (src[k] !== undefined && src[k] !== null && Number.isFinite(n) && n >= 0) out[p][k] = Math.round(n * 100) / 100;
+        if (src[k] !== undefined && src[k] !== null && Number.isFinite(n) && n >= 0) out[p][k] = p === 'semana' ? Math.round(n) : Math.round(n * 100) / 100;
       }
     }
   }
@@ -116,6 +123,7 @@ export function validarPrecios(v) {
       if (src[k] === undefined || src[k] === null || src[k] === '' || !Number.isFinite(n) || n < 0 || n > 100000) {
         return { error: `Precio inválido: ${PLAN_NOMBRE[k]} por ${p}.` };
       }
+      if (p === 'semana' && !Number.isInteger(n)) return { error: `La semana de ${PLAN_NOMBRE[k]} tiene que ser un número entero, sin decimales.` };
       out[p][k] = Math.round(n * 100) / 100;
     }
   }
@@ -126,36 +134,54 @@ export function validarPrecios(v) {
   return { valor: out };
 }
 
+const esSemillaVieja = (v) => esObj(v) && Object.keys(v).length === 3 && PLANES_DESTACADO.every((p) => esObj(v[p])
+  && Object.keys(v[p]).length === 2 && Number(v[p].dia) === DESTACADO_SEMILLA_VIEJA[p].dia && Number(v[p].semana) === DESTACADO_SEMILLA_VIEJA[p].semana);
+
+// Precios del Destacado guardados sobre los de defecto: { E: {mes, semana}, D, C, semanaAuto: {activo, recargo} }.
+// Sin guardar (o con la semilla vieja): semana automática con 20 %. Guardados de antes sin semanaAuto: semana a mano.
 export function mezclarDestacado(valor) {
   const out = {};
+  const nuevo = !esObj(valor) || esSemillaVieja(valor);
   for (const p of PLANES_DESTACADO) {
     out[p] = { ...DESTACADO_DEFAULT[p] };
-    const src = esObj(valor) ? valor[p] : null;
+    const src = !nuevo && esObj(valor) ? valor[p] : null;
     if (!esObj(src)) continue;
-    for (const k of ['dia', 'semana']) {
+    for (const k of ['mes', 'semana']) {
       const n = Number(src[k]);
-      if (src[k] !== undefined && src[k] !== null && Number.isFinite(n) && n >= 0) out[p][k] = Math.round(n * 100) / 100;
+      if (src[k] !== undefined && src[k] !== null && Number.isFinite(n) && n > 0) out[p][k] = k === 'semana' ? Math.max(1, Math.round(n)) : Math.round(n * 100) / 100;
     }
   }
+  out.semanaAuto = nuevo ? { ...SEMANA_AUTO_DEFAULT } : (leerSemanaAuto(valor.semanaAuto) || { activo: false, recargo: SEMANA_AUTO_DEFAULT.recargo });
+  if (out.semanaAuto.activo) for (const p of PLANES_DESTACADO) out[p].semana = semanaDeMes(out[p].mes, out.semanaAuto.recargo);
   return out;
 }
 
 export function validarDestacado(v) {
-  if (!esObj(v)) return { error: 'Formato inválido: {E: {dia, semana}, D: {…}, C: {…}}.' };
-  for (const k of Object.keys(v)) if (!PLANES_DESTACADO.includes(k)) return { error: `El Destacado es solo para Bronce, Plata y Oro (no ${k}).` };
+  if (!esObj(v)) return { error: 'Formato inválido: {E: {mes, semana}, D: {…}, C: {…}, semanaAuto}.' };
+  for (const k of Object.keys(v)) if (!PLANES_DESTACADO.includes(k) && k !== 'semanaAuto') return { error: `El Destacado es solo para Bronce, Plata y Oro (no ${k}).` };
+  let auto = { activo: false, recargo: SEMANA_AUTO_DEFAULT.recargo };
+  if (v.semanaAuto !== undefined) {
+    const sa = v.semanaAuto; const r = Number(esObj(sa) ? sa.recargo : NaN);
+    if (!esObj(sa) || typeof sa.activo !== 'boolean') return { error: 'Formato inválido de la semana calculada: {activo, recargo}.' };
+    if (sa.activo && !(Number.isFinite(r) && r >= 0 && r <= 200)) return { error: 'El recargo de la semana tiene que estar entre 0 y 200 %.' };
+    auto = { activo: sa.activo, recargo: Number.isFinite(r) && r >= 0 && r <= 200 ? Math.round(r * 100) / 100 : SEMANA_AUTO_DEFAULT.recargo };
+  }
   const out = {};
   for (const p of PLANES_DESTACADO) {
     const src = v[p];
     if (!esObj(src)) return { error: `Faltan los precios de Destacado de ${PLAN_NOMBRE[p]}.` };
     out[p] = {};
-    for (const k of ['dia', 'semana']) {
-      const n = Number(src[k]);
-      if (src[k] === undefined || src[k] === null || src[k] === '' || !Number.isFinite(n) || n <= 0 || n > 10000) {
-        return { error: `Precio de Destacado inválido: ${PLAN_NOMBRE[p]} por ${k === 'dia' ? 'día' : '7 días'}.` };
+    const val = auto.activo ? { mes: src.mes, semana: semanaDeMes(src.mes, auto.recargo) } : src;
+    for (const k of ['mes', 'semana']) {
+      const n = Number(val[k]);
+      if (val[k] === undefined || val[k] === null || val[k] === '' || !Number.isFinite(n) || n <= 0 || n > 10000) {
+        return { error: `Precio de Destacado inválido: ${PLAN_NOMBRE[p]} por ${k === 'mes' ? 'mes' : 'semana'}.` };
       }
+      if (k === 'semana' && !Number.isInteger(n)) return { error: `La semana del Destacado de ${PLAN_NOMBRE[p]} tiene que ser un número entero, sin decimales.` };
       out[p][k] = Math.round(n * 100) / 100;
     }
   }
+  out.semanaAuto = auto;
   return { valor: out };
 }
 
@@ -625,7 +651,7 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
 
   async function comprarDestacado(cuentaId, { dias, desde = null } = {}) {
     const d = Number(dias);
-    if (d !== 1 && d !== 7) throw err(400, 'El Destacado es por 1 día o por 7 días.');
+    if (!DESTACADO_DIAS[d]) throw err(400, 'El Destacado es por semana (7 días) o por mes (30 días).');
     const { rows: pf } = await pool.query("SELECT estado, NULLIF(btrim(datos->>'provincia'), '') AS provincia FROM perfiles WHERE cuenta_id = $1", [cuentaId]);
     if (!pf[0] || pf[0].estado !== 'publicado') throw err(409, 'Tu perfil tiene que estar publicado para destacarlo.');
     const provincia = pf[0].provincia;
@@ -644,7 +670,7 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
       const plan = await planEfectivo(cuentaId, db);
       if (plan === 'S') throw err(409, 'Con Star ya aparecés arriba de todo: el Destacado es para Bronce, Plata y Oro.');
       await db.query("SELECT pg_advisory_xact_lock(hashtext('sr-destacado:' || $1 || ':' || lower(btrim($2))))", [plan, provincia]);
-      const precio = aCentavos(prD[plan][d === 1 ? 'dia' : 'semana']);
+      const precio = aCentavos(prD[plan][DESTACADO_DIAS[d]]);
       const mios = (await db.query(
         "SELECT desde, hasta FROM destacados WHERE cuenta_id = $1 AND plan = $2 AND estado IN ('activo', 'programado') AND hasta > now() ORDER BY hasta DESC",
         [cuentaId, plan])).rows;
@@ -670,7 +696,7 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
         [cuentaId, plan, provincia, d, ini, fin, precio, ini.getTime() <= Date.now() + 1000 ? 'activo' : 'programado']);
       if (precio > 0) {
         await cred.mover(db, { cuentaId, tipo: 'destacado', centavos: -precio, refTipo: 'destacado', refId: rows[0].id,
-          motivo: `Destacado ${d === 1 ? '1 día' : '7 días'} (${PLAN_NOMBRE[plan]}) desde el ${fmtFechaHora(ini)}`, por: 'acompanante' });
+          motivo: `Destacado ${d === 30 ? '1 mes' : '1 semana'} (${PLAN_NOMBRE[plan]}) desde el ${fmtFechaHora(ini)}`, por: 'acompanante' });
       }
       return rows[0];
     });
@@ -695,8 +721,8 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
     const ahora = Date.now();
     const out = {
       plan, planNombre: PLAN_NOMBRE[plan], provincia, disponible: !motivo, motivo,
-      precios: Object.fromEntries(PLANES_DESTACADO.map((p) => [p, { dia: montoJson(aCentavos(prD[p].dia)), semana: montoJson(aCentavos(prD[p].semana)) }])),
-      precio: plan === 'S' ? null : { dia: montoJson(aCentavos(prD[plan].dia)), semana: montoJson(aCentavos(prD[plan].semana)) },
+      precios: Object.fromEntries(PLANES_DESTACADO.map((p) => [p, { semana: montoJson(aCentavos(prD[p].semana)), mes: montoJson(aCentavos(prD[p].mes)) }])),
+      precio: plan === 'S' ? null : { semana: montoJson(aCentavos(prD[plan].semana)), mes: montoJson(aCentavos(prD[plan].mes)) },
       cupo: null, proximaFechaLibre: null,
       mios: mios.rows.map((r) => destacadoJson(r, ahora)),
       saldo: montoJson(await cred.saldo(cuentaId)),
@@ -706,8 +732,8 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
       const ahoraD = new Date();
       out.cupo = { cupo, activos, ocupadosAhora: maxSolape(zona, ahoraD, new Date(+ahoraD + 1000)), porcentaje: CUPO_DESTACADO_PCT };
       out.proximaFechaLibre = {
-        dia: proximaLibre(zona, cupo, ahoraD, DAY).toISOString(),
         semana: proximaLibre(zona, cupo, ahoraD, 7 * DAY).toISOString(),
+        mes: proximaLibre(zona, cupo, ahoraD, 30 * DAY).toISOString(),
       };
     }
     return out;

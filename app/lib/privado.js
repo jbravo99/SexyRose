@@ -51,5 +51,11 @@ export function createPrivado({ dataDir }) {
         return null;
       }
     },
+    // Borra un archivo privado (limpieza del asistente a los 90 días). true si existía.
+    async borrar(ruta) {
+      const abs = resolver(ruta);
+      if (!abs) return false;
+      try { await fsp.unlink(abs); return true; } catch { return false; }
+    },
   };
 }

@@ -4,7 +4,7 @@
 #   docker compose -f infra/docker-compose.yml up -d --build
 #
 # Las variables se editan en ../.env (raíz del repo; ver .env.example e infra/gen-env.sh), pero cada
-# contenedor recibe solo las suyas: infra/server/separar-env.sh arma ../.env.app, ../.env.db y ../.env.tunnel
+# contenedor recibe solo las suyas: infra/server/separar-env.sh arma ../.env.app, ../.env.db, ../.env.tunnel y ../.env.agente
 # (deploy.sh lo corre solo antes de levantar). Así db y cloudflared no ven los secretos del app.
 # Nada publica puertos: el tráfico público entra solo por cloudflared (Cloudflare Tunnel),
 # que llega al app por la red interna en http://app:3000.
@@ -42,6 +42,45 @@ services:
     mem_limit: 1g
     pids_limit: 256
     init: true
+    logging: *logging
+
+  # Asistente de cuenta por WhatsApp (app/agente.js): misma imagen que el app, otro proceso. Si se cae, el sitio
+  # sigue igual. Solo recibe sus variables (../.env.agente: DATABASE_URL, SECRETS_KEY, ANTHROPIC_*, TELEGRAM_*,
+  # SITE_URL). Lo prende y apaga Juan desde Admin → Asistente (apagado no se conecta a WhatsApp).
+  agente:
+    # Mismo build que el app (usa la caché: no se construye dos veces) y misma imagen.
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    image: sexyrose-app:latest
+    command: ["node", "agente.js"]
+    env_file: ../.env.agente   # separar-env.sh
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks: [backend, salida]
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    # Comprobantes que llegan por WhatsApp (DATA_DIR/privado/comprobantes): el mismo volumen que el app.
+    volumes:
+      - srdata:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 128
+    init: true
+    # Sano = escribió su latido en los últimos 2 minutos (no tiene puerto HTTP).
+    healthcheck:
+      test: ["CMD", "node", "-e", "const f=require('fs');try{process.exit(Date.now()-f.statSync('/tmp/agente-latido').mtimeMs<120000?0:1)}catch(e){process.exit(1)}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     logging: *logging
 
   db:
@@ -83,11 +122,13 @@ services:
     logging: *logging
 
 networks:
-  # db + app. Sin salida a internet.
+  # db + app + agente. Sin salida a internet.
   backend:
     internal: true
   # app + cloudflared. Con salida (cloudflared -> Cloudflare; app -> Telegram).
   edge: {}
+  # Solo el agente: salida a WhatsApp, a la API de Claude y a Telegram (no ve a cloudflared ni al app por esta red).
+  salida: {}
 
 volumes:
   pgdata:

@@ -157,6 +157,9 @@ export function nuevoCodigo() { return 'SR-' + String(1000 + crypto.randomInt(90
 
 export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl = 'https://sexyrose.net' } = {}) {
   let alAcreditar = async () => {};   // lo setea planes: reintenta renovaciones pendientes cuando entran créditos
+  // Lo setea el asistente de cuenta: avisa por WhatsApp cuando un pedido se acredita o se rechaza (desde el admin o
+  // desde los botones de Telegram). Nunca hace fallar la confirmación.
+  let alCambiarPedido = async () => {};
   const url = String(siteUrl || 'https://sexyrose.net').replace(/\/+$/, '');
   async function mail(cuentaId, subject, text) {
     if (!sendMail) return false;
@@ -425,6 +428,8 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
       + `Con tus créditos podés pagar tu plan, semanas y Destacado desde ${url}/panel/plan\n\n`
       + 'Recordá: los créditos no vencen, no se devuelven en dinero y no se pueden pasar a otra cuenta.\n\nSexyRose');
     await alAcreditar(res.pedido.cuenta_id).catch((e) => log('creditos: reintento de renovación falló:', e.message));
+    await Promise.resolve().then(() => alCambiarPedido({ pedido: res.pedido, estado: 'confirmado', total: res.total }))
+      .catch((e) => log('creditos: aviso del pedido falló:', e.code || e.message));
     return { pedido: pedidoJson(res.pedido), movimientos: res.movimientos, saldo: montoJson(await saldo(res.pedido.cuenta_id)), total: res.total };
   }
 
@@ -442,6 +447,8 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     await mail(rows[0].cuenta_id, `Tu pedido de créditos ${rows[0].codigo} no se pudo confirmar`,
       `Hola:\n\nNo pudimos confirmar el pago del pedido ${rows[0].codigo}.${m ? `\nMotivo: ${m}` : ''}\n\n`
       + `Si ya pagaste, escribinos por WhatsApp con el código del pedido. Podés ver tus pedidos en ${url}/panel/creditos\n\nSexyRose`);
+    await Promise.resolve().then(() => alCambiarPedido({ pedido: rows[0], estado: 'rechazado', motivo: m }))
+      .catch((e) => log('creditos: aviso del pedido falló:', e.code || e.message));
     return pedidoJson(rows[0]);
   }
 
@@ -512,6 +519,7 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     crearPedido, pedidosDeCuenta, adjuntarComprobante, cancelarPedido, confirmarPedido, rechazarPedido, reabrirPedido, vencerPedidos, pedidosAdmin,
     pedidoJson, mail, mensajeEjemplo,
     setAlAcreditar(fn) { alAcreditar = typeof fn === 'function' ? fn : async () => {}; },
+    setAlCambiarPedido(fn) { alCambiarPedido = typeof fn === 'function' ? fn : async () => {}; },
   };
 }
 

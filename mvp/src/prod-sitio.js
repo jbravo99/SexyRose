@@ -1286,7 +1286,7 @@
         <div class="price">${x.mes ? `<span class="num">${fmtCr(x.mes)}</span> <small>créditos / mes</small>` : '<span>Gratis</span>'}</div>
         ${x.semana != null ? `<div class="small muted" style="margin-top:-6px">o ${fmtCr(x.semana)} créditos por semana</div>` : ''}
         <p class="small muted">${esc((HH.LEVELS[k] || {}).desc || '')}</p>
-        <ul>${feat.map((t) => li(t, true)).join('')}${li('Clip de 5 segundos en tu tarjeta', !!x.preview)}${isStar ? li('Lugar fijo arriba de todo en tu provincia', true) : x.destacado ? li(cents(x.destacado.dia) === 100 ? 'Destacado: 1 crédito el día' : `Destacado: ${fmtCr(x.destacado.dia)} créditos el día`, true) : ''}</ul>
+        <ul>${feat.map((t) => li(t, true)).join('')}${li('Clip de 5 segundos en tu tarjeta', !!x.preview)}${isStar ? li('Lugar fijo arriba de todo en tu provincia', true) : x.destacado ? li(`Destacado: ${fmtCr(x.destacado.semana)} créditos la semana`, true) : ''}</ul>
         ${isStar ? `<p class="tiny ${sinCupo ? 'sp-danger' : 'muted'}">${!cupo.provincia ? 'Elegí tu provincia en Mi perfil para ver el cupo.' : cupo.libres ? `Quedan ${cupo.libres} de ${cupo.total || 10} lugares en tu provincia.` : 'No quedan lugares Star en tu provincia.'}</p>` : ''}
         <div class="stack" style="gap:8px">${btns.join('')}</div>
       </div>`;
@@ -1332,34 +1332,37 @@
     const activos = mios.filter((m) => m.estado === 'activo' || m.estado === 'programado');
     const pasados = mios.filter((m) => m.estado !== 'activo' && m.estado !== 'programado').slice(0, 6);
     const pr = D.precios || {};
-    const tabla = ['E', 'D', 'C'].filter((k) => pr[k]).map((k) => `<tr class="${D.plan === k ? 'on' : ''}"><td>${HH.levelBadge(k, true)}</td><td class="num">${fmtCr(pr[k].dia)}</td><td class="num">${fmtCr(pr[k].semana)}</td></tr>`).join('');
+    const tabla = ['E', 'D', 'C'].filter((k) => pr[k]).map((k) => `<tr class="${D.plan === k ? 'on' : ''}"><td>${HH.levelBadge(k, true)}</td><td class="num">${fmtCr(pr[k].semana)}</td><td class="num">${fmtCr(pr[k].mes)}</td></tr>`).join('');
     const c = D.cupo; const lleno = c && c.ocupadosAhora >= c.cupo;
     const pf = D.proximaFechaLibre || {};
+    // Por semana (7 días) o por mes (30 días) (Juan, 13/11/2026)
     const opcion = (dias) => {
-      const precio = D.precio && (dias === 1 ? D.precio.dia : D.precio.semana);
-      const libre = dias === 1 ? pf.dia : pf.semana;
+      const per = dias === 30 ? 'mes' : 'semana'; const lbl = dias === 30 ? '1 mes' : '1 semana';
+      const precio = D.precio && D.precio[per];
+      const libre = pf[per];
       const futuro = libre && new Date(libre) > new Date(Date.now() + 60000);
+      const ahorro = dias === 30 && D.precio ? (cents(D.precio.semana) * 4 - cents(D.precio.mes)) / 100 : 0;
       return `<div class="sp-dop">
-        <div><div class="card-title">${dias === 1 ? '1 día' : '7 días'}</div><div class="sp-dop-n"><strong class="num">${fmtCr(precio)}</strong> <span>créditos</span></div>${dias === 7 && D.precio ? `<div class="tiny muted"><span>Ahorrás ${fmtCr(cents(D.precio.dia) * 7 / 100 - cents(D.precio.semana) / 100)} créditos</span></div>` : ''}</div>
+        <div><div class="card-title">${lbl}</div><div class="sp-dop-n"><strong class="num">${fmtCr(precio)}</strong> <span>créditos</span></div>${ahorro > 0 ? `<div class="tiny muted"><span>Ahorrás ${fmtCr(ahorro)} créditos</span></div>` : ''}</div>
         ${futuro ? `<div class="tiny muted">Próxima fecha libre: ${esc(fHora(libre))}</div>` : ''}
-        <button type="button" class="btn ${dias === 7 ? '' : 'secondary'} block" data-action="spDestacar" data-dias="${dias}"${futuro ? ` data-desde="${esc(libre)}"` : ''}${S.busy.dest ? ' disabled' : ''}>${futuro ? 'Reservar ' + (dias === 1 ? '1 día' : '7 días') : 'Destacar ' + (dias === 1 ? '1 día' : '7 días')}</button>
+        <button type="button" class="btn ${dias === 30 ? '' : 'secondary'} block" data-action="spDestacar" data-dias="${dias}"${futuro ? ` data-desde="${esc(libre)}"` : ''}${S.busy.dest ? ' disabled' : ''}>${(futuro ? 'Reservar ' : 'Destacar ') + lbl}</button>
       </div>`;
     };
     return head(eb, tt, sub, saldoChip()) + `
       ${!D.disponible ? `<div class="notice ${D.plan === 'S' ? 'info' : 'warn'}">${icon(D.plan === 'S' ? 'star' : 'info')}<span>${esc(D.motivo || 'El Destacado no está disponible para tu perfil por ahora.')}</span></div>` : ''}
       ${D.disponible ? `<div class="card stack" style="gap:12px">
         <div class="row between"><div class="card-title">Con tu plan</div>${HH.levelBadge(D.plan, true)}</div>
-        <div class="sp-dops">${opcion(1)}${opcion(7)}</div>
+        <div class="sp-dops">${opcion(7)}${opcion(30)}</div>
         ${c ? `<div class="stack" style="gap:6px"><div class="row between small"><span>Lugares en tu provincia</span><span><span class="num">${Math.min(c.ocupadosAhora, c.cupo)}</span> <span>de</span> <span class="num">${c.cupo}</span> <span>ocupados ahora</span></span></div><div class="sp-prog sp-cupo${lleno ? ' full' : ''}"><i style="width:${Math.min(100, Math.round((Math.min(c.ocupadosAhora, c.cupo) / Math.max(1, c.cupo)) * 100))}%"></i></div><div class="tiny muted">Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia.${lleno ? ' Ahora está completo: podés reservar la próxima fecha libre.' : ''}</div></div>` : ''}
         <p class="tiny muted" style="margin:0">El Destacado vale para el plan con el que lo comprás. Si subís de plan por mes, te devolvemos en créditos lo que no usaste.</p>
       </div>` : ''}
       ${activos.length ? `<div class="card stack" style="gap:10px"><div class="card-title">Tus Destacados</div><div class="list">${activos.map(destRow).join('')}</div></div>` : ''}
-      ${tabla ? `<div class="card stack" style="gap:10px"><div class="card-title">Precios por plan</div><div class="table-wrap"><table class="table sp-dtab"><thead><tr><th>Plan</th><th class="num">1 día</th><th class="num">7 días</th></tr></thead><tbody>${tabla}</tbody></table></div><p class="tiny muted" style="margin:0">En créditos. Star no necesita Destacado: ya aparece arriba de todo.</p></div>` : ''}
+      ${tabla ? `<div class="card stack" style="gap:10px"><div class="card-title">Precios por plan</div><div class="table-wrap"><table class="table sp-dtab"><thead><tr><th>Plan</th><th class="num">1 semana</th><th class="num">1 mes</th></tr></thead><tbody>${tabla}</tbody></table></div><p class="tiny muted" style="margin:0">En créditos. Star no necesita Destacado: ya aparece arriba de todo.</p></div>` : ''}
       ${pasados.length ? `<details class="card sp-det"><summary>Anteriores</summary><div class="list" style="margin-top:10px">${pasados.map(destRow).join('')}</div></details>` : ''}`;
   }
   function destRow(m) {
     const [cls, l] = EST_DEST[m.estado] || ['neutral', m.estado];
-    return `<div class="list-item">${icon('sparkles')}<div class="grow" style="min-width:0"><div class="title"><span>${m.dias === 7 ? '7 días' : '1 día'}</span> · <span>${esc(m.planNombre || HH.planName(m.plan))}</span></div><div class="sub"><span>Del ${esc(fHora(m.desde))} al ${esc(fHora(m.hasta))}</span> · <span>${fmtCr(m.costo)} créditos</span></div></div>${badge(cls, l)}</div>`;
+    return `<div class="list-item">${icon('sparkles')}<div class="grow" style="min-width:0"><div class="title"><span>${m.dias === 30 ? '1 mes' : m.dias === 7 ? '1 semana' : '1 día'}</span> · <span>${esc(m.planNombre || HH.planName(m.plan))}</span></div><div class="sub"><span>Del ${esc(fHora(m.desde))} al ${esc(fHora(m.hasta))}</span> · <span>${fmtCr(m.costo)} créditos</span></div></div>${badge(cls, l)}</div>`;
   }
 
   /* ---- Avisos (notificaciones) ---- */
@@ -1664,9 +1667,9 @@
     // Destacado: comprar ahora (o reservar la próxima fecha libre si el cupo está lleno)
     spDestacar(el) {
       const dias = Number(el.dataset.dias); const desde = el.dataset.desde || null; const D = S.dest || {};
-      const precio = D.precio && (dias === 1 ? D.precio.dia : D.precio.semana);
+      const precio = D.precio && D.precio[dias === 30 ? 'mes' : 'semana'];
       const falta = cents(precio) - cents(D.saldo);
-      HH.modal({ title: (desde ? 'Reservar Destacado' : 'Destacar mi perfil') + ' · ' + (dias === 1 ? '1 día' : '7 días'), body: `<div class="stack" style="gap:12px">
+      HH.modal({ title: (desde ? 'Reservar Destacado' : 'Destacar mi perfil') + ' · ' + (dias === 30 ? '1 mes' : '1 semana'), body: `<div class="stack" style="gap:12px">
           <div class="sp-amount"><span class="small muted">Destacado</span><strong><span class="num">${fmtCr(precio)}</span> <span>créditos</span></strong><span class="small muted">${desde ? `<span>Desde el ${esc(fHora(desde))}</span>` : '<span>Empieza ahora</span>'}</span></div>
           <div class="sp-saldo-row"><span class="small muted">Tu saldo</span><span><span class="num">${fmtCr(D.saldo)}</span> <span>créditos</span></span></div>
           ${falta > 0 ? faltaHtml({ centavos: falta }) : ''}
@@ -2087,7 +2090,7 @@
       ['1 historia por día', '1 story per day', '1 story por dia'], ['Hasta {n} historias por día', 'Up to {n} stories per day', 'Até {n} stories por dia'],
       ['Clip de 5 segundos en tu tarjeta', '5-second clip on your card', 'Clipe de 5 segundos no seu card'],
       ['Lugar fijo arriba de todo en tu provincia', 'Fixed spot at the very top in your province', 'Lugar fixo no topo da sua província'],
-      ['Destacado: 1 crédito el día', 'Featured: 1 credit per day', 'Destaque: 1 crédito por dia'], ['Destacado: {n} créditos el día', 'Featured: {n} credits per day', 'Destaque: {n} créditos por dia'],
+      ['Destacado: 1 crédito el día', 'Featured: 1 credit per day', 'Destaque: 1 crédito por dia'], ['Destacado: {n} créditos el día', 'Featured: {n} credits per day', 'Destaque: {n} créditos por dia'], ['Destacado: {n} créditos la semana', 'Featured: {n} credits per week', 'Destaque: {n} créditos por semana'],
       ['Historial de planes', 'Plan history', 'Histórico de planos'], ['Vigente', 'Active', 'Vigente'], ['Vencida', 'Expired', 'Vencida'], ['Cancelada', 'Canceled', 'Cancelada'],
       ['{n} créditos', '{n} credits', '{n} créditos'],
       ['Tu perfil está pausado.', 'Your profile is paused.', 'Seu perfil está pausado.'],
@@ -2161,16 +2164,17 @@
       ['Subida de {P} a {Q}: {n} días (se paga la diferencia)', 'Upgrade from {P} to {Q}: {n} days (you pay the difference)', 'Upgrade de {P} para {Q}: {n} dias (paga-se a diferença)'],
       ['Semana de {P} (7 días)', '{P} week (7 days)', 'Semana de {P} (7 dias)'], ['Subida temporal a {P} (7 días)', 'Temporary upgrade to {P} (7 days)', 'Upgrade temporário para {P} (7 dias)'],
       ['Renovación automática: {P} · 30 días', 'Auto-renewal: {P} · 30 days', 'Renovação automática: {P} · 30 dias'], ['Renovación: {P} · 30 días', 'Renewal: {P} · 30 days', 'Renovação: {P} · 30 dias'],
-      ['Destacado 1 día ({P}) desde el {x}', 'Featured 1 day ({P}) from {x}', 'Destaque 1 dia ({P}) a partir de {x}'], ['Destacado 7 días ({P}) desde el {x}', 'Featured 7 days ({P}) from {x}', 'Destaque 7 dias ({P}) a partir de {x}'],
+      ['Destacado 1 día ({P}) desde el {x}', 'Featured 1 day ({P}) from {x}', 'Destaque 1 dia ({P}) a partir de {x}'], ['Destacado 1 semana ({P}) desde el {x}', 'Featured 1 week ({P}) from {x}', 'Destaque 1 semana ({P}) a partir de {x}'], ['Destacado 1 mes ({P}) desde el {x}', 'Featured 1 month ({P}) from {x}', 'Destaque 1 mês ({P}) a partir de {x}'], ['Destacado 7 días ({P}) desde el {x}', 'Featured 7 days ({P}) from {x}', 'Destaque 7 dias ({P}) a partir de {x}'],
       ['Devolución: Destacado de {P} ({x})', 'Refund: {P} Featured ({x})', 'Devolução: Destaque de {P} ({x})'], ['Devolución: Destacado cancelado por el admin', 'Refund: Featured canceled by the admin', 'Devolução: Destaque cancelado pelo admin'],
       ['Regalo del pack {x}', 'Pack bonus: {x}', 'Bônus do pacote {x}'],
       // Destacado
       ['Verificación:', 'Verification:', 'Verificação:'],
       ['Destacado', 'Featured', 'Destaque'], ['Destacá tu perfil', 'Feature your profile', 'Destaque seu perfil'],
       ['Tu tarjeta aparece primero dentro de tu plan en tu provincia, con la etiqueta Destacado. Si hay varias destacadas, el orden cambia en cada visita.', 'Your card shows first within your plan in your province, with the Featured label. If several profiles are featured, the order changes on every visit.', 'Seu card aparece primeiro dentro do seu plano na sua província, com a etiqueta Destaque. Se houver vários destaques, a ordem muda a cada visita.'],
-      ['Con tu plan', 'With your plan', 'Com seu plano'], ['1 día', '1 day', '1 dia'], ['7 días', '7 days', '7 dias'], ['Ahorrás {n} créditos', 'You save {n} credits', 'Você economiza {n} créditos'],
+      ['Con tu plan', 'With your plan', 'Com seu plano'], ['1 día', '1 day', '1 dia'], ['7 días', '7 days', '7 dias'], ['1 semana', '1 week', '1 semana'], ['1 mes', '1 month', '1 mês'], ['Ahorrás {n} créditos', 'You save {n} credits', 'Você economiza {n} créditos'],
       ['Próxima fecha libre: {x}', 'Next available date: {x}', 'Próxima data livre: {x}'], ['Próxima fecha libre', 'Next available date', 'Próxima data livre'],
       ['Destacar 1 día', 'Feature for 1 day', 'Destacar por 1 dia'], ['Destacar 7 días', 'Feature for 7 days', 'Destacar por 7 dias'], ['Reservar 1 día', 'Book 1 day', 'Reservar 1 dia'], ['Reservar 7 días', 'Book 7 days', 'Reservar 7 dias'],
+      ['Destacar 1 semana', 'Feature for 1 week', 'Destacar por 1 semana'], ['Destacar 1 mes', 'Feature for 1 month', 'Destacar por 1 mês'], ['Reservar 1 semana', 'Book 1 week', 'Reservar 1 semana'], ['Reservar 1 mes', 'Book 1 month', 'Reservar 1 mês'],
       ['Lugares en tu provincia', 'Spots in your province', 'Vagas na sua província'], ['de', 'of', 'de'], ['ocupados ahora', 'taken now', 'ocupadas agora'],
       ['Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia.', 'There is one featured spot for every 5 profiles of your plan in your province.', 'Há uma vaga de destaque a cada 5 perfis do seu plano na sua província.'],
       ['Hay un lugar destacado cada 5 perfiles de tu plan en tu provincia. Ahora está completo: podés reservar la próxima fecha libre.', 'There is one featured spot for every 5 profiles of your plan in your province. It is full right now: you can book the next available date.', 'Há uma vaga de destaque a cada 5 perfis do seu plano na sua província. Agora está completo: você pode reservar a próxima data livre.'],
@@ -2179,8 +2183,8 @@
       ['En créditos. Star no necesita Destacado: ya aparece arriba de todo.', 'In credits. Star does not need Featured: it already shows at the very top.', 'Em créditos. O Star não precisa de Destaque: já aparece no topo.'],
       ['Anteriores', 'Previous', 'Anteriores'], ['Activo', 'Active', 'Ativo'], ['Programado', 'Scheduled', 'Programado'], ['Terminado', 'Ended', 'Encerrado'],
       ['El Destacado no está disponible para tu perfil por ahora.', 'Featured is not available for your profile right now.', 'O Destaque não está disponível para o seu perfil por enquanto.'],
-      ['Destacar mi perfil · 1 día', 'Feature my profile · 1 day', 'Destacar meu perfil · 1 dia'], ['Destacar mi perfil · 7 días', 'Feature my profile · 7 days', 'Destacar meu perfil · 7 dias'],
-      ['Reservar Destacado · 1 día', 'Book Featured · 1 day', 'Reservar Destaque · 1 dia'], ['Reservar Destacado · 7 días', 'Book Featured · 7 days', 'Reservar Destaque · 7 dias'],
+      ['Destacar mi perfil · 1 día', 'Feature my profile · 1 day', 'Destacar meu perfil · 1 dia'], ['Destacar mi perfil · 7 días', 'Feature my profile · 7 days', 'Destacar meu perfil · 7 dias'], ['Destacar mi perfil · 1 semana', 'Feature my profile · 1 week', 'Destacar meu perfil · 1 semana'], ['Destacar mi perfil · 1 mes', 'Feature my profile · 1 month', 'Destacar meu perfil · 1 mês'],
+      ['Reservar Destacado · 1 día', 'Book Featured · 1 day', 'Reservar Destaque · 1 dia'], ['Reservar Destacado · 7 días', 'Book Featured · 7 days', 'Reservar Destaque · 7 dias'], ['Reservar Destacado · 1 semana', 'Book Featured · 1 week', 'Reservar Destaque · 1 semana'], ['Reservar Destacado · 1 mes', 'Book Featured · 1 month', 'Reservar Destaque · 1 mês'],
       ['Empieza ahora', 'Starts now', 'Começa agora'], ['Desde el {x}', 'From {x}', 'A partir de {x}'],
       ['El Destacado está completo', 'Featured is full', 'O Destaque está completo'],
       ['Los lugares destacados de tu plan en tu provincia están ocupados en esas fechas. Podés reservar la próxima fecha libre: se cobra ahora y empieza ese día.', 'The featured spots for your plan in your province are taken on those dates. You can book the next available date: it is charged now and starts that day.', 'As vagas de destaque do seu plano na sua província estão ocupadas nessas datas. Você pode reservar a próxima data livre: é cobrado agora e começa nesse dia.'], ['Ahora no', 'Not now', 'Agora não'], ['Reservar esa fecha', 'Book that date', 'Reservar essa data'],

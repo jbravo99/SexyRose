@@ -39,7 +39,7 @@ if [[ "$DO_PULL" -eq 1 ]]; then
 fi
 echo "Versión: $(git log -1 --format='%h %s (%cr)' 2>/dev/null || echo 'desconocida')"
 
-echo "==> Variables por contenedor (.env → .env.app / .env.db / .env.tunnel)"
+echo "==> Variables por contenedor (.env → .env.app / .env.db / .env.tunnel / .env.agente)"
 bash "$REPO_DIR/infra/server/separar-env.sh"
 
 echo "==> Bajando imágenes base (postgres, cloudflared)"

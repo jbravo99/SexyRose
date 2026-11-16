@@ -46,6 +46,10 @@ import { createAdminModeracionRouter } from './routes/admin-moderacion.js';
 import { createTelegram } from './lib/telegram.js';
 import { createMpCuentas } from './lib/mp-cuentas.js';
 import { createAdminIntegracionesRouter } from './routes/admin-integraciones.js';
+// Asistente de cuenta por WhatsApp (el bot corre en otro contenedor: agente.js). El app maneja los botones de
+// Telegram, los emails con el código, los avisos de pedidos acreditados/rechazados, la limpieza y Admin → Asistente.
+import { createAsistenteApp } from './lib/asistente-app.js';
+import { createAdminAsistenteRouter } from './routes/admin-asistente.js';
 // Cuentas de interesados (clientes) y pedidos personalizados con chat
 import { createAuthClientes } from './lib/clientes.js';
 import { createSolicitudes } from './lib/solicitudes.js';
@@ -426,7 +430,7 @@ export function createApp(config) {
   const telegram = createTelegram({
     pool, token: config.telegramToken, chatIdEnv: config.telegramChatId, log,
     fetchImpl: config.telegramFetch !== undefined ? config.telegramFetch : globalThis.fetch,
-    cadaMs: config.telegramCadaMs || 3000,
+    cadaMs: config.telegramCadaMs || 3000, supervisarMs: config.telegramSupervisarMs || 15000,
   });
   const notify = (text, tipo = null) => telegram.notify(text, tipo);
 
@@ -498,6 +502,13 @@ export function createApp(config) {
   planes.setInvalidarSitio(() => { invalidarCatalogos(); invalidarSitio(); });
   // Archivos privados: misma raíz DATA_DIR/privado para verificaciones (lib/storage.js) y comprobantes (lib/privado.js).
   const privado = createPrivado({ dataDir: storage.dataDir() });
+  // Asistente de cuenta: botones de Telegram (mismo lector de getUpdates), emails con el código, avisos por WhatsApp
+  // de pedidos acreditados/rechazados (también desde el admin) y limpieza a los 90 días.
+  const asistenteApp = createAsistenteApp({
+    pool, creditos, telegram, privado, sendMail: sendMailBase, emailBasico, siteUrl: config.siteUrl, databaseUrl: config.databaseUrl, log,
+    escucharCadaMs: config.asistenteEscucharMs || 30000,
+  });
+  asistenteApp.iniciar({ escuchar: config.asistenteEscuchar !== false, listo: () => state.dbReady && !state.stopping });
   // Contexto compartido por los módulos de rutas (routes/*.js).
   // Videos: cola de procesamiento con ffmpeg (lib/videos.js). Solo se usan con almacenamiento externo (bunny.net).
   const videos = createVideos({
@@ -509,7 +520,7 @@ export function createApp(config) {
   // Historias destacadas: las sube la acompañante desde su dispositivo; no vencen (lib/destacadas.js).
   const destacadas = createDestacadas({ pool, storage, videos, planes: () => planes, invalidar: () => invalidarSitio(), log });
   configurarDestacadas(destacadas);
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth };
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth, telegram, asistenteApp };
   // Ubicaciones oficiales (Georef): importa en segundo plano al arrancar si nunca se importó y revisa una vez por
   // semana (lib/georef.js). En los tests no usa la red salvo que inyecten georefFetch.
   const georef = createGeoref({
@@ -1145,6 +1156,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const moderacionAdmin = createAdminModeracionRouter({ pool, storage, contenido, destacadas, apiPost, adminUser: config.adminUser || 'admin', invalidar: () => invalidarSitio(), log });
   admin.use('/api', moderacionAdmin.router);
   admin.use('/api', createAdminIntegracionesRouter({ telegram, mpCuentas, creditos, apiPost, log })); // Telegram, cuentas de Mercado Pago, WhatsApp
+  admin.use('/api', createAdminAsistenteRouter({ pool, privado, apiPost, log })); // Admin → Asistente (WhatsApp)
   if (config.tareaContenido !== false) contenido.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
 
   admin.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
@@ -1414,6 +1426,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
         await retencionVerif.purgar();
         await historiasVencidas();
         await pedidosVencidos();
+        await purgarAsistente();
         try {
           const n = await videos.recuperar();
           if (n) log(`videos pendientes al arrancar: ${n}`);
@@ -1440,6 +1453,11 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     if (!state.dbReady || state.stopping) return;
     try { await solicitudes.vencer(); } catch (e) { log('borrado de contenido vencido de pedidos falló:', e.code || e.message); }
   };
+  // Asistente de cuenta: mensajes y archivos del chat de más de 90 días. Al arrancar y cada 6 horas.
+  const purgarAsistente = async () => {
+    if (!state.dbReady || state.stopping) return;
+    try { await asistenteApp.purgar(); } catch (e) { log('limpieza del asistente falló:', e.code || e.message); }
+  };
   // Sesiones vencidas y tokens de email viejos.
   const limpiarSesiones = async () => {
     if (!state.dbReady) return;
@@ -1456,6 +1474,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     setInterval(limpiarSesiones, 6 * HOUR),
     setInterval(historiasVencidas, HOUR),
     setInterval(pedidosVencidos, HOUR),
+    setInterval(purgarAsistente, 6 * HOUR),
     setInterval(() => rl.sweep(HOUR), 10 * 60 * 1000),
   ];
   timers.forEach((t) => t.unref());
@@ -1464,7 +1483,8 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     planes.detenerTarea();
     cotizacion.detenerTarea();
     georef.detenerTarea();
-    telegram.detener();
+    telegram.cerrar();
+    await asistenteApp.cerrar();
     contenido.detenerTarea();
     videos.detener();
     state.stopping = true;

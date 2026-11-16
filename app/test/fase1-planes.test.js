@@ -123,13 +123,13 @@ describe('precios y utilidades', () => {
   });
   test('semana calculada sola: mes / 4 + recargo, o a mano', () => {
     // Los defaults ya cumplen la regla del 20 %
-    assert.equal(semanaDeMes(90, 20), 27); assert.equal(semanaDeMes(350, 20), 105); assert.equal(semanaDeMes(95, 20), 28.5);
+    assert.equal(semanaDeMes(90, 20), 27); assert.equal(semanaDeMes(350, 20), 105); assert.equal(semanaDeMes(95, 20), 29, 'sin decimales: se redondea');
     // Prendida: lo que venga en "semana" se ignora y se calcula
     let v = validarPrecios({ mes: { E: 0, D: 40, C: 100, S: 400 }, semana: { C: 1, S: 1 }, semanaAuto: { activo: true, recargo: 25 } }).valor;
-    assert.deepEqual(v.semana, { C: 31.25, S: 125 }); assert.deepEqual(v.semanaAuto, { activo: true, recargo: 25 });
-    assert.deepEqual(mezclarPrecios(v).semana, { C: 31.25, S: 125 });
+    assert.deepEqual(v.semana, { C: 31, S: 125 }); assert.deepEqual(v.semanaAuto, { activo: true, recargo: 25 });
+    assert.deepEqual(mezclarPrecios(v).semana, { C: 31, S: 125 });
     // Cambiar solo el mes en lo guardado (prendida) recalcula la semana al leer
-    assert.deepEqual(mezclarPrecios({ ...v, mes: { ...v.mes, C: 120 } }).semana, { C: 37.5, S: 125 });
+    assert.deepEqual(mezclarPrecios({ ...v, mes: { ...v.mes, C: 120 } }).semana, { C: 38, S: 125 });
     // Apagada: quedan las semanas escritas a mano
     v = validarPrecios({ mes: { E: 0, D: 40, C: 100, S: 400 }, semana: { C: 33, S: 110 }, semanaAuto: { activo: false, recargo: 20 } }).valor;
     assert.deepEqual(mezclarPrecios(v).semana, { C: 33, S: 110 });
@@ -137,6 +137,8 @@ describe('precios y utilidades', () => {
     const antes = mezclarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 30, S: 100 } });
     assert.deepEqual(antes.semana, { C: 30, S: 100 }); assert.equal(antes.semanaAuto.activo, false);
     assert.deepEqual(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 30, S: 100 } }).valor.semanaAuto, { activo: false, recargo: 20 });
+    // A mano: sin decimales
+    assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27.5, S: 105 }, semanaAuto: { activo: false, recargo: 20 } }).error, /entero/);
     // Validación
     assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 }, semanaAuto: { activo: true, recargo: 500 } }).error, /recargo/);
     assert.match(validarPrecios({ mes: { E: 0, D: 35, C: 90, S: 350 }, semana: { C: 27, S: 105 }, semanaAuto: 'si' }).error, /semana calculada/);
@@ -158,7 +160,7 @@ describe('precios y utilidades', () => {
     assert.deepEqual(P.C.limites, { fotos: 500, videos: 200, historiasDia: null, destacadas: 5, packs: 5 });
     assert.deepEqual(P.S.limites, { fotos: 1000, videos: 500, historiasDia: null, destacadas: null, packs: null });
     assert.deepEqual(j.planes.map((p) => p.preview), [false, true, true, true]);
-    assert.deepEqual(P.D.destacado, { dia: 2, semana: 9 });
+    assert.deepEqual(P.D.destacado, { mes: 30, semana: 9 });
     assert.equal(P.S.destacado, null);
     assert.equal(P.S.cupoProvincia, 10);
     assert.deepEqual(j.saldo, { centavos: 0, creditos: '0.00' });

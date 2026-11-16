@@ -170,7 +170,7 @@
     "Indicá si la renovación automática queda activa (true o false).": ["Say whether auto-renewal stays on (true or false).", "Indique se a renovação automática fica ligada (true ou false)."],
     "No tenés un plan mensual activo.": ["You don't have an active monthly plan.", "Você não tem um plano mensal ativo."],
     "Para subir a {x} no hace falta esperar: comprá la subida y pagás solo la diferencia.": ["To move up to {x} you don't need to wait: buy the upgrade and pay only the difference.", "Para subir para {x} não precisa esperar: compre o upgrade e pague só a diferença."],
-    "El Destacado es por 1 día o por 7 días.": ["Featured is for 1 day or 7 days.", "O Destaque é por 1 dia ou por 7 dias."],
+    "El Destacado es por semana (7 días) o por mes (30 días).": ["Featured is per week (7 days) or per month (30 days).", "O Destaque é por semana (7 dias) ou por mês (30 dias)."],
     "Tu perfil tiene que estar publicado para destacarlo.": ["Your profile must be published to feature it.", "Seu perfil precisa estar publicado para ser destacado."],
     "Tu perfil tiene que estar publicado.": ["Your profile must be published.", "Seu perfil precisa estar publicado."],
     "Cargá tu provincia en el perfil.": ["Set your province in your profile.", "Informe sua província no perfil."],

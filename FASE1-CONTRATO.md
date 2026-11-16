@@ -89,11 +89,11 @@ Decidido por Juan el 11/11/2026 (detalle en el proyecto: `claude/sexyrose-planes
 
 ### Planes
 
-| Código | Nombre | Mes (USD = créditos) | Semana | Fotos | Videos | Historias/día | Destacadas (historias) | Packs a la venta | Clip 5 s en la tarjeta | Destacado (1 día / 7 días) |
+| Código | Nombre | Mes (USD = créditos) | Semana | Fotos | Videos | Historias/día | Destacadas (historias) | Packs a la venta | Clip 5 s en la tarjeta | Destacado (semana / mes) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| E | Bronce | 0 (gratis) | — | 8 | 2 | 1 | 1 | 0 | no | 1 / 5 |
-| D | Plata | 35 | — | 30 | 10 | 3 | 2 | 1 | sí | 2 / 9 |
-| C | Oro | 90 | 27 | 500 | 200 | ∞ | 5 | 5 | sí | 4 / 20 |
+| E | Bronce | 0 (gratis) | — | 8 | 2 | 1 | 1 | 0 | no | 5 / 17 |
+| D | Plata | 35 | — | 30 | 10 | 3 | 2 | 1 | sí | 9 / 30 |
+| C | Oro | 90 | 27 | 500 | 200 | ∞ | 5 | 5 | sí | 20 / 67 |
 | S | Star | 350 | 105 | 1000 | 500 | ∞ | ∞ | ∞ | sí | — (ya va arriba; cupo 10 por provincia) |
 
 - `null` = ilimitado en la API (`limites.historiasDia`, `limites.destacadas`, `limites.packs`). Destacadas y packs por plan: decisión de Juan del 12/11/2026. `lib/planes-ref.js` exporta `LIMITES`, `PLANES_PREVIEW` (D, C, S) y `limitesDe(plan)`.
@@ -179,16 +179,16 @@ Carga a medida: `packId: null`, sin bonificación, nombre "Carga a medida" / "Cu
 **`GET /destacado`** →
 ```json
 { "plan":"D", "planNombre":"Plata", "provincia":"provincia-de-cordoba", "disponible":true, "motivo":null,
-  "precios": { "E": {"dia": Monto, "semana": Monto}, "D": {…}, "C": {…} },
-  "precio": { "dia": Monto, "semana": Monto },
+  "precios": { "E": {"semana": Monto, "mes": Monto}, "D": {…}, "C": {…} },
+  "precio": { "semana": Monto, "mes": Monto },
   "cupo": { "cupo": 2, "activos": 7, "ocupadosAhora": 1, "porcentaje": 20 },
-  "proximaFechaLibre": { "dia": "ISO", "semana": "ISO" },
+  "proximaFechaLibre": { "semana": "ISO", "mes": "ISO" },
   "mios": [ Destacado ], "saldo": Monto }
 ```
 `disponible: false` con `motivo` ("Con Star ya aparecés arriba de todo.", perfil sin publicar, sin provincia). Para Star `precio`, `cupo` y `proximaFechaLibre` son `null`.
-*Destacado* = `{ id, cuentaId, plan, planNombre, provincia, dias: 1|7, desde, hasta, estado: "activo"|"programado"|"vencido"|"cancelado", costo: Monto, creado, vigente }`.
+*Destacado* = `{ id, cuentaId, plan, planNombre, provincia, dias: 7|30 (1 = Destacados viejos por día), desde, hasta, estado: "activo"|"programado"|"vencido"|"cancelado", costo: Monto, creado, vigente }`.
 
-**`POST /destacado` `{ dias: 1|7, desde?: ISO }`** → **201** `{ ok, destacado, saldo }`.
+**`POST /destacado` `{ dias: 7|30, desde?: ISO }`** → **201** `{ ok, destacado, saldo }`. Por semana (7 días) o por mes (30 días) (Juan, 13/11/2026; antes 1 o 7 días). Precios en Admin → Ajustes: el mes a mano y la semana calculada sola (cuarta parte del mes + recargo, 20 % por defecto, redondeada a entero) o a mano, siempre sin decimales (Juan, 15/11/2026; lo mismo para la semana de los planes); ajuste `destacado` = `{ E, D, C: {mes, semana}, semanaAuto: {activo, recargo} }` (`mezclarDestacado`/`validarDestacado` en lib/planes.js; la semilla vieja `{dia, semana}` sin tocar cuenta como no guardada). Migración 170-destacado-mes.sql (CHECK dias IN (1, 7, 30)).
 - Sin `desde`: empieza ahora, o cuando termina el Destacado que ya tiene (se encadena). Con `desde` (reserva): de ahora a 60 días; 409 si se superpone con uno suyo.
 - Cupo por plan y provincia = 20 % de los perfiles **publicados** con ese plan efectivo en la provincia, redondeado hacia arriba, mínimo 1. Si en algún momento del período se pasa del cupo: **409** `{ error, codigo: "cupo_lleno", proximaFechaLibre: ISO, cupo, activos }` (el front ofrece reservar esa fecha con el mismo POST + `desde`).
 - 409 Star, 409 perfil no publicado, 400 sin provincia o `dias`/`desde` inválidos, 402 saldo.
@@ -719,3 +719,110 @@ acompañantes: el registro de interesados queda cerrado hasta abrir el sitio.
 - Robots en el navegador igual que en el servidor: /registro, /favoritos, /compra y /cliente `noindex,nofollow`.
 - Recuadro de las páginas de lugar: "¿Sos escort o acompañante en {lugar}?".
 
+
+## Asistente de cuenta por WhatsApp — desde el 15/11/2026 (decisiones de Juan)
+
+Bot que atiende por WhatsApp **solo a acompañantes**: gestión de su cuenta y compra de créditos. Nunca empieza
+conversaciones y **nunca acredita créditos**: solo Juan (botón "Acreditar" de Telegram → `creditos.confirmarPedido`
+con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Asistente (apagado = no se conecta a WhatsApp).
+
+**Arquitectura**
+- Contenedor aparte `agente` (`app/agente.js`, misma imagen, `node agente.js`, `infra/docker-compose.yml`): si se cae o
+  WhatsApp falla, el sitio no se entera. Variables propias en `.env.agente` (`infra/server/separar-env.sh`):
+  `DATABASE_URL`, `SECRETS_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (por defecto `claude-haiku-5-5`, verificado en
+  la página de modelos de Anthropic el 15/11/2026), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SITE_URL`. `ANTHROPIC_*`
+  no van al app. El agente no manda emails (no tiene Mailgun). No aplica migraciones: espera a que el app las cree.
+- WhatsApp: conexión no oficial con Baileys (`@whiskeysockets/baileys` **6.7.24**, la última estable sin `-rc`, Node ≥ 20;
+  la 6.17.16 que aparece en npm está deprecada por un fallo de seguridad, corregido desde la 6.7.22) vinculada como
+  dispositivo al chip prepago (QR escaneado una vez desde el admin). Su dependencia `libsignal` viene de GitHub (fijada
+  por commit en el lock): el Dockerfile instala las dependencias en una etapa `deps` con git, que no queda en la imagen.
+  Sesión de Baileys en la tabla `asistente_auth`, **cifrada** con `SECRETS_KEY` (`lib/secretos.js`). Reconexión con
+  espera creciente (1 → 60 s); si WhatsApp desvincula el dispositivo (401) borra la sesión y vuelve a pedir QR.
+  `markOnlineOnConnect: false` (el teléfono sigue recibiendo notificaciones). Solo chats 1:1: ignora grupos, estados,
+  difusiones y canales; ignora mensajes de más de 2 h (llegados con el agente apagado). "Escribiendo…" + pausa corta
+  antes de cada respuesta. Archivos hasta 10 MB; como comprobante solo imagen (JPG/PNG/WebP/HEIC) o PDF, por firma.
+- Telegram: Telegram permite **un solo** lector de `getUpdates`, y es el app (`lib/telegram.js`). Mientras el asistente
+  está prendido (`setContinuo`, se revisa cada 15 s) el app lee `getUpdates` sin parar con
+  `allowed_updates: [message, callback_query]`; la vinculación con `/start <código>` sigue igual. El agente solo envía
+  (`telegram.enviar`: texto o foto/PDF con botones; `sendPhoto`/`sendDocument`). Botones con `callback_data`
+  `sr:a:<token>` / `sr:r:<token>`: token al azar de 16 bytes, en la base solo su hash (`asistente_tg_acciones`), uno por
+  acción. Se aceptan **solo del chat vinculado** (o `TELEGRAM_CHAT_ID` si no hay uno); otro chat → "No autorizado".
+  Idempotentes: un segundo toque (o el pedido ya confirmado desde el admin) responde "El pedido ya está confirmado." y no
+  acredita dos veces. Después del toque se edita el mensaje (sin botones, con el resultado). Avisos nuevos (se apagan
+  desde Admin → Ajustes como los demás): `asistente_comprobante`, `asistente_derivacion`, `asistente_alerta`. Nunca
+  llevan teléfonos ni emails (`sinContacto` limpia los motivos que escribe la IA).
+- Comunicación entre procesos por la base: tabla `asistente_salida` (destino `whatsapp` | `app`) + trigger que hace
+  `NOTIFY sr_asistente_<destino>`; cada proceso escucha con su propia conexión (se reconecta sola) y además revisa la
+  tabla cada 30 s (`escucharSalida`, `lib/asistente-comun.js`).
+  - app → agente: `mensaje` (créditos acreditados / pedido rechazado; `clave` única evita repetirlo) y `desvincular`.
+    `creditos.setAlCambiarPedido` dispara el aviso al confirmar o rechazar **desde Telegram o desde el admin**; va al chat
+    donde se nombró el pedido o, si no hay, al último chat identificado con esa cuenta. No se manda si el asistente está
+    apagado, si el chat está con una persona o si pasaron más de 24 h.
+  - agente → app: `codigo_email`. El **app** genera el código de 6 números, guarda solo su hash
+    (`sha256(id:código)`) y manda el email con Mailgun; el agente lo compara. Así el código nunca queda en texto plano y
+    la clave de Mailgun no sale del app.
+
+**Flujo determinístico (sin IA)** — `lib/asistente.js`
+1. Primera respuesta de cada sesión (sin respuestas del bot a ese chat en 24 h): empieza con
+   "Hola, soy el asistente de cuenta AI de SexyRose." (EN "Hi, I'm SexyRose's AI account assistant.", PT "Olá, sou o
+   assistente de conta AI da SexyRose."). Idioma del chat por palabras frecuentes (es/en/pt).
+2. Código `SR-####` en el texto (el mensaje que arma el panel al pedir créditos): busca el pedido (primero el pendiente
+   con ese código), lo asocia al chat (`asistente_conv_pedidos`) y responde pack, créditos, **ARS** (=`arsSugerido`:
+   USD × `cotizacion.arsPorUsd` redondeado hacia arriba a la centena, lo mismo que Admin → Pedidos), alias, titular, el
+   código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta.
+   Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los datos
+   para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
+3. Foto o PDF: se guarda en `DATA_DIR/privado/comprobantes` (el mismo lugar que los de la web) y se adjunta con
+   `creditos.adjuntarComprobante` al pedido pendiente del chat (código en el texto de la foto, o el único pendiente del
+   chat o de la cuenta identificada). Con varios pendientes pregunta cuál y adjunta cuando responde el código; sin
+   ninguno, pide el código. Después, foto/PDF a Juan por Telegram con pedido, pack, créditos, USD, ARS, nombre artístico
+   y los botones.
+4. 6 números con un código de email vigente → verificación (vence a los 15 min, 5 intentos; pedir uno nuevo anula el
+   anterior; máximo 3 pedidos de código por hora y chat; la respuesta no dice si el email existe).
+5. "¿Sos un bot?" (es/en/pt) → "Soy un asistente de IA (inteligencia artificial), no una persona. Si preferís hablar con
+   alguien del equipo, decime y te paso."
+6. Más de 20 mensajes en una hora → pasa a una persona.
+
+**IA** (`lib/asistente-llm.js`, Messages API con herramientas, `fetch` inyectable) — instrucciones con las reglas de
+Juan (solo temas de cuenta; nunca actividades, recomendar o dar datos de acompañantes, tarifas, promesas, descuentos o
+devoluciones, consejos legales o impositivos, funcionamiento interno, pedir contraseñas o tarjetas; interesados que
+buscan a una acompañante → contacto directo desde su perfil; fuera de tema o enojo → `derivar_a_juan`). Respuestas
+cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados en el código**:
+- `precios`, `ayuda(tema)` (textos fijos en `lib/asistente-ayuda.js`, armados con los del sitio; Juan los edita ahí).
+- `pedido_por_codigo`, `datos_transferencia` (manda el mensaje del punto 2): solo pedidos cuyo código se escribió en
+  ese chat o de la cuenta identificada.
+- `enviar_codigo_email(email)`.
+- `estado_cuenta` (perfil, verificación, plan efectivo y plan mensual con vencimiento, saldo, últimos pedidos) y
+  `crear_pedido` (reusa `creditos.crearPedido`): **solo chat identificado** — por el teléfono del perfil
+  (`datos.whatsapp`, comparado sin el 9 de los celulares de Argentina; tiene que coincidir una sola cuenta activa) o por
+  el código de email. Sin identificar → `{ error: 'chat_no_identificado' }`.
+- `derivar_a_juan(motivo)` → chat `humano` + aviso. `alerta(tipo, motivo)` (menores, trata, abuso, amenazas, legal) →
+  aviso urgente, chat `humano`, respuesta neutra.
+Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
+persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
+
+**Silencio** — `estado = 'humano'` (botón "Pasar a humano" del admin, `derivar_a_juan`, `alerta`, límite) hasta
+"Devolver al asistente". Si Juan escribe desde el teléfono en un chat (mensaje propio que no mandó el bot), el bot calla
+12 h en ese chat (`silenciado_hasta`). En silencio no se procesa nada (ni comprobantes): el mensaje solo queda guardado.
+
+**Datos** — migración `db/180-asistente.sql`: `asistente_conversaciones`, `asistente_mensajes` (dir in/out, origen
+bot|juan|usuario, tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
+`asistente_salida` (+ trigger NOTIFY), `asistente_whatsapp` (estado, QR, número, latido, IA), `asistente_auth`. Ajuste
+`asistente` = `{ activo, alias, titular }` (sin fila = apagado). Limpieza en el app al arrancar y cada 6 h
+(`asistenteApp.purgar`): mensajes de más de 90 días y sus archivos (salvo los que quedaron como comprobante de un
+pedido), chats sin mensajes y sin actividad en 90 días, códigos de email de más de 2 días, salida procesada de más de 7
+días. Logs sin teléfonos, emails ni textos.
+
+**Admin** (`routes/admin-asistente.js` bajo `${A}/api`, `mvp/src/prod-admin-asistente.js`, menú "Asistente")
+- `GET /asistente` → `{ ajustes, whatsapp: { estado: apagado|conectando|esperando_qr|conectado|desconectado, agente
+  (latido < 90 s), numero (enmascarado), error, qrSvg (data:image/svg+xml, generado en el servidor con `qrcode` 1.5.4,
+  solo si el QR tiene menos de 60 s) }, ia: { configurada, modelo }, conversaciones: { total, humano } }`.
+- `PUT /asistente/ajustes { activo, alias, titular }` (alias 6–20: letras, números, puntos, guiones; titular 3–80).
+- `POST /asistente/desvincular` (el agente hace logout, borra la sesión y pide QR nuevo).
+- `GET /asistente/conversaciones[?estado=bot|humano&q=]` → teléfono enmascarado (`+54 9 11 ****-1234`), cuenta, último
+  mensaje, estado. `GET /asistente/conversaciones/:id` (chat + pedidos nombrados),
+  `GET …/:id/mensajes/:mid/archivo` (privado, no-store), `POST …/:id/humano { humano: bool }`.
+- Admin → Ajustes → Contacto: una línea avisa que el WhatsApp tiene que ser el número del chip del asistente.
+
+Pruebas: `app/test/asistente.test.js` (Baileys, Claude y Telegram falsos). Puesta en marcha y costos: `infra/README.md`
+→ "Asistente de cuenta por WhatsApp".
