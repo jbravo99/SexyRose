@@ -47,9 +47,10 @@ import { createTelegram } from './lib/telegram.js';
 import { createMpCuentas } from './lib/mp-cuentas.js';
 import { createAdminIntegracionesRouter } from './routes/admin-integraciones.js';
 // Asistente de cuenta por WhatsApp (el bot corre en otro contenedor: agente.js). El app maneja los botones de
-// Telegram, los emails con el código, los avisos de pedidos acreditados/rechazados, la limpieza y Admin → Asistente.
+// Telegram, los emails con el código, los avisos de pedidos acreditados/rechazados, la limpieza y Admin → Mensajería.
 import { createAsistenteApp } from './lib/asistente-app.js';
 import { createAdminAsistenteRouter } from './routes/admin-asistente.js';
+import { createAdminCaptacionRouter } from './routes/admin-captacion.js';
 // Admin → Métricas (KPIs con gráficos) y contadores de tráfico sin datos personales (POST /api/sitio/evento)
 import { createAdminMetricasRouter } from './routes/admin-metricas.js';
 // Cuentas de interesados (clientes) y pedidos personalizados con chat
@@ -428,7 +429,7 @@ export function createApp(config) {
   const ipHash = (req) => crypto.createHash('sha256').update(salt + clientIp(req), 'utf8').digest('hex');
 
   // Avisos por Telegram (opcional). Nunca incluyen datos de contacto ni el texto de la denuncia.
-  // El token queda en el servidor; el chat se vincula desde Admin → Ajustes (lib/telegram.js). notify(texto, tipo).
+  // El token queda en el servidor; el chat se vincula desde Admin → Mensajería → Telegram (lib/telegram.js). notify(texto, tipo).
   const telegram = createTelegram({
     pool, token: config.telegramToken, chatIdEnv: config.telegramChatId, log,
     fetchImpl: config.telegramFetch !== undefined ? config.telegramFetch : globalThis.fetch,
@@ -1160,7 +1161,8 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const moderacionAdmin = createAdminModeracionRouter({ pool, storage, contenido, destacadas, apiPost, adminUser: config.adminUser || 'admin', invalidar: () => invalidarSitio(), log });
   admin.use('/api', moderacionAdmin.router);
   admin.use('/api', createAdminIntegracionesRouter({ telegram, mpCuentas, creditos, apiPost, log })); // Telegram, cuentas de Mercado Pago, WhatsApp
-  admin.use('/api', createAdminAsistenteRouter({ pool, privado, apiPost, log })); // Admin → Asistente (WhatsApp)
+  admin.use('/api', createAdminAsistenteRouter({ pool, privado, apiPost, log })); // Admin → Mensajería (asistente de WhatsApp)
+  admin.use('/api', createAdminCaptacionRouter({ pool, apiPost, log })); // Admin → Mensajería → Captación
   admin.use('/api', createAdminMetricasRouter({ pool, planes, ahora: config.metricasAhora || null })); // Admin → Métricas
   if (config.tareaContenido !== false) contenido.iniciarTarea({ listo: () => state.dbReady && !state.stopping });
 

@@ -724,7 +724,9 @@ acompañantes: el registro de interesados queda cerrado hasta abrir el sitio.
 
 Bot que atiende por WhatsApp **solo a acompañantes**: gestión de su cuenta y compra de créditos. Nunca empieza
 conversaciones y **nunca acredita créditos**: solo Juan (botón "Acreditar" de Telegram → `creditos.confirmarPedido`
-con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Asistente (apagado = no se conecta a WhatsApp).
+con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Mensajería → WhatsApp (antes Admin → Asistente;
+apagado = no se conecta a WhatsApp). La única excepción a "nunca empieza": la invitación de captación, que la manda Juan a
+mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
 
 **Arquitectura**
 - Contenedor aparte `agente` (`app/agente.js`, misma imagen, `node agente.js`, `infra/docker-compose.yml`): si se cae o
@@ -749,7 +751,7 @@ con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Asistente 
   acción. Se aceptan **solo del chat vinculado** (o `TELEGRAM_CHAT_ID` si no hay uno); otro chat → "No autorizado".
   Idempotentes: un segundo toque (o el pedido ya confirmado desde el admin) responde "El pedido ya está confirmado." y no
   acredita dos veces. Después del toque se edita el mensaje (sin botones, con el resultado). Avisos nuevos (se apagan
-  desde Admin → Ajustes como los demás): `asistente_comprobante`, `asistente_derivacion`, `asistente_alerta`. Nunca
+  desde Admin → Mensajería → Telegram como los demás): `asistente_comprobante`, `asistente_derivacion`, `asistente_alerta`. Nunca
   llevan teléfonos ni emails (`sinContacto` limpia los motivos que escribe la IA).
 - Comunicación entre procesos por la base: tabla `asistente_salida` (destino `whatsapp` | `app`) + trigger que hace
   `NOTIFY sr_asistente_<destino>`; cada proceso escucha con su propia conexión (se reconecta sola) y además revisa la
@@ -772,7 +774,7 @@ con `por: 'telegram'`, o el admin). Encendido/apagado desde Admin → Asistente 
    titular, el código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu
    cuenta. Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los
    datos para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
-   **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Asistente): si
+   **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Mensajería → WhatsApp): si
    está cargada (alias y titular en dólares), la primera respuesta a un pedido pendiente sin moneda elegida es
    "Pedido SR-1234: Trimestre Plata, 105 créditos.\n¿Vas a transferir en pesos o en dólares?" (EN "Will you transfer in
    pesos or in dollars?", PT "Você vai transferir em pesos ou em dólares?") y el chat queda esperando
@@ -820,9 +822,11 @@ persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 **Silencio** — `estado = 'humano'` (botón "Pasar a humano" del admin, `derivar_a_juan`, `alerta`, límite) hasta
 "Devolver al asistente". Si Juan escribe desde el teléfono en un chat (mensaje propio que no mandó el bot), el bot calla
 12 h en ese chat (`silenciado_hasta`). En silencio no se procesa nada (ni comprobantes): el mensaje solo queda guardado.
+Excepción (16/11/2026): la invitación de captación (o cualquier mensaje propio a un contacto de captación "pendiente" o
+"abierto") **no** silencia: marca el contacto "enviado" y queda en el chat con origen `captacion`.
 
 **Datos** — migración `db/180-asistente.sql`: `asistente_conversaciones`, `asistente_mensajes` (dir in/out, origen
-bot|juan|usuario, tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
+bot|juan|usuario|captacion (desde la 220), tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
 `asistente_salida` (+ trigger NOTIFY), `asistente_whatsapp` (estado, QR, número, latido, IA), `asistente_auth`. Ajuste
 `asistente` = `{ activo, alias, titular, aliasUsd, titularUsd }` (sin fila = apagado; alias/titular = cuenta en pesos;
 un ajuste viejo `{ activo, alias, titular }` se lee igual, sin cuenta en dólares). Migración `db/190-asistente-dolares.sql`:
@@ -831,21 +835,24 @@ un ajuste viejo `{ activo, alias, titular }` se lee igual, sin cuenta en dólare
 pedido), chats sin mensajes y sin actividad en 90 días, códigos de email de más de 2 días, salida procesada de más de 7
 días. Logs sin teléfonos, emails ni textos.
 
-**Admin** (`routes/admin-asistente.js` bajo `${A}/api`, `mvp/src/prod-admin-asistente.js`, menú "Asistente")
+**Admin** (`routes/admin-asistente.js` bajo `${A}/api`, `mvp/src/prod-admin-asistente.js`; menú "Asistente" hasta el
+16/11/2026, ahora Admin → Mensajería → Conversaciones y WhatsApp)
 - `GET /asistente` → `{ ajustes, whatsapp: { estado: apagado|conectando|esperando_qr|conectado|desconectado, agente
   (latido < 90 s), numero (enmascarado), error, qrSvg (data:image/svg+xml, generado en el servidor con `qrcode` 1.5.4,
-  solo si el QR tiene menos de 60 s) }, ia: { configurada, modelo }, conversaciones: { total, humano } }`.
+  solo si el QR tiene menos de 60 s) }, ia: { configurada, modelo }, conversaciones: { total, humano, captacion },
+  botonCreditos: { vinculado, guardado, usa: 'vinculado'|'guardado'|null } }` (desde el 16/11/2026).
 - `PUT /asistente/ajustes { activo, alias, titular, aliasUsd?, titularUsd? }` (alias 6–20: letras, números, puntos,
   guiones; titular 3–80; las mismas reglas en dólares, con los dos datos o ninguno; sin `aliasUsd`/`titularUsd` quedan
-  los guardados). Admin → Asistente → "Cuenta para las transferencias": bloques "En pesos" y "En dólares (opcional)".
+  los guardados). Admin → Mensajería → WhatsApp → "Cuenta para las transferencias": bloques "En pesos" y "En dólares (opcional)".
 - Moneda elegida a la vista: `GET /asistente/conversaciones/:id` → `pedidos[].moneda` ("Pedidos nombrados en el chat":
   "· en dólares"), y `GET /pedidos-creditos` → `items[].monedaAsistente` (Admin → Créditos → Pedidos: "Transfiere en
   dólares/pesos").
 - `POST /asistente/desvincular` (el agente hace logout, borra la sesión y pide QR nuevo).
-- `GET /asistente/conversaciones[?estado=bot|humano&q=]` → teléfono enmascarado (`+54 9 11 ****-1234`), cuenta, último
-  mensaje, estado. `GET /asistente/conversaciones/:id` (chat + pedidos nombrados),
+- `GET /asistente/conversaciones[?estado=bot|humano|captacion&q=]` → teléfono enmascarado (`+54 9 11 ****-1234`), cuenta,
+  último mensaje, estado, `captacion: { id, estado } | null`. `GET /asistente/conversaciones/:id` (chat + pedidos nombrados),
   `GET …/:id/mensajes/:mid/archivo` (privado, no-store), `POST …/:id/humano { humano: bool }`.
-- Admin → Ajustes → Contacto: una línea avisa que el WhatsApp tiene que ser el número del chip del asistente.
+- (Hasta el 16/11/2026: Admin → Ajustes → Contacto avisaba que el WhatsApp tenía que ser el del chip. Desde entonces el
+  botón usa el número vinculado solo: ver "Admin → Mensajería y captación".)
 
 Pruebas: `app/test/asistente.test.js` (Baileys, Claude y Telegram falsos). Puesta en marcha y costos: `infra/README.md`
 → "Asistente de cuenta por WhatsApp".
@@ -857,13 +864,14 @@ Barra lateral con títulos de grupo (en el celular, la misma fila de chips en el
 
 - **General**: Resumen, Métricas (desde el 16/11/2026, ver "Admin → Métricas"; con Exportar a Excel y "De dónde vienen las visitas").
 - **Acompañantes**: Acompañantes (perfiles y verificación), Reportes, Interesados.
-- **Cobros**: Créditos [Pedidos | Movimientos], Asistente (WhatsApp), Planes [Suscripciones | Renovaciones],
+- **Cobros**: Créditos [Pedidos | Movimientos], Mensajería [Conversaciones | Captación | WhatsApp | Telegram | Mensajes]
+  (antes "Asistente", desde el 16/11/2026), Planes [Suscripciones | Renovaciones],
   Destacados [Destacado | Star], Contenido [Ventas | Pedidos personalizados].
 - **Sitio**: Ubicaciones, Servicios, Textos, SEO.
 - **Configuración**: Precios (precios de los planes, packs de créditos, precios del Destacado, cotización del dólar y
   comisión de la venta de contenido: descuento total, costo de Mercado Pago, saldo negativo máximo) y Ajustes (Home
-  provisoria, contacto para comprar créditos, avisos por Telegram, mensajes, cuenta de Mercado Pago que recibe la
-  comisión, textos del inicio). Mismas tarjetas, botones, validaciones y "Actualizado el…"; solo cambiaron de lugar.
+  provisoria, cuenta de Mercado Pago que recibe la comisión, textos del inicio; contacto para comprar créditos, avisos
+  por Telegram y mensajes pasaron a Mensajería el 16/11/2026). Mismas tarjetas, botones, validaciones y "Actualizado el…"; solo cambiaron de lugar.
 
 Cada pestaña tiene su dirección (`#admin.<sección>.<pestaña>`) y su contador; la sección muestra la suma (Créditos =
 pedidos pendientes; Planes = renovaciones con problema; Contenido = pedidos personalizados sin responder). El enlace
@@ -880,10 +888,93 @@ un paso al historial):
 | `#admin.ventas` | `#admin.contenido.ventas` |
 | `#admin.solicitudes` / `#admin.solicitudes.<id>` | `#admin.contenido.pedidos` / `#admin.contenido.pedidos.<id>` |
 | `#admin.planes`, `#admin.contenido` | su primera pestaña |
+| `#admin.asistente` | `#admin.mensajeria.conversaciones` (o `.whatsapp` si ya se sabe que el asistente está apagado o sin conectar) |
+| `#admin.asistente.<chat>` | `#admin.mensajeria.conversaciones.<chat>` |
+| `#admin.ajustes.contacto` / `.telegram` / `.mensajes` | `#admin.mensajeria.whatsapp` / `.telegram` / `.mensajes` |
 
 Enlaces internos y avisos actualizados: Resumen, ficha de la acompañante, "Pedidos nombrados en el chat", cotización
 ("revisala en Precios"), Telegram ("Confirmalo en Admin → Créditos → Pedidos", "Revisar en Admin → Contenido → Ventas",
 salto de la cotización y falta de datos del asistente → "Admin → Precios").
+
+## Admin → Mensajería y captación — desde el 16/11/2026 (decisiones de Juan)
+
+Una sola sección **Mensajería** (Cobros, donde estaba "Asistente"; ícono de WhatsApp) con pestañas en la dirección
+(`#admin.mensajeria.<pestaña>`). No se perdió ningún ajuste ni comportamiento: los ajustes `contacto`, `mensajes` y
+`asistente` siguen en la tabla `ajustes` con la misma forma; solo cambiaron de lugar las tarjetas.
+
+| Pestaña | Qué tiene | De dónde vino |
+| --- | --- | --- |
+| Conversaciones | chats del asistente ("Pasar a humano" / "Devolver al asistente", pedidos nombrados en el chat), chips Todas / Con una persona / Con el asistente / **Captación**; aviso si el asistente está apagado o sin conectar | Admin → Asistente |
+| Captación | ver abajo | nuevo |
+| WhatsApp | el único chip del asistente: prendido/apagado, estado y QR, "Desvincular", **Botón de comprar créditos** (número que usa + "Probar") y cuenta para las transferencias (pesos y dólares) | Admin → Asistente y Ajustes → Contacto |
+| Telegram | vincular tu Telegram (avisos y botones), qué avisos llegan, y "Telegram para comprar créditos" (usuario + "Mostrar también Telegram") | Ajustes |
+| Mensajes | mensaje del pedido de créditos (es/en/pt) + "Tu respuesta" (ajuste `mensajes`) y la invitación de captación (ajuste `captacion`) | Ajustes + nuevo |
+
+Contador del menú: el mismo de antes (chats con una persona), en la pestaña Conversaciones; se carga al abrir el panel.
+Ajustes muestra una tarjeta "Contacto, Telegram y mensajes" con enlaces a las pestañas nuevas. Los avisos de Telegram
+dicen "Admin → Mensajería" (antes "Admin → Asistente").
+
+**Botón de comprar créditos** — `creditos.contacto()` devuelve como `whatsapp` el número del chip **vinculado**
+(`asistente_whatsapp.numero`, lo guarda el agente al conectar; queda aunque se corte la conexión) y, hasta que se vincule,
+el que estaba cargado a mano en el ajuste `contacto.whatsapp` (no se borra; ya no hay campo para editarlo). Además
+`whatsappGuardado` y `whatsappOrigen` ('asistente' | 'guardado' | null). Lo usan el panel de la acompañante (pedido de
+créditos y `canales.whatsapp`) y "Probar". `PUT /ajustes/contacto` sin `whatsapp` (Mensajería → Telegram) deja el número
+guardado como estaba. La pestaña WhatsApp dice "Usa el número vinculado: …" o "Hasta que vincules el chip, el botón usa
+el número que tenías cargado: …".
+
+### Captación (semiautomática: Juan toca Enviar)
+
+Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-contactos.xlsx` de Juan, hoja "Contactos").
+`lib/captacion.js`, `lib/xlsx-lector.js`, `routes/admin-captacion.js`, `mvp/src/prod-admin-captacion.js`.
+
+- **Importar** (`POST /captacion/importar?nombre=…`, cuerpo = el archivo como `application/octet-stream`, con
+  `X-SR-Admin: 1` y mismo origen; hasta 8 MB): .xlsx (lector propio sin dependencias: ZIP + `sharedStrings` + la hoja
+  "Contactos" o, si no está, la primera; nunca evalúa fórmulas; límites de 40 MB por XML descomprimido, 120 MB en total,
+  20.000 filas y 60 columnas) o .csv (`,` `;` o tab, comillas, BOM). Encabezados sin importar mayúsculas ni tildes
+  (Nombres, Teléfono/WhatsApp/Celular, Categoría, Ciudad, Sitios, Cantidad de avisos, URL, Fecha, Estado, Nota; "Abrir
+  WhatsApp" se ignora). Teléfonos a E.164 de Argentina (`+549…`: acepta +54 9 11…, +54 11…, 011 15…, 11 …); una fila
+  por teléfono (se unen nombres, ciudades, categorías, sitios, enlaces; avisos se suman). Volver a subir une sin
+  duplicar (avisos = el mayor) y **conserva los estados**. El "Estado" de la planilla solo se toma si evita escribir de
+  más (no escribir, descartado, revisar, enviado).
+- **Ya está en el sitio**: el teléfono es el WhatsApp de un perfil (`perfiles.datos.whatsapp`, comparado sin el 9; las
+  cuentas no tienen otro teléfono) → `en_sitio`, nunca en la cola.
+- **Seguridad**: nombres o nota con palabras que sugieren una menor o alguien muy joven (pendeja/pendejita, jovencita,
+  nenita, nena, lolita, colegiala, teen, menor, adolescente, niña, pibita, secundaria, 10 a 17 años, "tengo 15",
+  "recién cumplidos"…; sin importar mayúsculas ni tildes; "Nina" no cuenta) → `revisar` con el motivo. Igual números
+  extranjeros o inválidos, y lo que la planilla marca "Revisar". "Revisar" **nunca** entra en la cola ni puede abrirse
+  (409) hasta que Juan lo revise uno por uno: "Revisado: es mayor de edad" (pide confirmar; → pendiente, `revisado`)
+  o "Descartar". Una planilla nueva que trae esas palabras para un contacto pendiente no revisado lo pasa a revisar.
+- **Estados** (`captacion_contactos.estado`): pendiente, abierto (tocó "Abrir chat"), enviado, respondio, se_registro,
+  no_escribir, revisar, descartado, en_sitio. Cambios a mano (`POST /captacion/:id/estado`): enviado (desde
+  pendiente/abierto), revisado, descartado, no_escribir, pendiente (deshacer abierto/enviado). "No escribir" no vuelve
+  nunca a la cola.
+- **Los N del día** (`GET /captacion` → `cola`): N = `ajustes.captacion.porDia` (1–200, por defecto 30) menos los enviados
+  hoy (hora de Argentina); primero los "abiertos" sin enviar, después más avisos, después ciudad. Cada fila: nombres,
+  ciudad, categoría, sitios y avisos, teléfono enmascarado, "Abrir chat" (`https://wa.me/<número>?text=<invitación>` en
+  otra pestaña; Juan tiene WhatsApp Web con el chip del asistente) y "Marcar enviado".
+- **Agente** (`lib/asistente.js`): un mensaje propio (no del bot) que es la invitación (mismo texto sin importar
+  espacios, mayúsculas ni asteriscos) o cualquier mensaje a un contacto pendiente/abierto → `enviado`, el chat queda con
+  `captacion_id` y **no** se silencia. En un chat `@lid` sin número, se asocia al único "Abrir chat" de los últimos 20 min.
+  Cuando ella responde → `respondio`, y el asistente contesta con el contexto de la invitación (instrucciones extra:
+  la invitaron porque vimos su perfil en otro sitio; registro, Bronce gratis, planes, fotos, verificación,
+  `{SITE_URL}/registro`; si pregunta de dónde sacamos el número: de su aviso publicado en otro sitio; no insistir) y la
+  presentación como IA al empezar. "No", "no me interesa", "baja", "no me escriban", insultos (sin IA) o la herramienta
+  `no_contactar` (solo en estos chats) → una sola respuesta "Perfecto, no te vamos a escribir más. Disculpá la
+  molestia." (con "¿quién te dio mi número?": antes "Tu número lo vimos en tu aviso publicado en otro sitio.") y
+  `no_escribir`; otro "no" después no se contesta. Si después Juan escribe a mano en ese chat, rige el silencio de 12 h.
+- **Se registró**: trigger `captacion_registro` en `perfiles` (al crearse o al cambiar `datos.whatsapp`) → `se_registro`
+  con la cuenta.
+- **Números** arriba: enviados hoy / esta semana, pendientes, respondieron (y % sobre los contactados), se registraron
+  (y cuántos después de la invitación), para revisar, no escribir. "Toda la lista" con chips por estado y búsqueda
+  (`GET /captacion/contactos?estado=&q=`, hasta 200). **Vaciar lista** (`POST /captacion/vaciar {confirmar: true}`, con
+  confirmación): borra todos los que no se registraron.
+- **Invitación** (Mensajería → Mensajes, `PUT /captacion/ajustes { mensaje?, porDia? }`; vacío = el texto aprobado por
+  Juan, sin línea de baja por decisión suya): "Hola, ¿cómo estás? Te escribimos de SexyRose (sexyrose.net). Vimos tu
+  perfil publicado en otro sitio…".
+
+Datos: migración `db/220-mensajeria-captacion.sql` (`captacion_contactos`, `captacion_comparable()`,
+`asistente_conversaciones.captacion_id`, origen `captacion` en `asistente_mensajes`, trigger `captacion_registro`).
+Pruebas: `app/test/mensajeria.test.js`.
 
 ## Admin → Métricas — desde el 16/11/2026 (decisión de Juan: "En general quiero poder visualizar los KPIs con gráficos en lo posible")
 

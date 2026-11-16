@@ -1,9 +1,13 @@
 /* ============================================================
-   SexyRose — prod-admin-asistente.js (admin real, 15/11/2026)
-   Admin → Asistente: el asistente de cuenta por WhatsApp. Prender/apagar, estado de la conexión con el QR para
-   vincular el chip, "Desvincular", cuenta para transferencias (en pesos y, opcional, en dólares: alias y titular) y
-   las conversaciones, con
-   "Pasar a humano" / "Devolver al asistente". API: app/routes/admin-asistente.js (bajo ${API}/asistente).
+   SexyRose — prod-admin-asistente.js (admin real, 15/11/2026; Mensajería desde el 16/11/2026)
+   Admin → Mensajería (antes "Asistente"), pestañas:
+   - Conversaciones: los chats del asistente de cuenta por WhatsApp ("Pasar a humano" / "Devolver al asistente",
+     pedidos nombrados en el chat) con el filtro "Captación".
+   - WhatsApp: el único número (chip) del asistente: estado y QR para vincularlo, "Desvincular", prendido/apagado, el
+     número que usa el botón de comprar créditos y la cuenta para las transferencias (pesos y, opcional, dólares).
+   - Telegram: vincular tu Telegram (avisos y botones), qué avisos llegan, y el usuario de Telegram para comprar créditos.
+   - Mensajes: el mensaje del pedido de créditos (es/en/pt) y el mensaje de captación.
+   La pestaña Captación la arma prod-admin-captacion.js. API: app/routes/admin-asistente.js (bajo ${API}/asistente).
    ============================================================ */
 (function () {
   'use strict';
@@ -13,16 +17,13 @@
   const { load, layout, head, fecha, loadingCard, linkCuenta } = P;
   const errorCard = (msg, k) => `<div class="card"><div class="empty">${icon('alert')}<h4>No se pudo cargar</h4><p class="small">${esc(msg)}</p><button type="button" class="btn secondary sm" data-action="asisRecargar" data-k="${esc(k)}">${icon('refresh')} Reintentar</button></div></div>`;
 
-  /* ---------- Menú ---------- */
-  const TABS = HH.adminTabs;
-  if (!TABS.some((t) => t.id === 'asistente')) {
-    const i = TABS.findIndex((t) => t.id === 'creditos');
-    TABS.splice(i >= 0 ? i + 1 : TABS.length, 0, { id: 'asistente', label: 'Asistente', icon: 'whatsapp' });
-  }
-  P.counts.asistente = () => (S.asis && S.asis.conversaciones ? S.asis.conversaciones.humano : 0) || 0;
+  /* ---------- Menú: Cobros → Mensajería (prod-admin.js); el contador sale de S.asis ---------- */
+  // El contador del menú (chats que esperan a una persona) se carga al abrir el panel, no recién al entrar.
+  const boot0 = HH.boot;
+  HH.boot = function () { const r = boot0.apply(this, arguments); load('asis', '/asistente'); return r; };
 
   const fail = (e) => HH.toast(e.message, { type: 'danger' });
-  const enVista = () => /^admin\.asistente/.test((HH.current && HH.current.path) || '');
+  const enVista = () => /^admin\.mensajeria/.test((HH.current && HH.current.path) || '');
   const modalAbierto = () => document.getElementById('modalRoot').classList.contains('open');
   const rerender = () => { if (enVista() && !modalAbierto()) HH.refresh(); };
   S.asf = S.asf || 'todas'; S.asq = S.asq || '';
@@ -32,7 +33,8 @@
     conectado: ['Conectado', 'ok'], esperando_qr: ['Esperando QR', 'warn'], conectando: ['Conectando…', 'info'],
     desconectado: ['Desconectado', 'danger'], apagado: ['Apagado', 'neutral'],
   };
-  const ORIGEN = { bot: 'Asistente', juan: 'Vos (desde el teléfono)', usuario: '' };
+  const ORIGEN = { bot: 'Asistente', juan: 'Vos (desde el teléfono)', captacion: 'Invitación (captación)', usuario: '' };
+  const CAP_ESTADO = { pendiente: 'Pendiente', abierto: 'Abierto', enviado: 'Enviado', respondio: 'Respondió', se_registro: 'Se registró', no_escribir: 'No escribir', revisar: 'Revisar', descartado: 'Descartado', en_sitio: 'Ya está en el sitio' };
   const ESTADO_PED = { pendiente: ['Esperando pago', 'warn'], confirmado: ['Acreditado', 'ok'], vencido: ['Vencido', 'neutral'], cancelado: ['Cancelado', 'neutral'], rechazado: ['Rechazado', 'danger'] };
   const estadoChat = (c) => (c.estado === 'humano' ? ['Persona', 'warn'] : c.silenciadoHasta ? ['En silencio', 'info'] : ['Asistente', 'ok']);
   const chip = (c) => { const [l, cls] = estadoChat(c); return `<span class="badge ${cls}">${l}</span>`; };
@@ -48,7 +50,7 @@
         HH.api('GET', '/asistente').then((d) => {
           const antes = S.asis && S.asis.whatsapp.estado; S.asis = d;
           if (antes !== 'conectado' && d.whatsapp.estado === 'conectado') HH.toast('WhatsApp conectado', { type: 'ok' });
-          if (/^admin\.asistente$/.test(HH.current.path)) rerender();
+          if (/^admin\.mensajeria\.(whatsapp|conversaciones)$/.test(HH.current.path)) rerender();
           vigilar();
         }).catch(() => {});
       }, 3000);
@@ -84,6 +86,21 @@
   }
   const badgeHtml = (l, cls) => `<span class="badge ${cls}">${l}</span>`;
 
+  // El botón "comprar créditos" del panel de las acompañantes abre WhatsApp con el número vinculado (sin campo a mano)
+  function cardBoton(d) {
+    const b = d.botonCreditos || {};
+    let txt;
+    if (b.usa === 'vinculado') txt = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Usa el número vinculado: <span data-noi18n>${esc(b.vinculado)}</span></div><div class="sub">Se toma solo del chip del asistente. Si vinculás otro chip, el botón cambia solo.</div></div></div>`;
+    else if (b.usa === 'guardado') txt = `<div class="notice info">${icon('info')}<span>Hasta que vincules el chip, el botón usa el número que tenías cargado: <strong data-noi18n>${esc(b.guardado)}</strong>.</span></div>`;
+    else txt = `<div class="notice warn">${icon('alert')}<span>Todavía no hay número: vinculá el chip del asistente para que el botón de comprar créditos abra WhatsApp.</span></div>`;
+    return `<section class="card stack" style="gap:12px" id="asisBoton">
+        <div class="card-title">${icon('wallet')} Botón de comprar créditos</div>
+        <p class="small muted" style="margin:0">Cuando una acompañante pide créditos desde su panel, se abre WhatsApp con este número y el mensaje del pedido (lo editás en Mensajes).</p>
+        ${txt}
+        ${b.usa ? `<div class="row">${HH.adminInt ? HH.adminInt.botonProbarWa() : ''}</div>` : ''}
+      </section>`;
+  }
+
   // En pesos (alias, titular: como siempre) y en dólares (aliasUsd, titularUsd: opcional). Con la de dólares cargada, el
   // asistente primero pregunta si va a transferir en pesos o en dólares.
   const camposCuenta = (pre, alias, titular, ph) => `<div class="grid-2" style="align-items:start"><div class="field"><label for="${pre}Alias">Alias</label><input class="input" id="${pre}Alias" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(alias || '')}" placeholder="${ph}" data-noi18n><span class="hint">6 a 20 caracteres: letras, números, puntos o guiones.</span></div>
@@ -112,13 +129,14 @@
     return items.filter((c) => {
       if (S.asf === 'humano' && estadoChat(c)[0] === 'Asistente') return false;
       if (S.asf === 'bot' && estadoChat(c)[0] !== 'Asistente') return false;
+      if (S.asf === 'captacion' && !c.captacion) return false;
       if (!q) return true;
       return [c.telefono, c.cuenta && c.cuenta.nombre, c.cuenta && c.cuenta.email].some((v) => norm(v).includes(q));
     });
   }
   const ultimoHtml = (u) => {
     if (!u) return '<span class="muted">—</span>';
-    const quien = u.dir === 'in' ? '' : (u.origen === 'juan' ? 'Vos: ' : 'Asistente: ');
+    const quien = u.dir === 'in' ? '' : (u.origen === 'juan' ? 'Vos: ' : u.origen === 'captacion' ? 'Invitación: ' : 'Asistente: ');
     const t = u.texto ? u.texto.replace(/\s+/g, ' ') : ({ imagen: 'Foto', documento: 'Archivo', audio: 'Audio', video: 'Video' }[u.tipo] || 'Mensaje');
     return `<span class="asis-ult"><span class="muted">${quien}</span><span data-noi18n>${esc(t)}</span></span>`;
   };
@@ -129,19 +147,29 @@
       const hay = S.asc && S.asc.items && S.asc.items.length;
       return `<div class="card"><div class="empty">${icon('chat')}<h4>${hay ? 'Sin resultados' : 'Todavía no hay conversaciones'}</h4><p class="small">${hay ? 'Probá con otro filtro o búsqueda.' : 'Cuando una acompañante le escriba al número del asistente, aparece acá.'}</p></div></div>`;
     }
-    const go = (c) => `#admin.asistente.${esc(c.id)}`;
+    const go = (c) => `#admin.mensajeria.conversaciones.${esc(c.id)}`;
+    const capB = (c) => (c.captacion ? ` <span class="badge info" title="${esc(CAP_ESTADO[c.captacion.estado] || '')}">Captación</span>` : '');
     const tabla = `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Teléfono</th><th>Cuenta</th><th>Último mensaje</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>
-      ${items.map((c) => `<tr class="asis-fila" data-go="${go(c)}"><td class="nowrap"><a href="${go(c)}" data-go="${go(c)}" data-noi18n>${esc(c.telefono)}</a></td><td>${cuentaHtml(c)}</td><td class="small">${ultimoHtml(c.ultimo)}</td><td>${chip(c)}</td><td class="small muted nowrap">${fecha(c.ultimoMensaje || c.creado)}</td></tr>`).join('')}
+      ${items.map((c) => `<tr class="asis-fila" data-go="${go(c)}"><td class="nowrap"><a href="${go(c)}" data-go="${go(c)}" data-noi18n>${esc(c.telefono)}</a></td><td>${cuentaHtml(c)}</td><td class="small">${ultimoHtml(c.ultimo)}</td><td class="nowrap">${chip(c)}${capB(c)}</td><td class="small muted nowrap">${fecha(c.ultimoMensaje || c.creado)}</td></tr>`).join('')}
       </tbody></table></div>`;
     const tarjetas = `<div class="pa-cards">${items.map((c) => `<a class="card stack asis-card" style="gap:6px" href="${go(c)}" data-go="${go(c)}">
-        <div class="row between nowrap"><strong data-noi18n>${esc(c.telefono)}</strong>${chip(c)}</div>
+        <div class="row between nowrap"><strong data-noi18n>${esc(c.telefono)}</strong><span class="nowrap">${chip(c)}${capB(c)}</span></div>
         <div class="small">${cuentaHtml(c)}</div>
         <div class="small">${ultimoHtml(c.ultimo)}</div>
         <div class="tiny muted">${fecha(c.ultimoMensaje || c.creado)}</div></a>`).join('')}</div>`;
     return tabla + tarjetas;
   }
 
-  function vAsistente() {
+  const RIGHT = (k) => `<div class="row" style="gap:8px">${recargar(k)}</div>`;
+  const vista = (sub, inner) => layout('mensajeria', `${head('Mensajería', RIGHT(sub === 'conversaciones' || sub === 'whatsapp' ? 'todo' : sub), SUBTITULO[sub])}<div class="stack" style="gap:16px">${inner}</div>`);
+  const SUBTITULO = {
+    conversaciones: 'Chats del asistente de WhatsApp con las acompañantes: pedidos de créditos, comprobantes, preguntas y respuestas a las invitaciones',
+    whatsapp: 'El número del asistente (un solo chip para todo): conexión, prendido o apagado, botón de comprar créditos y cuenta para las transferencias',
+    telegram: 'Tus avisos por Telegram y el usuario de Telegram para comprar créditos',
+    mensajes: 'El mensaje del pedido de créditos y el de la invitación de captación',
+  };
+
+  function vConversaciones() {
     load('asis', '/asistente'); load('asc', '/asistente/conversaciones');
     const d = S.asis;
     let body;
@@ -150,18 +178,39 @@
     else {
       const items = (S.asc && S.asc.items) || [];
       const nH = items.filter((c) => estadoChat(c)[0] !== 'Asistente').length;
+      const nC = items.filter((c) => c.captacion).length;
       const f = (k, l, n) => `<button type="button" class="chip${S.asf === k ? ' active' : ''}" data-action="asisFiltro" data-f="${k}" aria-pressed="${S.asf === k}">${l}${n != null ? ` <span class="badge" style="padding:0 6px">${n}</span>` : ''}</button>`;
+      const w = d.whatsapp || {}; const aj = d.ajustes || {};
+      const aviso = !aj.activo ? `<div class="notice warn">${icon('alert')}<span>El asistente está apagado: no responde los chats. Prendelo en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>`
+        : w.estado !== 'conectado' ? `<div class="notice warn">${icon('alert')}<span>WhatsApp no está conectado. Revisalo en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>` : '';
       const conv = !S.asc && S.err.asc ? errorCard(S.err.asc, 'asc') : !S.asc ? loadingCard(2) : `<div class="adm-filters">
             <label class="sr-only" for="asisQ">Buscar conversación</label><input class="input" id="asisQ" type="search" placeholder="Buscar por nombre o últimos números" value="${esc(S.asq)}" data-input="asisBuscar" autocomplete="off">
-            <div class="chips scroll" style="flex:1 1 auto;min-width:0">${f('todas', 'Todas', items.length)}${f('humano', 'Con una persona', nH)}${f('bot', 'Con el asistente', items.length - nH)}</div>
+            <div class="chips scroll" style="flex:1 1 auto;min-width:0">${f('todas', 'Todas', items.length)}${f('humano', 'Con una persona', nH)}${f('bot', 'Con el asistente', items.length - nH)}${f('captacion', 'Captación', nC)}</div>
           </div>
           <div id="asisFilas">${filas()}</div>`;
-      body = `<div class="asis-top">${cardEstado(d)}${cardCuenta(d)}</div>
-        <section class="stack" style="gap:12px"><div class="card-title">${icon('chat')} Conversaciones</div>${conv}</section>`;
+      body = `${aviso}<section class="stack" style="gap:12px">${conv}</section>`;
     }
     setTimeout(vigilar, 0);
-    const right = `<div class="row" style="gap:8px">${recargar('todo')}</div>`;
-    return layout('asistente', `${head('Asistente', right, 'Atiende por WhatsApp a las acompañantes: pedidos de créditos, comprobantes y preguntas de su cuenta')}<div class="stack" style="gap:16px">${body}</div>`);
+    return vista('conversaciones', body);
+  }
+
+  function vWhatsApp() {
+    load('asis', '/asistente');
+    const d = S.asis;
+    let body;
+    if (!d && S.err.asis) body = errorCard(S.err.asis, 'asis');
+    else if (!d) body = loadingCard(3);
+    else body = `<div class="asis-top">${cardEstado(d)}${cardBoton(d)}</div>${cardCuenta(d)}`;
+    setTimeout(vigilar, 0);
+    return vista('whatsapp', body);
+  }
+
+  function vTelegram() {
+    return vista('telegram', `${HH.adminInt ? HH.adminInt.telegramCard() : ''}${P.telegramContactoCard()}`);
+  }
+
+  function vMensajes() {
+    return vista('mensajes', `${P.mensajesCreditosCard()}${HH.adminCap ? HH.adminCap.mensajeCard() : ''}`);
   }
 
   /* ---------- Una conversación ---------- */
@@ -191,6 +240,7 @@
             <div><dt>Cuenta</dt><dd>${c.cuenta ? `${linkCuenta(c.cuenta.id, c.cuenta.nombre || 'Sin nombre')} <span class="tiny muted">${c.identificadoPor === 'email' ? 'por email' : 'por el teléfono del perfil'}</span>` : '<span class="muted">Sin identificar</span>'}</dd></div>
             <div><dt>Idioma</dt><dd>${esc({ es: 'Español', en: 'Inglés', pt: 'Portugués' }[c.idioma] || c.idioma)}</dd></div>
             ${humano && c.motivoHumano ? `<div><dt>Motivo</dt><dd data-noi18n>${esc(c.motivoHumano)}</dd></div>` : ''}
+            ${c.captacion ? `<div><dt>Captación</dt><dd><a href="#admin.mensajeria.captacion" data-go="#admin.mensajeria.captacion">${esc(CAP_ESTADO[c.captacion.estado] || c.captacion.estado)}</a> <span class="tiny muted">(la invitaste desde Captación)</span></dd></div>` : ''}
             ${c.silenciadoHasta ? `<div><dt>En silencio hasta</dt><dd>${fecha(c.silenciadoHasta)} <span class="tiny muted">(escribiste desde el teléfono)</span></dd></div>` : ''}
           </dl>
           <div class="row" style="gap:8px">${humano || c.silenciadoHasta
@@ -201,14 +251,15 @@
         ${(d.pedidos || []).length ? `<section class="card stack" style="gap:10px"><div class="card-title">${icon('wallet')} Pedidos nombrados en el chat</div><div class="list">${d.pedidos.map((p) => `<a class="list-item small" href="#admin.creditos.pedidos" data-go="#admin.creditos.pedidos"><div class="grow"><strong data-noi18n>${esc(p.codigo)}</strong> · <span data-noi18n>${esc(p.pack)}</span>${p.moneda ? ` <span class="tiny muted">· en ${p.moneda === 'USD' ? 'dólares' : 'pesos'}</span>` : ''}${p.comprobante ? ` <span class="tiny muted">· con comprobante</span>` : ''}</div>${P.badge(ESTADO_PED[p.estado], p.estado)}</a>`).join('')}</div></section>` : ''}`;
       body = `<div class="pa-detail"><div class="stack" style="gap:14px">${chat}</div><div class="stack" style="gap:14px">${lado}</div></div>`;
     }
-    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.asistente" data-go="#admin.asistente">${icon('arrowLeft')} Todas</a>${recargar(k)}</div>`;
-    return layout('asistente', `${head('Conversación', right, d ? esc(d.conversacion.telefono) : '')}${body}`);
+    const right = `<div class="row" style="gap:8px"><a class="btn ghost sm" href="#admin.mensajeria.conversaciones" data-go="#admin.mensajeria.conversaciones">${icon('arrowLeft')} Todas</a>${recargar(k)}</div>`;
+    return layout('mensajeria', `${head('Conversación', right, d ? esc(d.conversacion.telefono) : '')}${body}`);
   }
 
   /* ---------- Vistas, rutas y acciones ---------- */
-  P.views.asistente = vAsistente;
-  HH.adminViews = P.views;
-  HH.route('admin.asistente.:id', ({ id }) => (HH.requireRole('admin') ? vConversacion(id) : false));
+  Object.assign(P.subvistas, {
+    'mensajeria.conversaciones': vConversaciones, 'mensajeria.whatsapp': vWhatsApp, 'mensajeria.telegram': vTelegram, 'mensajeria.mensajes': vMensajes,
+  });
+  HH.route('admin.mensajeria.conversaciones.:id', ({ id }) => (HH.requireRole('admin') ? vConversacion(id) : false));
 
   const guardarAjustes = (cambios) => {
     const aj = { ...((S.asis && S.asis.ajustes) || {}), ...cambios };
@@ -218,6 +269,8 @@
     asisRecargar(el) {
       const k = el.dataset.k;
       if (k === 'todo' || k === 'asis' || k === 'asc') { load('asis', '/asistente', true); load('asc', '/asistente/conversaciones', true); }
+      else if (k === 'telegram') { if (HH.actions.intTgRecargar) HH.actions.intTgRecargar(); load('aj', '/ajustes', true); }
+      else if (k === 'mensajes') { load('aj', '/ajustes', true); load('cap', '/captacion', true); }
       else load(k, '/asistente/conversaciones/' + encodeURIComponent(k.slice(4)), true);
     },
     asisFiltro(el) { S.asf = el.dataset.f; HH.refresh(); },
@@ -260,7 +313,7 @@
 .asis-qr-wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 .asis-qr{width:240px;height:240px;max-width:100%;background:#fff;border-radius:12px;padding:8px;box-sizing:border-box}
 .asis-pasos{margin:0;padding-left:18px;display:grid;gap:6px;flex:1 1 200px}
-.asis-ult{display:inline-block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.asis-ult{display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .asis-fila{cursor:pointer}
 .asis-card{color:inherit;text-decoration:none}.asis-card .asis-ult{max-width:100%}
 .asis-juan{border-style:dashed}

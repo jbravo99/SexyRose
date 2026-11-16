@@ -190,7 +190,22 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
       return crudo ? { ...base, alcanzaParaSugerido: sug } : { ...base, alcanzaPara: p.alcanzaPara || sug };
     });
   }
-  const contacto = async () => ({ ...CONTACTO_DEFAULT, ...((await leerAjuste('contacto', {})) || {}) });
+  // WhatsApp para comprar créditos (16/11/2026, decisión de Juan): el número del chip VINCULADO al asistente (lo
+  // guarda el agente al conectar, asistente_whatsapp.numero). Hasta que se vincule, el que estaba cargado a mano en el
+  // ajuste 'contacto' (que no se borra). whatsappOrigen: 'asistente' | 'guardado' | null.
+  async function numeroAsistente() {
+    try {
+      const { rows } = await pool.query('SELECT numero FROM asistente_whatsapp WHERE id = 1');
+      const d = String((rows[0] && rows[0].numero) || '').replace(/\D/g, '');
+      return d.length >= 8 && d.length <= 15 ? d : '';
+    } catch { return ''; }
+  }
+  async function contacto() {
+    const c = { ...CONTACTO_DEFAULT, ...((await leerAjuste('contacto', {})) || {}) };
+    const vinculado = await numeroAsistente();
+    const guardado = String(c.whatsapp || '').replace(/\D/g, '');
+    return { ...c, whatsapp: vinculado || guardado, whatsappGuardado: guardado, whatsappOrigen: vinculado ? 'asistente' : guardado ? 'guardado' : null };
+  }
   const cotizacion = async () => ({ ...COTIZACION_DEFAULT, ...((await leerAjuste('cotizacion', {})) || {}) });
   const comision = async (db = pool) => ({ ...COMISION_DEFAULT, ...((await leerAjuste('comision', {}, db)) || {}) });
   async function mensajes() {
@@ -332,7 +347,7 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
     };
   }
   const pedidoConContacto = async (r) => ({ ...pedidoJson(r), ...(await urlsContacto(r)) });
-  // Admin → Ajustes → Contacto → "Probar": el mismo mensaje que arma un pedido real, con el primer pack activo y un
+  // Admin → Mensajería → WhatsApp → "Probar": el mismo mensaje que arma un pedido real, con el primer pack activo y un
   // código de ejemplo (no crea ningún pedido).
   async function mensajeEjemplo() {
     const lista = await packs({ soloActivos: true });

@@ -273,18 +273,19 @@ el admin. Si el agente se cae, el sitio sigue igual. Detalle: `FASE1-CONTRATO.md
    Sin `ANTHROPIC_API_KEY` funciona igual lo automático (pedidos, comprobantes, avisos) y lo demás se responde con
    "Te va a responder una persona del equipo" + aviso por Telegram.
 3. Desplegá: `bash ~/SexyRose/infra/server/deploy.sh` (arma `.env.agente` y levanta el contenedor `agente`).
-4. Admin → **Asistente**: cargá el alias y el nombre del titular de la cuenta donde se transfiere, prendé el
+4. Admin → **Mensajería → WhatsApp**: cargá el alias y el nombre del titular de la cuenta donde se transfiere, prendé el
    asistente y escaneá el QR con el teléfono del chip (WhatsApp → Dispositivos vinculados → Vincular un dispositivo).
-5. Admin → Ajustes → Contacto: el WhatsApp tiene que ser el número del chip (es el que abre el panel al pedir créditos).
-6. Telegram tiene que estar vinculado (Admin → Ajustes → Avisos por Telegram) para recibir los comprobantes con botones.
+5. El botón de comprar créditos del panel usa solo el número del chip vinculado (hasta vincularlo, el que estaba cargado).
+6. Telegram tiene que estar vinculado (Admin → Mensajería → Telegram) para recibir los comprobantes con botones.
 
 **A tener en cuenta**
 
 - Abrí WhatsApp en el teléfono del chip al menos cada 14 días: si el teléfono principal no se conecta, WhatsApp
-  desvincula los dispositivos vinculados y hay que volver a escanear el QR (Admin → Asistente lo muestra solo).
+  desvincula los dispositivos vinculados y hay que volver a escanear el QR (Admin → Mensajería → WhatsApp lo muestra solo).
 - Es una conexión no oficial (WhatsApp Web, librería Baileys): WhatsApp puede bloquear el número. Por eso el bot
   nunca empieza conversaciones y responde con pausas como una persona.
-- Si escribís vos desde el teléfono en un chat, el bot se calla 12 horas en ese chat. "Pasar a humano" en el admin lo
+- Si escribís vos desde el teléfono en un chat, el bot se calla 12 horas en ese chat (salvo la invitación de
+  Admin → Mensajería → Captación, que no lo calla: si te responden, contesta el asistente). "Pasar a humano" en el admin lo
   calla hasta que toques "Devolver al asistente".
 - Costos: el chip prepago y la API de Claude. Con Claude Haiku 5.5 (USD 0,10 por millón de tokens de entrada y
   USD 0,50 por millón de salida, página de precios de Anthropic al 15/11/2026), cada pregunta libre usa unos 3.000 a

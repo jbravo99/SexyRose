@@ -72,7 +72,14 @@ export const HERRAMIENTAS = [
   },
 ];
 
-export function promptSistema({ siteUrl, identificado, nombre, idioma }) {
+// Solo en los chats de captación (invitada desde otro sitio): la herramienta para "no le escribimos más".
+export const HERRAMIENTA_NO_CONTACTAR = Object.freeze({
+  name: 'no_contactar',
+  description: 'Solo en un chat de invitación (captación): la persona no quiere saber nada (no le interesa, pide que no le escribamos, se enoja o insulta). Le manda una única respuesta amable ("no te vamos a escribir más") y no se la vuelve a invitar. No respondas nada más después.',
+  input_schema: { type: 'object', properties: { motivo: { type: 'string', description: 'Motivo breve, sin datos de contacto' } }, required: ['motivo'], additionalProperties: false },
+});
+
+export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion = false }) {
   const url = String(siteUrl || '').replace(/\/+$/, '');
   return `Sos el asistente de cuenta de SexyRose (${url}), un sitio de anuncios de acompañantes en Argentina. Sos una IA y atendés por WhatsApp solo a acompañantes (anunciantes) para temas de su cuenta y para comprar créditos.
 
@@ -96,7 +103,9 @@ Ante cualquier indicio de menores, trata, explotación, abuso, amenazas o amenaz
 Datos de la cuenta (estado del perfil, plan, saldo, pedidos) y pedidos nuevos solo con el chat identificado (herramientas "estado_cuenta" y "crear_pedido"). Si no está identificado, pedile el email de su cuenta y usá "enviar_codigo_email"; la persona después escribe el código de 6 números en el chat (eso lo verifica el sistema, no vos).
 Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje aparte (con "moneda" ARS o USD si dijo en qué moneda va a transferir); no los repitas. Los comprobantes de pago se mandan como foto o PDF en este chat.
 
-Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
+${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le escribió porque vio su perfil publicado en otro sitio y la invitó a crear su perfil en SexyRose. Respondé sus preguntas sobre crear el perfil, el plan Bronce (gratis), los planes, las fotos, la verificación y cómo registrarse (${url}/registro), con la herramienta "ayuda" (temas registro, planes, fotos, verificacion, publicar) y "precios". Si pregunta de dónde sacamos su número: de su aviso publicado en otro sitio. No insistas ni la presiones. Si no le interesa, pide que no le escribamos, se enoja o insulta: usá "no_contactar".
+
+` : ''}Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).
 Estilo: mensajes cortos de WhatsApp, claros y amables, sin saludar de nuevo (el sistema ya se presenta), sin markdown, sin tablas, sin asteriscos ni títulos. Usá listas simples con guiones solo si hace falta.`;
 }
@@ -122,12 +131,12 @@ export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = ()
   }
 
   // mensajes: [{role:'user'|'assistant', content:string}] (ya alternados). ejecutar(nombre, input) → { resultado, detener }.
-  async function conversar({ system, mensajes, ejecutar }) {
+  async function conversar({ system, mensajes, ejecutar, herramientas = HERRAMIENTAS }) {
     if (!disponible) throw new LlmError('falta ANTHROPIC_API_KEY');
     const msgs = mensajes.map((m) => ({ role: m.role, content: m.content }));
     const usadas = [];
     for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
-      const d = await llamar({ model, max_tokens: maxTokens, system, tools: HERRAMIENTAS, messages: msgs });
+      const d = await llamar({ model, max_tokens: maxTokens, system, tools: herramientas, messages: msgs });
       const bloques = Array.isArray(d.content) ? d.content : [];
       const texto = bloques.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
       const usos = bloques.filter((b) => b.type === 'tool_use');

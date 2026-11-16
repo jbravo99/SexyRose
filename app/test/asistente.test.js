@@ -143,6 +143,8 @@ async function limpiar() {
   await db.query('DELETE FROM asistente_auth');
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzasis-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('asistente', 'telegram', 'cotizacion')");
+  // El número del chip vinculado lo usa el botón de comprar créditos: no queda para las otras pruebas
+  await db.query('UPDATE asistente_whatsapp SET numero = NULL WHERE id = 1');
 }
 
 before(async () => {

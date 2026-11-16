@@ -1,5 +1,5 @@
 // Conexión de WhatsApp del asistente (Baileys, @whiskeysockets/baileys, versión fija en package.json): el número del
-// chip prepago queda vinculado como "dispositivo" (QR escaneado una vez desde Admin → Asistente).
+// chip prepago queda vinculado como "dispositivo" (QR escaneado una vez desde Admin → Mensajería → WhatsApp).
 // - La sesión (credenciales y claves) se guarda en la base, cifrada con SECRETS_KEY (lib/secretos.js).
 // - Estado para el admin en asistente_whatsapp (conectado / esperando_qr / desconectado + QR + latido).
 // - Se reconecta solo con espera creciente (1 s … 60 s). Si WhatsApp desvincula el dispositivo, borra la sesión y

@@ -115,6 +115,9 @@
     planes: [['suscripciones', 'Suscripciones'], ['renovaciones', 'Renovaciones']],
     destacados: [['destacado', 'Destacado'], ['star', 'Star']],
     contenido: [['ventas', 'Ventas'], ['pedidos', 'Pedidos personalizados']],
+    // Mensajería (16/11/2026, decisión de Juan): reemplaza a "Asistente" y junta lo de Ajustes (contacto para comprar
+    // créditos, Telegram y mensajes). Las vistas las registran prod-admin-asistente.js y prod-admin-captacion.js.
+    mensajeria: [['conversaciones', 'Conversaciones'], ['captacion', 'Captación'], ['whatsapp', 'WhatsApp'], ['telegram', 'Telegram'], ['mensajes', 'Mensajes']],
   };
   // Vista de antes → sección del menú (lo que pasan a layout las vistas y las fichas)
   const SECCION_DE = { pedidos: 'creditos', pagos: 'creditos', creditos: 'creditos', suscripciones: 'planes', renovaciones: 'planes', destacados: 'destacados', stars: 'destacados', ventas: 'contenido', solicitudes: 'contenido' };
@@ -125,7 +128,7 @@
   HH.adminMenu = [
     { grupo: 'General', tabs: [tab('resumen', 'Resumen', 'dashboard')] },
     { grupo: 'Acompañantes', tabs: [tab('acompanantes', 'Acompañantes', 'users'), tab('reportes', 'Reportes', 'flag'), tab('clientes', 'Interesados', 'user')] },
-    { grupo: 'Cobros', tabs: [tab('creditos', 'Créditos', 'wallet'), tab('asistente', 'Asistente', 'whatsapp'), tab('planes', 'Planes', 'card'), tab('destacados', 'Destacados', 'trending'), tab('contenido', 'Contenido', 'bag')] },
+    { grupo: 'Cobros', tabs: [tab('creditos', 'Créditos', 'wallet'), tab('mensajeria', 'Mensajería', 'whatsapp'), tab('planes', 'Planes', 'card'), tab('destacados', 'Destacados', 'trending'), tab('contenido', 'Contenido', 'bag')] },
     { grupo: 'Sitio', tabs: [tab('ubicaciones', 'Ubicaciones', 'pin'), tab('categorias', 'Servicios', 'heart'), tab('textos', 'Textos', 'edit'), tab('seo', 'SEO', 'search')] },
     { grupo: 'Configuración', tabs: [tab('precios', 'Precios', 'dollar'), tab('ajustes', 'Ajustes', 'settings')] },
   ];
@@ -136,6 +139,18 @@
     if (seg[0] !== 'admin' || !seg[1]) return null;
     const t = seg[1]; const resto = seg.slice(2);
     if (ALIAS[t]) return ['admin', ALIAS[t], ...resto].join('.');
+    // Admin → Asistente (antes de Mensajería): un chat → su conversación; la sección → Conversaciones, o WhatsApp si el
+    // asistente está apagado o sin conectar (lo que había que mirar ahí)
+    if (t === 'asistente') {
+      if (resto.length) return ['admin', 'mensajeria', 'conversaciones', ...resto].join('.');
+      const a = S.asis; const listo = a && a.ajustes && a.ajustes.activo && a.whatsapp && a.whatsapp.estado === 'conectado';
+      return 'admin.mensajeria.' + (a && !listo ? 'whatsapp' : 'conversaciones');
+    }
+    // Lo que se movió de Ajustes: contacto (WhatsApp para comprar créditos), Telegram y mensajes
+    if (t === 'ajustes' && resto.length) {
+      const nuevo = { contacto: 'whatsapp', whatsapp: 'whatsapp', telegram: 'telegram', avisos: 'telegram', mensajes: 'mensajes' }[resto[0]];
+      return nuevo ? 'admin.mensajeria.' + nuevo : 'admin.ajustes';
+    }
     if (t === 'creditos' && !esSub('creditos', resto[0])) return ['admin', 'creditos', 'movimientos', ...resto].join('.');
     if (SECCIONES[t] && !resto.length) return 'admin.' + t + '.' + sub0(t);
     return null;
@@ -151,6 +166,8 @@
     'creditos.pedidos': () => (S.res && S.res.pedidosCreditos ? S.res.pedidosCreditos.pendientes : 0) || 0,
     'planes.renovaciones': () => (S.res ? (S.res.pausadasSinSaldo || 0) + ((S.res.vencen7 && S.res.vencen7.sinSaldo) || 0) : 0),
     'contenido.pedidos': () => (S.res && S.res.pedidosPersonalizados ? S.res.pedidosPersonalizados.pendientes : 0) || 0,
+    // Lo mismo que contaba el menú "Asistente": chats que esperan a una persona
+    'mensajeria.conversaciones': () => (S.asis && S.asis.conversaciones ? S.asis.conversaciones.humano : 0) || 0,
   };
   const subCuenta = (sec, sub) => (SUBCUENTAS[sec + '.' + sub] ? SUBCUENTAS[sec + '.' + sub]() : 0);
   Object.keys(SECCIONES).forEach((sec) => { counts[sec] = () => SECCIONES[sec].reduce((n, [k]) => n + subCuenta(sec, k), 0); });
@@ -161,7 +178,7 @@
   const SUBVISTAS = {};
   let subActual = null;
   function subtabsHtml(sec, sub) {
-    return `<nav class="pa-subtabs" aria-label="Pestañas">${SECCIONES[sec].map(([k, l]) => {
+    return `<nav class="pa-subtabs${SECCIONES[sec].length > 4 ? ' pa-subtabs-muchas' : ''}" aria-label="Pestañas">${SECCIONES[sec].map(([k, l]) => {
       const n = subCuenta(sec, k); const on = k === sub;
       return `<a href="${goSec(sec, k)}" data-go="${goSec(sec, k)}"${on ? ' class="on" aria-current="page"' : ''}><span class="pa-subtabs-l">${l}</span>${n ? `<span class="count">${n}</span>` : ''}</a>`;
     }).join('')}</nav>`;
@@ -1184,8 +1201,6 @@
     else {
       const a = S.aj;
       const upd = (k) => (a.actualizado && a.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(a.actualizado[k])}</span>` : '');
-      const ct = a.contacto || {}; const ms = a.mensajes || { whatsapp: {} };
-      const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
       // Home provisoria (app/lib/prelanzamiento.js): sin guardar, prendida
       const pl = a.prelanzamiento || { activo: true, publicados: 0 };
       body = `<section class="card stack" style="gap:12px" id="prodPre">
@@ -1193,28 +1208,44 @@
           <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div style="font-weight:700;font-size:14px">${pl.activo ? 'Prendida' : 'Apagada: el sitio está abierto'}</div><div class="small muted">Mientras está prendida, el sitio muestra solo una portada para que las acompañantes publiquen su perfil (sin perfiles, lugares ni registro de interesados).</div></div><button type="button" class="switch" role="switch" aria-checked="${!!pl.activo}" aria-label="Home provisoria" data-action="prodPreToggle"></button></div>
           <p class="small">Perfiles publicados ahora: <strong class="num">${Number(pl.publicados) || 0}</strong></p>
         </section>
-        <section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('whatsapp')} Contacto para comprar créditos</div>${upd('contacto')}</div>
-          <p class="small muted">Las acompañantes te escriben a este WhatsApp con el código del pedido. Telegram es opcional.</p>
-          ${!ct.whatsapp ? `<div class="notice warn">${icon('alert')}<span>Sin número de WhatsApp: el botón de pedir créditos no abre ningún chat.</span></div>` : ''}
-          <div class="grid-2" style="align-items:start"><div class="field"><label for="ajWa">WhatsApp del sitio (con código de país)</label><input class="input" id="ajWa" inputmode="tel" maxlength="20" value="${esc(ct.whatsapp || '')}" placeholder="5491122334455"><span class="hint">Tiene que ser el número del chip del asistente de cuenta (Admin → Asistente).</span></div>
-          <div class="field"><label for="ajTg">Usuario de Telegram</label><input class="input" id="ajTg" maxlength="40" value="${esc(ct.telegram || '')}" placeholder="sexyrose_soporte"></div></div>
-          <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="ajTgOn"${ct.telegramActivo ? ' checked' : ''}> Mostrar también Telegram</label>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar contacto</button>${HH.adminInt ? HH.adminInt.botonProbarWa() : ''}</div>
-        </section>
-        ${HH.adminInt ? HH.adminInt.telegramCard() : ''}
-        <section class="card stack" style="gap:12px">
-          <div class="row between"><div class="card-title">${icon('message')} Mensajes</div>${upd('mensajes')}</div>
-          <p class="small muted">Mensaje que la acompañante te manda por WhatsApp al pedir créditos, en su idioma. Variables: ${ph(['pack', 'creditos', 'monto', 'codigo'])}. <strong>{codigo}</strong> es obligatorio.</p>
-          ${['es', 'en', 'pt'].map((l) => `<div class="field"><label for="ajMsg_${l}">WhatsApp · ${{ es: 'Español', en: 'Inglés', pt: 'Portugués' }[l]}</label><textarea class="textarea" id="ajMsg_${l}" rows="2" maxlength="500" data-noi18n>${esc((ms.whatsapp || {})[l] || '')}</textarea></div>`).join('')}
-          <div class="field"><label for="ajMsgAdmin">Tu respuesta («Copiar mensaje» en Pedidos)</label><textarea class="textarea" id="ajMsgAdmin" rows="3" maxlength="1000">${esc(ms.admin || '')}</textarea><div class="tiny muted">Variables: ${ph(['codigo', 'pack', 'creditos', 'monto', 'ars', 'cotizacion', 'fecha'])}. No pongas tus datos bancarios acá: agregalos a mano en WhatsApp.</div></div>
-          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
+        <section class="card stack" style="gap:10px" id="prodAjMensajeria">
+          <div class="card-title">${icon('whatsapp')} Contacto, Telegram y mensajes</div>
+          <p class="small muted" style="margin:0">Ahora están en <strong>Mensajería</strong>: el WhatsApp para comprar créditos es el número vinculado al asistente, y ahí también están los avisos por Telegram y los mensajes.</p>
+          <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn secondary sm" href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">${icon('whatsapp')} WhatsApp</a><a class="btn secondary sm" href="#admin.mensajeria.telegram" data-go="#admin.mensajeria.telegram">${icon('send')} Telegram</a><a class="btn secondary sm" href="#admin.mensajeria.mensajes" data-go="#admin.mensajeria.mensajes">${icon('message')} Mensajes</a></div>
         </section>
         ${ventaContenidoCard()}
         ${textosInicioCard()}`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, contacto, avisos por Telegram, mensajes, Mercado Pago y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, Mercado Pago y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
+
+  /* ---------- Movido a Admin → Mensajería (16/11/2026): mismas tarjetas, mismos campos y mismo guardado ---------- */
+  const updAj = (k) => (S.aj && S.aj.actualizado && S.aj.actualizado[k] ? `<span class="tiny muted">Actualizado el ${fecha(S.aj.actualizado[k])}</span>` : '');
+  const ajCard = (fn) => { load('aj', '/ajustes'); if (!S.aj && S.err.aj) return errorCard(S.err.aj, 'aj'); if (!S.aj) return loadingCard(2); return fn(S.aj); };
+  // Mensajería → Mensajes: el mensaje del pedido de créditos (es/en/pt) y tu respuesta para copiar (ajuste 'mensajes')
+  const mensajesCreditosCard = () => ajCard((a) => {
+    const ms = a.mensajes || { whatsapp: {} };
+    const ph = (arr) => arr.map((x) => `<code>{${x}}</code>`).join(' ');
+    return `<section class="card stack" style="gap:12px" id="prodAjMensajes">
+          <div class="row between"><div class="card-title">${icon('wallet')} Pedido de créditos</div>${updAj('mensajes')}</div>
+          <p class="small muted">Mensaje que la acompañante te manda por WhatsApp al pedir créditos, en su idioma. Variables: ${ph(['pack', 'creditos', 'monto', 'codigo'])}. <strong>{codigo}</strong> es obligatorio.</p>
+          ${['es', 'en', 'pt'].map((l) => `<div class="field"><label for="ajMsg_${l}">WhatsApp · ${{ es: 'Español', en: 'Inglés', pt: 'Portugués' }[l]}</label><textarea class="textarea" id="ajMsg_${l}" rows="2" maxlength="500" data-noi18n>${esc((ms.whatsapp || {})[l] || '')}</textarea></div>`).join('')}
+          <div class="field"><label for="ajMsgAdmin">Tu respuesta («Copiar mensaje» en Pedidos)</label><textarea class="textarea" id="ajMsgAdmin" rows="3" maxlength="1000">${esc(ms.admin || '')}</textarea><div class="tiny muted">Variables: ${ph(['codigo', 'pack', 'creditos', 'monto', 'ars', 'cotizacion', 'fecha'])}. No pongas tus datos bancarios acá: agregalos a mano en WhatsApp.</div></div>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="mensajes">${icon('check')} Guardar mensajes</button></div>
+        </section>`;
+  });
+  // Mensajería → Telegram: el usuario de Telegram que ven las acompañantes al comprar créditos (ajuste 'contacto';
+  // el WhatsApp ya no se carga a mano: es el del chip del asistente)
+  const telegramContactoCard = () => ajCard((a) => {
+    const ct = a.contacto || {};
+    return `<section class="card stack" style="gap:12px" id="prodAjTgContacto">
+          <div class="row between"><div class="card-title">${icon('send')} Telegram para comprar créditos</div>${updAj('contacto')}</div>
+          <p class="small muted" style="margin:0">Opcional: además del WhatsApp del asistente, las acompañantes ven un botón para escribirte por Telegram al pedir créditos.</p>
+          <div class="grid-2" style="align-items:start"><div class="field"><label for="ajTg">Usuario de Telegram</label><input class="input" id="ajTg" maxlength="40" value="${esc(ct.telegram || '')}" placeholder="sexyrose_soporte"></div></div>
+          <label class="row nowrap small" style="gap:8px"><input type="checkbox" id="ajTgOn"${ct.telegramActivo ? ' checked' : ''}> Mostrar también Telegram</label>
+          <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="contacto">${icon('check')} Guardar</button></div>
+        </section>`;
+  });
 
   /* ---------- Acciones de Fase 1+2 ---------- */
   const fail = (e) => HH.toast(e.message, { type: 'danger' });
@@ -1569,7 +1600,9 @@
         const decD = !valor.semanaAuto.activo && PLANES_DEST.find((p) => !Number.isInteger(valor[p].semana));
         if (decD) { warn(`La semana del Destacado de ${PLAN_NOMBRE[decD]} tiene que ser un número entero, sin decimales.`); return; }
       } else if (k === 'contacto') {
-        valor = { whatsapp: String(val('ajWa')).replace(/\D/g, ''), telegram: String(val('ajTg')).trim(), telegramActivo: document.getElementById('ajTgOn').checked };
+        // Sin whatsapp: el servidor deja el número guardado (respaldo hasta vincular el chip del asistente)
+        valor = { telegram: String(val('ajTg')).trim(), telegramActivo: document.getElementById('ajTgOn').checked };
+        if (valor.telegramActivo && !valor.telegram) { warn('Para mostrar Telegram cargá el usuario.'); return; }
       } else if (k === 'cotizacion') {
         const e = S.cotEdit || { modo: 'auto', valor: 'venta' };
         if (e.modo === 'manual') {
@@ -1596,7 +1629,7 @@
           if (S.aj && r) S.aj[k] = r.valor;
           if (k === 'packs') { S.pkEdit = null; S.pkDirty = false; }
           if (k === 'cotizacion') S.cotEdit = null;
-          HH.toast({ precios: 'Precios guardados', packs: 'Packs guardados', destacado: 'Precios del Destacado guardados', contacto: 'Contacto guardado', cotizacion: 'Cotización guardada', comision: 'Comisión guardada', mensajes: 'Mensajes guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' });
+          HH.toast({ precios: 'Precios guardados', packs: 'Packs guardados', destacado: 'Precios del Destacado guardados', contacto: 'Telegram guardado', cotizacion: 'Cotización guardada', comision: 'Comisión guardada', mensajes: 'Mensajes guardados', portada: 'Portada guardada', promo: 'Promoción guardada' }[k], { type: 'ok' });
           load('aj', '/ajustes', true); if (k === 'cotizacion' || k === 'mensajes') after(['pc']); if (k === 'comision') load('vc', PATHS.vc, true);
         })
         .catch((e) => { el.disabled = false; fail(e); });
@@ -1713,7 +1746,7 @@
     HH.route(`admin.${sec}.:sub`, ({ sub }) => (HH.requireRole('admin') ? vSeccion(sec, sub) : false));
   });
   HH.adminViews = views;
-  HH.pa = { S, API, BASE, load, layout, head, fecha, dia, badge, loadingCard, errorCard, stat, actualizar, filtro, pedirMotivo, blobUrl, fillBlobs, cred, cnum, credSig, planBadge, linkCuenta, thumb, ext, pesosAr, refreshResumen, TIPO_MOV, PLAN_NOMBRE, views, counts, subvistas: SUBVISTAS };
+  HH.pa = { S, API, BASE, load, layout, head, fecha, mensajesCreditosCard, telegramContactoCard, dia, badge, loadingCard, errorCard, stat, actualizar, filtro, pedirMotivo, blobUrl, fillBlobs, cred, cnum, credSig, planBadge, linkCuenta, thumb, ext, pesosAr, refreshResumen, TIPO_MOV, PLAN_NOMBRE, views, counts, subvistas: SUBVISTAS };
   HH.route('admin.textos.:pagina', ({ pagina }) => (HH.requireRole('admin') ? vTextoPagina(pagina) : false));
   HH.route('admin.acompanantes.:id', ({ id }) => (HH.requireRole('admin') ? vAcompanante(id) : false));
 
@@ -1932,6 +1965,10 @@ html[data-prod="admin"] .adm-dash .dash-nav-h{padding:10px 12px 2px}
 .pa-subtabs a:hover{color:var(--berry)}
 .pa-subtabs a.on{background:var(--bg);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
 .pa-subtabs-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pa-subtabs.pa-subtabs-muchas{grid-auto-columns:max-content;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.pa-subtabs.pa-subtabs-muchas::-webkit-scrollbar{display:none}
+.pa-subtabs.pa-subtabs-muchas a{padding:9px 16px}
+@media(max-width:760px){.pa-subtabs.pa-subtabs-muchas{border-radius:16px}.pa-subtabs.pa-subtabs-muchas a{padding:8px 12px}}
 .pa-subtabs .count{flex:none;background:var(--berry);color:var(--berry-ink);font-size:11px;padding:1px 7px;border-radius:999px;font-weight:800}
 @media(max-width:420px){.pa-subtabs a{padding:8px 8px;font-size:13px}}
 .pa-soon-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--berry-tint);color:var(--berry);flex:none}.pa-soon-ic svg{width:22px;height:22px}

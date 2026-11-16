@@ -1,4 +1,4 @@
-// Avisos internos por Telegram (para el admin) y vinculación del chat desde Admin → Ajustes.
+// Avisos internos por Telegram (para el admin) y vinculación del chat desde Admin → Mensajería → Telegram.
 // - El token del bot queda en el servidor (TELEGRAM_BOT_TOKEN): es un secreto y nunca va a la base ni al navegador.
 // - El chat que recibe los avisos se vincula desde el admin: "Vincular Telegram" genera un código de un solo uso
 //   (10 min) y un link t.me/<bot>?start=<código>. Mientras haya un código pendiente, el servidor consulta getUpdates

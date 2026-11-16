@@ -1,9 +1,12 @@
-// Admin → Asistente (asistente de cuenta por WhatsApp). Se monta bajo `${A}/api` (Basic Auth del admin; lo que
-// modifica, con apiPost: JSON + X-SR-Admin: 1 + mismo origen).
-//   GET  /asistente                                     → ajustes, estado de WhatsApp (QR en SVG si espera escaneo), IA
+// Admin → Mensajería (antes Admin → Asistente): el asistente de cuenta por WhatsApp (pestañas Conversaciones y
+// WhatsApp). Se monta bajo `${A}/api` (Basic Auth del admin; lo que modifica, con apiPost: JSON + X-SR-Admin: 1 +
+// mismo origen). La captación tiene su propio router (routes/admin-captacion.js).
+//   GET  /asistente                                     → ajustes, estado de WhatsApp (QR en SVG si espera escaneo), IA,
+//                                                         número que usa el botón de comprar créditos (botonCreditos)
 //   PUT  /asistente/ajustes            {activo, alias, titular, aliasUsd?, titularUsd?} (sin los de dólares, quedan los guardados)
 //   POST /asistente/desvincular                         → el agente cierra la sesión de WhatsApp (pide QR nuevo)
-//   GET  /asistente/conversaciones?estado=bot|humano&q= → lista (teléfono enmascarado, cuenta, último mensaje, estado)
+//   GET  /asistente/conversaciones?estado=bot|humano|captacion&q= → lista (teléfono enmascarado, cuenta, último mensaje,
+//                                                         estado, captación)
 //   GET  /asistente/conversaciones/:id                  → chat completo + pedidos nombrados
 //   GET  /asistente/conversaciones/:id/mensajes/:mid/archivo → el comprobante (privado, no-store)
 //   POST /asistente/conversaciones/:id/humano {humano: true|false} → "Pasar a humano" / "Devolver al asistente"
@@ -32,7 +35,11 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       const svg = await QRCode.toString(w.qr, { type: 'svg', margin: 2, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' } });
       qrSvg = 'data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64');
     }
-    const n = await pool.query("SELECT count(*)::int AS total, count(*) FILTER (WHERE estado = 'humano')::int AS humano FROM asistente_conversaciones");
+    const n = await pool.query("SELECT count(*)::int AS total, count(*) FILTER (WHERE estado = 'humano')::int AS humano, count(*) FILTER (WHERE captacion_id IS NOT NULL)::int AS captacion FROM asistente_conversaciones");
+    // Botón "comprar créditos" del panel: el número del chip vinculado; hasta vincularlo, el que estaba cargado a mano.
+    const ct = await pool.query("SELECT valor FROM ajustes WHERE clave = 'contacto'");
+    const guardado = String((ct.rows[0] && ct.rows[0].valor && ct.rows[0].valor.whatsapp) || '').replace(/\D/g, '');
+    const vinculado = String(w.numero || '').replace(/\D/g, '');
     return {
       ajustes: aj,
       whatsapp: {
@@ -47,6 +54,11 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       },
       ia: { configurada: Boolean(w.ia), modelo: w.modelo || null },
       conversaciones: n.rows[0],
+      botonCreditos: {
+        vinculado: vinculado ? '+' + vinculado : null,
+        guardado: guardado ? '+' + guardado : null,
+        usa: vinculado ? 'vinculado' : guardado ? 'guardado' : null,
+      },
     };
   }
 
@@ -77,12 +89,14 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
     estado: x.estado, motivoHumano: x.motivo_humano || null,
     silenciadoHasta: x.silenciado_hasta && new Date(x.silenciado_hasta) > new Date() ? x.silenciado_hasta : null,
     idioma: x.idioma, creado: x.creado, ultimoMensaje: x.ultimo_mensaje,
+    captacion: x.cap_estado ? { id: x.captacion_id, estado: x.cap_estado } : null,
     ultimo: x.u_creado ? { texto: x.u_texto ? String(x.u_texto).slice(0, 140) : null, tipo: x.u_tipo, dir: x.u_dir, origen: x.u_origen, creado: x.u_creado } : null,
   });
-  const SELECT_CONV = `SELECT c.*, p.datos->>'displayName' AS nombre, cu.email,
+  const SELECT_CONV = `SELECT c.*, p.datos->>'displayName' AS nombre, cu.email, cc.estado AS cap_estado,
       u.texto AS u_texto, u.tipo AS u_tipo, u.dir AS u_dir, u.origen AS u_origen, u.creado AS u_creado
     FROM asistente_conversaciones c
     LEFT JOIN perfiles p ON p.cuenta_id = c.cuenta_id LEFT JOIN cuentas cu ON cu.id = c.cuenta_id
+    LEFT JOIN captacion_contactos cc ON cc.id = c.captacion_id
     LEFT JOIN LATERAL (SELECT texto, tipo, dir, origen, creado FROM asistente_mensajes m WHERE m.conversacion_id = c.id ORDER BY m.id DESC LIMIT 1) u ON true`;
 
   r.get('/asistente/conversaciones', ah(async (req, res) => {
@@ -90,6 +104,7 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
     const est = String(req.query.estado || '');
     if (est === 'humano') conds.push("(c.estado = 'humano' OR c.silenciado_hasta > now())");
     else if (est === 'bot') conds.push("c.estado = 'bot' AND (c.silenciado_hasta IS NULL OR c.silenciado_hasta <= now())");
+    else if (est === 'captacion') conds.push('c.captacion_id IS NOT NULL');
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 60) : '';
     if (q) {
       args.push('%' + q.replace(/[\\%_]/g, (ch) => '\\' + ch) + '%');

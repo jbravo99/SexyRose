@@ -344,7 +344,14 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!AJUSTES.includes(clave)) throw he(404, 'Ajuste desconocido.');
     const b = body(req);
     if (!('valor' in b)) throw he(400, 'Falta el valor.');
-    const v = validarAjuste(clave, b.valor);
+    // Contacto (16/11/2026): el WhatsApp ya no se carga a mano (es el del chip del asistente). Admin → Mensajería →
+    // Telegram manda solo {telegram, telegramActivo}: el número guardado antes queda igual (es el de respaldo).
+    let valor = b.valor;
+    if (clave === 'contacto' && valor && typeof valor === 'object' && !Array.isArray(valor) && valor.whatsapp === undefined) {
+      const { rows } = await pool.query("SELECT valor FROM ajustes WHERE clave = 'contacto'");
+      valor = { ...valor, whatsapp: (rows[0] && rows[0].valor && rows[0].valor.whatsapp) || '' };
+    }
+    const v = validarAjuste(clave, valor);
     if (v.error) throw he(400, v.error);
     await pool.query(
       'INSERT INTO ajustes (clave, valor, actualizado) VALUES ($1, $2::jsonb, now()) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now()',

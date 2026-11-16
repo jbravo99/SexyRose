@@ -1,15 +1,16 @@
 /* ============================================================
    SexyRose — prod-admin-integraciones.js (admin de producción)
-   Admin → Ajustes: vincular Telegram (avisos internos), cargar las cuentas de Mercado Pago que cobran la comisión
-   y probar el WhatsApp del sitio. Usa la API de app/routes/admin-integraciones.js.
-   prod-admin.js llama a HH.adminInt.telegramCard(), HH.adminInt.mpCuentas(vc, err) y HH.adminInt.botonProbarWa().
+   Admin → Mensajería → Telegram: vincular Telegram (avisos internos). Admin → Mensajería → WhatsApp: probar el
+   botón de comprar créditos. Admin → Ajustes: las cuentas de Mercado Pago que cobran la comisión.
+   Usa la API de app/routes/admin-integraciones.js. prod-admin-asistente.js llama a HH.adminInt.telegramCard() y
+   HH.adminInt.botonProbarWa(); prod-admin.js, a HH.adminInt.mpCuentas(vc, err).
    ============================================================ */
 (function () {
   'use strict';
   if (window.HH_PROD !== 'admin') return;
   const esc = HH.esc, icon = HH.icon;
   const S = { tg: null, tgErr: null, tgLoading: false, mp: null, mpErr: null, mpLoading: false, prueba: {} };
-  const enAjustes = () => /^admin\.ajustes$|^admin$/.test((HH.current && HH.current.path) || '') && document.getElementById('prodTg');
+  const enAjustes = () => /^admin\.ajustes$|^admin\.mensajeria\.telegram$|^admin$/.test((HH.current && HH.current.path) || '') && document.getElementById('prodTg');
   const modalAbierto = () => document.getElementById('modalRoot').classList.contains('open');
   const rerender = () => { if (!modalAbierto()) HH.refresh(); };
   const fecha = (iso) => (iso ? HH.fmtDateTime(iso) : '');
@@ -178,14 +179,13 @@
       const id = el.dataset.id; S.prueba[id] = { ok: true, mensaje: 'Probando…' }; rerender();
       HH.api('POST', '/integraciones/mp/' + encodeURIComponent(id) + '/probar', {}).then((r) => { S.prueba[id] = r; rerender(); }).catch((e) => { S.prueba[id] = { ok: false, mensaje: e.message }; rerender(); });
     },
+    // El mismo enlace que arma un pedido real: número vinculado al asistente (o el guardado, hasta vincularlo)
     intWaProbar() {
-      const num = String((document.getElementById('ajWa') || {}).value || '').replace(/\D/g, '');
-      if (num.length < 8) { HH.toast('Cargá el número de WhatsApp con código de país (ej. 5491122334455).', { type: 'warn' }); return; }
       // La ventana se abre ya (en el mismo toque) para que el navegador no la bloquee; después se le pone la dirección.
       const w = window.open('', '_blank');
       HH.api('GET', '/integraciones/whatsapp/ejemplo').then((r) => {
-        const url = 'https://wa.me/' + num + '?text=' + encodeURIComponent(r.mensaje || '');
-        if (w) { try { w.opener = null; } catch (e) { /* nada */ } w.location.href = url; } else location.href = url;
+        if (!r.whatsappUrl) { if (w) w.close(); HH.toast('Todavía no hay número: vinculá el chip del asistente.', { type: 'warn' }); return; }
+        if (w) { try { w.opener = null; } catch (e) { /* nada */ } w.location.href = r.whatsappUrl; } else location.href = r.whatsappUrl;
       }).catch((e) => { if (w) w.close(); fail(e); });
     },
   });

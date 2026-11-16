@@ -15,7 +15,10 @@ import {
 } from './asistente-comun.js';
 import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
-import { promptSistema, limpiarRespuesta } from './asistente-llm.js';
+import { promptSistema, limpiarRespuesta, HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR } from './asistente-llm.js';
+import {
+  RESPUESTA_NO_ESCRIBIR, RESPUESTA_ORIGEN, contactoPorTelefono, esMensajeCaptacion, leerAjustesCaptacion, respuestaInvitada,
+} from './captacion.js';
 import { tipoPorFirma } from './privado.js';
 import { arsSugerido, fmtCreditos } from './creditos.js';
 import { PLAN_NOMBRE } from './planes.js';
@@ -90,7 +93,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   async function avisarJuan(conv, titulo, motivo, tipo) {
     const nombre = await nombreCuenta(conv.cuenta_id);
     const t = `${titulo}\n${motivo ? `Motivo: ${sinContacto(motivo).slice(0, 300)}\n` : ''}Cuenta: ${nombre || (conv.cuenta_id ? 'sin nombre artístico' : 'sin identificar')}\n`
-      + 'Respondé desde el teléfono del asistente. Para devolver el chat al asistente: Admin → Asistente.';
+      + 'Respondé desde el teléfono del asistente. Para devolver el chat al asistente: Admin → Mensajería.';
     if (telegram) await telegram.enviar({ texto: t, tipo });
   }
   async function derivar(conv, motivo) {
@@ -156,7 +159,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     await responder(conv, d.texto);
     if (!d.completo) {
       await avisarJuan(conv, `Asistente: no pude pasar los datos para transferir del pedido ${p.codigo}.`,
-        'Falta cargar el alias o el titular en pesos (Admin → Asistente) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
+        'Falta cargar el alias o el titular en pesos (Admin → Mensajería → WhatsApp) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
     }
     return d.completo;
   }
@@ -328,6 +331,64 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     return decir(conv, 'codigoIncorrecto', { quedan: CODIGO_EMAIL_INTENTOS - intentos });
   }
 
+  // ---------- Captación (lib/captacion.js) ----------
+  const CAP_ACTIVOS = ['abierto', 'enviado', 'respondio'];
+  const capPorId = async (id) => (id ? (await pool.query('SELECT * FROM captacion_contactos WHERE id = $1', [id])).rows[0] || null : null);
+  // Contexto de captación: el chat nació de una invitación y el contacto sigue "abierto", "enviado" o "respondió".
+  async function capDe(conv) {
+    const c = await capPorId(conv.captacion_id);
+    return c && CAP_ACTIVOS.includes(c.estado) ? c : null;
+  }
+  // Mensaje que Juan manda desde WhatsApp Web / el teléfono. Si es la invitación (o cualquier mensaje a un contacto
+  // de la lista que estaba "pendiente" o "abierto"), el contacto pasa a "enviado" y el bot NO se silencia. Si no, null
+  // (se aplica el silencio de 12 h de siempre).
+  async function salienteCaptacion(conv, ev) {
+    const aj = await leerAjustesCaptacion(pool);
+    const esInvitacion = ev.tipo === 'texto' && esMensajeCaptacion(ev.texto, aj.mensaje);
+    let c = await capPorId(conv.captacion_id);
+    if (!c && conv.telefono) c = await contactoPorTelefono(pool, conv.telefono);
+    if (!c && esInvitacion && !conv.telefono) {
+      // Chat @lid (WhatsApp no informa el número): el único "Abrir chat" de los últimos 20 minutos
+      const { rows } = await pool.query("SELECT * FROM captacion_contactos WHERE estado = 'abierto' AND abierto > now() - interval '20 minutes' LIMIT 2");
+      if (rows.length === 1) c = rows[0];
+    }
+    const enCola = c && (c.estado === 'pendiente' || c.estado === 'abierto');
+    const reenvio = c && esInvitacion && (c.estado === 'enviado' || c.estado === 'respondio');
+    if (!enCola && !reenvio && !(esInvitacion && !c)) return null;
+    if (c) {
+      if (enCola) {
+        await pool.query("UPDATE captacion_contactos SET estado = 'enviado', enviado = COALESCE(enviado, now()), actualizado = now() WHERE id = $1", [c.id]);
+        log('asistente: invitación de captación enviada');
+      }
+      await pool.query('UPDATE asistente_conversaciones SET captacion_id = $2, actualizado = now() WHERE id = $1', [conv.id, c.id]);
+    }
+    await guardarMensaje(conv, { dir: 'out', origen: 'captacion', tipo: ev.tipo, texto: ev.texto || null, waId: ev.waId });
+    return { captacion: enCola ? 'enviado' : 'invitacion' };
+  }
+  // Mensaje entrante: si es de un contacto invitado, queda vinculado al chat y pasa a "respondió".
+  async function entranteCaptacion(conv) {
+    let c = await capPorId(conv.captacion_id);
+    if (!c && conv.telefono) {
+      c = await contactoPorTelefono(pool, conv.telefono);
+      if (c && !CAP_ACTIVOS.includes(c.estado)) c = null;
+      if (c) await pool.query('UPDATE asistente_conversaciones SET captacion_id = $2 WHERE id = $1', [conv.id, c.id]);
+    }
+    if (!c) return { conv, cap: null };
+    if (c.estado === 'abierto' || c.estado === 'enviado') {
+      c = (await pool.query("UPDATE captacion_contactos SET estado = 'respondio', respondio = COALESCE(respondio, now()), actualizado = now() WHERE id = $1 RETURNING *", [c.id])).rows[0];
+      log('asistente: respondió una invitada de captación');
+    }
+    return { conv: await releer(conv.id), cap: c };
+  }
+  // "No me interesa", "no me escriban", insultos, "¿quién te dio mi número?": una sola respuesta amable y "no escribir"
+  // (nunca vuelve a la cola de captación).
+  async function noEscribir(conv, tipo) {
+    const t = tipo === 'origen' ? `${RESPUESTA_ORIGEN} ${RESPUESTA_NO_ESCRIBIR}` : RESPUESTA_NO_ESCRIBIR;
+    await pool.query("UPDATE captacion_contactos SET estado = 'no_escribir', no_escribir = now(), actualizado = now() WHERE id = $1", [conv.captacion_id]);
+    await responder(conv, t);
+    log('asistente: invitada de captación pidió que no le escriban');
+  }
+
   // ---------- Herramientas de la IA (los permisos se controlan acá) ----------
   const NO_IDENTIFICADO = { error: 'chat_no_identificado', instruccion: 'El chat no está identificado: pedile el email de su cuenta y usá enviar_codigo_email.' };
   async function herramienta(convId, nombre, input) {
@@ -428,6 +489,11 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       case 'alerta':
         await alertar(conv, String(input.tipo || 'otro'), String(input.motivo || ''));
         return { resultado: { ok: true }, detener: true };
+      case 'no_contactar': {
+        if (!(await capDe(conv))) return { resultado: { error: 'Este chat no es de una invitación de captación.' } };
+        await noEscribir(conv, 'rechazo');
+        return { resultado: { ok: true }, detener: true };
+      }
       default:
         return { resultado: { error: 'Herramienta desconocida.' } };
     }
@@ -442,6 +508,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       let t = m.texto || '';
       if (m.tipo !== 'texto') t = `[${m.tipo === 'imagen' || m.tipo === 'documento' ? 'archivo' : m.tipo}]${t ? ' ' + t : ''}`;
       if (m.origen === 'juan') t = '(Escribió una persona del equipo) ' + t;
+      if (m.origen === 'captacion') t = '(Invitación que le mandó el equipo) ' + t;
       if (!t.trim()) continue;
       const ult = out[out.length - 1];
       if (ult && ult.role === role) ult.content += '\n' + t; else out.push({ role, content: t });
@@ -455,11 +522,13 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     const mensajes = await historial(conv);
     if (!mensajes.length || mensajes[mensajes.length - 1].role !== 'user') return;
     const c = await releer(conv.id);
+    const captacion = Boolean(await capDe(c));
     let r;
     try {
       r = await llm.conversar({
-        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma }),
+        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion }),
         mensajes, ejecutar: (nombre, input) => herramienta(c.id, nombre, input),
+        herramientas: captacion ? [...HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR] : HERRAMIENTAS,
       });
     } catch (e) {
       log('asistente: la IA no respondió:', e.message);
@@ -476,6 +545,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     let conv = await conversacion(ev.jid, ev.telefono);
     if (ev.deMi) {
       if (ev.porBot) return { ignorado: 'bot' };
+      // La invitación de captación (o un mensaje a un contacto de la cola) no silencia al bot: marca "enviado".
+      const cap = await salienteCaptacion(conv, ev);
+      if (cap) return cap;
       // Juan escribió desde el teléfono del asistente: el bot calla en ese chat por 12 h.
       await guardarMensaje(conv, { dir: 'out', origen: 'juan', tipo: ev.tipo, texto: ev.texto || null, waId: ev.waId });
       await pool.query(`UPDATE asistente_conversaciones SET silenciado_hasta = now() + interval '${SILENCIO_JUAN_HORAS} hours', actualizado = now() WHERE id = $1`, [conv.id]);
@@ -483,7 +555,11 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     }
     const msg = await guardarMensaje(conv, { dir: 'in', origen: 'usuario', tipo: ev.tipo, texto: ev.texto || null, waId: ev.waId });
     if (!msg) return { ignorado: 'repetido' };
+    const ec = await entranteCaptacion(conv);
+    conv = ec.conv;
     if (silenciado(conv)) return { ignorado: 'silencio' };
+    // Ya pidió que no le escriban: otro "no" no se contesta (una pregunta de verdad sí, como cualquier chat)
+    if (ec.cap && ec.cap.estado === 'no_escribir' && ev.tipo === 'texto' && respuestaInvitada(ev.texto)) return { ignorado: 'no_escribir' };
     const n = await pool.query("SELECT count(*)::int AS n FROM asistente_mensajes WHERE conversacion_id = $1 AND dir = 'in' AND creado > now() - interval '1 hour'", [conv.id]);
     if (n.rows[0].n > LIMITE_HORA) { await derivar(conv, `Más de ${LIMITE_HORA} mensajes en una hora`); return { derivado: 'limite' }; }
     const idioma = detectarIdioma(ev.texto, conv.idioma);
@@ -494,6 +570,10 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (ev.tipo !== 'texto') { await decir(conv, 'soloComprobantes'); return { otro: true }; }
     const txt = String(ev.texto || '').trim();
     if (!txt) return { vacio: true };
+    if (ec.cap && CAP_ACTIVOS.includes(ec.cap.estado)) {
+      const rechazo = respuestaInvitada(txt);
+      if (rechazo) { await noEscribir(conv, rechazo); return { captacion: 'no_escribir' }; }
+    }
     const seis = /^\D{0,20}(\d{6})\D{0,20}$/.exec(txt);
     if (seis) {
       const fila = await codigoActivo(conv);
