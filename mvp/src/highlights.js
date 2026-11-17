@@ -20,11 +20,13 @@
 
   const coverHtml = (h, p) => { const c = HH.highlightCover(h); return c ? HH.storyMedia(c, p) : ''; };
   // Fila de círculos del perfil. mine: muestra "Nueva" al principio aunque no tenga destacadas.
-  HH.highlightsRow = function (p, mine) {
+  // opts.add (sitio, Mi perfil de la acompañante; prod-sitio.js): otro primer círculo "Nueva" en lugar del de la demo.
+  HH.highlightsRow = function (p, mine, opts) {
+    const addHtml = (opts && typeof opts.add === 'string' && opts.add) || '';
     const list = mine ? HH.highlightsOf(p.userId) : HH.visibleHighlights(p.userId);
-    if (!list.length && !mine) return '';
+    if (!list.length && !mine && !addHtml) return '';
     const vis = new Set(HH.visibleHighlights(p.userId).map((h) => h.id));
-    const add = mine ? `<div class="hl-it"><button type="button" class="hl-c hl-new" data-action="hlNew" aria-label="Nueva destacada">${HH.icon('plus')}</button><span class="hl-n">Nueva</span></div>` : '';
+    const add = addHtml || (mine ? `<div class="hl-it"><button type="button" class="hl-c hl-new" data-action="hlNew" aria-label="Nueva destacada">${HH.icon('plus')}</button><span class="hl-n">Nueva</span></div>` : '');
     return `<section class="hl-row" aria-label="Historias destacadas">${add}${list.map((h) => `<div class="hl-it${vis.has(h.id) ? '' : ' hl-off'}"><button type="button" class="hl-c" data-action="hlOpen" data-id="${h.id}" aria-label="Ver destacada ${esc(h.title)}"><span class="hl-in">${coverHtml(h, p)}</span></button><span class="hl-n" data-noi18n>${esc(h.title)}</span></div>`).join('')}</section>`;
   };
   HH.openHighlight = function (id) {

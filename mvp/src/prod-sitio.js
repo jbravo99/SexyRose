@@ -142,7 +142,7 @@
   // Historias destacadas (como Instagram): las sube la acompañante desde su panel (Historias → Destacadas) y el
   // servidor manda en /api/sitio/estado solo las que entran en su plan, con sus fotos y videos (perfiles[].destacadas).
   // Acá se usa el visual de highlights.js: fila de círculos debajo de la cabecera del perfil y el visor de historias.
-  // Sin "+ Nueva" ni edición desde el perfil (eso va en el panel). No vencen ni se marcan como vistas.
+  // Editar va en el panel; en Mi perfil, "Nueva" crea una (17/11/2026, más abajo). No vencen ni se marcan como vistas.
   const hlRow0 = HH.highlightsRow;
   HH.highlightItems = (h) => (h && h.items) || [];
   // Portada: la que eligió (h.cover: un elemento suyo o una imagen subida aparte, perfiles[].destacadas[].portada);
@@ -150,7 +150,8 @@
   HH.highlightCover = (h) => { if (h && h.cover) return h.cover; const c = HH.highlightItems(h)[0]; return c ? (c.video ? { id: c.id, src: c.poster, hue: c.hue } : c) : null; };
   HH.highlightsOf = (workerId) => HH.highlights().filter((h) => h.workerId === workerId && HH.highlightItems(h).length);
   HH.visibleHighlights = HH.highlightsOf;
-  HH.highlightsRow = (p) => (hlRow0 && p ? hlRow0(p, false) : '');
+  // En Mi perfil (o.own; nunca la vista previa ni perfiles ajenos), "Nueva" primero aunque no tenga destacadas (más abajo)
+  HH.highlightsRow = (p, mine, o) => (hlRow0 && p ? hlRow0(p, false, { add: o && o.own && HH.highlightNewHtml ? HH.highlightNewHtml(p) : '' }) : '');
   HH.openHighlight = (id) => {
     const h = HH.highlights().find((x) => x.id === id); if (!h) return;
     HH.openStories(h.workerId, 0, null, { items: HH.highlightItems(h), title: h.title });
@@ -914,6 +915,181 @@
   }
   Object.assign(HH.actions, { spStoryAdd: () => storyAdd() });
 
+  /* ---------- Nueva destacada desde Mi perfil (17/11/2026, pedido de Juan: "En el perfil necesito que esté para agregar
+     historia destacada, como en Instagram, al ir al perfil de uno mismo como acompañante") ----------
+     Solo en Mi perfil (HH.profileView con own; nunca la vista previa, perfiles ajenos, visitantes ni clientes): primer
+     círculo de la fila de destacadas, igual a "Tu historia" del inicio (.story-add: círculo vacío con "+"), con "Nueva";
+     aparece aunque todavía no tenga destacadas. Tocar: si ya llegó al límite de su plan, el mismo aviso del panel; si no,
+     la hoja «Nueva destacada»: nombre (16 caracteres, como el panel), «Elegí fotos o videos» (varios a la vez, mismos
+     tipos y límites que el panel; video solo si el panel los permite), miniaturas y «Crear destacada».
+     Misma API que el panel (Historias → Destacadas): POST /api/cuenta/destacadas y después cada archivo con
+     POST /destacadas/:id/fotos o /videos, uno por uno, con barra de progreso. Si alguno falla, lo subido queda, la hoja
+     muestra el error y «Crear destacada» reintenta solo los que faltan en la misma destacada (si no se subió ninguno, se
+     borra la destacada vacía para que no ocupe el cupo). Al terminar: aviso, se vuelven a pedir sus datos y Mi perfil
+     (aparece el círculo nuevo) y queda en la misma página. */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Nueva': ['New', 'Nova'],
+    'Nueva destacada': ['New highlight', 'Novo destaque'],
+    'Elegí fotos o videos': ['Choose photos or videos', 'Escolha fotos ou vídeos'],
+    'Elegí fotos': ['Choose photos', 'Escolha fotos'],
+    'Videos de hasta 60 segundos y 95 MB.': ['Videos up to 60 seconds and 95 MB.', 'Vídeos de até 60 segundos e 95 MB.'],
+    'Subiendo…': ['Uploading…', 'Enviando…'],
+    'Subiendo tu destacada…': ['Uploading your highlight…', 'Enviando seu destaque…'],
+    'Destacada creada. Los videos se suman apenas terminen de procesarse.': ['Highlight created. Videos are added as soon as they finish processing.', 'Destaque criado. Os vídeos entram assim que terminarem o processamento.'],
+    'Se subieron {n} de {n}.': ['{n} of {n} uploaded.', '{n} de {n} enviados.'],
+    'Una destacada puede tener hasta {n} fotos y videos.': ['A highlight can have up to {n} photos and videos.', 'Um destaque pode ter até {n} fotos e vídeos.'],
+  });
+  const HL_MAX_ITEMS = 100;
+  // ¿Puede crear una destacada desde acá? Acompañante con sesión y es su perfil (la misma regla que el "+" de historias).
+  HH.highlightNewHtml = (p) => (HH.storyUploadOn(p)
+    ? `<div class="hl-it hl-add"><button type="button" class="story-add" data-action="spHlNew" aria-label="Nueva destacada">${icon('plus')}</button><span class="hl-n">Nueva</span></div>`
+    : '');
+  const hlLleno = () => { const lim = ((S.yo && S.yo.limites) || {}).destacadas; return lim != null && ((S.yo && S.yo.destacadas) || []).length >= lim; };
+  // files: [{ f, url, video, done, err }]; id: la destacada ya creada (reintentos van a la misma)
+  const DN = { files: [], id: null, busy: false };
+  const esVideoArchivo = (f) => /^video\//.test(f.type || '') || /\.(mp4|mov|webm|3gp)$/i.test(f.name || '');
+  function dnLimpiar() {
+    DN.files.forEach((x) => { if (x.url) { try { URL.revokeObjectURL(x.url); } catch (e) { /* */ } } });
+    DN.files = []; DN.id = null;
+  }
+  function hlNew() {
+    if (!HH.storyUploadOn()) return;
+    if (DN.busy) { HH.toast('Subiendo tu destacada…'); return; }
+    if (hlLleno()) { HH.toast('Llegaste al límite de destacadas de tu plan.', { type: 'warn', ms: 5000 }); return; }
+    dnLimpiar();
+    const conVideo = !!S.yo.videosHabilitados;
+    HH.modal({
+      title: 'Nueva destacada',
+      body: `<div class="stack sr-dn" style="gap:12px">
+        <div class="field" style="margin:0"><label for="srDnTit">Nombre de la destacada</label><input class="input" id="srDnTit" maxlength="${HL_TITULO_MAX}" placeholder="Ej.: Viajes" autocomplete="off"><span class="hint"><span>${esc(HH.t('Hasta {n} caracteres.').replace('{n}', String(HL_TITULO_MAX)))}</span></span></div>
+        <div class="stack" style="gap:6px">
+          <button type="button" class="btn secondary block" id="srDnElegir" data-action="spHlElegir">${icon('image')} <span>${conVideo ? 'Elegí fotos o videos' : 'Elegí fotos'}</span></button>
+          ${conVideo ? '<span class="hint">Videos de hasta 60 segundos y 95 MB.</span>' : ''}
+        </div>
+        <div class="sr-dn-grid" id="srDnGrid" hidden></div>
+        <div class="stack" id="srDnProgW" style="gap:6px" hidden><div class="sp-prog" id="srDnProg"><i style="width:0%"></i></div><span class="tiny muted" id="srDnEstado"></span></div>
+        ${fieldErr('srDnErr')}
+      </div>`,
+      actions: [
+        { label: 'Cancelar', cls: 'ghost', onClick: () => { HH.closeModal(); if (!DN.busy) dnLimpiar(); } },
+        { label: `${icon('plus')} Crear destacada`, id: 'srDnCrear', onClick: () => dnCrear() },
+      ],
+    });
+  }
+  // Miniaturas y botones según el estado (sin volver a dibujar la hoja: el nombre escrito queda)
+  function dnUi() {
+    const grid = document.getElementById('srDnGrid'); if (!grid) return;
+    grid.hidden = !DN.files.length;
+    grid.innerHTML = DN.files.map((x, i) => `<div class="sr-dn-t${x.done ? ' ok' : x.err ? ' err' : ''}">
+        <div class="ph" style="background:${HH.hueGradient(hash((x.f.name || '') + i) % 360, true)}"></div>
+        ${!x.url ? '' : x.video ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(x.url)}" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${esc(x.url)}" alt="">`}
+        ${x.video ? `<span class="pub-vbadge">${icon('play')}</span>` : ''}
+        ${x.done ? `<span class="sr-dn-ok" aria-label="Subido">${icon('check')}</span>` : `<button type="button" class="sr-dn-x" data-action="spHlQuitar" data-i="${i}" aria-label="Quitar"${DN.busy ? ' disabled' : ''}>${icon('x')}</button>`}
+      </div>`).join('');
+    grid.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => im.remove()));
+    const tit = document.getElementById('srDnTit'); if (tit) tit.disabled = DN.busy || !!DN.id;
+    const el = document.getElementById('srDnElegir'); if (el) el.disabled = DN.busy;
+    const b = document.getElementById('srDnCrear'); if (b) b.disabled = DN.busy;
+  }
+  function dnElegir() {
+    if (DN.busy) return;
+    document.querySelectorAll('input.sr-dn-file').forEach((x) => x.remove());
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.className = 'sr-dn-file'; inp.hidden = true; inp.multiple = true;
+    inp.accept = HIST_FOTOS + (S.yo.videosHabilitados ? HIST_VIDEOS : '');
+    inp.addEventListener('change', () => { const fs = Array.from(inp.files || []); inp.remove(); if (fs.length) dnSumar(fs); });
+    inp.addEventListener('cancel', () => inp.remove());
+    document.body.appendChild(inp);
+    inp.click();
+  }
+  // Los mismos chequeos que el panel antes de subir (video: si están habilitados, 95 MB y 60 s)
+  async function dnSumar(fs) {
+    let aviso = '';
+    for (const f of fs) {
+      const video = esVideoArchivo(f);
+      if (video && !S.yo.videosHabilitados) { aviso = aviso || 'Elegí una foto.'; continue; }
+      if (video) {
+        if (f.size > 95 * 1024 * 1024) { aviso = aviso || 'El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.'; continue; }
+        const seg = await duracionVideo(f);
+        if (seg && seg > 61) { aviso = aviso || `El video dura ${Math.round(seg)} s. Hasta 60 segundos.`; continue; }
+      }
+      if (DN.files.length >= HL_MAX_ITEMS) { aviso = HH.t('Una destacada puede tener hasta {n} fotos y videos.').replace('{n}', String(HL_MAX_ITEMS)); break; }
+      let url = ''; try { url = URL.createObjectURL(f); } catch (e) { url = ''; }
+      DN.files.push({ f, url, video, done: false, err: '' });
+    }
+    if (aviso) HH.toast(aviso, { type: 'warn', ms: 5000 });
+    showErr('srDnErr', '');
+    dnUi();
+  }
+  function dnQuitar(i) {
+    if (DN.busy) return;
+    const x = DN.files[i]; if (!x || x.done) return;
+    if (x.url) { try { URL.revokeObjectURL(x.url); } catch (e) { /* */ } }
+    DN.files.splice(i, 1); dnUi();
+  }
+  // Cada frase en su propio texto (el traductor del sitio las pasa a inglés o portugués por separado)
+  const dnErr = (msg, antes) => {
+    const el = document.getElementById('srDnErr');
+    if (el) el.innerHTML = `<div class="notice danger">${icon('alert')}<span>${antes ? `<span>${esc(antes)}</span> ` : ''}<span>${esc(msg)}</span></span></div>`;
+    else HH.toast(msg, { type: 'danger', ms: 6000 });
+  };
+  async function dnCrear() {
+    if (DN.busy) return;
+    showErr('srDnErr', '');
+    const inp = document.getElementById('srDnTit');
+    const t = String((inp && inp.value) || '').replace(/\s+/g, ' ').trim();
+    if (!DN.id) {
+      if (!t) { showErr('srDnErr', 'Ponele un nombre a la destacada.'); if (inp) inp.focus(); return; }
+      if ([...t].length > HL_TITULO_MAX) { showErr('srDnErr', `El nombre puede tener hasta ${HL_TITULO_MAX} caracteres.`); if (inp) inp.focus(); return; }
+    }
+    const pend = DN.files.filter((x) => !x.done);
+    if (!pend.length) { showErr('srDnErr', S.yo.videosHabilitados ? 'Elegí una foto o un video.' : 'Elegí una foto.'); return; }
+    DN.busy = true; dnUi();
+    const progW = document.getElementById('srDnProgW'); const bar = document.querySelector('#srDnProg i'); const est = document.getElementById('srDnEstado');
+    const prog = (k, p) => {
+      if (bar && bar.isConnected) bar.style.width = Math.round(((k + p) / pend.length) * 100) + '%';
+      if (est && est.isConnected) est.innerHTML = `<span>Subiendo…</span> <span class="num">${k + 1}/${pend.length}</span>`;
+    };
+    if (progW) progW.hidden = false; prog(0, 0);
+    if (!DN.id) {
+      try { const r = await api('POST', '/cuenta/destacadas', { titulo: t }); DN.id = r.destacada.id; }
+      catch (e) { DN.busy = false; if (progW) progW.hidden = true; dnUi(); dnErr(e.message); return; }
+    }
+    const id = DN.id; let primero = null; let fallos = 0;
+    for (let k = 0; k < pend.length; k++) {
+      const x = pend[k]; x.err = '';
+      const fd = new FormData(); fd.append(x.video ? 'video' : 'foto', x.f);
+      try {
+        await upload('/cuenta/destacadas/' + encodeURIComponent(id) + (x.video ? '/videos' : '/fotos'), fd, (p) => prog(k, p));
+        x.done = true;
+      } catch (e) { x.err = e.message; fallos++; if (!primero) primero = e.message; }
+      prog(k, 1); dnUi();
+    }
+    DN.busy = false;
+    if (progW && progW.isConnected) progW.hidden = true;
+    const subidos = DN.files.filter((x) => x.done);
+    if (!fallos) {
+      const conVid = subidos.some((x) => x.video);
+      if (document.getElementById('srDnCrear')) HH.closeModal();
+      dnLimpiar();
+      HH.toast(conVid ? 'Destacada creada. Los videos se suman apenas terminen de procesarse.' : 'Destacada creada.', { type: 'ok', ms: 4000 });
+      recargarPropias();
+      return;
+    }
+    // Falló alguno: lo subido queda (y se ve en Mi perfil); sin nada subido, la destacada vacía no ocupa el cupo
+    if (!subidos.length) {
+      try { await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(id)); DN.id = null; } catch (e) { /* queda: el reintento sigue en la misma */ }
+    }
+    dnUi();
+    dnErr(primero, subidos.length ? `Se subieron ${subidos.length} de ${DN.files.length}.` : '');
+    if (subidos.length) recargarPropias();
+  }
+  Object.assign(HH.actions, {
+    spHlNew: () => hlNew(),
+    spHlElegir: () => dnElegir(),
+    spHlQuitar: (el) => dnQuitar(Number(el.dataset.i)),
+  });
+
   /* ---------- Eliminar su historia desde el visor (17/11/2026, pedido de Juan: "al igual que en Instagram") ----------
      Solo la acompañante con sesión (S.yo) y solo lo suyo: "⋯" en la cabecera del visor (core.js) → "Eliminar historia"
      (o "Quitar de la destacada" en sus destacadas) → confirmar. Misma API que el panel: DELETE /api/cuenta/historias/:id
@@ -1013,6 +1189,18 @@
 .sr-hs-prev{position:relative;width:116px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#000}
 .sr-hs-prev>img,.sr-hs-prev>video,.sr-hs-prev>.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 @media(min-width:640px){.sr-hs{grid-template-columns:150px minmax(0,1fr)}.sr-hs-prev{width:150px}}
+.hl-add .story-add{width:72px;height:72px}
+@media(min-width:720px){.hl-add .story-add{width:80px;height:80px}}
+.sr-dn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.sr-dn-grid[hidden]{display:none}
+.sr-dn-t{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:#000}
+.sr-dn-t>img,.sr-dn-t>video,.sr-dn-t>.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sr-dn-t.err{box-shadow:0 0 0 2px var(--danger)}
+.sr-dn-x,.sr-dn-ok{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;border:0;padding:0;display:grid;place-items:center}
+.sr-dn-x{background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
+.sr-dn-x:disabled{opacity:.5;cursor:default}
+.sr-dn-ok{background:var(--ok);color:#fff}
+.sr-dn-x svg,.sr-dn-ok svg{width:15px;height:15px}
 `;
     document.head.appendChild(st);
   }

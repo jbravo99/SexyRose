@@ -1593,7 +1593,7 @@
         </div>
         ${own ? `<div class="pf-contact">${opts.acciones || ""}</div>` : mine ? "" : `<div class="pf-contact" id="pubContact">${contactHtml(p)}</div>`}
       </section>
-      ${HH.highlightsRow ? HH.highlightsRow(p, mine) : ""}
+      ${HH.highlightsRow ? HH.highlightsRow(p, mine, { own }) : ""}
       ${(() => {
         const ptab = S.pfTab === "about" && !about.length ? "gal" : S.pfTab || "gal";
         const ptabs = [["gal", "Galería"], ["desc", "Descripción"]].concat(about.length ? [["about", "Sobre mí"]] : []);

@@ -385,7 +385,8 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
     creado, (video: segundos, ancho, alto) }] }]`, solo las que entran en el plan y con elementos listos (las vacías no
     van). En el perfil, fila de círculos debajo de la cabecera (visual de `highlights.js`); al tocar, el visor de
     historias sobre esa destacada (video sin sonido con botón, barra según la duración, mantener apretado pausa, "atrás"
-    cierra). Sin edición desde el perfil. No entran en Shorts.
+    cierra). Sin edición desde el perfil (en Mi perfil, «Nueva» crea una: ver «Nueva destacada desde Mi perfil», 17/11).
+    No entran en Shorts.
   - Panel → Historias → bloque "Destacadas": crear (nombre), renombrar, borrar, subir foto o video, borrar elementos;
     "Tu plan permite N destacadas · usás M".
   - Demo: destacadas en Valentina (3), Camila (2) y Martina (1) con imágenes abstractas y los clips de la demo.
@@ -1207,6 +1208,7 @@ las iniciales. Se actualiza al cambiar la principal o subir la primera.
 - **Dibujo**: `HH.profileView(slug, { own: true, aviso, acciones })` (`views-public.js`), la misma vista pública con:
   - el "+" del avatar y la hoja «Nueva historia»; el avatar abre sus historias activas o, sin historias, la subida;
   - el "⋯" en sus historias y destacadas (Eliminar historia / Quitar de la destacada / Cambiar portada);
+  - «Nueva» primero en la fila de destacadas (ver «Nueva destacada desde Mi perfil» más abajo);
   - debajo de la cabecera, en lugar del contacto, dos botones iguales (`.pf-own`): «Editar perfil» (→ Panel → Mi
     perfil) y «Mi panel» (→ Resumen; con el mismo punto de aviso que la barra). Sin migas, Compartir ni Reportar.
     La tarifa se ve como en el público.
@@ -1225,6 +1227,37 @@ las iniciales. Se actualiza al cambiar la principal o subir la primera.
 - Tests: `app/test/mi-perfil.test.js`, `historias-perfil.test.js` (dibujo con `own` y `preview`), `vista-previa.test.js`
   (página sin caché, noindex, fuera del sitemap, sin métricas) y `historia-borrar-proteccion.test.js` (sin "⋯" en la
   vista previa).
+
+### Nueva destacada desde Mi perfil — 17/11/2026 (pedido de Juan)
+
+"En el perfil necesito que esté para agregar historia destacada, como en Instagram, al ir al perfil de uno mismo como
+acompañante. Debe ser así como la imagen y decir algo como 'new'."
+
+- **Dónde**: solo en Mi perfil (`HH.profileView(slug, { own: true })`). Nunca en la vista previa, en su perfil público,
+  en perfiles ajenos ni para visitantes o clientes (`views-public.js` pasa `{ own }` a `HH.highlightsRow`; en el sitio,
+  `prod-sitio.js` agrega el círculo con `HH.highlightNewHtml(p)`, que exige `HH.storyUploadOn(p)`: su sesión y su perfil).
+- **Círculo**: primero en la fila de destacadas, el mismo de «Tu historia» del inicio (`.story-add`: círculo vacío con
+  borde fino y "+"; 72 px, 80 px desde 720 px como las destacadas) con «Nueva» (EN New, PT Nova) debajo. Aparece aunque
+  todavía no tenga destacadas (la fila queda solo con ese círculo). La demo no tiene cuentas: no lo muestra.
+- **Tocar**: si ya llegó al límite de su plan (`limites.destacadas` de `/yo` contra `destacadas.length`; `null` =
+  ilimitadas), aviso «Llegaste al límite de destacadas de tu plan.» (el texto del panel) y no se abre nada. Si no, la
+  hoja «Nueva destacada» (mismo estilo que «Nueva historia»):
+  - «Nombre de la destacada» (hasta 16 caracteres, como el panel; vacío → «Ponele un nombre a la destacada.»);
+  - «Elegí fotos o videos» («Elegí fotos» si el panel no permite videos): selector del dispositivo con varios archivos,
+    mismos tipos que el panel; video solo con `videosHabilitados`, hasta 95 MB y 60 s (mismos mensajes); hasta 100
+    por destacada;
+  - miniaturas de lo elegido (cada una con "×" para sacarla antes de subir);
+  - «Crear destacada».
+- **API** (la del panel, sin cambios): `POST /api/cuenta/destacadas { titulo }` y después cada archivo, de a uno, con
+  `POST /destacadas/:id/fotos` (multipart `foto`) o `/videos` (multipart `video`). Barra de progreso y «Subiendo… k/N».
+- **Fallas**: si falla alguno, lo subido queda (con un tilde en su miniatura), la hoja muestra «Se subieron X de N.» y
+  el mensaje del servidor, el nombre queda fijo y «Crear destacada» reintenta solo lo que falta en la misma destacada;
+  Mi perfil ya muestra lo subido. Si no se subió ninguno, la destacada vacía se borra (`DELETE /destacadas/:id`) para
+  que no ocupe el cupo. Si cierra la hoja mientras sube, sigue subiendo y avisa al terminar.
+- **Al terminar**: aviso «Destacada creada.» (con videos: «Destacada creada. Los videos se suman apenas terminen de
+  procesarse.»), se vuelven a pedir sus datos y los de Mi perfil (aparece el círculo nuevo) y queda en la página.
+- Textos EN/PT en `HH.I18N` (`prod-sitio.js`). Tests: `app/test/destacada-nueva.test.js` (dibujo solo en Mi perfil,
+  cupo lleno, la misma API, falla parcial y total, flujo crear + elementos y límite del plan en el servidor).
 
 ## Nombre completo y fecha de nacimiento fijos — 17/11/2026 (decisiones de Juan)
 
