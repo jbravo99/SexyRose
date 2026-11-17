@@ -114,6 +114,10 @@ html[data-prod="sitio"] table.table.sp-dtab{min-width:0;width:100%}
 @media(min-width:900px){.sp-hdr-user.hide-mobile{display:inline-grid!important}.sp-hdr-user.active{color:var(--berry);border-color:var(--berry)}}
 /* "Tu espacio" (/favoritos) */
 .sp-esp-card{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;padding:16px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+/* Tu espacio: las fichas (cliente y acompañante) separadas entre sí (17/11/2026) */
+.sp-esp-card+.sp-esp-card,.sp-esp-card+p+.sp-esp-card{margin-top:12px}
+/* Panel: aire entre la barra de arriba y la ficha / el título (el sitio no carga views-dashboard.js, que tenía este espacio) */
+.dash-wrap{padding-block:14px 32px}@media(min-width:900px){.dash-wrap{padding-block:28px 48px}}
 .sp-esp-card .grow{display:grid;gap:2px;min-width:180px;flex:1 1 220px}
 .sp-esp-btns{display:flex;flex-wrap:wrap;gap:8px}
 /* ---------- Shorts: feed vertical a pantalla completa (prod-shorts.js) ---------- */
