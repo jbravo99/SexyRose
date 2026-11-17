@@ -1247,17 +1247,33 @@ acompañante. Debe ser así como la imagen y decir algo como 'new'."
     mismos tipos que el panel; video solo con `videosHabilitados`, hasta 95 MB y 60 s (mismos mensajes); hasta 100
     por destacada;
   - miniaturas de lo elegido (cada una con "×" para sacarla antes de subir);
+  - **Portada** (17/11/2026, Juan: "no me deja elegir la portada, deberá ser 'cover' antes de publicarla"), debajo de
+    las miniaturas: círculo con la portada actual, «Portada» y «Automática: la primera foto o video.» o «La elegiste
+    vos.»; «Tocá una para usarla de portada». Por defecto, la automática: la primera elegida (cartel «Portada» en esa
+    miniatura). Tocar una foto la elige (cartel y borde). «Subir otra imagen»: una imagen aparte del dispositivo (JPG,
+    PNG, WebP o HEIC, hasta 12 MB: las reglas de «Cambiar portada»). «Usar la automática» vuelve a la automática. Si
+    saca con "×" la foto elegida, vuelve la automática. **Videos**: no se eligen de portada desde la hoja (todavía no
+    tienen su imagen): tocar uno avisa y, si hay videos, la hoja dice «Los videos quedan con la portada automática hasta
+    que terminen de procesarse.» (después se cambia con «Cambiar portada» del panel o del "⋯" del visor);
   - «Crear destacada».
-- **API** (la del panel, sin cambios): `POST /api/cuenta/destacadas { titulo }` y después cada archivo, de a uno, con
-  `POST /destacadas/:id/fotos` (multipart `foto`) o `/videos` (multipart `video`). Barra de progreso y «Subiendo… k/N».
+- **API** (la del panel, sin cambios): `POST /api/cuenta/destacadas { titulo }`, después cada archivo, de a uno, con
+  `POST /destacadas/:id/fotos` (multipart `foto`) o `/videos` (multipart `video`), y al final la portada: foto elegida
+  → `PUT /destacadas/:id/portada { itemId }` con el `item.id` que devolvió la subida de esa foto; imagen aparte →
+  `POST /destacadas/:id/portada` (multipart `foto`); automática → nada (una destacada nueva ya la tiene). Barra de
+  progreso y «Subiendo… k/N».
 - **Fallas**: si falla alguno, lo subido queda (con un tilde en su miniatura), la hoja muestra «Se subieron X de N.» y
   el mensaje del servidor, el nombre queda fijo y «Crear destacada» reintenta solo lo que falta en la misma destacada;
-  Mi perfil ya muestra lo subido. Si no se subió ninguno, la destacada vacía se borra (`DELETE /destacadas/:id`) para
-  que no ocupe el cupo. Si cierra la hoja mientras sube, sigue subiendo y avisa al terminar.
+  Mi perfil ya muestra lo subido. La portada se aplica con lo que ya está subido, también en cada reintento (lo ya
+  aplicado no se repite): si la foto elegida no se subió, queda la automática y se avisa «La foto elegida de portada no
+  se subió: por ahora queda la automática.»; cuando el reintento la sube, se aplica. Si el servidor rechaza la portada,
+  la hoja queda con el error y el reintento solo pide la portada. Si no se subió ninguno, la destacada vacía se borra
+  (`DELETE /destacadas/:id`) para que no ocupe el cupo. Si cierra la hoja mientras sube, sigue subiendo y avisa al
+  terminar.
 - **Al terminar**: aviso «Destacada creada.» (con videos: «Destacada creada. Los videos se suman apenas terminen de
   procesarse.»), se vuelven a pedir sus datos y los de Mi perfil (aparece el círculo nuevo) y queda en la página.
 - Textos EN/PT en `HH.I18N` (`prod-sitio.js`). Tests: `app/test/destacada-nueva.test.js` (dibujo solo en Mi perfil,
-  cupo lleno, la misma API, falla parcial y total, flujo crear + elementos y límite del plan en el servidor).
+  cupo lleno, la misma API, falla parcial y total, portada por defecto, elegida, imagen aparte, foto de portada que no
+  se subió y videos; en el servidor, crear + elementos + portada y el límite del plan).
 
 ## Nombre completo y fecha de nacimiento fijos — 17/11/2026 (decisiones de Juan)
 

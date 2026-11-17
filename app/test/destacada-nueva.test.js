@@ -2,7 +2,8 @@
 // destacada, como en Instagram, al ir al perfil de uno mismo como acompañante… decir algo como 'new'").
 // Front (prod-sitio.js + highlights.js + views-public.js): el círculo "Nueva" (igual a "Tu historia" del inicio) va
 // primero en la fila de destacadas SOLO en Mi perfil (opts.own); la hoja «Nueva destacada» crea la destacada y sube los
-// archivos con la misma API que el panel; con el cupo lleno, el aviso del panel. Servidor: el flujo crear + elementos.
+// archivos con la misma API que el panel; con el cupo lleno, el aviso del panel; la portada se elige antes de crear
+// (17/11/2026). Servidor: el flujo crear + elementos + portada.
 //   DATABASE_URL=postgres://... node --test test/destacada-nueva.test.js
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -145,14 +146,15 @@ function cargarHoja({ lim = 1, usadas = 0, videos = false } = {}) {
   const upload = async (p, fd, onProgress) => {
     const f = fd.get('foto') || fd.get('video');
     calls.push(['UPLOAD', p, fd.has('video') ? 'video' : 'foto', f.name]);
-    onProgress(0.5);
+    if (onProgress) onProgress(0.5);
     if (fallar.has(f.name)) { const e = new Error('El archivo no es una imagen válida.'); e.status = 400; throw e; }
-    return { ok: true, item: {} };
+    // Cada subida devuelve el id del elemento (it-<nombre>); la portada aparte, la portada
+    return /\/portada$/.test(p) ? { ok: true, portada: { tipo: 'subida', url: 'u' } } : { ok: true, item: { id: 'it-' + f.name } };
   };
   const ctx = { HH, S, document, api, upload, FormData, URL: { createObjectURL: () => '', revokeObjectURL() {} }, console };
   vm.createContext(ctx);
   const hlTit = trozo('  const HL_TITULO_MAX = 16;', '16;');
-  const bloque = trozo('  const HL_MAX_ITEMS = 100;', "    spHlQuitar: (el) => dnQuitar(Number(el.dataset.i)),\n  });");
+  const bloque = trozo('  const HL_MAX_ITEMS = 100;', "    spHlPortadaAuto: () => dnPortadaAuto(),\n  });");
   vm.runInContext(`const esc = HH.esc, icon = () => '';
     const hash = () => 1; const HIST_FOTOS = 'image/jpeg'; const HIST_VIDEOS = ',video/mp4';
     const fieldErr = (id) => '<div id="' + id + '"></div>';
@@ -251,6 +253,135 @@ describe('hoja «Nueva destacada»', () => {
   });
 });
 
+/* ---------- Portada antes de crear (17/11/2026, Juan: "no me deja elegir la portada, deberá ser 'cover' antes de publicarla") ---------- */
+describe('hoja «Nueva destacada»: la portada', () => {
+  const PT = (id) => '/cuenta/destacadas/' + id + '/portada';
+  async function lista(opts, nombres = ['a.jpg', 'b.jpg', 'c.jpg']) {
+    const h = cargarHoja({ lim: 3, ...opts });
+    h.HH.actions.spHlNew();
+    h.el('srDnTit').value = 'Viajes';
+    await h.ctx.T.dnSumar(nombres.map((n) => (/\.mp4$/.test(n) ? h.archivo(n, 'video/mp4') : h.archivo(n))));
+    return h;
+  }
+  const portadaCalls = (h) => h.plano(h.calls).filter((c) => /\/portada$/.test(c[1]));
+
+  test('por defecto, la primera elegida (automática): cartel «Portada» en la primera y no se pide nada al servidor', async () => {
+    const h = await lista();
+    const tiles = h.el('srDnGrid').innerHTML.split('<div class="sr-dn-t').slice(1);
+    assert.match(tiles[0], /^ pt"/); assert.match(tiles[0], /sr-dn-tag">Portada</);
+    assert.doesNotMatch(tiles[1] + tiles[2], /Portada</);
+    assert.match(h.el('srDnPt').innerHTML, /Automática: la primera foto o video\./);
+    assert.match(h.el('srDnPt').innerHTML, /Tocá una para usarla de portada/);
+    assert.doesNotMatch(h.el('srDnPt').innerHTML, /spHlPortadaAuto/, 'ya es la automática');
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h), [], 'la automática es el primer elemento: nada que pedir');
+    assert.deepEqual(h.plano(h.calls).filter((c) => c[0] === 'UPLOAD').map((c) => c[3]), ['a.jpg', 'b.jpg', 'c.jpg'], 'en el orden elegido');
+    assert.deepEqual(h.toasts.at(-1), ['Destacada creada.', 'ok']);
+  });
+
+  test('elegida: tocar una foto la marca y, después de subir, PUT …/portada con el id que devolvió su subida', async () => {
+    const h = await lista();
+    h.HH.actions.spHlPortada({ dataset: { i: '1' } });
+    const tiles = h.el('srDnGrid').innerHTML.split('<div class="sr-dn-t').slice(1);
+    assert.match(tiles[1], /^ pt"/); assert.doesNotMatch(tiles[0], /Portada</);
+    assert.match(h.el('srDnPt').innerHTML, /La elegiste vos\./);
+    assert.match(h.el('srDnPt').innerHTML, /data-action="spHlPortadaAuto"/);
+    await h.ctx.T.dnCrear();
+    const c = h.plano(h.calls);
+    assert.deepEqual(c.at(-1), ['PUT', PT('D1'), { itemId: 'it-b.jpg' }], 'la portada va al final, con el id de esa foto');
+    assert.equal(c.filter((x) => x[0] === 'UPLOAD').length, 3);
+    // Sacar la elegida vuelve a la automática
+    const h2 = await lista();
+    h2.HH.actions.spHlPortada({ dataset: { i: '2' } }); h2.HH.actions.spHlQuitar({ dataset: { i: '2' } });
+    await h2.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h2), []);
+  });
+
+  test('imagen aparte: «Subir otra imagen» (solo imágenes, 12 MB) → POST …/portada después de subir los elementos', async () => {
+    const h = await lista();
+    h.HH.actions.spHlPortadaArchivo({ files: [h.archivo('v.mp4', 'video/mp4')] });
+    assert.match(h.el('srDnErr').innerHTML, /Elegí una imagen\./);
+    const grande = new File([Buffer.alloc(12 * 1024 * 1024 + 1)], 'g.jpg', { type: 'image/jpeg' });
+    h.HH.actions.spHlPortadaArchivo({ files: [grande] });
+    assert.match(h.el('srDnErr').innerHTML, /La imagen pesa más de 12 MB\./);
+    h.HH.actions.spHlPortadaArchivo({ files: [h.archivo('tapa.jpg')] });
+    assert.equal(h.el('srDnErr').innerHTML, '');
+    assert.doesNotMatch(h.el('srDnGrid').innerHTML, /Portada</, 'ninguna miniatura es la portada');
+    assert.match(h.el('srDnPt').innerHTML, /La elegiste vos\./);
+    await h.ctx.T.dnCrear();
+    const c = h.plano(h.calls);
+    assert.deepEqual(c.at(-1), ['UPLOAD', PT('D1'), 'foto', 'tapa.jpg']);
+    assert.deepEqual(c.slice(1, 4).map((x) => x[3]), ['a.jpg', 'b.jpg', 'c.jpg'], 'primero los elementos');
+    assert.deepEqual(h.toasts.at(-1), ['Destacada creada.', 'ok']);
+    assert.equal(h.state.modalAbierto, false);
+    // «Usar la automática» la descarta
+    const h2 = await lista();
+    h2.HH.actions.spHlPortadaArchivo({ files: [h2.archivo('tapa.jpg')] }); h2.HH.actions.spHlPortadaAuto();
+    await h2.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h2), []);
+  });
+
+  test('la foto elegida de portada no se subió: queda la automática y se avisa; el reintento la aplica al final', async () => {
+    const h = await lista();
+    h.HH.actions.spHlPortada({ dataset: { i: '1' } });
+    h.fallar.add('b.jpg');
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h), [], 'sin PUT: queda la automática');
+    const err = h.el('srDnErr').innerHTML;
+    assert.match(err, /<span>Se subieron 2 de 3\.<\/span> <span>El archivo no es una imagen válida\.<\/span> <span>La foto elegida de portada no se subió: por ahora queda la automática\.<\/span>/);
+    assert.equal(h.state.modalAbierto, true);
+    // Reintento: sube la que faltaba y recién ahí pone la portada (misma destacada)
+    h.fallar.clear(); h.calls.length = 0;
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(h.plano(h.calls), [['UPLOAD', '/cuenta/destacadas/D1/fotos', 'foto', 'b.jpg'], ['PUT', PT('D1'), { itemId: 'it-b.jpg' }]]);
+    assert.deepEqual(h.toasts.at(-1), ['Destacada creada.', 'ok']);
+  });
+
+  test('ya aplicada no se repite; si el servidor rechaza la portada, la hoja queda y el reintento solo pide la portada', async () => {
+    const h = await lista();
+    h.HH.actions.spHlPortada({ dataset: { i: '0' } });
+    h.fallar.add('c.jpg');
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h), [['PUT', PT('D1'), { itemId: 'it-a.jpg' }]]);
+    h.fallar.clear(); h.calls.length = 0;
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(h.plano(h.calls), [['UPLOAD', '/cuenta/destacadas/D1/fotos', 'foto', 'c.jpg']], 'la portada ya estaba puesta');
+    // Error del servidor al poner la portada (todo subido)
+    const h2 = await lista();
+    h2.HH.actions.spHlPortadaArchivo({ files: [h2.archivo('tapa.jpg')] });
+    h2.fallar.add('tapa.jpg');
+    await h2.ctx.T.dnCrear();
+    assert.equal(h2.state.modalAbierto, true);
+    assert.match(h2.el('srDnErr').innerHTML, /El archivo no es una imagen válida\./);
+    assert.doesNotMatch(h2.el('srDnErr').innerHTML, /Se subieron/, 'los elementos se subieron todos');
+    h2.fallar.clear(); h2.calls.length = 0;
+    await h2.ctx.T.dnCrear();
+    assert.deepEqual(h2.plano(h2.calls), [['UPLOAD', PT('D1'), 'foto', 'tapa.jpg']], 'solo la portada');
+    assert.equal(h2.state.modalAbierto, false);
+  });
+
+  test('videos: no se eligen de portada (quedan con la automática hasta que terminen de procesarse)', async () => {
+    const h = await lista({ videos: true }, ['a.jpg', 'v.mp4']);
+    assert.match(h.el('srDnPt').innerHTML, /Los videos quedan con la portada automática hasta que terminen de procesarse\./);
+    h.HH.actions.spHlPortada({ dataset: { i: '1' } });
+    assert.deepEqual(h.toasts.at(-1), ['Los videos quedan con la portada automática hasta que terminen de procesarse.', '']);
+    assert.match(h.el('srDnGrid').innerHTML.split('<div class="sr-dn-t')[1], /^ pt"/, 'sigue la automática (la primera)');
+    await h.ctx.T.dnCrear();
+    assert.deepEqual(portadaCalls(h), []);
+  });
+
+  test('textos de la portada en inglés y portugués', () => {
+    const ini = sitio.indexOf("  Object.assign(HH.I18N = HH.I18N || {}, {\n    'Nueva': ");
+    const c = { HH: {} }; vm.createContext(c);
+    vm.runInContext(sitio.slice(ini, sitio.indexOf('});', ini) + 3), c);
+    for (const k of ['Portada', 'Tocá una para usarla de portada', 'Los videos quedan con la portada automática hasta que terminen de procesarse.', 'La foto elegida de portada no se subió: por ahora queda la automática.']) {
+      const v = c.HH.I18N[k]; assert.ok(v && v[0] && v[1], k);
+    }
+    // Los que ya existían (hoja «Cambiar portada»)
+    for (const k of ['Subir otra imagen', 'Usar la automática', 'La elegiste vos.', 'Automática: la primera foto o video.', 'Usar de portada']) assert.ok(sitio.includes(`'${k}': ['`), k);
+  });
+});
+
 /* ---------- Servidor: el flujo que usa la hoja (crear + elementos) y el cupo ---------- */
 describe('API: crear la destacada, subir sus elementos y el límite del plan', () => {
   const DATABASE_URL = process.env.DATABASE_URL;
@@ -314,6 +445,22 @@ describe('API: crear la destacada, subir sus elementos y el límite del plan', (
     const yo = await c.get('/api/cuenta/yo');
     assert.equal(yo.cuenta.limites.destacadas, 2);
     assert.equal(yo.cuenta.destacadas.length, 1);
+  });
+
+  test('portada: sin pedir nada es la automática (el primer elemento); con el id que devolvió la subida, esa foto', async () => {
+    const c = await acompanante('D');
+    const crear = async (t) => (await c.json('POST', '/api/cuenta/destacadas', { titulo: t })).body.destacada.id;
+    const auto = await crear('Auto');
+    const a1 = (await c.foto(auto, await jpg(10))).body.item; await c.foto(auto, await jpg(90));
+    const elegida = await crear('Elegida');
+    await c.foto(elegida, await jpg(30)); const e2 = (await c.foto(elegida, await jpg(220))).body.item;
+    const put = await c.json('PUT', `/api/cuenta/destacadas/${elegida}/portada`, { itemId: e2.id });
+    assert.equal(put.status, 200, JSON.stringify(put.body));
+    const vp = await c.get('/api/cuenta/vista-previa');
+    const d = (id) => vp.perfil.destacadas.find((x) => x.id === id);
+    assert.equal(d(auto).portada, null, 'automática');
+    assert.equal(d(auto).items[0].id, a1.id, 'el círculo usa el primer elemento');
+    assert.equal(d(elegida).portada, e2.urlMini);
   });
 
   test('nombre: mismas reglas que el panel (vacío o más de 16 caracteres → 400)', async () => {

@@ -921,12 +921,19 @@
      círculo de la fila de destacadas, igual a "Tu historia" del inicio (.story-add: círculo vacío con "+"), con "Nueva";
      aparece aunque todavía no tenga destacadas. Tocar: si ya llegó al límite de su plan, el mismo aviso del panel; si no,
      la hoja «Nueva destacada»: nombre (16 caracteres, como el panel), «Elegí fotos o videos» (varios a la vez, mismos
-     tipos y límites que el panel; video solo si el panel los permite), miniaturas y «Crear destacada».
-     Misma API que el panel (Historias → Destacadas): POST /api/cuenta/destacadas y después cada archivo con
-     POST /destacadas/:id/fotos o /videos, uno por uno, con barra de progreso. Si alguno falla, lo subido queda, la hoja
-     muestra el error y «Crear destacada» reintenta solo los que faltan en la misma destacada (si no se subió ninguno, se
-     borra la destacada vacía para que no ocupe el cupo). Al terminar: aviso, se vuelven a pedir sus datos y Mi perfil
-     (aparece el círculo nuevo) y queda en la misma página. */
+     tipos y límites que el panel; video solo si el panel los permite), miniaturas, la portada y «Crear destacada».
+     Portada (17/11/2026, Juan: "no me deja elegir la portada, deberá ser 'cover' antes de publicarla"): debajo de las
+     miniaturas, el círculo con la portada elegida. Por defecto la automática (el primer elemento, como en el panel);
+     tocar una foto la elige (cartel «Portada»); «Subir otra imagen» usa una imagen aparte (mismas reglas que «Cambiar
+     portada»). Los videos no se eligen acá: quedan con la automática hasta que terminen de procesarse (después se
+     cambia desde el panel o el "⋯" del visor).
+     Misma API que el panel: POST /api/cuenta/destacadas, después cada archivo con POST /destacadas/:id/fotos o /videos,
+     uno por uno, con barra de progreso, y al final la portada: PUT /destacadas/:id/portada { itemId } (el id que devolvió
+     la subida de esa foto) o POST /destacadas/:id/portada (imagen aparte); la automática no pide nada. Si alguno falla,
+     lo subido queda, la hoja muestra el error y «Crear destacada» reintenta solo lo que falta en la misma destacada y
+     vuelve a aplicar la portada; si la foto elegida de portada no se subió, queda la automática y se avisa (si no se
+     subió ninguno, se borra la destacada vacía para que no ocupe el cupo). Al terminar: aviso, se vuelven a pedir sus
+     datos y Mi perfil (aparece el círculo nuevo) y queda en la misma página. */
   Object.assign(HH.I18N = HH.I18N || {}, {
     'Nueva': ['New', 'Nova'],
     'Nueva destacada': ['New highlight', 'Novo destaque'],
@@ -938,6 +945,10 @@
     'Destacada creada. Los videos se suman apenas terminen de procesarse.': ['Highlight created. Videos are added as soon as they finish processing.', 'Destaque criado. Os vídeos entram assim que terminarem o processamento.'],
     'Se subieron {n} de {n}.': ['{n} of {n} uploaded.', '{n} de {n} enviados.'],
     'Una destacada puede tener hasta {n} fotos y videos.': ['A highlight can have up to {n} photos and videos.', 'Um destaque pode ter até {n} fotos e vídeos.'],
+    'Portada': ['Cover', 'Capa'],
+    'Tocá una para usarla de portada': ['Tap one to use it as the cover', 'Toque em uma para usar como capa'],
+    'Los videos quedan con la portada automática hasta que terminen de procesarse.': ['Videos keep the automatic cover until they finish processing.', 'Os vídeos ficam com a capa automática até terminarem o processamento.'],
+    'La foto elegida de portada no se subió: por ahora queda la automática.': ['The photo chosen as cover was not uploaded: the automatic cover is used for now.', 'A foto escolhida como capa não foi enviada: por enquanto fica a automática.'],
   });
   const HL_MAX_ITEMS = 100;
   // ¿Puede crear una destacada desde acá? Acompañante con sesión y es su perfil (la misma regla que el "+" de historias).
@@ -945,12 +956,23 @@
     ? `<div class="hl-it hl-add"><button type="button" class="story-add" data-action="spHlNew" aria-label="Nueva destacada">${icon('plus')}</button><span class="hl-n">Nueva</span></div>`
     : '');
   const hlLleno = () => { const lim = ((S.yo && S.yo.limites) || {}).destacadas; return lim != null && ((S.yo && S.yo.destacadas) || []).length >= lim; };
-  // files: [{ f, url, video, done, err }]; id: la destacada ya creada (reintentos van a la misma)
-  const DN = { files: [], id: null, busy: false };
+  // Imagen de portada subida aparte: las mismas reglas que «Cambiar portada» (más abajo) y que el servidor
+  function portadaImagenError(f) {
+    if (!/^image\//.test(f.type || '') && !/\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || '')) return 'Elegí una imagen.';
+    if (f.size > 12 * 1024 * 1024) return 'La imagen pesa más de 12 MB.';
+    return '';
+  }
+  const DN_VID_PT = 'Los videos quedan con la portada automática hasta que terminen de procesarse.';
+  const DN_PT_FALLO = 'La foto elegida de portada no se subió: por ahora queda la automática.';
+  // files: [{ f, url, video, done, err, itemId }]; id: la destacada ya creada (reintentos van a la misma);
+  // cover: 'auto' | una entrada de files (foto) | 'img' (imagen aparte, en img); coverHecha: la portada ya aplicada
+  const DN = { files: [], id: null, busy: false, cover: 'auto', img: null, coverHecha: '' };
   const esVideoArchivo = (f) => /^video\//.test(f.type || '') || /\.(mp4|mov|webm|3gp)$/i.test(f.name || '');
+  const revocar = (u) => { if (u) { try { URL.revokeObjectURL(u); } catch (e) { /* */ } } };
   function dnLimpiar() {
-    DN.files.forEach((x) => { if (x.url) { try { URL.revokeObjectURL(x.url); } catch (e) { /* */ } } });
-    DN.files = []; DN.id = null;
+    DN.files.forEach((x) => revocar(x.url));
+    if (DN.img) revocar(DN.img.url);
+    DN.files = []; DN.id = null; DN.cover = 'auto'; DN.img = null; DN.coverHecha = '';
   }
   function hlNew() {
     if (!HH.storyUploadOn()) return;
@@ -967,6 +989,7 @@
           ${conVideo ? '<span class="hint">Videos de hasta 60 segundos y 95 MB.</span>' : ''}
         </div>
         <div class="sr-dn-grid" id="srDnGrid" hidden></div>
+        <div class="sr-dn-pt" id="srDnPt" hidden></div>
         <div class="stack" id="srDnProgW" style="gap:6px" hidden><div class="sp-prog" id="srDnProg"><i style="width:0%"></i></div><span class="tiny muted" id="srDnEstado"></span></div>
         ${fieldErr('srDnErr')}
       </div>`,
@@ -976,17 +999,38 @@
       ],
     });
   }
-  // Miniaturas y botones según el estado (sin volver a dibujar la hoja: el nombre escrito queda)
+  // La entrada que hoy es la portada en la hoja (la automática = la primera elegida)
+  const dnPortadaDe = () => (DN.cover === 'img' ? null : DN.cover === 'auto' ? DN.files[0] || null : DN.cover);
+  const dnMedia = (x) => (!x || !x.url ? '' : x.video
+    ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(x.url)}" muted playsinline preload="metadata"></video>`
+    : `<img draggable="false" src="${esc(x.url)}" alt="">`);
+  function dnPortadaHtml() {
+    const auto = DN.cover === 'auto'; const off = DN.busy ? ' disabled' : '';
+    const prev = DN.cover === 'img' ? (DN.img && DN.img.url ? `<img draggable="false" src="${esc(DN.img.url)}" alt="">` : '') : dnMedia(dnPortadaDe());
+    const fotos = DN.files.some((x) => !x.video); const videos = DN.files.some((x) => x.video);
+    return `<div class="sr-dn-pt-h"><span class="hl-c sr-dn-pt-c" aria-hidden="true"><span class="hl-in"><div class="ph" style="background:${HH.hueGradient(210, true)}"></div>${prev}</span></span>
+        <div class="stack" style="gap:2px;min-width:0"><strong>Portada</strong><span class="small muted">${auto ? 'Automática: la primera foto o video.' : 'La elegiste vos.'}</span></div></div>
+      ${fotos ? '<span class="tiny muted">Tocá una para usarla de portada</span>' : ''}
+      ${videos ? `<span class="tiny muted">${DN_VID_PT}</span>` : ''}
+      <div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn secondary sm${DN.busy ? ' disabled' : ''}">${icon('upload')} <span>Subir otra imagen</span><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="sr-only" data-change="spHlPortadaArchivo"${off}></label>
+      ${auto ? '' : `<button type="button" class="btn ghost sm" data-action="spHlPortadaAuto"${off}>${icon('refresh')} Usar la automática</button>`}</div>`;
+  }
+  // Miniaturas, portada y botones según el estado (sin volver a dibujar la hoja: el nombre escrito queda)
   function dnUi() {
     const grid = document.getElementById('srDnGrid'); if (!grid) return;
+    const pt = dnPortadaDe();
     grid.hidden = !DN.files.length;
-    grid.innerHTML = DN.files.map((x, i) => `<div class="sr-dn-t${x.done ? ' ok' : x.err ? ' err' : ''}">
+    grid.innerHTML = DN.files.map((x, i) => `<div class="sr-dn-t${x.done ? ' ok' : x.err ? ' err' : ''}${x === pt ? ' pt' : ''}">
         <div class="ph" style="background:${HH.hueGradient(hash((x.f.name || '') + i) % 360, true)}"></div>
-        ${!x.url ? '' : x.video ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(x.url)}" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${esc(x.url)}" alt="">`}
+        ${dnMedia(x)}
+        <button type="button" class="sr-dn-pick" data-action="spHlPortada" data-i="${i}" aria-pressed="${x === pt}" aria-label="Usar de portada"${DN.busy ? ' disabled' : ''}></button>
         ${x.video ? `<span class="pub-vbadge">${icon('play')}</span>` : ''}
+        ${x === pt ? '<span class="sr-dn-tag">Portada</span>' : ''}
         ${x.done ? `<span class="sr-dn-ok" aria-label="Subido">${icon('check')}</span>` : `<button type="button" class="sr-dn-x" data-action="spHlQuitar" data-i="${i}" aria-label="Quitar"${DN.busy ? ' disabled' : ''}>${icon('x')}</button>`}
       </div>`).join('');
-    grid.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => im.remove()));
+    const ptEl = document.getElementById('srDnPt');
+    if (ptEl) { ptEl.hidden = !DN.files.length; ptEl.innerHTML = DN.files.length ? dnPortadaHtml() : ''; }
+    [grid, ptEl].forEach((r) => r && r.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => im.remove())));
     const tit = document.getElementById('srDnTit'); if (tit) tit.disabled = DN.busy || !!DN.id;
     const el = document.getElementById('srDnElegir'); if (el) el.disabled = DN.busy;
     const b = document.getElementById('srDnCrear'); if (b) b.disabled = DN.busy;
@@ -1015,7 +1059,7 @@
       }
       if (DN.files.length >= HL_MAX_ITEMS) { aviso = HH.t('Una destacada puede tener hasta {n} fotos y videos.').replace('{n}', String(HL_MAX_ITEMS)); break; }
       let url = ''; try { url = URL.createObjectURL(f); } catch (e) { url = ''; }
-      DN.files.push({ f, url, video, done: false, err: '' });
+      DN.files.push({ f, url, video, done: false, err: '', itemId: null });
     }
     if (aviso) HH.toast(aviso, { type: 'warn', ms: 5000 });
     showErr('srDnErr', '');
@@ -1024,14 +1068,59 @@
   function dnQuitar(i) {
     if (DN.busy) return;
     const x = DN.files[i]; if (!x || x.done) return;
-    if (x.url) { try { URL.revokeObjectURL(x.url); } catch (e) { /* */ } }
+    revocar(x.url);
+    if (DN.cover === x) DN.cover = 'auto';
     DN.files.splice(i, 1); dnUi();
   }
+  // Portada: tocar una foto la elige; un video, no (todavía no tiene su imagen)
+  function dnElegirPortada(i) {
+    if (DN.busy) return;
+    const x = DN.files[i]; if (!x) return;
+    if (x.video) { HH.toast(DN_VID_PT, { ms: 5000 }); return; }
+    DN.cover = x; dnUi();
+  }
+  function dnPortadaArchivo(el) {
+    const f = el.files && el.files[0]; if (!f || DN.busy) return;
+    const err = portadaImagenError(f);
+    if (err) { showErr('srDnErr', err); return; }
+    if (DN.img) revocar(DN.img.url);
+    let url = ''; try { url = URL.createObjectURL(f); } catch (e) { url = ''; }
+    DN.img = { f, url }; DN.cover = 'img'; if (DN.coverHecha === 'img') DN.coverHecha = ''; showErr('srDnErr', ''); dnUi();
+  }
+  function dnPortadaAuto() {
+    if (DN.busy) return;
+    if (DN.img) revocar(DN.img.url);
+    DN.img = null; DN.cover = 'auto'; dnUi();
+  }
+  // Aplica la portada elegida en la destacada ya creada. Devuelve un aviso si la foto elegida no se subió (queda la
+  // automática); los errores del servidor se lanzan. No repite lo ya aplicado (reintentos).
+  async function dnPortada(id) {
+    const base = '/cuenta/destacadas/' + encodeURIComponent(id) + '/portada';
+    if (DN.cover === 'img' && DN.img) {
+      if (DN.coverHecha === 'img') return '';
+      const fd = new FormData(); fd.append('foto', DN.img.f);
+      await upload(base, fd);
+      DN.coverHecha = 'img'; return '';
+    }
+    if (DN.cover && DN.cover !== 'auto' && DN.cover !== 'img') {
+      const x = DN.cover;
+      if (!x.done || !x.itemId) {
+        if (DN.coverHecha && DN.coverHecha !== 'auto') { await api('DELETE', base); DN.coverHecha = 'auto'; }
+        return DN_PT_FALLO;
+      }
+      const k = 'item:' + x.itemId; if (DN.coverHecha === k) return '';
+      await api('PUT', base, { itemId: x.itemId });
+      DN.coverHecha = k; return '';
+    }
+    // Automática (el primer elemento): una destacada nueva ya la tiene; solo si antes se aplicó otra, se vuelve
+    if (DN.coverHecha && DN.coverHecha !== 'auto') { await api('DELETE', base); DN.coverHecha = 'auto'; }
+    return '';
+  }
   // Cada frase en su propio texto (el traductor del sitio las pasa a inglés o portugués por separado)
-  const dnErr = (msg, antes) => {
-    const el = document.getElementById('srDnErr');
-    if (el) el.innerHTML = `<div class="notice danger">${icon('alert')}<span>${antes ? `<span>${esc(antes)}</span> ` : ''}<span>${esc(msg)}</span></span></div>`;
-    else HH.toast(msg, { type: 'danger', ms: 6000 });
+  const dnErr = (...frases) => {
+    const fs = frases.filter(Boolean); const el = document.getElementById('srDnErr');
+    if (el) el.innerHTML = `<div class="notice danger">${icon('alert')}<span>${fs.map((x) => `<span>${esc(x)}</span>`).join(' ')}</span></div>`;
+    else fs.forEach((x) => HH.toast(x, { type: 'danger', ms: 6000 }));
   };
   async function dnCrear() {
     if (DN.busy) return;
@@ -1043,16 +1132,18 @@
       if ([...t].length > HL_TITULO_MAX) { showErr('srDnErr', `El nombre puede tener hasta ${HL_TITULO_MAX} caracteres.`); if (inp) inp.focus(); return; }
     }
     const pend = DN.files.filter((x) => !x.done);
-    if (!pend.length) { showErr('srDnErr', S.yo.videosHabilitados ? 'Elegí una foto o un video.' : 'Elegí una foto.'); return; }
+    // Sin nada pendiente solo se sigue si la destacada ya existe (falta aplicar la portada)
+    if (!pend.length && !(DN.id && DN.files.length)) { showErr('srDnErr', S.yo.videosHabilitados ? 'Elegí una foto o un video.' : 'Elegí una foto.'); return; }
     DN.busy = true; dnUi();
     const progW = document.getElementById('srDnProgW'); const bar = document.querySelector('#srDnProg i'); const est = document.getElementById('srDnEstado');
     const prog = (k, p) => {
+      if (!pend.length) return;
       if (bar && bar.isConnected) bar.style.width = Math.round(((k + p) / pend.length) * 100) + '%';
       if (est && est.isConnected) est.innerHTML = `<span>Subiendo…</span> <span class="num">${k + 1}/${pend.length}</span>`;
     };
-    if (progW) progW.hidden = false; prog(0, 0);
+    if (progW && pend.length) progW.hidden = false; prog(0, 0);
     if (!DN.id) {
-      try { const r = await api('POST', '/cuenta/destacadas', { titulo: t }); DN.id = r.destacada.id; }
+      try { const r = await api('POST', '/cuenta/destacadas', { titulo: t }); DN.id = r.destacada.id; DN.coverHecha = ''; }
       catch (e) { DN.busy = false; if (progW) progW.hidden = true; dnUi(); dnErr(e.message); return; }
     }
     const id = DN.id; let primero = null; let fallos = 0;
@@ -1060,15 +1151,18 @@
       const x = pend[k]; x.err = '';
       const fd = new FormData(); fd.append(x.video ? 'video' : 'foto', x.f);
       try {
-        await upload('/cuenta/destacadas/' + encodeURIComponent(id) + (x.video ? '/videos' : '/fotos'), fd, (p) => prog(k, p));
-        x.done = true;
+        const r = await upload('/cuenta/destacadas/' + encodeURIComponent(id) + (x.video ? '/videos' : '/fotos'), fd, (p) => prog(k, p));
+        x.done = true; x.itemId = (r && r.item && r.item.id) || null;
       } catch (e) { x.err = e.message; fallos++; if (!primero) primero = e.message; }
       prog(k, 1); dnUi();
     }
+    const subidos = DN.files.filter((x) => x.done);
+    // La portada, con lo que ya está subido
+    let avisoPt = ''; let errPt = '';
+    if (subidos.length) { try { avisoPt = await dnPortada(id); } catch (e) { errPt = e.message; } }
     DN.busy = false;
     if (progW && progW.isConnected) progW.hidden = true;
-    const subidos = DN.files.filter((x) => x.done);
-    if (!fallos) {
+    if (!fallos && !errPt) {
       const conVid = subidos.some((x) => x.video);
       if (document.getElementById('srDnCrear')) HH.closeModal();
       dnLimpiar();
@@ -1076,18 +1170,21 @@
       recargarPropias();
       return;
     }
-    // Falló alguno: lo subido queda (y se ve en Mi perfil); sin nada subido, la destacada vacía no ocupa el cupo
+    // Falló algo: lo subido queda (y se ve en Mi perfil); sin nada subido, la destacada vacía no ocupa el cupo
     if (!subidos.length) {
-      try { await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(id)); DN.id = null; } catch (e) { /* queda: el reintento sigue en la misma */ }
+      try { await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(id)); DN.id = null; DN.coverHecha = ''; } catch (e) { /* queda: el reintento sigue en la misma */ }
     }
     dnUi();
-    dnErr(primero, subidos.length ? `Se subieron ${subidos.length} de ${DN.files.length}.` : '');
+    dnErr(fallos && subidos.length ? `Se subieron ${subidos.length} de ${DN.files.length}.` : '', primero, errPt, avisoPt);
     if (subidos.length) recargarPropias();
   }
   Object.assign(HH.actions, {
     spHlNew: () => hlNew(),
     spHlElegir: () => dnElegir(),
     spHlQuitar: (el) => dnQuitar(Number(el.dataset.i)),
+    spHlPortada: (el) => dnElegirPortada(Number(el.dataset.i)),
+    spHlPortadaArchivo: (el) => dnPortadaArchivo(el),
+    spHlPortadaAuto: () => dnPortadaAuto(),
   });
 
   /* ---------- Eliminar su historia desde el visor (17/11/2026, pedido de Juan: "al igual que en Instagram") ----------
@@ -1201,6 +1298,17 @@
 .sr-dn-x:disabled{opacity:.5;cursor:default}
 .sr-dn-ok{background:var(--ok);color:#fff}
 .sr-dn-x svg,.sr-dn-ok svg{width:15px;height:15px}
+.sr-dn-pick{position:absolute;inset:0;z-index:1;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:pointer;border-radius:inherit}
+.sr-dn-pick:focus-visible{outline:2px solid var(--berry);outline-offset:-2px}
+.sr-dn-x,.sr-dn-ok{z-index:2}
+.sr-dn-t.pt{box-shadow:0 0 0 2px var(--berry)}
+.sr-dn-t .pub-vbadge{top:6px;bottom:auto;z-index:2}
+.sr-dn-tag{position:absolute;left:5px;bottom:5px;z-index:2;font-size:11px;font-weight:700;line-height:1;padding:4px 7px;border-radius:999px;background:var(--berry);color:var(--berry-ink,#fff);pointer-events:none}
+.sr-dn-pt{display:grid;gap:8px}
+.sr-dn-pt[hidden]{display:none}
+.sr-dn-pt-h{display:flex;align-items:center;gap:12px;min-width:0}
+.hl-c.sr-dn-pt-c{width:64px;height:64px;flex:none;cursor:default}
+.sr-dn-pt-c .hl-in>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 `;
     document.head.appendChild(st);
   }
@@ -1917,8 +2025,7 @@
     spPtElegir: (el) => { if (PT.busy) return; PT.sel = el.dataset.sel; showErr('spPtErr', ''); ptPintar(); },
     spPtArchivo: (el) => {
       const f = el.files && el.files[0]; if (!f || PT.busy) return;
-      if (!/^image\//.test(f.type || '') && !/\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || '')) { showErr('spPtErr', 'Elegí una imagen.'); return; }
-      if (f.size > 12 * 1024 * 1024) { showErr('spPtErr', 'La imagen pesa más de 12 MB.'); return; }
+      const err = portadaImagenError(f); if (err) { showErr('spPtErr', err); return; }
       ptLimpiar(); PT.file = f; try { PT.url = URL.createObjectURL(f); } catch (e) { PT.url = ''; }
       PT.sel = 'archivo'; ptPintar();
     },
