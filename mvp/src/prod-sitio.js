@@ -581,7 +581,7 @@
         if (!actions.querySelector('.sp-hdr-user')) actions.insertAdjacentHTML('afterbegin', `<a class="icon-btn hide-mobile sp-hdr-user${top === 'favoritos' ? ' active' : ''}" href="#favoritos" data-go="#favoritos" aria-label="Tu espacio" title="Tu espacio">${icon('user')}</a>`);
       }
       // Con sesión, el círculo de arriba a la derecha muestra su foto principal (la miniatura pública, con marca de agua); sin fotos, sus iniciales
-      if (actions && logged) { const b = actions.querySelector('[data-action="openUserMenu"]'); if (b) { b.innerHTML = avatarYo(38); b.classList.add('sp-hdr-av'); } }
+      if (actions && logged) { const b = actions.querySelector('[data-action="openUserMenu"]'); if (b) { b.innerHTML = `<span class="sp-hdr-pic">${avatarYo(38)}</span><span class="sp-hdr-ham" aria-hidden="true">${icon('menu')}</span>`; b.classList.add('sp-hdr-av'); } }
       if (['panel', 'cuenta', 'login', 'registro'].includes(top)) { const g = hi.querySelector('.hdr-genders'); if (g) g.replaceWith(Object.assign(document.createElement('span'), { className: 'hdr-spacer' })); }
     }
     if (bn) {
@@ -3042,6 +3042,9 @@ html[data-prod="sitio"] #supFab,html[data-prod="sitio"] #supPanel{display:none!i
 .sp-todo.sp-falta-l{gap:10px}.sp-todo.sp-falta-l li{display:grid;grid-template-columns:16px minmax(0,1fr) auto;column-gap:10px;align-items:center}.sp-todo.sp-falta-l svg{margin-top:0}.sp-completar{white-space:nowrap}
 .sp-foco{outline:2px solid transparent;outline-offset:5px;border-radius:10px;animation:spFoco 2.3s ease-out}@keyframes spFoco{0%,40%{outline-color:var(--berry)}100%{outline-color:transparent}}
 .sp-hdr-av{padding:0;overflow:hidden;border-radius:50%}
+/* Celular: su foto ya está en la barra de abajo (Mi perfil); el círculo de arriba abre Mi cuenta con el ícono de menú (17/11/2026) */
+.sp-hdr-av>.sp-hdr-pic{display:contents}.sp-hdr-av>.sp-hdr-ham{display:none}
+@media(max-width:899px){.sp-hdr-av>.sp-hdr-pic{display:none}.sp-hdr-av>.sp-hdr-ham{display:grid;place-items:center;width:100%;height:100%}.sp-hdr-av>.sp-hdr-ham svg{width:22px;height:22px}}
 .dash-tabs.sp-mnav{position:sticky;padding-block:8px}
 .sp-mnav-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 12px;border-radius:14px;background:var(--surface);border:1px solid var(--line-2);color:var(--fg);text-align:left;cursor:pointer;font:inherit}
 .sp-mnav-btn.open{border-color:var(--berry)}.sp-mnav-btn>svg{width:18px;height:18px;flex:none;color:var(--fg-2);transition:transform .15s}.sp-mnav-btn.open>svg{transform:rotate(180deg)}

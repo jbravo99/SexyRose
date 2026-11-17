@@ -93,6 +93,8 @@
 .sw-chips{display:flex;flex-direction:column;gap:8px;min-width:0}.sw-chips>.chips{min-width:0}
 .pf-tags{display:flex;gap:6px;flex-wrap:wrap}
 .badge.virt{background:var(--info-tint);color:var(--info)}
+/* Sitio real, celular: sin la portada del inicio (pedido de Juan, 17/11/2026). Queda en la página pero invisible, así Google sigue leyendo el H1. */
+@media(max-width:899px){html[data-prod="sitio"] .pub-hero{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}}
 @media(max-width:899px){.pub-swipe{display:flex;flex-direction:column;height:calc(100dvh - var(--header-h) - var(--bottomnav-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - var(--sr-demo-h,0px) - 32px);min-height:430px}.pub-swipe-side{flex:none}.pub-swipe-main{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}.pub-swipe .swipe-stage{flex:1 1 auto;width:100%;height:auto;min-height:200px;max-height:640px}.pub-swipe .swipe-actions{flex:none;margin-top:28px}}
 @media(max-width:899px) and (max-height:700px){.pub-swipe .swipe-actions{margin-top:22px}.pub-swipe .swipe-actions .btn.round{--sr-act:54px}}
 /* Mobile estilo Tinder (v57): una fila compacta arriba, tarjeta vertical que ocupa el resto y botones flotando sobre la foto */
@@ -1073,7 +1075,7 @@
     const gridFirst = gridAll.slice(0, S.gridShown);
     const gSel = HH.genderLabel();
     return `
-    <section class="hero">
+    <section class="hero pub-hero">
       <span class="blob" style="width:420px;height:420px;left:-140px;top:-120px;background:var(--pink)"></span>
       <span class="blob" style="width:380px;height:380px;right:-120px;bottom:-140px;background:var(--berry-tint)"></span>
       <div class="container hero-grid">
