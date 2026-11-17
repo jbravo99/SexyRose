@@ -166,12 +166,17 @@
 .pf-crumbs{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;font-size:13px;color:var(--muted);overflow-x:auto;white-space:nowrap;scrollbar-width:none}.pf-crumbs::-webkit-scrollbar{display:none}.pf-crumbs svg{width:13px;height:13px;flex:none}.pf-crumbs a{color:var(--fg-2)}.pf-crumbs [aria-current]{color:var(--fg);font-weight:700}
 .pf-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"thumb head" "contact contact";gap:14px 16px;align-items:center;padding:4px 0}
 @media(min-width:720px){.pf-card{grid-template-areas:"thumb head" "thumb contact";gap:10px 28px;align-items:start}}
-.pf-thumb{grid-area:thumb}.pf-head{grid-area:head}.pf-contact{grid-area:contact;align-self:start}
+.pf-av{grid-area:thumb;position:relative;align-self:start;width:max-content}.pf-head{grid-area:head}.pf-contact{grid-area:contact;align-self:start}
 .pf-thumb{position:relative;width:104px;height:104px;padding:4px;border:0;border-radius:50%;cursor:pointer;background:var(--line-2);display:grid;place-items:center;align-self:start}
 .pf-thumb::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--bg)}
 .pf-thumb .media{position:relative;z-index:1;width:100%;height:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;border:3px solid var(--bg)}.pf-thumb .media img{object-fit:cover}
 .pf-thumb.has-st{background:conic-gradient(from 200deg,var(--berry),var(--pink),var(--gold),var(--berry))}.pf-thumb.has-st.seen{background:var(--line-2)}
-@media(min-width:720px){.pf-thumb{width:168px;height:168px;padding:5px}}
+/* Sin historias activas: sin anillo (no parece una historia vista) y, para un visitante, no se toca */
+.pf-thumb.no-st{background:transparent;cursor:default}button.pf-thumb.no-st{cursor:pointer}
+/* Su propio perfil: "+" abajo a la derecha para subir una historia (como Instagram) */
+.pf-add{position:absolute;right:0;bottom:0;z-index:2;width:32px;height:32px;padding:0;border:3px solid var(--bg);border-radius:50%;background:#fff;color:#14111a;display:grid;place-items:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.pf-add svg{width:16px;height:16px;stroke-width:2.8}.pf-add:focus-visible{outline:2px solid var(--berry);outline-offset:2px}
+@media(min-width:720px){.pf-thumb{width:168px;height:168px;padding:5px}.pf-add{right:6px;bottom:6px;width:42px;height:42px;border-width:4px}.pf-add svg{width:20px;height:20px}}
 .pf-head{display:flex;flex-direction:column;gap:5px;min-width:0}
 .pf-head h1{font-size:clamp(22px,5.4vw,32px);line-height:1.1;margin:0;overflow-wrap:anywhere;text-transform:uppercase;letter-spacing:.01em}
 .pf-age{font-size:15px;color:var(--fg-2);font-weight:600}
@@ -1102,13 +1107,15 @@
     <div class="container pub-placebar">${HH.placePill(city, "pubHomePlace")}<span class="small muted">${city ? "Mostrando " + esc(city) : "Mostrando todas las ubicaciones"}</span></div>
     ${(() => {
       const list = HH.storyOrder();
-      if (!list.length) return "";
+      // Acompañante con sesión: "Tu historia" primero (como Instagram), aunque no haya otras historias
+      const addSt = !!(HH.storyUploadOn && HH.storyUploadOn());
+      if (!list.length && !addSt) return "";
       const inCity = list;
       return `
     <section class="section" style="padding-block:18px 4px">
       <div class="container stack" style="gap:10px">
         <div class="row between"><div><span class="eyebrow">Historias</span><h2 style="font-size:22px">${city && inCity.length ? "Acompañantes en " + esc(city) : "Lo que pasó hoy"}</h2></div><span class="small muted">Duran 24 h</span></div>
-        <div class="stories-row" aria-label="Historias">${list.map((p) => `<div class="st">${HH.storyRing(p, 72, { go: "#perfil." + p.slug })}<span class="n">${esc(p.displayName)}</span></div>`).join("")}</div>
+        <div class="stories-row" aria-label="Historias">${addSt ? `<div class="st st-add"><button type="button" class="story-add" data-action="spStoryAdd" aria-label="Subir una historia">${HH.icon("plus")}</button><span class="n">Tu historia</span></div>` : ""}${list.map((p) => `<div class="st">${HH.storyRing(p, 72, { go: "#perfil." + p.slug })}<span class="n">${esc(p.displayName)}</span></div>`).join("")}</div>
       </div>
     </section>`;
     })()}
@@ -1530,7 +1537,16 @@
       .concat((loc && HH.locPath ? HH.locPath(loc) : []).map((l) => (HH.placeKey && HH.isActiveLoc(l) ? `<a href="#${HH.placeKey(l)}" data-go="#${HH.placeKey(l)}">${esc(l.name)}</a>` : `<span>${esc(l.name)}</span>`)))
       .concat([`<span aria-current="page">${esc(p.displayName)}</span>`]);
     const liked = swipedRight(p.userId);
-    const stories = HH.storiesOf(p.userId).length;
+    // Anillo del avatar: solo con historias activas (24 h). Sin historias no hay anillo ni visor (nunca abre la galería).
+    const stList = HH.storiesOf(p.userId);
+    const stories = stList.length;
+    // Su propio perfil (también la vista previa): "+" para subir una historia (prod-sitio.js → HH.storyUploadOn)
+    const ownSt = !!(HH.storyUploadOn && HH.storyUploadOn(p));
+    const thumbHtml = stories
+      ? `<button type="button" class="pf-thumb has-st${stList.every((x) => HH.seenStories()[x.id]) ? " seen" : ""}" data-action="openStories" data-id="${p.userId}" aria-label="Ver historias">${HH.photo(p, 0)}</button>`
+      : ownSt
+        ? `<button type="button" class="pf-thumb no-st" data-action="spStoryAdd" aria-label="Subir una historia">${HH.photo(p, 0)}</button>`
+        : `<div class="pf-thumb no-st">${HH.photo(p, 0)}</div>`;
     const BUILD = HH.BUILDS || {};
     const actLabels = (p.activities || []).map((a) => HH.activity(a).label);
     const about = [
@@ -1556,7 +1572,7 @@
       ${!published ? `<div class="notice warn" style="margin-bottom:12px">${HH.icon("alert")}<span>Este perfil no es visible para el público: ${p.hidden ? "ocultaste tu cuenta" : p.status !== "active" ? "está suspendido o pendiente de activación" : !HH.levelOf(p.userId) ? "no tiene un plan activo" : "faltan requisitos por completar"}.</span></div>` : ""}
       <nav class="pf-crumbs" aria-label="Ubicación">${crumbs.join(HH.icon("chevronRight"))}</nav>
       <section class="pf-card" aria-label="Perfil">
-        <button type="button" class="pf-thumb${stories ? " has-st" + (HH.storiesOf(p.userId).every((x) => HH.seenStories()[x.id]) ? " seen" : "") : ""}" data-action="${stories ? "openStories" : "pubLightbox"}" data-id="${p.userId}" data-idx="0" aria-label="${stories ? "Ver historias" : "Ver foto"}">${HH.photo(p, 0)}</button>
+        <div class="pf-av">${thumbHtml}${ownSt ? `<button type="button" class="pf-add" data-action="spStoryAdd" aria-label="Subir una historia" title="Subir una historia">${HH.icon("plus")}</button>` : ""}</div>
         <div class="pf-head">
           <h1>${esc(p.displayName)}${HH.isStar(p.userId) ? `<span class="pf-ic star" title="Star" aria-label="Star">${HH.icon("star")}</span>` : ""}${p.verified === "verified" ? `<span class="pf-ic ok" title="Edad e identidad verificadas al publicar" aria-label="Verificada">${HH.icon("verified")}</span>` : ""}</h1>
           ${FT() && HH.esVirtual(p) ? `<div class="pf-tags">${HH.virtualBadge()}</div>` : ""}

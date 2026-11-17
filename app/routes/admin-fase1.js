@@ -52,10 +52,12 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (q) {
       args.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%');
       const i = args.length;
-      conds.push(`(c.email ILIKE $${i} OR p.slug ILIKE $${i} OR p.datos->>'displayName' ILIKE $${i} OR p.datos->>'ciudad' ILIKE $${i})`);
+      conds.push(`(c.email ILIKE $${i} OR p.slug ILIKE $${i} OR p.datos->>'displayName' ILIKE $${i} OR p.datos->>'ciudad' ILIKE $${i}
+        OR c.nombre_completo ILIKE $${i} OR EXISTS (SELECT 1 FROM verificaciones v WHERE v.cuenta_id = c.id AND v.nombre_completo ILIKE $${i}))`);
     }
     const { rows } = await pool.query(
       `SELECT c.id, c.email, c.email_verificado, c.estado AS cuenta_estado, c.creado, p.slug, p.datos, p.estado, p.verificacion, p.oculto,
+              c.nombre_completo, (SELECT v.nombre_completo FROM verificaciones v WHERE v.cuenta_id = c.id ORDER BY v.creado DESC LIMIT 1) AS nombre_enviado,
               (SELECT count(*)::int FROM fotos f WHERE f.cuenta_id = c.id) AS n_fotos,
               (SELECT f.url_mini FROM fotos f WHERE f.cuenta_id = c.id ORDER BY f.orden, f.creado LIMIT 1) AS foto_mini
        FROM cuentas c JOIN perfiles p ON p.cuenta_id = c.id
@@ -68,6 +70,8 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
         slug: x.slug, displayName: (x.datos && x.datos.displayName) || '', ciudad: (x.datos && x.datos.ciudad) || '',
         provincia: (x.datos && x.datos.provincia) || '', estado: x.estado, verificacion: x.verificacion, oculto: x.oculto,
         plan: efect.get(x.id) || 'E', creado: x.creado, fotos: x.n_fotos, fotoPrincipal: x.foto_mini || null,
+        // Nombre completo (interno, nunca se publica): el aprobado; si todavía no hay, el del último envío (sin verificar)
+        nombreCompleto: x.nombre_completo || x.nombre_enviado || null, nombreCompletoVerificado: Boolean(x.nombre_completo),
       })),
       total: rows.length,
     });
@@ -76,22 +80,22 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
   r.get('/acompanantes/:id', ah(async (req, res) => {
     const id = uuid(req);
     const { rows } = await pool.query(
-      `SELECT c.id, c.email, c.email_verificado, c.estado AS cuenta_estado, c.creado, c.ultimo_login, c.acepto_terminos, c.mayor_edad_declarada,
+      `SELECT c.id, c.email, c.email_verificado, c.estado AS cuenta_estado, c.creado, c.ultimo_login, c.acepto_terminos, c.mayor_edad_declarada, c.nombre_completo,
               p.slug, p.datos, p.estado, p.motivo_rechazo, p.verificacion, p.oculto, p.creado AS p_creado, p.actualizado, p.publicado_en, p.pausado_por
        FROM cuentas c JOIN perfiles p ON p.cuenta_id = c.id WHERE c.id = $1`, [id]);
     const x = rows[0];
     if (!x) throw he(404, 'Acompañante no encontrada.');
     const [fotos, verifs, hist, resumen] = await Promise.all([
       pool.query('SELECT id, orden, url, url_mini, ancho, alto, creado FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [id]),
-      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d, dorso_ruta IS NOT NULL AS o, formato, consentimiento_at, archivos_borrados FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
+      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d, dorso_ruta IS NOT NULL AS o, formato, consentimiento_at, archivos_borrados, nombre_completo FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
       pool.query('SELECT id, tipo, estado, url, url_mini, texto, segundos, error, creado, expira FROM historias WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 50', [id]),
       planes.resumenPlan(id),
     ]);
     res.json({
-      cuenta: { id: x.id, email: x.email, emailVerificado: x.email_verificado, estado: x.cuenta_estado, creado: x.creado, ultimoLogin: x.ultimo_login, aceptoTerminos: x.acepto_terminos, mayorEdadDeclarada: x.mayor_edad_declarada },
+      cuenta: { id: x.id, email: x.email, emailVerificado: x.email_verificado, estado: x.cuenta_estado, creado: x.creado, ultimoLogin: x.ultimo_login, aceptoTerminos: x.acepto_terminos, mayorEdadDeclarada: x.mayor_edad_declarada, nombreCompleto: x.nombre_completo || null },
       perfil: { slug: x.slug, datos: x.datos || {}, estado: x.estado, motivoRechazo: x.motivo_rechazo, verificacion: x.verificacion, oculto: x.oculto, creado: x.p_creado, actualizado: x.actualizado, publicadoEn: x.publicado_en },
       fotos: fotos.rows.map((f) => ({ id: f.id, orden: f.orden, url: f.url, urlMini: f.url_mini, ancho: f.ancho, alto: f.alto, creado: f.creado })),
-      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d, tieneDorso: v.o, formato: Number(v.formato) || 1, consentimiento: v.consentimiento_at, archivosBorrados: v.archivos_borrados })),
+      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d, tieneDorso: v.o, formato: Number(v.formato) || 1, consentimiento: v.consentimiento_at, archivosBorrados: v.archivos_borrados, nombreCompleto: v.nombre_completo || null })),
       historias: hist.rows.map((h) => ({ id: h.id, tipo: h.tipo || 'foto', estado: h.estado || 'listo', url: h.url, urlMini: h.url_mini, texto: h.texto, segundos: h.segundos == null ? null : Number(h.segundos), error: h.error || null, creado: h.creado, expira: h.expira })),
       plan: resumen.efectivo,
       suscripciones: resumen.suscripciones,
@@ -132,7 +136,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     let perfil; let verifId;
     try {
       await client.query('BEGIN');
-      const v = await client.query("SELECT id FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' ORDER BY creado DESC LIMIT 1 FOR UPDATE", [id]);
+      const v = await client.query("SELECT id, nombre_completo FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' ORDER BY creado DESC LIMIT 1 FOR UPDATE", [id]);
       if (!v.rows[0]) throw he(409, 'No hay una verificación pendiente para revisar.');
       verifId = v.rows[0].id;
       const aprobar = b.decision === 'aprobar';
@@ -147,6 +151,9 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
          WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
         [id, aprobar ? 'verificada' : 'rechazada', aprobar, motivo || null]);
       perfil = p.rows[0];
+      // El nombre completo aprobado queda en la cuenta (sobrevive a la purga de las imágenes) y desde ahí es fijo.
+      // Las del formato anterior no traen nombre: no se toca.
+      if (aprobar && v.rows[0].nombre_completo) await client.query('UPDATE cuentas SET nombre_completo = $2 WHERE id = $1', [id, v.rows[0].nombre_completo]);
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK').catch(() => {});

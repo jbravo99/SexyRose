@@ -196,6 +196,14 @@ main#app { min-height: calc(100vh - var(--header-h)); padding-bottom: calc(var(-
 .input, .select, .textarea {
   width: 100%; padding: 11px 13px; border-radius: var(--radius-sm); border: 1px solid var(--line-2); background: var(--surface); color: var(--fg); min-width: 0;
 }
+/* Fechas: iOS Safari les pone su propio aspecto y alto (y alto casi 0 si están vacías) y centra el texto.
+   Mismo alto que los demás campos (línea de 1.5em + 22px de relleno + 2px de borde) y texto a la izquierda. */
+.input[type=date], .input[type=time], .input[type=datetime-local], .input[type=month] {
+  -webkit-appearance: none; appearance: none; display: block; height: calc(1.5em + 24px); line-height: 1.5; text-align: left;
+}
+.input::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.5em; }
+.input::-webkit-datetime-edit { padding: 0; }
+.input::-webkit-calendar-picker-indicator { margin: 0 0 0 6px; padding: 0; }
 .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--berry); box-shadow: 0 0 0 3px var(--berry-tint); }
 .textarea { min-height: 96px; resize: vertical; }
 .input-group { display: flex; align-items: stretch; }
@@ -456,6 +464,10 @@ table.table td.num, table.table th.num { text-align: right; font-variant-numeric
 .stories-row { display: flex; gap: 14px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: none; scroll-snap-type: x proximity; }
 .stories-row::-webkit-scrollbar { display: none; }
 .stories-row .st { display: grid; gap: 6px; justify-items: center; width: 76px; flex: none; scroll-snap-align: start; color: var(--fg); }
+/* "Tu historia": círculo vacío con un "+" (solo acompañantes con sesión; prod-sitio.js) */
+.story-add { width: 72px; height: 72px; border-radius: 50%; padding: 0; border: 1.5px solid var(--fg-2); background: transparent; color: var(--fg); display: grid; place-items: center; flex: none; cursor: pointer; }
+.story-add svg { width: 30px; height: 30px; stroke-width: 1.5; }
+.story-add:focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
 .stories-row .st .n { font-size: 12px; font-weight: 700; max-width: 76px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .story-root { position: fixed; inset: 0; z-index: 200; background: rgba(10,4,8,.92); display: grid; place-items: center; padding: env(safe-area-inset-top, 0px) max(0px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(0px, env(safe-area-inset-left, 0px)); }
 .story-view { position: relative; width: min(100vw, 430px); height: min(100vh, 860px); max-height: 100%; overflow: hidden; background: #000; border-radius: 0; display: grid; grid-template-rows: auto auto 1fr auto auto; }

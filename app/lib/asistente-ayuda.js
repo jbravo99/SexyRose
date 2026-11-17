@@ -18,7 +18,7 @@ export const AYUDA = Object.freeze({
     + '4. Enviá tu perfil a revisión.\n'
     + 'Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.',
 
-  verificacion: 'La verificación de identidad se manda desde {url}/panel/verificacion con tres fotos:\n'
+  verificacion: 'La verificación de identidad se manda desde {url}/panel/verificacion con tu nombre completo, como figura en tu documento (no se publica), y tres fotos:\n'
     + '- Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.\n'
     + '- Una foto del dorso de tu documento, completo y sin reflejos.\n'
     + '- Una selfie sosteniendo tu documento al lado de la cara, con buena luz.\n'

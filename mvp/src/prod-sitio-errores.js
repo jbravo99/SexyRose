@@ -117,7 +117,7 @@
     "No había cambios para guardar.": ["There were no changes to save.", "Não havia alterações para salvar."],
     "Todavía falta completar algunas cosas.": ["A few things still need to be completed.", "Ainda falta completar algumas coisas."],
     "Subí al menos {n} fotos (tenés {n}).": ["Upload at least {n} photos (you have {n}).", "Envie pelo menos {n} fotos (você tem {n})."],
-    "Enviá tu verificación de identidad (selfie y documento).": ["Send your identity verification (selfie and ID).", "Envie sua verificação de identidade (selfie e documento)."],
+    "Enviá tu verificación de identidad (nombre completo, documento y selfie).": ["Send your identity verification (full name, ID and selfie).", "Envie sua verificação de identidade (nome completo, documento e selfie)."],
 
     // Fotos, historias y verificación
     "Elegí una foto.": ["Choose a photo.", "Escolha uma foto."],
@@ -134,9 +134,14 @@
     "Subiste demasiados archivos en la última hora. Probá más tarde.": ["You uploaded too many files in the last hour. Try later.", "Você enviou arquivos demais na última hora. Tente mais tarde."],
     "Elegí una foto para la historia.": ["Choose a photo for the story.", "Escolha uma foto para a história."],
     "El texto de la historia puede tener hasta 120 caracteres.": ["The story text can be up to 120 characters.", "O texto da história pode ter até 120 caracteres."],
+    "Tu plan permite {n} historia por día. Subí de plan para publicar más.": ["Your plan allows {n} story per day. Upgrade your plan to post more.", "Seu plano permite {n} story por dia. Suba de plano para publicar mais."],
+    "Tu plan permite {n} historias por día. Subí de plan para publicar más.": ["Your plan allows {n} stories per day. Upgrade your plan to post more.", "Seu plano permite {n} stories por dia. Suba de plano para publicar mais."],
     "Historia no encontrada.": ["Story not found.", "História não encontrada."],
     "Subí las tres fotos: el frente y el dorso de tu documento y una selfie sosteniéndolo.": ["Upload the three photos: the front and back of your ID and a selfie holding it.", "Envie as três fotos: a frente e o verso do seu documento e uma selfie segurando-o."],
     "Tu identidad ya está verificada.": ["Your identity is already verified.", "Sua identidade já está verificada."],
+    "Escribí tu nombre completo, como figura en tu documento.": ["Enter your full name, as it appears on your ID.", "Escreva seu nome completo, como consta no seu documento."],
+    "Tu nombre completo tiene que tener entre 3 y 80 caracteres.": ["Your full name must be between 3 and 80 characters.", "Seu nome completo precisa ter entre 3 e 80 caracteres."],
+    "Tu nombre completo solo puede tener letras, espacios, apóstrofos, guiones y puntos.": ["Your full name can only contain letters, spaces, apostrophes, hyphens and periods.", "Seu nome completo só pode ter letras, espaços, apóstrofos, hífens e pontos."],
     "Ya enviaste varias verificaciones hoy. Probá mañana.": ["You already sent several verifications today. Try tomorrow.", "Você já enviou várias verificações hoje. Tente amanhã."],
 
     // Videos y clip de la tarjeta

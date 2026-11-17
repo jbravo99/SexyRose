@@ -498,20 +498,22 @@
   const acMatch = (r) => {
     if (!acMatchF(r, S.af)) return false;
     const q = S.aq.trim().toLowerCase(); if (!q) return true;
-    return [r.displayName, r.email, r.slug, ubNombre(r.ciudad), ubNombre(r.provincia)].some((v) => String(v || '').toLowerCase().includes(q));
+    return [r.displayName, r.nombreCompleto, r.email, r.slug, ubNombre(r.ciudad), ubNombre(r.provincia)].some((v) => String(v || '').toLowerCase().includes(q));
   };
   function acRows() {
     const all = (S.ac && S.ac.items) || [];
     const items = all.filter(acMatch);
     if (!items.length) return `<div class="card"><div class="empty">${icon('users')}<h4>${all.length ? 'Sin resultados' : 'Todavía no hay acompañantes'}</h4><p class="small">${all.length ? 'Probá con otro filtro o búsqueda.' : 'Cuando una acompañante cree su cuenta en el sitio, aparece acá.'}</p></div></div>`;
-    const mail = (r) => `<span class="pa-contact">${esc(r.email)}</span> ${r.emailVerificado ? `<span class="pa-ok" title="Email confirmado">${icon('checkCircle')}</span>` : '<span class="tiny muted">(sin confirmar)</span>'}`;
+    const mail = (r) => `<span class="pa-contact">${esc(r.email)}</span> ${r.emailVerificado ? `<span class="pa-ok" title="Email confirmado">${icon('checkCircle')}</span>` : '<span class="tiny muted">(sin confirmar)</span>'}${ncLinea(r)}`;
+    // Nombre completo (interno): el aprobado, o el del último envío todavía sin verificar
+    const ncLinea = (r) => (r.nombreCompleto ? `<div class="tiny muted ellipsis" style="max-width:240px" title="Nombre completo${r.nombreCompletoVerificado ? ' (verificado)' : ' (sin verificar)'}"><span data-noi18n>${esc(r.nombreCompleto)}</span>${r.nombreCompletoVerificado ? '' : ' · sin verificar'}</div>` : '');
     const table = `<div class="table-wrap pa-table"><table class="table"><thead><tr><th></th><th>Nombre</th><th>Ubicación</th><th>Plan</th><th>Estado</th><th>Verificación</th><th>Email</th><th>Alta</th></tr></thead><tbody>
       ${items.map((r) => `<tr class="pa-rowlink" data-go="#admin.acompanantes.${esc(r.cuentaId)}"><td>${thumb(r.fotoPrincipal, r.displayName, 40)}</td><td>${linkCuenta(r.cuentaId, r.displayName)}${r.oculto ? ' <span class="badge neutral">Oculta</span>' : ''}${r.cuentaEstado && r.cuentaEstado !== 'activa' ? ` <span class="badge danger">Cuenta ${esc(r.cuentaEstado)}</span>` : ''}<div class="tiny muted">${r.fotos || 0} ${HH.plural(r.fotos || 0, 'foto', 'fotos')}</div></td><td class="small">${esc(lugar(r.ciudad, r.provincia)) || '<span class="muted">—</span>'}</td><td>${planBadge(r.plan)}</td><td>${badge(ESTADO_PERFIL[r.estado], r.estado)}</td><td>${badge(VERIF[r.verificacion], r.verificacion)}</td><td class="small">${mail(r)}</td><td class="small muted">${dia(r.creado)}</td></tr>`).join('')}
       </tbody></table></div>`;
     const cards = `<div class="pa-cards">${items.map((r) => `<a class="card stack pa-accard" style="gap:8px" href="#admin.acompanantes.${esc(r.cuentaId)}" data-go="#admin.acompanantes.${esc(r.cuentaId)}">
         <div class="row nowrap" style="gap:10px">${thumb(r.fotoPrincipal, r.displayName, 52)}<div class="grow" style="min-width:0"><div class="row between nowrap" style="gap:6px"><strong class="ellipsis" data-noi18n>${esc(r.displayName || 'Sin nombre')}</strong>${planBadge(r.plan)}</div><div class="small muted ellipsis">${esc(lugar(r.ciudad, r.provincia)) || 'Sin ubicación'}</div></div></div>
         <div class="row" style="gap:6px">${badge(ESTADO_PERFIL[r.estado], r.estado)}${badge(VERIF[r.verificacion], r.verificacion)}${r.oculto ? '<span class="badge neutral">Oculta</span>' : ''}</div>
-        <div class="tiny muted ellipsis">${esc(r.email)}${r.emailVerificado ? ' · email confirmado' : ' · email sin confirmar'} · alta ${dia(r.creado)}</div>
+        <div class="tiny muted ellipsis">${esc(r.email)}${r.emailVerificado ? ' · email confirmado' : ' · email sin confirmar'} · alta ${dia(r.creado)}</div>${ncLinea(r)}
       </a>`).join('')}</div>`;
     return table + cards;
   }
@@ -559,6 +561,12 @@
   }
   // Fotos de una verificación, una al lado de la otra (clic = zoom). Desde el 17/11/2026 son tres: frente y dorso del
   // documento y selfie sosteniéndolo (formato 2). Las de antes (formato 1) tienen selfie con el documento y frente.
+  // Nombre completo que escribió con ese envío (desde el 17/11/2026), para compararlo con el documento. Nunca se publica.
+  function vNombre(v) {
+    return `<div class="pa-vnombre"><span class="small muted">Nombre completo</span>${v.nombreCompleto
+      ? `<strong data-noi18n>${esc(v.nombreCompleto)}</strong><span class="tiny muted">Comparalo con el documento. No se publica.</span>`
+      : '<strong>—</strong><span class="tiny muted">Formato anterior: se envió sin nombre. Se revisa igual.</span>'}</div>`;
+  }
   function vFotos(v) {
     const nuevo = (v.formato || 1) >= 2;
     const fig = (archivo, label, tiene) => `<figure><figcaption class="small muted" title="${esc(label)}">${label}</figcaption>${tiene ? `<div class="pa-priv" data-blob="/verificaciones/${esc(v.id)}/${archivo}" data-alt="${esc(label)}">${loadingCard(1)}</div>` : `<div class="pa-priv pa-priv-vacio small muted">${v.archivosBorrados ? 'Borrada a los 3 meses.' : 'No está.'}</div>`}</figure>`;
@@ -566,6 +574,7 @@
       ? [fig('documento', 'Frente', v.tieneDocumento), fig('dorso', 'Dorso', v.tieneDorso), fig('selfie', 'Selfie', v.tieneSelfie)]
       : [fig('selfie', 'Selfie', v.tieneSelfie), fig('documento', 'Frente', v.tieneDocumento)];
     return `${nuevo ? '' : `<div class="row" style="gap:8px;align-items:center"><span class="badge neutral">Formato anterior</span><span class="tiny muted">Selfie con el documento y frente, sin dorso. Se revisa igual.</span></div>`}
+            ${vNombre(v)}
             ${nuevo ? '<div class="tiny muted">Frente y dorso del documento y selfie sosteniéndolo. Tocá una foto para verla grande.</div>' : ''}
             <div class="pa-verif${nuevo ? ' tres' : ''}">${figs.join('')}</div>${v.archivosBorrados ? '<div class="tiny muted">Imágenes borradas a los 3 meses.</div>' : ''}`;
   }
@@ -587,7 +596,7 @@
             ${vFotos(vLast)}
             ${datos.fechaNacimiento ? `<div class="small">Fecha de nacimiento declarada: <strong>${esc(datos.fechaNacimiento)}</strong>${edadDe(datos.fechaNacimiento) != null ? ` (${edadDe(datos.fechaNacimiento)} años)` : ''}. Comparala con el documento.</div>` : ''}
             ${vPend ? `<div class="row" style="gap:8px"><button type="button" class="btn" data-action="prodVerif" data-id="${esc(c.id)}" data-d="aprobar">${icon('check')} Aprobar identidad</button><button type="button" class="btn danger" data-action="prodVerif" data-id="${esc(c.id)}" data-d="rechazar">${icon('x')} Rechazar</button></div><p class="tiny muted">Si el perfil está en revisión, al aprobar la identidad se publica solo. Los archivos son privados: nunca se publican.</p>` : ''}` : '<p class="small muted">Todavía no envió las fotos del documento ni la selfie.</p>'}
-          ${(d.verificaciones || []).length > 1 ? `<details class="pa-done"><summary class="small"><strong>Envíos anteriores · ${(d.verificaciones || []).length - 1}</strong></summary><div class="list" style="margin-top:8px">${(d.verificaciones || []).filter((v) => v !== vLast).map((v) => `<div class="list-item small">${badge({ pendiente: ['Pendiente', 'warn'], aprobada: ['Aprobada', 'ok'], rechazada: ['Rechazada', 'danger'] }[v.estado], v.estado)}<div class="grow">${fecha(v.creado)}${v.motivo ? ' · ' + esc(v.motivo) : ''}</div></div>`).join('')}</div></details>` : ''}
+          ${(d.verificaciones || []).length > 1 ? `<details class="pa-done"><summary class="small"><strong>Envíos anteriores · ${(d.verificaciones || []).length - 1}</strong></summary><div class="list" style="margin-top:8px">${(d.verificaciones || []).filter((v) => v !== vLast).map((v) => `<div class="list-item small">${badge({ pendiente: ['Pendiente', 'warn'], aprobada: ['Aprobada', 'ok'], rechazada: ['Rechazada', 'danger'] }[v.estado], v.estado)}<div class="grow">${fecha(v.creado)}${v.nombreCompleto ? ' · <span data-noi18n>' + esc(v.nombreCompleto) + '</span>' : ''}${v.motivo ? ' · ' + esc(v.motivo) : ''}</div></div>`).join('')}</div></details>` : ''}
         </section>`;
       const est = p.estado;
       const btnE = (to, label, ic, cls) => `<button type="button" class="btn ${cls || 'secondary'} sm" data-action="prodPerfilEstado" data-id="${esc(c.id)}" data-e="${to}">${icon(ic)} ${label}</button>`;
@@ -660,6 +669,8 @@
           <div class="card-title">${icon('user')} Cuenta</div>
           <dl class="pa-dl">
             <div><dt>Email</dt><dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a> ${c.emailVerificado ? `<span class="badge ok">Confirmado</span>` : '<span class="badge warn">Sin confirmar</span>'}</dd></div>
+            <div><dt>Nombre completo</dt><dd>${c.nombreCompleto ? `<span data-noi18n>${esc(c.nombreCompleto)}</span> <span class="badge ok">Verificado</span>`
+              : vLast && vLast.nombreCompleto ? `<span data-noi18n>${esc(vLast.nombreCompleto)}</span> <span class="badge warn">Sin verificar</span>` : '—'} <span class="tiny muted">No se publica.</span></dd></div>
             <div><dt>Estado de la cuenta</dt><dd>${esc(c.estado || '')}</dd></div>
             <div><dt>Alta</dt><dd>${fecha(c.creado)}</dd></div>
             <div><dt>Último ingreso</dt><dd>${c.ultimoLogin ? fecha(c.ultimoLogin) : '—'}</dd></div>
@@ -1937,6 +1948,7 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 @media(min-width:1100px){.pa-detail{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
 .pa-dl{display:grid;gap:8px;margin:0}.pa-dl>div{display:grid;grid-template-columns:minmax(110px,34%) minmax(0,1fr);gap:10px;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pa-dl>div:last-child{border-bottom:0}.pa-dl dt{color:var(--muted)}.pa-dl dd{margin:0;overflow-wrap:anywhere}
 .pa-verif{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pa-verif.tres{grid-template-columns:repeat(3,minmax(0,1fr))}.pa-verif figure{margin:0;display:grid;gap:6px;align-content:start;min-width:0}
+.pa-vnombre{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}.pa-vnombre strong{font-size:16px;overflow-wrap:anywhere}
 .pa-priv-vacio{padding:10px;text-align:center}.pa-verif figcaption{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:420px){.pa-verif,.pa-verif.tres{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pa-priv{min-height:120px;border-radius:12px;background:var(--surface-2);overflow:hidden;display:grid;place-items:center}

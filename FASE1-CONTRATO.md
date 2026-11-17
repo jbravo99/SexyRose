@@ -22,13 +22,13 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 ## Modelo de datos
 
 ### 010-cuentas.sql (agente A)
-- `cuentas` (id uuid pk, email text unique (guardado en minúsculas), pass_hash text, email_verificado timestamptz null, estado text default 'activa' check in (activa, suspendida, baja), creado, ultimo_login, acepto_terminos timestamptz, mayor_edad_declarada boolean).
+- `cuentas` (id uuid pk, email text unique (guardado en minúsculas), pass_hash text, email_verificado timestamptz null, estado text default 'activa' check in (activa, suspendida, baja), creado, ultimo_login, acepto_terminos timestamptz, mayor_edad_declarada boolean, nombre_completo text (desde 240: el aprobado con la verificación; interno, nunca se publica)).
 - `sesiones` (token_hash bytea pk, cuenta_id fk, creado, expira, ua text).
 - `tokens_email` (token_hash bytea pk, cuenta_id fk, tipo text check in (verificar, restablecer), expira, usado timestamptz null).
 - `perfiles` (cuenta_id pk fk, slug text unique, datos jsonb not null default '{}', estado text default 'borrador' check in (borrador, en_revision, publicado, rechazado, pausado, suspendido), motivo_rechazo text, verificacion text default 'sin_enviar' check in (sin_enviar, pendiente, verificada, rechazada), oculto boolean default false, creado, actualizado, publicado_en timestamptz).
   - `datos` (lo edita la acompañante; el servidor valida y descarta todo lo demás): displayName (2–30), genero (mujer|trans|hombre), fechaNacimiento (YYYY-MM-DD, ≥18 años; se publica solo la edad), nacionalidad, pais, provincia, ciudad, zona, titular (≤80), bio (≤1500), titularEn, bioEn, idiomas[], alturaCm, contextura (clave del MVP HH.BUILDS), intereses[] (ids de la tabla intereses, máx 6), salidas[] (ids de categorías), tarifaDesde (USD, entero ≥0 o null), whatsapp (E.164), telegram (usuario), links[{label,url}] (máx 4, https).
 - `fotos` (id uuid pk, cuenta_id fk, orden int, clave text, url text, url_mini text, ancho, alto, creado). Límite por plan (LEVELS del MVP: E 8, D 15, C 30, B 50, A 500, S 1000).
-- `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text (frente), dorso_ruta text (desde 230), formato smallint (1 = selfie + frente, 2 = frente + dorso + selfie; desde 230), estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text).
+- `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text (frente), dorso_ruta text (desde 230), formato smallint (1 = selfie + frente, 2 = frente + dorso + selfie; desde 230), estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text, nombre_completo text (desde 240; NULL en los envíos anteriores)).
 - `historias` (id uuid pk, cuenta_id fk, url, url_mini, texto (≤120), creado, expira = creado + 24 h). Límite por día según plan (E 1, D 3, resto ilimitado).
   Desde `075-historias-video.sql`: `tipo` ('foto' | 'video'), `estado` ('listo' | 'procesando' | 'error'), `segundos`, `ancho`, `alto`, `error`; en un video `url` = MP4 y `url_mini` = portada (WebP), y las 24 h corren desde que queda listo. Ver "Historias en video".
 - `ubicaciones` (id text pk (slug), nombre, tipo (pais|provincia|ciudad|zona), padre text null, activa boolean, orden int), `categorias` (id text pk, nombre, icono, orden, activa), `intereses` (id text pk, nombre, nombre_en, nombre_pt, orden). Se siembran (INSERT … ON CONFLICT DO NOTHING) con los valores del MVP: ubicaciones de Argentina (todas las provincias + ciudades principales que tenga mvp/src/geo.js o data.js), categorías HH.ACTIVITIES, 16 intereses iniciales.
@@ -62,12 +62,12 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `POST perfil/enviar-revision` → si está completo (≥3 fotos, datos obligatorios, email verificado, verificación enviada) pasa a en_revision.
 - `POST perfil/ocultar` {oculto:bool}.
 - `POST fotos` (multipart, campo `foto`, máx 12 MB, jpeg/png/webp/heic si sharp lo soporta) → procesa y guarda → foto. `DELETE fotos/:id`. `PUT fotos/orden` {ids:[...]}. La primera foto es la principal.
-- `POST verificacion` (multipart: `frente` (o `documento`), `dorso`, `selfie`, `consentimiento`; las tres fotos obligatorias, si falta una → 400) → guarda privado, estado pendiente.
+- `POST verificacion` (multipart: `frente` (o `documento`), `dorso`, `selfie`, `consentimiento`, `nombreCompleto`; las tres fotos y el nombre obligatorios, si falta algo → 400) → guarda privado, estado pendiente.
 - `POST historias` (multipart `foto` + `texto`) / `DELETE historias/:id`.
 - Pedidos y planes (agente B, routes/cuenta-planes.js montado bajo /api/cuenta): `GET planes` → {precios, plan efectivo, suscripciones, pedidos, transferencia (texto de ajustes), cupoStar:{provincia, libres}}; `POST pedidos` {plan, periodo} → pedido pendiente con referencia y monto; `POST pedidos/:id/informar` (multipart opcional `comprobante` + nota) → informado; `POST pedidos/:id/cancelar`.
 
 ### Admin (agente B) — routes/admin-fase1.js bajo `${A}/api/` (mismo Basic Auth y reglas de POST de Fase 0: JSON + X-SR-Admin: 1 + mismo origen)
-- `GET acompanantes?estado=&q=` → lista {cuentaId, email, emailVerificado, slug, displayName, ciudad, provincia, estado perfil, verificacion, plan efectivo, creado, fotos (n), fotoPrincipal}.
+- `GET acompanantes?estado=&q=` → lista {cuentaId, email, emailVerificado, slug, displayName, ciudad, provincia, estado perfil, verificacion, plan efectivo, creado, fotos (n), fotoPrincipal, nombreCompleto, nombreCompletoVerificado}. `q` también busca por nombre completo.
 - `GET acompanantes/:id` → detalle completo (datos, fotos, verificaciones con ids, pedidos, suscripciones, historias).
 - `GET verificaciones/:id/selfie`, `/documento` (frente) y `/dorso` → transmite el archivo privado (no-store).
 - `POST acompanantes/:id/verificacion` {decision: aprobar|rechazar, motivo} → actualiza verificaciones + perfiles.verificacion; si aprueba y el perfil estaba en_revision → publicado; email a la acompañante.
@@ -1185,3 +1185,85 @@ las iniciales. Se actualiza al cambiar la principal o subir la primera.
 - **Sin cambios** para el público: con la home provisoria prendida, `/api/sitio/perfil/:slug` sigue en 404 y
   `/perfil/…` en 302 para todos (sin sesión, con la de otra acompañante o con la suya).
 - Tests: `app/test/vista-previa.test.js`.
+
+## Nombre completo y fecha de nacimiento fijos — 17/11/2026 (decisiones de Juan)
+
+**Nombre completo (legal), aparte del nombre artístico.** Se escribe en Verificación, arriba de las tres fotos:
+«Nombre completo» con la ayuda «Como figura en tu documento. No se publica.» (EN/PT en `HH.I18N`). El nombre
+artístico de Mi perfil no cambia.
+
+- **API** `POST /api/cuenta/verificacion` suma el campo `nombreCompleto` (obligatorio). Se valida con
+  `lib/perfiles.js → validarNombreCompleto`: espacios normalizados (NFC, sin controles), 3 a 80 caracteres, solo letras
+  (con tildes), espacios, apóstrofos (' y ’), guiones y puntos, con al menos dos letras. Errores 400: «Escribí tu
+  nombre completo, como figura en tu documento.», «Tu nombre completo tiene que tener entre 3 y 80 caracteres.»,
+  «Tu nombre completo solo puede tener letras, espacios, apóstrofos, guiones y puntos.» (EN/PT en
+  `prod-sitio-errores.js`). Orden de los chequeos: fotos, consentimiento, nombre.
+- **Guardado** (migración `240-nombre-completo.sql`): `verificaciones.nombre_completo` (el de cada envío) y
+  `cuentas.nombre_completo` (el aprobado: se copia al aprobar la verificación). No está en `perfiles.datos`: `PUT
+  perfil` lo ignora.
+- **Fijo una vez aprobado**: ella no lo puede cambiar (la verificación aprobada no se reenvía: 409; si alguna vez se
+  reabriera, un envío nuevo conserva el aprobado y no hace falta mandarlo). Si la rechazan, manda otra con el nombre
+  corregido (el formulario viene con el último que escribió).
+- **Ella** lo ve en su panel: `GET yo` → `perfil.nombreCompleto` (el aprobado) y `perfil.ultimaVerificacion.nombreCompleto`.
+  En Verificación, ya aprobado: «Nombre completo» + el nombre (texto con candado, no un campo) + «Verificado con tu
+  documento. No se publica.».
+- **Nunca público**: no está en el estado ni en el perfil público, ni en la vista previa, ni en el HTML/SEO/sitemap, ni
+  en lo que lee el asistente de WhatsApp (solo su texto de ayuda «verificacion» dice que se manda el nombre completo
+  como figura en el documento).
+- **Admin**: `GET acompanantes/:id` → `cuenta.nombreCompleto` (aprobado) y `verificaciones[].nombreCompleto`. En la
+  revisión, recuadro «Nombre completo» arriba de Frente / Dorso / Selfie («Comparalo con el documento. No se
+  publica.»); los envíos sin nombre (anteriores a la 240): «—» y «Formato anterior: se envió sin nombre. Se revisa
+  igual.» (no se le pide a nadie que reenvíe; al aprobarlos la cuenta queda sin nombre). En la tarjeta Cuenta, fila
+  «Nombre completo» (Verificado / Sin verificar con el del último envío / —). En el listado, debajo del email; la
+  búsqueda también lo encuentra.
+- **Retención**: la purga de los 90 días borra solo las imágenes; el nombre queda (en el envío y en la cuenta). Se borra
+  con la cuenta (`ON DELETE CASCADE`; no hay otro flujo de borrado ni anonimización de cuentas).
+- «Para publicar te falta»: «Enviá tu verificación de identidad (nombre completo, documento y selfie).»; «Completar»
+  lleva al campo del nombre.
+
+**Fecha de nacimiento fija.** En Mi perfil → Datos básicos, con la verificación aprobada la fecha ya no es un campo
+(`readonly` dejaba abrir el selector en iOS): se muestra como texto `dd/mm/aaaa` con candado y «Ya fue verificada con
+tu documento.». El servidor la sigue rechazando (`validarDatos`, bloqueo `fechaNacimiento`).
+
+**Alineación de las fechas.** `mvp/src/app.css`: `.input[type=date|time|datetime-local|month]` sin el aspecto de iOS,
+con el mismo alto que los demás campos (`calc(1.5em + 24px)`) y el texto a la izquierda
+(`::-webkit-date-and-time-value`). En las filas `.sp-2`/`.sp-3` los campos ya no se estiran hasta el alto del vecino
+(el campo sin ayuda quedaba más alto y corrido): `align-content: start`. Vale también para el registro.
+
+Pruebas: `app/test/nombre-completo.test.js`.
+
+## Historias como Instagram en el perfil y el inicio — 17/11/2026 (pedido de Juan)
+
+**Bug arreglado: "ver la historia" de su perfil mostraba la galería.** El avatar del perfil (`views-public.js`,
+`.pf-thumb`) tenía siempre un anillo gris (igual al de una historia ya vista y al de las destacadas) y, sin historias
+activas, abría la galería (`pubLightbox`, foto 1). Pasaba con una historia vencida, en video todavía procesándose, o
+con solo destacadas, en el perfil público y en la vista previa. Ahora:
+- Anillo solo con historias activas (`HH.storiesOf`: 24 h, `estado = 'listo'`); abre solo esas (`openStories`).
+- Sin historias activas: sin anillo y sin visor; para un visitante el avatar no es un botón. Nunca abre la galería.
+- Las destacadas abren solo sus propios elementos (sin cambios). El servidor ya mandaba historias, destacadas y fotos
+  por separado; las pruebas lo fijan (`/api/sitio/estado` y `/api/cuenta/vista-previa`).
+- Visor (`core.js`): "Ver perfil" / el nombre, si ya está en ese perfil o en la vista previa, solo cierra el visor
+  (antes navegaba al perfil público y en la vista previa la sacaba de ahí).
+
+**"+" en su propio perfil** (público con su sesión y vista previa): círculo blanco con "+" abajo a la derecha del
+avatar (`.pf-add`). Abre directo el selector del dispositivo (foto; también video si el panel los permite,
+`yo.videosHabilitados`) y después una hoja "Nueva historia" con la vista previa, «Texto (opcional)» (120), «Dura 24
+horas.» + «Te quedan N hoy» / «Historias ilimitadas con tu plan», el aviso «Tus historias se ven en el sitio cuando tu
+perfil esté publicado.» si no está publicado, y «Publicar historia». Tocar el avatar abre sus historias si tiene; si no
+tiene, también sube una. Nunca en el perfil de otra ni para visitantes o clientes.
+
+**"Tu historia" en el inicio**: con sesión de acompañante, primer círculo de la fila de historias (círculo vacío con
+borde fino y "+"; EN "Your story", PT "Seu story"), aunque no haya otras historias (la fila queda solo con él). Mismo
+flujo que el "+". Con la home provisoria prendida el inicio es la portada (sin fila): ahí se sube desde la vista previa
+o el panel.
+
+**Misma API, límites y mensajes que el panel**: `POST /api/cuenta/historias` (`foto` + `texto`) o
+`/api/cuenta/historias/video` (`video` + `texto`; 95 MB y 60 s se controlan antes con los mismos textos). Si ya usó el
+cupo del día (`yo.limites.historiasDia` − `historiasHoy` = 0) no abre el selector: aviso con el texto del servidor
+«Tu plan permite N historia(s) por día. Subí de plan para publicar más.» (inglés y portugués en `prod-sitio-errores.js`).
+Los errores del servidor se muestran en la hoja. Al terminar: aviso «Historia publicada por 24 horas.» (video: «Recibimos
+el video. Se publica apenas termine de procesarse.»), se vuelven a pedir `GET yo` y el estado del sitio (o
+`GET vista-previa` en la vista previa) y queda en la misma página con su anillo nuevo.
+
+Front: `HH.storyUploadOn(p)` (prod-sitio.js: hay `S.yo` y, con `p`, es su perfil) y la acción `spStoryAdd`. El MVP y la
+demo no la definen (sin "+"; la demo no tiene cuentas). Pruebas: `app/test/historias-perfil.test.js`.

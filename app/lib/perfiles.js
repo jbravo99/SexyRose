@@ -211,6 +211,21 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
 
 export const MIN_FOTOS = 3;
 
+// Nombre completo (legal) de la verificación de identidad (17/11/2026): como figura en su documento. Nunca se publica.
+// Espacios normalizados; 3 a 80 caracteres; letras (con tildes y diéresis), espacios, apóstrofos, guiones y puntos,
+// con al menos dos letras. → { valor } o { error } (textos para la acompañante).
+export const NOMBRE_COMPLETO_MIN = 3;
+export const NOMBRE_COMPLETO_MAX = 80;
+export function validarNombreCompleto(v) {
+  const s = linea(typeof v === 'string' ? v : '');
+  if (!s) return { error: 'Escribí tu nombre completo, como figura en tu documento.' };
+  if (len(s) < NOMBRE_COMPLETO_MIN || len(s) > NOMBRE_COMPLETO_MAX) return { error: 'Tu nombre completo tiene que tener entre 3 y 80 caracteres.' };
+  if (!/^[\p{L}\p{M} .'’-]+$/u.test(s) || (s.match(/\p{L}/gu) || []).length < 2) {
+    return { error: 'Tu nombre completo solo puede tener letras, espacios, apóstrofos, guiones y puntos.' };
+  }
+  return { valor: s };
+}
+
 // Lo que falta para poder enviar el perfil a revisión: [{ clave, texto }] (textos para la acompañante). La clave le dice al
 // panel adónde llevarla con el botón "Completar" (17/11/2026).
 export function faltantesItems({ datos = {}, fotosN = 0, emailVerificado = false, verificacion = 'sin_enviar' }) {
@@ -223,7 +238,7 @@ export function faltantesItems({ datos = {}, fotosN = 0, emailVerificado = false
   if (!datos.provincia || !datos.ciudad) add('ubicacion', 'Elegí tu provincia y tu ciudad.');
   if (!datos.whatsapp && !datos.telegram) add('contacto', 'Agregá tu WhatsApp o tu usuario de Telegram.');
   if (fotosN < MIN_FOTOS) add('fotos', `Subí al menos ${MIN_FOTOS} fotos (tenés ${fotosN}).`);
-  if (verificacion === 'sin_enviar' || verificacion === 'rechazada') add('verificacion', 'Enviá tu verificación de identidad (selfie y documento).');
+  if (verificacion === 'sin_enviar' || verificacion === 'rechazada') add('verificacion', 'Enviá tu verificación de identidad (nombre completo, documento y selfie).');
   return f;
 }
 export const faltantesDe = (x) => faltantesItems(x).map((i) => i.texto);

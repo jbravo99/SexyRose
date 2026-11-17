@@ -1038,7 +1038,8 @@ window.HH = (function () {
       if (tragarClick && (a === 'prev' || a === 'next')) { tragarClick = false; return; }
       if (a === 'sound') { HH.storyMuted = HH.storyMuted === false; if (vid) { vid.muted = HH.storyMuted; if (!vid.muted && vid.paused && !pausada) { const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); } } pintarSonido(); return; }
       if (a === 'close') close(); else if (a === 'prev') step(-1); else if (a === 'next') step(1);
-      else if (a === 'profile') { close({ nav: true }); HH.go('#perfil.' + p.slug, { replace: true }); }
+      // Ya está en ese perfil (o en la vista previa de su propio perfil, prod-sitio.js): solo se cierra, no navega
+      else if (a === 'profile') { if (HH.currentHash() === 'perfil.' + p.slug || (HH.esVistaPrevia && HH.esVistaPrevia())) { close(); return; } close({ nav: true }); HH.go('#perfil.' + p.slug, { replace: true }); }
       else if (a === 'hledit') { close(); HH.openHighlightEditor && HH.openHighlightEditor(opts.highlightId); }
       else if (a === 'book') { close(); HH.actions.pubBook({ dataset: { id } }); }
       };

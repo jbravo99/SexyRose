@@ -82,6 +82,7 @@ async function cuenta() {
 const FRENTE = () => jpeg(900, 600, { r: 30, g: 30, b: 200 });
 const DORSO = () => jpeg(900, 600, { r: 200, g: 200, b: 30 });
 const SELFIE = () => jpeg(600, 800, { r: 10, g: 200, b: 30 });
+const NOMBRE = 'Zz Verónica Prueba';
 const existe = (rel) => fs.stat(path.join(tmpData, 'privado', rel)).then(() => true, () => false);
 
 describe('verificación en tres fotos', () => {
@@ -93,7 +94,7 @@ describe('verificación en tres fotos', () => {
       { dorso: await DORSO(), selfie: await SELFIE() },
       { selfie: await SELFIE(), documento: await FRENTE() }, // lo que mandaba el panel de antes
     ]) {
-      const r = await c.subir({ ...campos, consentimiento: '1' });
+      const r = await c.subir({ ...campos, consentimiento: '1', nombreCompleto: NOMBRE });
       assert.equal(r.status, 400, JSON.stringify(Object.keys(campos)));
       assert.equal(r.body.error, 'Subí las tres fotos: el frente y el dorso de tu documento y una selfie sosteniéndolo.');
     }
@@ -103,7 +104,7 @@ describe('verificación en tres fotos', () => {
 
     // (5 envíos por día por cuenta: el bueno va en otra cuenta)
     const b = await cuenta();
-    const r = await b.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1' });
+    const r = await b.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1', nombreCompleto: NOMBRE });
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.cuenta.perfil.verificacion, 'pendiente');
     const { rows } = await db.query('SELECT selfie_ruta, documento_ruta, dorso_ruta, formato FROM verificaciones WHERE cuenta_id = $1', [b.id]);
@@ -119,21 +120,21 @@ describe('verificación en tres fotos', () => {
     }
     // "documento" sigue valiendo como nombre del frente
     const c2 = await cuenta();
-    assert.equal((await c2.subir({ documento: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1' })).status, 201);
+    assert.equal((await c2.subir({ documento: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1', nombreCompleto: NOMBRE })).status, 201);
   });
 
   test('reenviar reemplaza la pendiente y borra sus tres archivos', async () => {
     const c = await cuenta();
-    await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1' });
+    await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1', nombreCompleto: NOMBRE });
     const antes = (await db.query('SELECT selfie_ruta, documento_ruta, dorso_ruta FROM verificaciones WHERE cuenta_id = $1', [c.id])).rows[0];
-    assert.equal((await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1' })).status, 201);
+    assert.equal((await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1', nombreCompleto: NOMBRE })).status, 201);
     assert.equal((await db.query('SELECT 1 FROM verificaciones WHERE cuenta_id = $1', [c.id])).rows.length, 1);
     for (const rel of Object.values(antes)) assert.equal(await existe(rel), false, rel);
   });
 
   test('el admin ve las tres fotos, aprueba, se recomprimen y la purga de los 3 meses borra las tres', async () => {
     const c = await cuenta();
-    await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1' });
+    await c.subir({ frente: await FRENTE(), dorso: await DORSO(), selfie: await SELFIE(), consentimiento: '1', nombreCompleto: NOMBRE });
     const det = await (await adm('/acompanantes/' + c.id)).json();
     const v = det.verificaciones[0];
     assert.equal(v.formato, 2); assert.ok(v.tieneDocumento && v.tieneDorso && v.tieneSelfie);

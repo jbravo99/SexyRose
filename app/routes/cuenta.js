@@ -9,7 +9,7 @@ import { hashPassword, sha256, tokenAleatorio, verifyDummy, verifyPassword } fro
 import { cargarCatalogos } from '../lib/catalogos.js';
 import { ImagenInvalida, MAX_BYTES, procesarFoto, procesarPrivada } from '../lib/imagenes.js';
 import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
-import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesItems, linea, slugify, validarDatos } from '../lib/perfiles.js';
+import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesItems, linea, slugify, validarDatos, validarNombreCompleto } from '../lib/perfiles.js';
 import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_V2 } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
@@ -129,11 +129,11 @@ export function createCuentaRouter(ctx) {
 
   const construirYo = async (cuentaId) => {
     const [{ rows: cs }, { rows: ps }, { rows: fs }, { rows: hs }, { rows: vs }] = await Promise.all([
-      pool.query('SELECT id, email, email_verificado, estado, creado FROM cuentas WHERE id = $1', [cuentaId]),
+      pool.query('SELECT id, email, email_verificado, estado, creado, nombre_completo FROM cuentas WHERE id = $1', [cuentaId]),
       pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
       pool.query('SELECT id, url, url_mini, orden, ancho, alto FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]),
       pool.query("SELECT id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira FROM historias WHERE cuenta_id = $1 AND (expira > now() OR estado <> 'listo') ORDER BY creado DESC", [cuentaId]),
-      pool.query('SELECT estado, motivo, creado, revisado FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
+      pool.query('SELECT estado, motivo, creado, revisado, nombre_completo FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
     ]);
     const { rows: vids } = await pool.query(
       'SELECT id, orden, estado, url, url_poster, segundos, ancho, alto, error, creado FROM videos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]);
@@ -166,7 +166,9 @@ export function createCuentaRouter(ctx) {
         pausadoPorSaldo: p.estado === 'pausado' && p.pausado_por === 'sin_saldo',
         motivoRechazo: p.motivo_rechazo || null,
         verificacion: p.verificacion,
-        ultimaVerificacion: vs[0] ? { estado: vs[0].estado, motivo: vs[0].motivo || null, creado: vs[0].creado, revisado: vs[0].revisado } : null,
+        ultimaVerificacion: vs[0] ? { estado: vs[0].estado, motivo: vs[0].motivo || null, creado: vs[0].creado, revisado: vs[0].revisado, nombreCompleto: vs[0].nombre_completo || null } : null,
+        // Nombre completo aprobado con la verificación: fijo, solo lo ve ella en su panel (nunca se publica)
+        nombreCompleto: c.nombre_completo || null,
         oculto: p.oculto,
         publicadoEn: p.publicado_en || null,
         edad: edadDe(datos.fechaNacimiento),
@@ -495,7 +497,8 @@ export function createCuentaRouter(ctx) {
   // --- Verificación de identidad (privada) --------------------------------------------
   // Tres fotos (17/11/2026): frente del documento (`frente`; `documento` también vale), dorso (`dorso`) y selfie
   // sosteniendo el documento (`selfie`). Las tres son obligatorias. Mismo tratamiento que antes: sin metadatos (EXIF),
-  // disco privado, sin dirección pública, sin marca de agua.
+  // disco privado, sin dirección pública, sin marca de agua. Además `nombreCompleto` (obligatorio, como figura en el
+  // documento; nunca se publica): se guarda en el envío y, al aprobarlo, en la cuenta, donde queda fijo.
   const uploadVerif = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_BYTES, files: 3, fields: 6, fieldSize: 2048, parts: 10, fieldNameSize: 50 },
@@ -521,6 +524,14 @@ export function createCuentaRouter(ctx) {
       if (!['1', 'true', 'on', 'si', 'sí'].includes(String((req.body && req.body.consentimiento) || '').trim().toLowerCase())) {
         return fail(res, 400, 'Tenés que aceptar el uso de tu documento y tu selfie para verificar tu identidad.');
       }
+      // Nombre completo como figura en el documento (17/11/2026). Si ya tiene uno aprobado, queda ese: no se cambia.
+      const { rows: cn } = await pool.query('SELECT nombre_completo FROM cuentas WHERE id = $1', [req.cuenta.id]);
+      let nombreCompleto = cn[0] && cn[0].nombre_completo;
+      if (!nombreCompleto) {
+        const nc = validarNombreCompleto(req.body && req.body.nombreCompleto);
+        if (nc.error) return fail(res, 400, nc.error);
+        nombreCompleto = nc.valor;
+      }
       let fi; let di; let si;
       try { fi = await procesarPrivada(f.buffer); di = await procesarPrivada(d.buffer); si = await procesarPrivada(s.buffer); } catch (e) { if (e instanceof ImagenInvalida) return fail(res, 400, e.message); throw e; }
       const frente = await storage.guardarPrivado('verif', fi.buffer, fi.ext, 'doc');
@@ -529,7 +540,7 @@ export function createCuentaRouter(ctx) {
       // Las verificaciones pendientes anteriores quedan reemplazadas (con sus archivos).
       const viejas = await pool.query("DELETE FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' RETURNING selfie_ruta, documento_ruta, dorso_ruta", [req.cuenta.id]);
       for (const v of viejas.rows) { for (const rel of [v.selfie_ruta, v.documento_ruta, v.dorso_ruta]) if (rel) await storage.borrarPrivado(rel); }
-      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, dorso_ruta, formato, consentimiento_at) VALUES ($1, $2, $3, $4, 2, now())', [req.cuenta.id, selfie, frente, dorso]);
+      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, dorso_ruta, formato, consentimiento_at, nombre_completo) VALUES ($1, $2, $3, $4, 2, now(), $5)', [req.cuenta.id, selfie, frente, dorso, nombreCompleto]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
       if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.', 'verificacion');
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });

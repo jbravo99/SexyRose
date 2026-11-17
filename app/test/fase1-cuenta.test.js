@@ -386,7 +386,7 @@ describe('verificación de identidad', () => {
     // Sin el consentimiento aparte para datos sensibles, se rechaza
     const sin = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600), dorso: await jpeg(900, 600) });
     assert.equal(sin.status, 400); assert.match(sin.body.error, /aceptar el uso de tu documento/);
-    const r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600), dorso: await jpeg(900, 600), consentimiento: '1' });
+    const r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(900, 600), dorso: await jpeg(900, 600), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
     assert.equal(r.status, 201, JSON.stringify(r.body));
     assert.equal(r.body.cuenta.perfil.verificacion, 'pendiente');
     const { rows } = await db.query('SELECT selfie_ruta, documento_ruta, dorso_ruta, formato, estado, consentimiento_at FROM verificaciones WHERE cuenta_id = $1', [a.yo.id]);
@@ -404,11 +404,11 @@ describe('verificación de identidad', () => {
       }
     }
     // Reenviar reemplaza la pendiente anterior
-    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1' });
+    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
     const { rows: r2 } = await db.query('SELECT 1 FROM verificaciones WHERE cuenta_id = $1', [a.yo.id]);
     assert.equal(r2.length, 1);
     for (const rel of [rows[0].selfie_ruta, rows[0].documento_ruta, rows[0].dorso_ruta]) await assert.rejects(fs.stat(path.join(tmpData, 'privado', rel)));
-    assert.equal((await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), consentimiento: '1' })).status, 400);
+    assert.equal((await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' })).status, 400);
   });
 });
 
@@ -437,8 +437,8 @@ describe('enviar a revisión y sitio público', () => {
     await a.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Hola', nacionalidad: 'Argentina', intereses: ['arte', 'vinos'] });
     for (let i = 0; i < 3; i++) await a.subir('/api/cuenta/fotos', { foto: await jpeg() });
     r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
-    assert.equal(r.status, 400); assert.deepEqual(r.body.faltantes, ['Enviá tu verificación de identidad (selfie y documento).']);
-    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1' });
+    assert.equal(r.status, 400); assert.deepEqual(r.body.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
+    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
     r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 200); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
 
