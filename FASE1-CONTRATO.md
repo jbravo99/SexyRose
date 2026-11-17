@@ -267,7 +267,8 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
   - Reproducción: solo el que está en pantalla (sin sonido hasta tocar), el siguiente precargado (`metadata`), los que
     quedan a más de 2 de distancia sueltan el video. Tandas de 8. No indexado (`noindex,follow`).
 - **Barra inferior (teléfono)**: Inicio, Swipe, Cerca, **Shorts** (ícono de reproducir) y **usuario**: con sesión, la
-  foto de la acompañante → su panel; sin sesión → "Tu espacio" (`/favoritos`: favoritos + Publicá tu perfil + Ingresar).
+  foto de la acompañante → Mi perfil (`/panel/mi-perfil`, desde el 17/11; antes su panel); sin sesión → "Tu espacio"
+  (`/favoritos`: favoritos + Publicá tu perfil + Ingresar).
   En escritorio: Shorts en el menú y el ícono de usuario arriba a la derecha (→ "Tu espacio"); con sesión, Favoritos
   está en el menú de la cuenta.
 - **Logo único**: `app/public/favicon.svg` = el del encabezado (cuadrado rosa con el corazón). De ahí salen
@@ -687,11 +688,13 @@ acompañantes: el registro de interesados queda cerrado hasta abrir el sitio.
   - Front: `mvp/src/prod-prelanzamiento.js` (solo sitio real; la demo no lo usa: su estado nunca trae el ajuste).
     Portada con logo, «Muy pronto», «Acompañantes y escorts en *Argentina*.», texto corto, «Publicá tu perfil»
     (registro) y «Ya tengo cuenta» (ingreso); con sesión de acompañante, «Ir a mi panel». Pie legal de siempre.
-    Encabezado solo con logo, idioma, Ingresar y Publicá tu perfil; sin barra inferior. Dentro del sitio, lo oculto
+    Encabezado solo con logo, idioma, Ingresar y Publicá tu perfil; sin barra inferior (con sesión de acompañante,
+    desde el 17/11: la barra solo con Inicio y su foto → Mi perfil). Dentro del sitio, lo oculto
     vuelve al inicio; el ingreso de interesados no ofrece crear cuenta. Traducciones en el mismo archivo
     (`HH.I18N`). Estilos: `.sr-pre` en `mvp/src/sitio.css`.
 - **Apagada**: todo como antes.
-- Vista previa del perfil de cada acompañante: funciona igual con la home prendida (ver «Vista previa del perfil»).
+- Vista previa del perfil de cada acompañante y Mi perfil: funcionan igual con la home prendida (ver «Vista previa
+  del perfil» y «Mi perfil»).
 - Tests: `app/test/prelanzamiento.test.js`.
 
 ## SEO: escorts y acompañantes — desde el 13/11/2026 (decisión de Juan; su abogado aprobó la palabra "escort")
@@ -1180,12 +1183,48 @@ las iniciales. Se actualiza al cambiar la principal o subir la primera.
   cuentan: la página es del panel (el aviso de tráfico no la cuenta) y el perfil es el suyo (sus propias visitas y
   toques nunca se cuentan). Reportar, Compartir, Links y las migas no hacen nada: avisan «Es una vista previa: esto
   funciona cuando tu perfil esté publicado.» (si ya es público: «… en tu perfil público.»).
-- **Entradas**: «Ver vista previa» en Resumen y en Mi perfil (arriba a la derecha); en la tarjeta de la barra lateral
-  y en el menú de la cuenta, «Ver mi perfil público» / «Ver mi perfil» solo si hoy lo ve cualquiera (publicado, no
-  oculto y home provisoria apagada); si no, «Ver vista previa» (antes llevaba a un perfil que no existía).
+- **Solo para mirar** (17/11, Juan: "está mal que desde vista previa pueda hacer eso"; tocar la foto abría el selector
+  de archivos): exactamente lo que ve un cliente. Sin el "+" del avatar; el avatar sin historias no es un botón (nunca
+  el selector); con historias, el anillo las abre como para un cliente; sus historias y destacadas sin el "⋯"
+  (`HH.storyOwnMenu` → null mientras `HH.esVistaPrevia()`). Subir y borrar van en Mi perfil.
+- **Entradas**: «Ver vista previa» en Resumen y en Mi perfil del panel (arriba a la derecha) y en el menú de la cuenta.
+  La tarjeta de la barra lateral lleva «Ver mi perfil» → Mi perfil (`/panel/mi-perfil`).
 - **Sin cambios** para el público: con la home provisoria prendida, `/api/sitio/perfil/:slug` sigue en 404 y
   `/perfil/…` en 302 para todos (sin sesión, con la de otra acompañante o con la suya).
 - Tests: `app/test/vista-previa.test.js`.
+
+## Mi perfil (como Instagram) — desde el 17/11/2026 (pedido de Juan)
+
+"Lo que quiero es que abajo en la barra flotante esté el perfil de uno mismo como Instagram."
+
+- **Página** `/panel/mi-perfil` (en/pt: `/en/panel/mi-perfil`, `/pt/panel/mi-perfil`; clave `panel.mi-perfil`). Ruta del
+  panel a propósito: queda abierta con la home provisoria, `noindex,nofollow` (meta y X-Robots-Tag), fuera del sitemap,
+  sin sesión → ingreso, el aviso de tráfico no cuenta el panel; la cáscara va con `Cache-Control: no-store` como la vista
+  previa (`routes/spa-sitio.js`). Título «Mi perfil · SexyRose».
+- **Datos**: los de la vista previa (`GET /api/cuenta/vista-previa`: solo su cuenta, en cualquier estado, sin caché;
+  `prod-sitio.js` usa la misma copia `VP` de `HH.db`, pedida de nuevo al entrar). Nunca datos de otras; no suma
+  visitas ni toques (no llama a `HH.view` y no tiene botones de contacto).
+- **Dibujo**: `HH.profileView(slug, { own: true, aviso, acciones })` (`views-public.js`), la misma vista pública con:
+  - el "+" del avatar y la hoja «Nueva historia»; el avatar abre sus historias activas o, sin historias, la subida;
+  - el "⋯" en sus historias y destacadas (Eliminar historia / Quitar de la destacada / Cambiar portada);
+  - debajo de la cabecera, en lugar del contacto, dos botones iguales (`.pf-own`): «Editar perfil» (→ Panel → Mi
+    perfil) y «Mi panel» (→ Resumen; con el mismo punto de aviso que la barra). Sin migas, Compartir ni Reportar.
+    La tarifa se ve como en el público.
+  - arriba, si hoy el público no la ve (`publico: false`), un aviso corto con los textos del panel: oculto «Tu perfil
+    está oculto: nadie lo ve en el sitio.»; pausado por saldo; si no está publicado, el texto de su estado (Resumen);
+    con la home provisoria, «Todavía no se ve en el sitio: abrimos muy pronto.»; si no, «Tu perfil no se ve en el sitio
+    por ahora.». EN/PT en `HH.I18N`.
+- **Entradas**: barra inferior (su foto, último ícono, «Mi perfil», marcada en esa página; mismo punto de aviso que
+  antes); menú de su foto arriba a la derecha (Mi panel · **Mi perfil** · Ver vista previa · Favoritos · Cerrar
+  sesión; es la entrada en la computadora, que no tiene barra inferior); «Ver mi perfil» en la tarjeta de la barra
+  lateral del panel. En la computadora «Mi panel» del encabezado no queda marcado en Mi perfil.
+- **Barra con la home provisoria**: con sesión de acompañante, solo Inicio y su foto (Swipe, Cerca y Shorts vuelven a la
+  portada); sin sesión o con un cliente, sin barra como antes (`prod-prelanzamiento.js`).
+- **Su perfil público** (`/perfil/<su-slug>` con su sesión, home provisoria apagada): lleva a Mi perfil (`replace`),
+  como Instagram al tocarse a una misma. Visitantes, clientes y otras acompañantes lo ven como siempre.
+- Tests: `app/test/mi-perfil.test.js`, `historias-perfil.test.js` (dibujo con `own` y `preview`), `vista-previa.test.js`
+  (página sin caché, noindex, fuera del sitemap, sin métricas) y `historia-borrar-proteccion.test.js` (sin "⋯" en la
+  vista previa).
 
 ## Nombre completo y fecha de nacimiento fijos — 17/11/2026 (decisiones de Juan)
 
@@ -1243,10 +1282,11 @@ con solo destacadas, en el perfil público y en la vista previa. Ahora:
 - Sin historias activas: sin anillo y sin visor; para un visitante el avatar no es un botón. Nunca abre la galería.
 - Las destacadas abren solo sus propios elementos (sin cambios). El servidor ya mandaba historias, destacadas y fotos
   por separado; las pruebas lo fijan (`/api/sitio/estado` y `/api/cuenta/vista-previa`).
-- Visor (`core.js`): "Ver perfil" / el nombre, si ya está en ese perfil o en la vista previa, solo cierra el visor
-  (antes navegaba al perfil público y en la vista previa la sacaba de ahí).
+- Visor (`core.js`): "Ver perfil" / el nombre, si ya está en ese perfil, en la vista previa o en Mi perfil, solo cierra
+  el visor (antes navegaba al perfil público y en la vista previa la sacaba de ahí).
 
-**"+" en su propio perfil** (público con su sesión y vista previa): círculo blanco con "+" abajo a la derecha del
+**"+" en su propio perfil** (Mi perfil, `/panel/mi-perfil`; desde el 17/11 no en la vista previa, que es solo para
+mirar; su perfil público con su sesión lleva a Mi perfil): círculo blanco con "+" abajo a la derecha del
 avatar (`.pf-add`). Abre directo el selector del dispositivo (foto; también video si el panel los permite,
 `yo.videosHabilitados`) y después una hoja "Nueva historia" con la vista previa, «Texto (opcional)» (120), «Dura 24
 horas.» + «Te quedan N hoy» / «Historias ilimitadas con tu plan», el aviso «Tus historias se ven en el sitio cuando tu
@@ -1255,8 +1295,8 @@ tiene, también sube una. Nunca en el perfil de otra ni para visitantes o client
 
 **"Tu historia" en el inicio**: con sesión de acompañante, primer círculo de la fila de historias (círculo vacío con
 borde fino y "+"; EN "Your story", PT "Seu story"), aunque no haya otras historias (la fila queda solo con él). Mismo
-flujo que el "+". Con la home provisoria prendida el inicio es la portada (sin fila): ahí se sube desde la vista previa
-o el panel.
+flujo que el "+". Con la home provisoria prendida el inicio es la portada (sin fila): ahí se sube desde Mi perfil o el
+panel.
 
 **Misma API, límites y mensajes que el panel**: `POST /api/cuenta/historias` (`foto` + `texto`) o
 `/api/cuenta/historias/video` (`video` + `texto`; 95 MB y 60 s se controlan antes con los mismos textos). Si ya usó el
@@ -1264,7 +1304,7 @@ cupo del día (`yo.limites.historiasDia` − `historiasHoy` = 0) no abre el sele
 «Tu plan permite N historia(s) por día. Subí de plan para publicar más.» (inglés y portugués en `prod-sitio-errores.js`).
 Los errores del servidor se muestran en la hoja. Al terminar: aviso «Historia publicada por 24 horas.» (video: «Recibimos
 el video. Se publica apenas termine de procesarse.»), se vuelven a pedir `GET yo` y el estado del sitio (o
-`GET vista-previa` en la vista previa) y queda en la misma página con su anillo nuevo.
+`GET vista-previa` en Mi perfil) y queda en la misma página con su anillo nuevo.
 
 Front: `HH.storyUploadOn(p)` (prod-sitio.js: hay `S.yo` y, con `p`, es su perfil) y la acción `spStoryAdd`. El MVP y la
 demo no la definen (sin "+"; la demo no tiene cuentas). Pruebas: `app/test/historias-perfil.test.js`.
@@ -1279,8 +1319,8 @@ demo no la definen (sin "+"; la demo no tiene cuentas). Pruebas: `app/test/histo
 - Toque en "⋯": hoja abajo dentro del visor «Eliminar historia» / «Cancelar» → confirmación «¿Eliminar esta historia?
   No se puede deshacer.» (Cancelar / Eliminar → «Eliminando…») → `DELETE /api/cuenta/historias/:id` (la del panel) →
   aviso «Historia eliminada.» → el visor sigue con su próxima historia o se cierra si no quedan; se vuelven a pedir sus
-  datos y lo que se ve (sitio: anillo del perfil y fila del inicio; vista previa). Vale desde su perfil, la vista previa
-  y la fila del inicio (si veía la cola del inicio y no le quedan, se cierra).
+  datos y lo que se ve (sitio: fila del inicio; Mi perfil: anillo y destacadas). Vale desde Mi perfil y la fila del
+  inicio (si veía la cola del inicio y no le quedan, se cierra); en la vista previa no hay "⋯" (desde el 17/11).
 - Sus destacadas: «Quitar de la destacada» → «¿Quitar esto de la destacada? Se borra la foto o el video y no se puede
   deshacer.» (Cancelar / Quitar) → `DELETE /api/cuenta/destacadas/items/:id` (la del panel; el elemento se subió solo
   para esa destacada, así que se borra con su archivo) → «Quitado de la destacada.». Si era el último, se cierra y la

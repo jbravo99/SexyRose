@@ -113,6 +113,16 @@ describe('prod-sitio.js: HH.storyOwnMenu', () => {
     assert.deepEqual(ctx.HH.db.highlights[0].items.map((x) => x.id), ['i2']);
     assert.ok(src.includes("api('DELETE', '/cuenta/destacadas/items/' + encodeURIComponent(el.dataset.id))"), 'la misma ruta que usa el panel');
   });
+  test('en la vista previa (solo para mirar, 17/11): null, sin "⋯"; en Mi perfil y el resto del sitio, sí', () => {
+    S.yo = { id: 'A' };
+    ctx.HH.esVistaPrevia = () => true;
+    assert.equal(menu({ id: 'h2', workerId: 'A' }, { workerId: 'A', highlight: false }), null, 'su historia');
+    assert.equal(menu({ id: 'i2', workerId: 'A' }, { workerId: 'A', highlight: true }), null, 'su destacada');
+    ctx.HH.esVistaPrevia = () => false;
+    assert.equal(menu({ id: 'h2', workerId: 'A' }, { workerId: 'A', highlight: false }).label, 'Eliminar historia');
+    assert.equal(menu({ id: 'i2', workerId: 'A' }, { workerId: 'A', highlight: true }).label, 'Quitar de la destacada');
+    delete ctx.HH.esVistaPrevia;
+  });
   test('textos en inglés y portugués', () => {
     const ctx2 = { HH: {} }; vm.createContext(ctx2);
     const ini = src.indexOf("  Object.assign(HH.I18N = HH.I18N || {}, {\n    'Más opciones'");

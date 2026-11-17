@@ -200,9 +200,9 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       }
       res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(), usb=()');
       if (segs.length && PRIVATE.has(segs[0])) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-      // Vista previa del perfil de la acompañante (/panel/vista-previa): sin ninguna caché (los datos llegan aparte, de
-      // /api/cuenta/vista-previa, solo con su sesión)
-      const cacheHtml = segs[0] === 'panel' && segs[1] === 'vista-previa' ? 'no-store' : 'no-cache';
+      // Vista previa del perfil de la acompañante (/panel/vista-previa) y Mi perfil (/panel/mi-perfil): sin ninguna caché
+      // (los datos llegan aparte, de /api/cuenta/vista-previa, solo con su sesión)
+      const cacheHtml = segs[0] === 'panel' && (segs[1] === 'vista-previa' || segs[1] === 'mi-perfil') ? 'no-store' : 'no-cache';
       if (spa.pq) {
         // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
         const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': cacheHtml, 'Content-Type': 'text/html; charset=utf-8' };

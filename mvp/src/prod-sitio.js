@@ -571,6 +571,8 @@
       hi.querySelectorAll('.topnav a').forEach((a) => { const g = a.getAttribute('data-go') || ''; if (/^#(admin|cuenta)/.test(g)) a.remove(); });
       const nav = hi.querySelector('.topnav');
       if (nav && logged && !nav.querySelector('[data-go="#panel"]')) nav.insertAdjacentHTML('beforeend', `<a href="#panel" data-go="#panel"${top === 'panel' ? ' class="active"' : ''}>Mi panel${noLeidas() ? `<span class="sp-hdot" aria-label="Tenés avisos sin leer"></span>` : ''}</a>`);
+      // En Mi perfil (/panel/mi-perfil) "Mi panel" no queda marcado: es su perfil, no el panel
+      if (nav && esYo(key)) nav.querySelectorAll('a[data-go="#panel"]').forEach((a) => { a.classList.remove('active'); a.removeAttribute('aria-current'); });
       const actions = hi.querySelector('.header-actions');
       if (actions && !logged) {
         actions.querySelectorAll('a[data-go="#login"]').forEach((a) => { a.textContent = 'Ingresar'; });
@@ -584,18 +586,20 @@
     }
     if (bn) {
       // Barra inferior estilo Instagram (móvil): cápsula flotante, solo íconos, burbuja suave en la sección activa.
-      // El texto queda para lectores de pantalla (aria-label/title). Con sesión, el último ícono es la foto de la acompañante.
+      // El texto queda para lectores de pantalla (aria-label/title). Con sesión, el último ícono es la foto de la acompañante
+      // y lleva a Mi perfil (como la pestaña de perfil de Instagram); el panel sigue en el menú de su foto de arriba,
+      // en "Mi panel" del encabezado (computadora) y en el botón "Mi panel" de Mi perfil.
       let ultimo;
       if (logged) {
         const p = (S.yo && S.yo.perfil) || {}; const f = (p.fotos || [])[0];
         const avatar = f ? `<span class="bn-av"><img draggable="false" src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
-        // Punto de aviso: el perfil necesita algo de ella (rechazado o verificación rechazada)
-        ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0 };
+        // Punto de aviso: el perfil necesita algo de ella (rechazado, verificación rechazada, avisos o pedidos sin leer)
+        ultimo = { h: YO_GO, l: 'Mi perfil', html: avatar, dot: yoDot(), on: esYo(key) };
       } else ultimo = { h: '#favoritos', l: 'Tu espacio', i: 'user', dot: !!(HH.spClientes && HH.spClientes.noLeidos() > 0) };
       // Shorts en lugar de Favoritos; los favoritos quedan en "Tu espacio" (el ícono de usuario)
       const items = [{ h: '#inicio', l: 'Inicio', i: 'home' }, { h: '#swipe', l: 'Swipe', i: 'heart' }, { h: '#cerca', l: 'Cerca', i: 'pin' }, { h: '#shorts', l: 'Shorts', html: HH.iconShorts ? HH.iconShorts() : icon('film') }, ultimo];
       bn.innerHTML = items.map((n) => {
-        const on = ('#' + top) === n.h || (n.h === '#inicio' && !top);
+        const on = n.on != null ? n.on : ('#' + top) === n.h || (n.h === '#inicio' && !top);
         return `<a href="${n.h}" data-go="${n.h}" aria-label="${n.l}" title="${n.l}"${on ? ' class="active" aria-current="page"' : ''}>${n.html || icon(n.i)}<span class="sr-only">${n.l}</span>${n.dot ? '<i class="bn-dot" aria-hidden="true"></i>' : ''}</a>`;
       }).join('');
     }
@@ -609,6 +613,9 @@
     if (!forcePath && HH.syncLangFromUrl) HH.syncLangFromUrl();
     const key = forcePath || HH.currentHash();
     if (!HH.db) { const app = document.getElementById('app'); if (app && !app.innerHTML) app.innerHTML = `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`; gateTemprano(key); return; }
+    // Su propio perfil público (con la home provisoria apagada): va a Mi perfil (como Instagram: tocarse a una misma
+    // en cualquier lado abre la pestaña del perfil). Ver "Mi perfil" más abajo.
+    if (esSuPerfilPublico(key)) { HH.go(YO_GO, { replace: true }); return; }
     vpAntesDeDibujar(key);
     if (/^chat(\.|$)/.test(key)) { HH.go('#inicio', { replace: true }); return; }
     if (!OWN(key)) return render0.call(HH, forcePath);
@@ -624,7 +631,7 @@
     if (!forcePath) window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
     HH.renderShell();
     document.dispatchEvent(new CustomEvent('hh:rendered', { detail: HH.current }));
-    document.title = (esVP(key) ? 'Vista previa' : OWN_TITLES[parts[0]] || 'Mi panel') + ' · SexyRose';
+    document.title = (esVP(key) ? 'Vista previa' : esYo(key) ? 'Mi perfil' : OWN_TITLES[parts[0]] || 'Mi panel') + ' · SexyRose';
     setRobots(parts[0] === 'shorts' ? 'noindex,follow' : 'noindex,nofollow');
     if (HH.afterRender) { const f = HH.afterRender; HH.afterRender = null; try { f(); } catch (e) { console.error(e); } }
   };
@@ -669,6 +676,7 @@
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
     if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
     if (b === 'vista-previa' && parts.length === 2) return vistaPreviaView();
+    if (b === 'mi-perfil' && parts.length === 2) return miPerfilView();
     const tab = PANEL_TABS.some((t) => t.id === b) ? b : 'resumen';
     const views = { resumen: panelResumen, numeros: () => panelNumeros(parts[2]), perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta, contenido: () => (HH.spContenido ? HH.spContenido.panel() : ''), pedidos: () => (HH.spClientes ? HH.spClientes.panelPedidos(parts[2]) : '') };
     if (tab === 'fotos' || tab === 'historias') setTimeout(vigilarVideos, 0);
@@ -683,7 +691,10 @@
      que entra. Mientras se ve, HH.db es una copia con solo su perfil (VP.db); al salir vuelve el del sitio (VP.real).
      No cuenta nada: la dirección es del panel (el aviso de tráfico del sitio no cuenta el panel) y su perfil es "propio" (ni visitas ni
      toques de WhatsApp/Telegram; stats.js tampoco). WhatsApp y Telegram funcionan (abren su propio número: sirve para
-     probarlos); Reportar, Compartir, Links y las migas no hacen nada (avisa que es una vista previa). */
+     probarlos); Reportar, Compartir, Links y las migas no hacen nada (avisa que es una vista previa).
+     Solo para mirar (17/11/2026, Juan: "está mal que desde vista previa pueda hacer eso"): exactamente lo que ve un
+     cliente. Sin el "+" del avatar, el avatar sin historias no hace nada (nunca abre el selector de archivos) y sus
+     historias y destacadas se ven sin el "⋯". Subir y borrar va en Mi perfil (/panel/mi-perfil, más abajo). */
   Object.assign(HH.I18N = HH.I18N || {}, {
     'Ver vista previa': ['View preview', 'Ver prévia'], 'Vista previa': ['Preview', 'Prévia'],
     'Vista previa: así se va a ver tu perfil.': ['Preview: this is how your profile will look.', 'Prévia: é assim que seu perfil vai aparecer.'],
@@ -698,9 +709,13 @@
   const VP = { data: null, de: null, err: null, cargando: false, db: null, real: null, base: null, datos: null, ultima: null, desde: '#panel' };
   const esVP = (key) => key === 'panel.vista-previa';
   HH.esVistaPrevia = () => esVP(HH.currentHash());
+  // Mi perfil (/panel/mi-perfil) usa los mismos datos que la vista previa (VP): usaVP = cualquiera de las dos
+  const esYo = (key) => key === 'panel.mi-perfil';
+  HH.esMiPerfil = () => esYo(HH.currentHash());
+  const usaVP = (key) => esVP(key) || esYo(key);
+  const YO_GO = '#panel.mi-perfil';
+  const esSuPerfilPublico = (key) => { const p = S.yo && S.yo.perfil; return !!(p && p.slug && /^perfil\./.test(key) && key.slice(7) === p.slug); };
   const preOn = () => !!(S.estado && S.estado.ajustes && S.estado.ajustes.prelanzamiento === true);
-  // ¿Hoy lo ve cualquiera en el sitio? Entonces "Ver mi perfil" lleva al perfil público; si no, a la vista previa.
-  const perfilVisible = () => { const p = S.yo && S.yo.perfil; return !!(p && p.estado === 'publicado' && !p.oculto && p.slug && !preOn()); };
   const VP_GO = '#panel.vista-previa';
   const vpBtn = () => `<a class="btn secondary sp-vp-link" href="${VP_GO}" data-go="${VP_GO}">${icon('eye')} <span>Ver vista previa</span></a>`;
   function vpDb() {
@@ -709,20 +724,21 @@
     return buildDb({ ...e, ubicaciones: [...ub.values()], perfiles: [d.perfil], historias: d.historias || [] });
   }
   function salirVP() { if (VP.db && HH.db === VP.db && VP.real) HH.db = VP.real; }
-  // Antes de dibujar cualquier dirección: al entrar a la vista previa se piden los datos de nuevo; adentro, HH.db es su copia
+  // Antes de dibujar cualquier dirección: al entrar a la vista previa o a Mi perfil se piden los datos de nuevo; adentro,
+  // HH.db es su copia
   function vpAntesDeDibujar(key) {
+    if (usaVP(key) && key !== VP.ultima) { VP.data = null; VP.err = null; }
     if (esVP(key) && !esVP(VP.ultima)) {
-      VP.data = null; VP.err = null;
       VP.desde = VP.ultima && /^panel\.[a-z]+$/.test(VP.ultima) && PANEL_TABS.some((t) => 'panel.' + t.id === VP.ultima) ? '#' + VP.ultima : '#panel';
     }
     VP.ultima = key;
-    if (!esVP(key) || !VP.data || !S.yo || VP.de !== S.yo.id) { salirVP(); return; }
+    if (!usaVP(key) || !VP.data || !S.yo || VP.de !== S.yo.id) { salirVP(); return; }
     if (HH.db !== VP.db) VP.real = HH.db;
     if (!VP.db || VP.base !== VP.real || VP.datos !== VP.data) { VP.db = vpDb(); VP.base = VP.real; VP.datos = VP.data; }
     HH.db = VP.db;
   }
   // La portada provisoria no pasa por HH.render de este archivo: al dibujar cualquier otra cosa, vuelve el HH.db del sitio
-  document.addEventListener('hh:rendered', () => { const k = HH.currentHash(); if (!esVP(k)) { salirVP(); VP.ultima = k; } });
+  document.addEventListener('hh:rendered', () => { const k = HH.currentHash(); if (!usaVP(k)) { salirVP(); VP.ultima = k; } });
   async function loadVP() {
     if (VP.cargando) return;
     VP.cargando = true; const de = S.yo && S.yo.id;
@@ -731,7 +747,7 @@
       if (S.yo && S.yo.id === de && r && r.perfil) { VP.data = r; VP.de = de; VP.err = null; }
     } catch (e) { VP.err = e.message; if (e.status === 401) { VP.err = null; await loadYo(true, true); } }
     VP.cargando = false;
-    if (esVP(HH.currentHash())) HH.refresh();
+    if (usaVP(HH.currentHash())) HH.refresh();
   }
   const vpBarra = () => `<div class="sp-vp" role="region" aria-label="Vista previa">
       <div class="container sp-vp-in">
@@ -748,6 +764,50 @@
         : `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`);
     }
     return vpBarra() + HH.profileView(VP.data.perfil.slug, { preview: true });
+  }
+
+  /* ---------- Mi perfil (17/11/2026, pedido de Juan: "que abajo en la barra flotante esté el perfil de uno mismo como
+     Instagram") ----------
+     /panel/mi-perfil (clave panel.mi-perfil; en/pt: /en/panel/mi-perfil, /pt/panel/mi-perfil): su perfil con la misma
+     vista pública, como la pestaña de perfil de Instagram. Mismos datos y garantías que la vista previa (VP: solo
+     GET /api/cuenta/vista-previa, solo lo suyo, en cualquier estado y con la home provisoria prendida; sin caché, noindex
+     y sin sumar visitas ni toques: es una dirección del panel y no llama a HH.view). Acá sí:
+       - el "+" del avatar y la hoja para subir una historia; el avatar abre sus historias activas o, sin historias, la subida;
+       - el "⋯" en sus historias y destacadas (Eliminar historia, Quitar de la destacada, Cambiar portada);
+       - debajo de la cabecera, "Editar perfil" (Panel → Mi perfil) y "Mi panel" (Panel → Resumen) en lugar de los
+         botones de contacto; sin migas ni Compartir/Reportar;
+       - un aviso corto si hoy el público no lo ve (con los textos del panel; con la home provisoria, "abrimos muy pronto").
+     Se llega desde la barra inferior (su foto, último ícono), el menú de su foto arriba a la derecha y el panel
+     ("Ver mi perfil"). Su perfil público (/perfil/<su-slug>, home provisoria apagada) también trae acá. */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Mi perfil': ['My profile', 'Meu perfil'], 'Editar perfil': ['Edit profile', 'Editar perfil'], 'Ver mi perfil': ['View my profile', 'Ver meu perfil'],
+    'No pudimos mostrar tu perfil': ['We could not show your profile', 'Não conseguimos mostrar seu perfil'],
+    'Todavía no se ve en el sitio: abrimos muy pronto.': ['It is not on the site yet: we open very soon.', 'Ainda não aparece no site: abrimos muito em breve.'],
+  });
+  // Aviso de Mi perfil cuando hoy el público no lo ve: el motivo con los mismos textos del panel (Resumen)
+  function yoAviso() {
+    if (!VP.data || VP.data.publico) return '';
+    const p = (S.yo && S.yo.perfil) || {};
+    const txt = p.estado === 'publicado' && p.oculto ? 'Tu perfil está oculto: nadie lo ve en el sitio.'
+      : p.pausadoPorSaldo ? 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.'
+        : p.estado !== 'publicado' ? (ESTADO_PERFIL[p.estado] || ESTADO_PERFIL.borrador)[2]
+          : preOn() ? 'Todavía no se ve en el sitio: abrimos muy pronto.' : ESTADO_PERFIL.pausado[2];
+    return `<div class="notice info sp-yo-aviso">${icon('info')}<span>${txt}</span></div>`;
+  }
+  // Mismo punto de aviso que tenía la barra inferior en "Mi panel" (rechazo, pausa por saldo, avisos o pedidos sin leer)
+  const yoDot = () => { const p = (S.yo && S.yo.perfil) || {}; return !!S.yo && (p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0); };
+  function miPerfilView() {
+    if (!VP.data || VP.de !== S.yo.id || HH.db !== VP.db) {
+      if (!VP.cargando && !VP.err) loadVP();
+      return VP.err
+        ? `<div class="container section"><div class="empty">${icon('alert')}<h4>No pudimos mostrar tu perfil</h4><p class="small">${esc(VP.err)}</p><button type="button" class="btn secondary sm" data-action="spVPReintentar">Probar de nuevo</button></div></div>`
+        : `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`;
+    }
+    const acciones = `<div class="pf-own">
+        <a class="btn secondary sm" href="#panel.perfil" data-go="#panel.perfil">Editar perfil</a>
+        <a class="btn secondary sm" href="#panel" data-go="#panel">Mi panel${yoDot() ? '<i class="sp-hdot" aria-hidden="true"></i>' : ''}</a>
+      </div>`;
+    return HH.profileView(VP.data.perfil.slug, { own: true, aviso: yoAviso(), acciones });
   }
   // En la vista previa, Reportar, Compartir, Links y las migas no hacen nada (su perfil todavía puede no existir para el público)
   document.addEventListener('click', (ev) => {
@@ -847,7 +907,7 @@
     HH.toast(video ? 'Recibimos el video. Se publica apenas termine de procesarse.' : 'Historia publicada por 24 horas.', { type: 'ok', ms: 4000 });
     // Sus datos (cupo del día) y lo que se ve en la página donde está: la vista previa o el sitio
     await loadYo(true, true);
-    if (esVP(HH.currentHash())) { await loadVP(); return; }
+    if (usaVP(HH.currentHash())) { await loadVP(); return; }
     await loadEstado();
     if (!document.getElementById('modalRoot').classList.contains('open')) HH.refresh();
     HH.renderShell();
@@ -874,7 +934,8 @@
   });
   const esPropia = (st, c) => !!(S.yo && S.yo.id && st && st.id && c && c.workerId === S.yo.id && (!st.workerId || st.workerId === S.yo.id));
   HH.storyOwnMenu = (st, c) => {
-    if (!esPropia(st, c)) return null;
+    // En la vista previa no (solo para mirar: lo que ve un cliente); en Mi perfil y en el resto del sitio, sí
+    if (!esPropia(st, c) || (HH.esVistaPrevia && HH.esVistaPrevia())) return null;
     if (c.highlight) {
       // "Cambiar portada" (si la destacada está entre las suyas), con lo que estaba mirando ya elegido
       const hid = st.highlightId; const suya = hid && (S.yo.destacadas || []).some((d) => d.id === hid);
@@ -894,7 +955,7 @@
   }
   async function recargarPropias() {
     await loadYo(true, true);
-    if (esVP(HH.currentHash())) { await loadVP(); return; }
+    if (usaVP(HH.currentHash())) { await loadVP(); return; }
     await loadEstado();
     if (!document.getElementById('modalRoot').classList.contains('open')) HH.refresh();
     HH.renderShell();
@@ -1075,7 +1136,7 @@
     const pub = p.estado === 'publicado' && !p.oculto && p.slug;
     return `<div class="container dash-wrap"><div class="dash">
       <aside class="dash-side">
-        <div class="who">${avatarYo(44)}<div class="grow" style="min-width:0"><div class="nm ellipsis"><span data-noi18n>${esc(d.displayName || 'Mi cuenta')}</span></div><div class="row" style="gap:4px;margin-top:4px">${HH.levelBadge(planEf(), true)}</div>${perfilVisible() ? `<a class="small pub" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">Ver mi perfil público</a>` : `<a class="small pub" href="${VP_GO}" data-go="${VP_GO}">Ver vista previa</a>`}</div></div>
+        <div class="who">${avatarYo(44)}<div class="grow" style="min-width:0"><div class="nm ellipsis"><span data-noi18n>${esc(d.displayName || 'Mi cuenta')}</span></div><div class="row" style="gap:4px;margin-top:4px">${HH.levelBadge(planEf(), true)}</div><a class="small pub" href="${YO_GO}" data-go="${YO_GO}">Ver mi perfil</a></div></div>
         <nav class="dash-nav" aria-label="Secciones del panel">${nav}</nav>
       </aside>
       <div class="dash-tabs sp-mnav">${mnav}</div>
@@ -2355,11 +2416,13 @@
     spLogout() { HH.logout(); },
     spVPReintentar() { VP.err = null; loadVP(); HH.refresh(); },
     openUserMenu() {
-      const p = S.yo && S.yo.perfil; const pub = perfilVisible();
+      // Mi perfil (su página, como Instagram) y la vista previa (solo para mirar); el panel arriba de todo
+      const p = S.yo && S.yo.perfil;
       HH.modal({ title: 'Mi cuenta', body: `<div class="list">
         <a class="list-item" href="#panel" data-go="#panel" data-action="closeModal">${icon('dashboard')}<span class="grow title">Mi panel</span></a>
+        ${p ? `<a class="list-item" href="${YO_GO}" data-go="${YO_GO}" data-action="closeModal">${icon('user')}<span class="grow title">Mi perfil</span></a>
+        <a class="list-item" href="${VP_GO}" data-go="${VP_GO}" data-action="closeModal">${icon('eye')}<span class="grow title">Ver vista previa</span></a>` : ''}
         <a class="list-item" href="#favoritos" data-go="#favoritos" data-action="closeModal">${icon('star')}<span class="grow title">Favoritos</span></a>
-        ${pub ? `<a class="list-item" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}" data-action="closeModal">${icon('user')}<span class="grow title">Ver mi perfil</span></a>` : p ? `<a class="list-item" href="${VP_GO}" data-go="${VP_GO}" data-action="closeModal">${icon('eye')}<span class="grow title">Ver vista previa</span></a>` : ''}
         <button class="list-item" data-action="spLogout" style="cursor:pointer;text-align:left;width:100%;color:var(--danger)">${icon('logout')}<span class="grow title">Cerrar sesión</span></button>
       </div>` });
     },

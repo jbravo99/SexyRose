@@ -191,6 +191,8 @@
 .pf-act.wa .pf-ab{background:#25D366;border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(37,211,102,.28)}
 .pf-act.pf-fav.on{color:var(--berry)}.pf-act.pf-fav.on .pf-ab{color:var(--berry);border-color:var(--berry)}.pf-act.pf-fav.on svg{fill:currentColor}
 .pf-c3{display:flex;flex-wrap:wrap;gap:6px 14px}
+/* Mi perfil (como Instagram): "Editar perfil" y "Mi panel", dos botones iguales debajo de la cabecera */
+.pf-own{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px}.pf-own .btn{justify-content:center;width:100%}
 .pf-lnk{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-decoration:none}.pf-lnk svg{width:14px;height:14px}.pf-lnk:hover{color:var(--fg)}
 @media(max-width:380px){.pf-act{min-width:0;flex:1}.pf-act .pf-ab{width:48px;height:48px}}
 .pf-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
@@ -1490,15 +1492,20 @@
   });
   HH.route("perfil.:slug", ({ slug }) => profileView(slug));
   // opts.preview (vista previa de la acompañante, prod-sitio.js): se dibuja como lo ve un visitante (tarifa y botones de
-  // contacto incluidos), sin los avisos de "tu perfil" y sin sumar visitas, aunque todavía no esté publicado.
+  // contacto incluidos), sin los avisos de "tu perfil" y sin sumar visitas, aunque todavía no esté publicado. Solo para
+  // mirar: sin el "+" de historias y el avatar sin historias no se toca.
+  // opts.own (Mi perfil de la acompañante, prod-sitio.js): la misma vista, sin sumar visitas, aunque no esté publicado,
+  // con el "+" de historias, opts.acciones (Editar perfil / Mi panel) en lugar de los botones de contacto, opts.aviso
+  // arriba (si hoy no se ve) y sin migas.
   HH.profileView = (slug, opts) => profileView(slug, opts);
   function profileView(slug, opts = {}) {
     const p = HH.profileBySlug(slug);
     const me = HH.me();
     if (!p)
       return `<div class="container section"><div class="empty">${HH.icon("search")}<h4>No encontramos ese perfil</h4><p class="small">Puede que haya cambiado de nombre o que ya no esté publicado.</p><button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} Explorar perfiles</button></div></div>`;
-    const mine = !opts.preview && !!(me && me.id === p.userId);
-    const published = !!opts.preview || HH.publishedProfiles().includes(p);
+    const own = !!opts.own;
+    const mine = !opts.preview && !own && !!(me && me.id === p.userId);
+    const published = !!opts.preview || own || HH.publishedProfiles().includes(p);
     if (!published && !mine && !(me && me.role === "admin"))
       return `<div class="container section"><div class="empty">${HH.icon("clock")}<h4>Este perfil no está disponible</h4><p class="small">Mientras tanto, mirá otras acompañantes.</p><button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} Explorar perfiles</button></div></div>`;
     if (S.profileSlug !== slug) {
@@ -1507,7 +1514,7 @@
       S.galTab = "all";
       S.pfTab = "gal";
     }
-    if (!mine && !opts.preview) HH.view(p.userId);
+    if (!mine && !opts.preview && !own) HH.view(p.userId);
     const lvl = HH.levelOf(p.userId);
     const badges = [
       HH.isStar(p.userId) ? HH.starBadge() : "",
@@ -1540,8 +1547,8 @@
     // Anillo del avatar: solo con historias activas (24 h). Sin historias no hay anillo ni visor (nunca abre la galería).
     const stList = HH.storiesOf(p.userId);
     const stories = stList.length;
-    // Su propio perfil (también la vista previa): "+" para subir una historia (prod-sitio.js → HH.storyUploadOn)
-    const ownSt = !!(HH.storyUploadOn && HH.storyUploadOn(p));
+    // Su propio perfil (Mi perfil; nunca la vista previa): "+" para subir una historia (prod-sitio.js → HH.storyUploadOn)
+    const ownSt = !opts.preview && !!(HH.storyUploadOn && HH.storyUploadOn(p));
     const thumbHtml = stories
       ? `<button type="button" class="pf-thumb has-st${stList.every((x) => HH.seenStories()[x.id]) ? " seen" : ""}" data-action="openStories" data-id="${p.userId}" aria-label="Ver historias">${HH.photo(p, 0)}</button>`
       : ownSt
@@ -1568,9 +1575,10 @@
     const moreN = (gtab === "all" ? totalGal : galList.length) - shownGal.length;
     const galTabs = [["all", "Todo", totalGal], ["photo", "Fotos", photos.length], ["video", "Videos", vids.length]];
     return `<div class="container section pf2" style="padding-block:14px">
+      ${own && opts.aviso ? opts.aviso : ""}
       ${mine ? `<div class="notice info" style="margin-bottom:12px">${HH.icon("eye")}<span>Así ven tu perfil los clientes. <a href="#panel.perfil" data-go="#panel.perfil">Editar mi perfil</a></span></div>` : ""}
       ${!published ? `<div class="notice warn" style="margin-bottom:12px">${HH.icon("alert")}<span>Este perfil no es visible para el público: ${p.hidden ? "ocultaste tu cuenta" : p.status !== "active" ? "está suspendido o pendiente de activación" : !HH.levelOf(p.userId) ? "no tiene un plan activo" : "faltan requisitos por completar"}.</span></div>` : ""}
-      <nav class="pf-crumbs" aria-label="Ubicación">${crumbs.join(HH.icon("chevronRight"))}</nav>
+      ${own ? "" : `<nav class="pf-crumbs" aria-label="Ubicación">${crumbs.join(HH.icon("chevronRight"))}</nav>`}
       <section class="pf-card" aria-label="Perfil">
         <div class="pf-av">${thumbHtml}${ownSt ? `<button type="button" class="pf-add" data-action="spStoryAdd" aria-label="Subir una historia" title="Subir una historia">${HH.icon("plus")}</button>` : ""}</div>
         <div class="pf-head">
@@ -1581,7 +1589,7 @@
           ${curTrip ? `<div class="pf-loc pf-trip">${HH.icon("globe")} <span>De visita hasta el ${HH.fmtDay(curTrip.to)}${p.homeCity ? ` · vive en ${esc(p.homeCity)}` : ""}</span></div>` : ""}
           ${mine ? "" : p.rateFrom ? `<div class="pf-rate"><span>Tarifa</span> <span class="pf-rv"><strong>${HH.money(p.rateFrom)}</strong>/h</span></div>` : `<div class="pf-rate"><span>Tarifa a convenir</span></div>`}
         </div>
-        ${mine ? "" : `<div class="pf-contact" id="pubContact">${contactHtml(p)}</div>`}
+        ${own ? `<div class="pf-contact">${opts.acciones || ""}</div>` : mine ? "" : `<div class="pf-contact" id="pubContact">${contactHtml(p)}</div>`}
       </section>
       ${HH.highlightsRow ? HH.highlightsRow(p, mine) : ""}
       ${(() => {

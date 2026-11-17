@@ -178,8 +178,8 @@ describe('vista previa del perfil', () => {
     }
   });
 
-  test('la página /panel/vista-previa: abierta con la home provisoria, sin caché, noindex y fuera del sitemap', async () => {
-    for (const p of ['/panel/vista-previa', '/en/panel/vista-previa', '/pt/panel/vista-previa']) {
+  test('la página /panel/vista-previa (y Mi perfil, /panel/mi-perfil): abierta con la home provisoria, sin caché, noindex y fuera del sitemap', async () => {
+    for (const p of ['/panel/vista-previa', '/en/panel/vista-previa', '/pt/panel/vista-previa', '/panel/mi-perfil', '/en/panel/mi-perfil', '/pt/panel/mi-perfil']) {
       const r = await get(p);
       assert.equal(r.status, 200, p);
       assert.equal(r.headers.get('cache-control'), 'no-store', p);
@@ -188,13 +188,14 @@ describe('vista previa del perfil', () => {
     }
     assert.equal((await get('/panel/fotos')).headers.get('cache-control'), 'no-cache', 'el resto del panel no cambia');
     const xml = await (await get('/sitemap.xml')).text();
-    assert.doesNotMatch(xml, /vista-previa|panel|zzvp/);
+    assert.doesNotMatch(xml, /vista-previa|mi-perfil|panel|zzvp/);
   });
 
   test('no suma visitas ni toques (Mis números y Admin → Métricas)', async () => {
     const antes = await totalMetricas();
     for (let i = 0; i < 5; i++) assert.equal((await vista(ana)).status, 200);
     await get('/panel/vista-previa', ana);
+    await get('/panel/mi-perfil', ana);
     // Aunque el navegador mandara eventos, con la home provisoria no se cuentan, y un perfil sin publicar no existe
     for (const tipo of ['vista', 'whatsapp', 'telegram']) assert.equal((await evento({ tipo, perfil: ana.slug })).status, 204);
     assert.deepEqual(await totalMetricas(), antes);
@@ -232,9 +233,9 @@ describe('vista previa del perfil', () => {
     assert.match(sitio, /b === 'vista-previa'/);
     assert.match(sitio, /head\('Mi panel', [^\n]*vpBtn\(\)\)/, 'botón en Resumen');
     assert.match(sitio, /head\('Mi perfil', [^\n]*vpBtn\(\)\)/, 'botón en Mi perfil');
-    assert.match(sitio, /perfilVisible\(\) \? `<a class="small pub" href="#perfil\./, '"Ver mi perfil público" solo si hoy se ve');
+    assert.ok(sitio.includes('<a class="small pub" href="${YO_GO}" data-go="${YO_GO}">Ver mi perfil</a>'), '"Ver mi perfil" en el panel lleva a Mi perfil');
     const pub = await fs.readFile(path.join(MVP, 'src', 'views-public.js'), 'utf8');
-    assert.match(pub, /if \(!mine && !opts\.preview\) HH\.view\(p\.userId\)/);
+    assert.match(pub, /if \(!mine && !opts\.preview && !own\) HH\.view\(p\.userId\)/, 'ni la vista previa ni Mi perfil suman visitas');
     const met = await fs.readFile(path.join(MVP, 'src', 'prod-metricas.js'), 'utf8');
     const esPagina = met.match(/const esPagina = [^\n]+/)[0];
     assert.doesNotMatch(esPagina, /panel/, 'las páginas del panel no se cuentan');

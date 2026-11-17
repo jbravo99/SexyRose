@@ -5,7 +5,8 @@
    - el inicio muestra solo una portada para acompañantes: "Publicá tu perfil" (registro) y "Ya tengo cuenta" (ingreso);
    - lugares, perfiles, Cerca, Swipe, Shorts, Stars, favoritos y links vuelven al inicio (el servidor ya responde 302
      a esas direcciones; esto cubre la navegación dentro del sitio);
-   - el encabezado queda con el logo, el idioma, Ingresar y Publicá tu perfil; sin barra inferior;
+   - el encabezado queda con el logo, el idioma, Ingresar y Publicá tu perfil; sin barra inferior (con la sesión de una
+     acompañante, la barra queda solo con Inicio y Mi perfil);
    - el registro de interesados no se ofrece (las cuentas que ya existen ingresan igual).
    Siguen abiertos: registro, ingreso, panel y cuenta de la acompañante, la vuelta de una compra, el ingreso de
    interesados y las páginas legales. Apagada (o en la demo, que nunca la trae), no cambia nada.
@@ -91,7 +92,13 @@
       const g = hi.querySelector('.hdr-genders'); if (g) g.replaceWith(Object.assign(document.createElement('span'), { className: 'hdr-spacer' }));
       hi.querySelectorAll('.sp-hdr-user').forEach((a) => a.remove());
     }
-    const bn = document.getElementById('bottomNav'); if (bn) bn.innerHTML = '';
+    // Sin barra inferior; con la sesión de una acompañante, solo Inicio y Mi perfil (su foto, prod-sitio.js): lo demás
+    // de la barra (Swipe, Cerca, Shorts) vuelve al inicio mientras la home provisoria esté prendida
+    const bn = document.getElementById('bottomNav');
+    if (bn) {
+      if (!bn.querySelector('a[data-go="#panel.mi-perfil"]')) bn.innerHTML = '';
+      else bn.querySelectorAll('a').forEach((a) => { const g = a.getAttribute('data-go'); if (g !== '#inicio' && g !== '#panel.mi-perfil') a.remove(); });
+    }
   };
 
   // SEO de la portada provisoria (título, descripción, indexable)

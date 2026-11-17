@@ -2,8 +2,8 @@
 // me muestra las imágenes de LA GALERÍA". Causa: el avatar del perfil tenía siempre un anillo gris (igual al de una
 // historia ya vista y al de las destacadas) y, sin historias activas, abría la galería (pubLightbox) en la foto 1.
 // Ahora: el anillo solo con historias activas (24 h) y abre solo esas; sin historias, ni anillo ni visor (nunca la
-// galería). Además: "+" para subir una historia en su propio perfil (y en la vista previa) y "Tu historia" primero en
-// la fila de historias del inicio, solo para acompañantes con sesión.
+// galería). Además: "+" para subir una historia en su propio perfil (Mi perfil; la vista previa es solo para mirar, sin
+// "+") y "Tu historia" primero en la fila de historias del inicio, solo para acompañantes con sesión.
 //   DATABASE_URL=postgres://... node --test test/historias-perfil.test.js
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -93,6 +93,39 @@ describe('perfil: el avatar solo abre historias reales (nunca la galería)', () 
     assert.doesNotMatch(avatar(perfil()), /pf-add|spStoryAdd/);
   });
 
+  test('vista previa (17/11, Juan): solo para mirar; sin "+" y el avatar sin historias no hace nada (nunca el selector)', () => {
+    st.own = (p) => !p || p.userId === 'A';
+    st.stories = [];
+    let a = avatar(ctx.HH.profileView(P.slug, { preview: true }));
+    assert.match(a, /<div class="pf-thumb no-st">/, 'como lo ve un cliente');
+    assert.doesNotMatch(a, /pf-add|spStoryAdd/);
+    st.stories = [{ id: 'h1', workerId: 'A', src: 'https://cdn.example/historia.jpg' }];
+    a = avatar(ctx.HH.profileView(P.slug, { preview: true }));
+    assert.match(a, /class="pf-thumb has-st" data-action="openStories"/, 'con historias, el anillo las abre (como para un cliente)');
+    assert.doesNotMatch(a, /pf-add|spStoryAdd/);
+  });
+
+  test('Mi perfil (opts.own): "+", el avatar sube o abre sus historias, Editar perfil / Mi panel en lugar del contacto, sin migas', () => {
+    st.own = (p) => !p || p.userId === 'A';
+    st.stories = [];
+    const acciones = '<div class="pf-own"><a data-go="#panel.perfil">Editar perfil</a><a data-go="#panel">Mi panel</a></div>';
+    let h = ctx.HH.profileView(P.slug, { own: true, acciones, aviso: '<div class="notice info sp-yo-aviso">AVISO</div>' });
+    let a = avatar(h);
+    assert.match(a, /<button type="button" class="pf-thumb no-st" data-action="spStoryAdd"/, 'sin historias: la subida');
+    assert.match(a, /class="pf-add" data-action="spStoryAdd"/);
+    assert.ok(h.includes('<div class="pf-contact">' + acciones + '</div>'), 'los botones en el lugar del contacto');
+    assert.doesNotMatch(h, /id="pubContact"|pubReport|pubShare/, 'sin WhatsApp, Compartir ni Reportar');
+    assert.doesNotMatch(h, /pf-crumbs/, 'sin migas');
+    assert.match(h, /sp-yo-aviso">AVISO/);
+    assert.doesNotMatch(h, /Así ven tu perfil los clientes|no es visible para el público/, 'sin los avisos del perfil público');
+    st.stories = [{ id: 'h1', workerId: 'A', src: 'https://cdn.example/historia.jpg' }];
+    a = avatar(ctx.HH.profileView(P.slug, { own: true, acciones }));
+    assert.match(a, /class="pf-thumb has-st" data-action="openStories"/, 'con historias: las abre');
+    // Aunque el sitio no la muestre (home provisoria, sin publicar): igual se dibuja
+    const pub = ctx.HH.publishedProfiles; ctx.HH.publishedProfiles = () => [];
+    try { assert.match(ctx.HH.profileView(P.slug, { own: true, acciones }), /class="pf-card"/); } finally { ctx.HH.publishedProfiles = pub; }
+  });
+
   test('inicio: "Tu historia" primero solo para acompañantes con sesión, aunque no haya otras historias', () => {
     st.order = []; st.own = null;
     assert.doesNotMatch(routes.inicio(), /stories-row/, 'visitante sin historias: sin fila');
@@ -119,7 +152,7 @@ describe('subida desde el perfil y el inicio: misma API, límites y mensajes que
     assert.match(sitio, /upload\(video \? '\/cuenta\/historias\/video' : '\/cuenta\/historias', fd/);
     assert.match(sitio, /HH\.storyUploadOn = \(p\) => !!\(S\.yo && S\.yo\.id && S\.yo\.perfil && \(!p \|\| p\.userId === S\.yo\.id\)\)/, 'solo la acompañante con sesión, y en su perfil');
     assert.match(sitio, /maxlength="120"/);
-    assert.match(sitio, /await loadYo\(true, true\);\s*if \(esVP\(HH\.currentHash\(\)\)\) \{ await loadVP\(\); return; \}\s*await loadEstado\(\);/);
+    assert.match(sitio, /await loadYo\(true, true\);\s*if \(usaVP\(HH\.currentHash\(\)\)\) \{ await loadVP\(\); return; \}\s*await loadEstado\(\);/, 'en Mi perfil o la vista previa, sus datos de nuevo');
     const err = await fs.readFile(path.join(MVP, 'src', 'prod-sitio-errores.js'), 'utf8');
     const ctx = { HH: {} }; vm.runInNewContext(err, ctx);
     for (const k of ['Tu plan permite {n} historia por día. Subí de plan para publicar más.', 'Tu plan permite {n} historias por día. Subí de plan para publicar más.']) {
