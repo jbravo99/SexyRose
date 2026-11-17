@@ -86,8 +86,8 @@
     const fav = HH.spFavs ? HH.spFavs().includes(p.userId) : false;
     const ver = `#perfil.${esc(p.slug)}`;
     return `<article class="sh-item${horizontal ? ' sh-h' : ''}" data-i="${i}" aria-label="Video de ${esc(p.displayName)}">
-      <img class="sh-bg" src="${esc(v.poster)}" alt="" aria-hidden="true" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
-      <video class="sh-vid" playsinline muted loop preload="none" disablepictureinpicture disableremoteplayback controlslist="nodownload noplaybackrate" poster="${esc(v.poster)}" data-src="${esc(v.src)}"></video>
+      <img draggable="false" class="sh-bg" src="${esc(v.poster)}" alt="" aria-hidden="true" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">
+      <video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback class="sh-vid" playsinline muted loop preload="none" poster="${esc(v.poster)}" data-src="${esc(v.src)}"></video>
       <button type="button" class="sh-tap" data-action="shSonido" aria-label="${S.muted ? 'Activar sonido' : 'Silenciar'}"></button>
       <span class="sh-snd" aria-hidden="true">${S.muted ? SND_OFF : SND_ON}</span>
       <div class="sh-info">

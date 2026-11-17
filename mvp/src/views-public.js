@@ -1091,7 +1091,7 @@
         </div>
         ${
           isDataUrl(hero.image)
-            ? `<div class="media pub-hero-media"><img src="${hero.image}" alt=""></div>`
+            ? `<div class="media pub-hero-media"><img draggable="false" src="${hero.image}" alt=""></div>`
             : `
         <div class="hero-cards">
           ${ranked

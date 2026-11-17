@@ -362,15 +362,15 @@
     const ar = it.ancho && it.alto ? `aspect-ratio:${it.ancho}/${it.alto};` : '';
     if (it.desbloqueado) {
       const media = it.tipo === 'video'
-        ? `<video src="${esc(archivo(rol, it.id))}" controls playsinline preload="metadata" controlslist="nodownload" disablepictureinpicture style="${ar}"></video>`
-        : `<img src="${esc(archivo(rol, it.id))}" alt="" loading="lazy" decoding="async" style="${ar}">`;
+        ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(archivo(rol, it.id))}" controls playsinline preload="metadata" style="${ar}"></video>`
+        : `<img draggable="false" src="${esc(archivo(rol, it.id))}" alt="" loading="lazy" decoding="async" style="${ar}">`;
       const pie = rol === 'acompanante'
         ? `<span class="badge ${it.pagado ? 'ok' : 'neutral'}">${it.pagado ? 'Pagado' : 'Sin pagar'}</span> ${precio}`
         : `<span class="badge ok">${icon('check')} Pagado</span>`;
       const vence = it.vence ? `<span class="tiny muted"><span>Vence el {x}</span></span>`.replace('{x}', `<span data-noi18n>${esc(HH.fmtDate(it.vence, { day: 'numeric', month: 'long' }))}</span>`) : '';
       return `<div class="ch-item">${media}<div class="row" style="gap:8px;flex-wrap:wrap">${pie} ${vence}</div></div>`;
     }
-    const prev = it.preview ? `<img class="ch-blur" src="${esc(archivo(rol, it.id, true))}" alt="" loading="lazy" decoding="async" style="${ar}">` : '';
+    const prev = it.preview ? `<img draggable="false" class="ch-blur" src="${esc(archivo(rol, it.id, true))}" alt="" loading="lazy" decoding="async" style="${ar}">` : '';
     const lock = `<span class="ch-lock">${icon('lock')}${it.tipo === 'video' ? icon('play') : ''}</span>`;
     const accion = it.pagoEnProceso
       ? `<span class="badge warn">${icon('clock')} Pago en proceso</span><button type="button" class="btn ghost sm" data-action="clVerificarPagos">${icon('refresh')} Actualizar</button>`

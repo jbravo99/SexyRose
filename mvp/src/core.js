@@ -865,7 +865,7 @@ window.HH = (function () {
   HH.PROFILE_LIMITS = { photos: 1000, videos: 500 }; // máximo absoluto; el límite real depende del plan (HH.galleryLimits)
   HH.profileVideos = (p) => (p && Array.isArray(p.videos) ? p.videos : []);
   HH.videoMedia = function (v, opts = {}) {
-    if (v && v.src) return `<video src="${v.src}" ${opts.controls ? 'controls' : 'muted'} playsinline preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>`;
+    if (v && v.src) return `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${v.src}" ${opts.controls ? 'controls' : 'muted'} playsinline preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>`;
     const hue = (v && v.hue) || 300;
     return `<div class="ph" style="background:${HH.hueGradient(hue, true)}">${HH.icon('video')}</div>`;
   };
@@ -915,9 +915,9 @@ window.HH = (function () {
     // Historia en video: arranca sin sonido (como en Instagram); el visor la reproduce y maneja el sonido
     if (st.video && st.src) {
       const horiz = st.w && st.h && st.w > st.h * 1.05;
-      return `${st.poster ? `<img src="${HH.esc(st.poster)}" alt="">` : ''}<video class="story-vid${horiz ? ' h' : ''}" src="${HH.esc(st.src)}"${st.poster ? ` poster="${HH.esc(st.poster)}"` : ''} muted playsinline preload="auto" disablepictureinpicture disableremoteplayback controlslist="nodownload noplaybackrate"></video>`;
+      return `${st.poster ? `<img draggable="false" src="${HH.esc(st.poster)}" alt="">` : ''}<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback class="story-vid${horiz ? ' h' : ''}" src="${HH.esc(st.src)}"${st.poster ? ` poster="${HH.esc(st.poster)}"` : ''} muted playsinline preload="auto"></video>`;
     }
-    return st.src ? `<img src="${st.src}" alt="">` : `<div class="ph" style="background:${HH.hueGradient(hue, true)}"><span class="deco" style="width:60%;height:60%;left:-15%;top:-10%;background:hsl(${(hue + 50) % 360} 90% 85%)"></span><span class="deco" style="width:45%;height:45%;right:-10%;bottom:-5%;background:hsl(${(hue + 310) % 360} 80% 70%)"></span><svg class="silhouette" viewBox="0 0 100 125" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M8 125c2-30 20-46 42-46s40 16 42 46Z"/></svg></div>`;
+    return st.src ? `<img draggable="false" src="${st.src}" alt="">` : `<div class="ph" style="background:${HH.hueGradient(hue, true)}"><span class="deco" style="width:60%;height:60%;left:-15%;top:-10%;background:hsl(${(hue + 50) % 360} 90% 85%)"></span><span class="deco" style="width:45%;height:45%;right:-10%;bottom:-5%;background:hsl(${(hue + 310) % 360} 80% 70%)"></span><svg class="silhouette" viewBox="0 0 100 125" aria-hidden="true"><circle cx="50" cy="42" r="20"/><path d="M8 125c2-30 20-46 42-46s40 16 42 46Z"/></svg></div>`;
   };
   // Visor de historias: modal propio a pantalla completa con barras de progreso y toque para avanzar
   // Visor de historias. Recorre una cola de acompañantes: al terminar las de una, sigue con la siguiente.
@@ -950,13 +950,20 @@ window.HH = (function () {
     const SND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
     const root = document.getElementById('storyRoot') || (() => { const d = document.createElement('div'); d.id = 'storyRoot'; d.className = 'story-root'; document.body.appendChild(d); return d; })();
     const load = (k, fromEnd) => { w = k; p = HH.profileOf(q[w]); list = HH.storiesOf(q[w]); i = fromEnd ? list.length - 1 : 0; };
+    // Su propia historia (o destacada), como en Instagram: "⋯" en la cabecera → Eliminar historia / Quitar de la
+    // destacada → confirmar. Lo decide HH.storyOwnMenu (prod-sitio.js: solo la acompañante con sesión y solo lo suyo;
+    // el servidor igual lo exige). Sin ese gancho (prototipo, demo) no hay menú.
+    // Devuelve null o { label, confirm, okLabel, done, run: () => Promise, extra?: [{ label, icon, run }] }.
+    // extra: opciones que van antes de la de borrar (ej. "Cambiar portada" en sus destacadas): cierran el visor y corren run().
+    const propia = (st) => (HH.storyOwnMenu && st ? HH.storyOwnMenu(st, { workerId: q[w], highlight: hl }) : null);
+    let menu = null; // null | 'menu' | 'confirm' | 'busy'
     const render = () => {
-      const st = list[i]; if (!hl) HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
+      const st = list[i]; menu = null; if (!hl) HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
       const next = q[w + 1] ? HH.profileOf(q[w + 1]) : null;
       const muted = HH.storyMuted !== false;
       root.innerHTML = `<div class="story-view jsbar${st.video ? ' es-video' : ''}">
         <div class="story-bars">${list.map((x, k) => `<span class="${k < i ? 'done' : k === i ? 'cur' : ''}"><i></i></span>`).join('')}</div>
-        <div class="story-head"><button type="button" class="story-who" data-story="profile" aria-label="Ver perfil de ${HH.esc(p.displayName)}">${HH.avatar(p, 36)}<span class="grow"><span class="story-name">${HH.esc(p.displayName)}</span><span class="tiny story-sub">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</span></span></button>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}${st.video ? `<button type="button" class="icon-btn sm story-snd" data-story="sound" aria-label="${muted ? 'Activar sonido' : 'Silenciar'}" aria-pressed="${!muted}">${muted ? SND_OFF : SND_ON}</button>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
+        <div class="story-head"><button type="button" class="story-who" data-story="profile" aria-label="Ver perfil de ${HH.esc(p.displayName)}">${HH.avatar(p, 36)}<span class="grow"><span class="story-name">${HH.esc(p.displayName)}</span><span class="tiny story-sub">${hl ? `<span data-noi18n>${HH.esc(opts.title || '')}</span> · ${HH.fmtDate(st.createdAt)}` : `${HH.timeAgo(st.createdAt)}${p.city ? ' · ' + HH.esc(p.city) : ''}`}</span></span></button>${q.length > 1 ? `<span class="tiny" style="opacity:.7">${w + 1} de ${q.length}</span>` : ''}${st.video ? `<button type="button" class="icon-btn sm story-snd" data-story="sound" aria-label="${muted ? 'Activar sonido' : 'Silenciar'}" aria-pressed="${!muted}">${muted ? SND_OFF : SND_ON}</button>` : ''}${propia(st) ? `<button type="button" class="icon-btn sm story-more" data-story="more" aria-label="Más opciones" aria-haspopup="menu" aria-expanded="false">${HH.icon('more')}</button>` : ''}<button type="button" class="icon-btn sm" data-story="close" aria-label="Cerrar">${HH.icon('x')}</button></div>
         <div class="story-media wm">${HH.storyMedia(st, p)}</div>
         ${st.caption ? `<div class="story-caption"><span data-noi18n>${HH.esc(st.caption)}</span></div>` : ''}
         <div class="story-foot">${hl && opts.highlightId && HH.me() && HH.me().id === q[w] ? `<button type="button" class="btn secondary sm" data-story="hledit">${HH.icon('edit')} Editar destacada</button>` : `<button type="button" class="btn secondary sm" data-story="profile">${HH.icon('user')} Ver perfil</button>`}${HH.canTakeBookings && HH.canTakeBookings(p) && !(HH.me() && HH.me().id === q[w]) ? `<button type="button" class="btn secondary sm" data-story="book">${HH.icon('calendar')} Reservar</button>` : ''}</div>
@@ -1013,7 +1020,40 @@ window.HH = (function () {
       const lab = m ? 'Activar sonido' : 'Silenciar';
       b.innerHTML = m ? SND_OFF : SND_ON; b.setAttribute('aria-label', HH.t ? HH.t(lab) : lab); b.setAttribute('aria-pressed', String(!m));
     };
+    // Menú "⋯" y confirmación: hoja dentro del visor (el modal del sitio queda debajo). Mientras está abierto, la historia
+    // queda en pausa (también el video) y los toques no avanzan; al cerrarlo sigue donde estaba.
+    const pintarMenu = (estado) => {
+      const view = root.querySelector('.story-view'); if (!view) return;
+      const viejo = view.querySelector('.story-sheet'); if (viejo) viejo.remove();
+      const mas = view.querySelector('.story-more');
+      menu = estado;
+      if (mas) mas.setAttribute('aria-expanded', String(estado === 'menu'));
+      if (!estado) { pausar(false); if (mas) mas.focus({ preventScroll: true }); return; }
+      const m = propia(list[i]); if (!m) { menu = null; pausar(false); return; }
+      pausar(true);
+      const d = document.createElement('div');
+      d.className = 'story-sheet' + (estado === 'menu' ? '' : ' confirm');
+      d.innerHTML = `<div class="story-sheet-bg" data-story="menuclose"></div>` + (estado === 'menu'
+        ? `<div class="story-sheet-box" role="menu" aria-label="Opciones">${(m.extra || []).map((x, k) => `<button type="button" class="story-sheet-item" role="menuitem" data-story="extra" data-k="${k}">${x.icon ? HH.icon(x.icon) : ''}<span>${HH.esc(x.label)}</span></button>`).join('')}<button type="button" class="story-sheet-item danger" role="menuitem" data-story="del">${HH.icon('trash')}<span>${HH.esc(m.label)}</span></button><button type="button" class="story-sheet-item" role="menuitem" data-story="menuclose">Cancelar</button></div>`
+        : `<div class="story-sheet-box" role="alertdialog" aria-modal="true" aria-labelledby="storyCfTx"><p class="story-cf-tx" id="storyCfTx">${HH.esc(m.confirm)}</p><div class="story-cf-acts"><button type="button" class="story-sheet-item" data-story="menuclose"${estado === 'busy' ? ' disabled' : ''}>Cancelar</button><button type="button" class="story-sheet-item danger" data-story="delok"${estado === 'busy' ? ' disabled aria-busy="true"' : ''}>${HH.esc(estado === 'busy' ? 'Eliminando…' : m.okLabel)}</button></div></div>`);
+      view.appendChild(d);
+      const f = d.querySelector(estado === 'menu' ? '[role="menuitem"]' : '[data-story="delok"]'); if (f && estado !== 'busy') f.focus({ preventScroll: true });
+    };
+    // Se borró: sigue con su próxima historia (la que quedó en el mismo lugar) o se cierra si no hay más
+    const quitada = (id) => {
+      list = (hl ? list : HH.storiesOf(q[w])).filter(x => x.id !== id);
+      if (!list.length || i >= list.length) { close(); return; }
+      render();
+    };
+    const borrar = async () => {
+      const st = list[i]; const m = propia(st); if (!m || menu === 'busy') return;
+      pintarMenu('busy');
+      try { await m.run(); } catch (e) { pintarMenu(null); HH.toast((e && e.message) || 'No se pudo completar.', { type: 'danger', ms: 4000 }); return; }
+      HH.toast(m.done, { type: 'ok' });
+      if (root.isConnected) quitada(st.id);
+    };
     root.onpointerdown = (ev) => {
+      if (menu) return;
       if (!ev.target.closest('.story-tap, .story-media')) return;
       clearTimeout(holdT); holdT = setTimeout(() => { sostenida = true; pausar(true); }, 200);
     };
@@ -1032,10 +1072,16 @@ window.HH = (function () {
       else if (i < 0) { if (w > 0) load(w - 1, true); else i = 0; }
       render();
     };
-    const onKey = (ev) => { if (ev.key === 'ArrowRight') step(1); else if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'Escape') close(); };
+    const onKey = (ev) => { if (menu) { if (ev.key === 'Escape' && menu !== 'busy') pintarMenu(null); return; } if (ev.key === 'ArrowRight') step(1); else if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     root.onclick = (ev) => { const b = ev.target.closest('[data-story]'); if (!b) return; const a = b.dataset.story; const id = q[w];
       if (tragarClick && (a === 'prev' || a === 'next')) { tragarClick = false; return; }
+      if (a === 'more') { pintarMenu('menu'); return; }
+      if (a === 'menuclose') { if (menu !== 'busy') pintarMenu(null); return; }
+      if (a === 'del') { pintarMenu('confirm'); return; }
+      if (a === 'extra') { const m = propia(list[i]); const x = m && m.extra && m.extra[Number(b.dataset.k)]; close(); if (x) x.run(); return; }
+      if (a === 'delok') { borrar(); return; }
+      if (menu) return;
       if (a === 'sound') { HH.storyMuted = HH.storyMuted === false; if (vid) { vid.muted = HH.storyMuted; if (!vid.muted && vid.paused && !pausada) { const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); } } pintarSonido(); return; }
       if (a === 'close') close(); else if (a === 'prev') step(-1); else if (a === 'next') step(1);
       // Ya está en ese perfil (o en la vista previa de su propio perfil, prod-sitio.js): solo se cierra, no navega
@@ -1053,7 +1099,7 @@ window.HH = (function () {
     const photo = profile && (profile.photos || []).find(x => HH.isImgSrc(x));
     const hue = (profile && profile.hue) || 330;
     const txt = profile ? HH.initials(profile.displayName || profile.name) : '?';
-    return `<span class="avatar ${cls}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px;background:${HH.hueGradient(hue)}">${photo ? `<img src="${photo}" alt="">` : txt}</span>`;
+    return `<span class="avatar ${cls}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px;background:${HH.hueGradient(hue)}">${photo ? `<img draggable="false" src="${photo}" alt="">` : txt}</span>`;
   };
   HH.userAvatar = function (user, size = 40) { const p = HH.profileOf(user.id); if (p) return HH.avatar(p, size); return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px;background:${HH.hueGradient(user.hue || 200)}">${HH.initials(user.name)}</span>`; };
   // Foto de perfil grande (index = posición en photos)
@@ -1062,7 +1108,7 @@ window.HH = (function () {
     const hue = ((profile.hue || 330) + index * 25) % 360;
     const cls = 'media ' + (opts.cls || '') + (opts.fit && src ? ' fit' : '');
     // opts.fit: foto entera sin recorte (cualquier formato) sobre la misma foto desenfocada de fondo
-    const inner = src ? `${opts.fit ? `<img class="ph-bg" src="${src}" alt="" aria-hidden="true">` : ''}<img src="${src}" alt="${HH.esc(profile.displayName)}">` :
+    const inner = src ? `${opts.fit ? `<img draggable="false" class="ph-bg" src="${src}" alt="" aria-hidden="true">` : ''}<img draggable="false" src="${src}" alt="${HH.esc(profile.displayName)}">` :
       `<div class="ph" style="background:${HH.hueGradient(hue, index % 2)}">
          <span class="deco" style="width:55%;height:55%;left:-10%;top:-10%;background:hsl(${(hue + 60) % 360} 90% 85%)"></span>
          <span class="deco" style="width:40%;height:40%;right:-8%;bottom:10%;background:hsl(${(hue + 320) % 360} 80% 70%)"></span>
@@ -1077,7 +1123,7 @@ window.HH = (function () {
     const viewer = HH.viewerId();
     const locked = item.isPremium && !HH.canView(item, viewer) && !opts.noLock;
     const cls = 'media ' + (opts.cls !== undefined ? opts.cls : (item.type === 'short' ? 'tall' : item.type === 'video' ? 'wide' : ''));
-    const inner = item.src ? `<img src="${opts.noWm ? item.src : HH.cdnWatermark(item.src)}" alt="${HH.esc(item.title)}">` :
+    const inner = item.src ? `<img draggable="false" src="${opts.noWm ? item.src : HH.cdnWatermark(item.src)}" alt="${HH.esc(item.title)}">` :
       `<div class="ph" style="background:${HH.hueGradient(hue, item.type === 'video')}">
          <span class="deco" style="width:60%;height:60%;left:-15%;top:-15%;background:hsl(${(hue + 50) % 360} 90% 85%)"></span>
          <span class="deco" style="width:45%;height:45%;right:-10%;bottom:-5%;background:hsl(${(hue + 310) % 360} 80% 70%)"></span>

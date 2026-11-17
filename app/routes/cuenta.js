@@ -673,6 +673,22 @@ export function createCuentaRouter(ctx) {
       if (!f) return fail(res, 400, 'Elegí una foto.');
       res.status(201).json({ ok: true, item: await dest().agregarFoto(req.cuenta.id, req.params.id, f.buffer) });
     }));
+  // Portada (como "Editar portada" de Instagram): uno de sus elementos (PUT { itemId }), una imagen subida aparte
+  // (POST multipart 'foto', mismos límites que las fotos de la destacada) o la automática (DELETE). → { ok, portada }
+  r.put('/destacadas/:id/portada', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => {
+    const itemId = body(req).itemId;
+    if (itemId == null || itemId === '') return fail(res, 400, 'Elegí una foto de la destacada.');
+    if (!UUID_RE.test(String(itemId))) return fail(res, 404, 'No encontramos ese elemento.');
+    res.json(await dest().portadaDeItem(req.cuenta.id, req.params.id, String(itemId)));
+  }));
+  r.post('/destacadas/:id/portada', conCuentaActiva, conDest, idOk('id'), (req, res, next) => (limiteSubidas(req, res) ? next() : null), subir([{ name: 'foto', maxCount: 1 }]),
+    dh(async (req, res) => {
+      rl.hit('up:' + req.cuenta.id);
+      const f = archivo(req, 'foto');
+      if (!f) return fail(res, 400, 'Elegí una imagen.');
+      res.json(await dest().subirPortada(req.cuenta.id, req.params.id, f.buffer));
+    }));
+  r.delete('/destacadas/:id/portada', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => res.json(await dest().portadaAutomatica(req.cuenta.id, req.params.id))));
   r.post('/destacadas/:id/videos', conCuentaActiva, conDest, idOk('id'),
     (req, res, next) => {
       if (!storage.videosHabilitados() || !videos()) return fail(res, 409, 'Los videos se activan cuando el almacenamiento externo está configurado.');

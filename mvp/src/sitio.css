@@ -230,3 +230,11 @@ html[data-prelanzamiento] main#app{padding-bottom:0}
 .sp-vp-btn{flex:none;white-space:nowrap}
 /* Celular: barra más baja (sin la segunda línea) para que no tape el perfil */
 @media(max-width:600px){.sp-vp-in{gap:10px;padding-block:8px}.sp-vp-ic,.sp-vp-sub{display:none}.sp-vp-tx{font-size:13px}.sp-vp-btn{padding-inline:12px}}
+/* Fotos y videos: mantener apretado no abre la vista ampliada ni "Guardar imagen / Abrir en pestaña nueva" (iOS y
+   Android), no se arrastran ni se seleccionan (17/11/2026, pedido de Juan). prod-sitio.js cancela además el menú
+   contextual y el arrastre (mismos selectores en HH.MEDIA_SEL) y pone draggable="false". Los links con foto (tarjetas)
+   tampoco muestran la vista previa de iOS. Los campos de texto quedan como siempre. El admin no usa este CSS. */
+html[data-prod="sitio"] img,html[data-prod="sitio"] video,html[data-prod="sitio"] picture,html[data-prod="sitio"] .media,html[data-prod="sitio"] .avatar,html[data-prod="sitio"] .story-media,html[data-prod="sitio"] .story-view,html[data-prod="sitio"] .story-ring,html[data-prod="sitio"] .pf-thumb,html[data-prod="sitio"] .pf-tile,html[data-prod="sitio"] .lb-stage,html[data-prod="sitio"] .swipe-card,html[data-prod="sitio"] .bn-av,html[data-prod="sitio"] .hl-c,html[data-prod="sitio"] .sh-item,html[data-prod="sitio"] .pc2-media,html[data-prod="sitio"] .sr-hs-prev{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html[data-prod="sitio"] img,html[data-prod="sitio"] video{-webkit-user-drag:none}
+html[data-prod="sitio"] a:has(img,video){-webkit-touch-callout:none}
+html[data-prod="sitio"] input,html[data-prod="sitio"] textarea,html[data-prod="sitio"] select,html[data-prod="sitio"] [contenteditable]{-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}

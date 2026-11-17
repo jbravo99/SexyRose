@@ -367,7 +367,8 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
 - **Historias destacadas** (como Instagram; `lib/destacadas.js`, `db/090-destacadas.sql`): como las historias vencidas
   se borran, una destacada no se arma con historias viejas: la acompañante sube directamente desde su dispositivo lo que
   quiere mostrar (foto o video). No vencen. Cantidad por plan `limites.destacadas`: Bronce 1, Plata 2, Oro 5, Star ∞.
-  Nombre hasta 16 caracteres; portada = primer elemento; hasta 100 elementos por destacada, en el orden en que se
+  Nombre hasta 16 caracteres; portada = la que elige ella (ver "Portada de la destacada" más abajo, 17/11/2026; si no
+  eligió, el primer elemento); hasta 100 elementos por destacada, en el orden en que se
   subieron (sin reordenar). Si baja de plan, en el perfil se ven las primeras que entran (por fecha de creación) y el
   resto queda guardado (`visible: false` en su panel, "no se ve: supera el límite de tu plan").
   - Fotos: el mismo proceso que las fotos de las historias (`d/<id>.webp` + `d/<id>-m.webp`). Videos: la misma cola y
@@ -1267,3 +1268,92 @@ el video. Se publica apenas termine de procesarse.»), se vuelven a pedir `GET y
 
 Front: `HH.storyUploadOn(p)` (prod-sitio.js: hay `S.yo` y, con `p`, es su perfil) y la acción `spStoryAdd`. El MVP y la
 demo no la definen (sin "+"; la demo no tiene cuentas). Pruebas: `app/test/historias-perfil.test.js`.
+
+## Eliminar su historia desde el visor y fotos difíciles de guardar — 17/11/2026 (pedidos de Juan)
+
+**"Desde la misma historia, al verla el/la acompañante debe poder eliminarla, al igual que en Instagram."**
+- Visor de historias (`core.js`, `HH.openStories`): "⋯" en la cabecera, antes de la X (`.story-more`, «Más opciones»),
+  solo cuando es suya. Lo decide `HH.storyOwnMenu(st, { workerId, highlight })` (`prod-sitio.js`): acompañante con
+  sesión (`S.yo`), la historia y la acompañante del visor son de su cuenta. Nunca para visitantes, clientes ni en
+  historias de otra. Sin ese gancho (prototipo, demo) no hay menú.
+- Toque en "⋯": hoja abajo dentro del visor «Eliminar historia» / «Cancelar» → confirmación «¿Eliminar esta historia?
+  No se puede deshacer.» (Cancelar / Eliminar → «Eliminando…») → `DELETE /api/cuenta/historias/:id` (la del panel) →
+  aviso «Historia eliminada.» → el visor sigue con su próxima historia o se cierra si no quedan; se vuelven a pedir sus
+  datos y lo que se ve (sitio: anillo del perfil y fila del inicio; vista previa). Vale desde su perfil, la vista previa
+  y la fila del inicio (si veía la cola del inicio y no le quedan, se cierra).
+- Sus destacadas: «Quitar de la destacada» → «¿Quitar esto de la destacada? Se borra la foto o el video y no se puede
+  deshacer.» (Cancelar / Quitar) → `DELETE /api/cuenta/destacadas/items/:id` (la del panel; el elemento se subió solo
+  para esa destacada, así que se borra con su archivo) → «Quitado de la destacada.». Si era el último, se cierra y la
+  destacada deja de verse (las vacías no se muestran).
+- Con la hoja o la confirmación abiertas la historia queda en pausa (barra y video); los toques no avanzan, mantener
+  apretado no la reanuda, Escape cierra la hoja (no el visor). Si el servidor responde error: aviso rojo y sigue.
+- El servidor ya exigía que sea suya (`WHERE id = $1 AND cuenta_id = $2` → 404 «Historia no encontrada.» /
+  «No encontramos ese elemento.»; sin sesión 401). La hoja va dentro del visor (z 200; el modal del sitio queda
+  debajo) y los avisos (`.toast-root`) pasan a z-index 220 para verse encima de los visores.
+- Textos en inglés y portugués (`prod-sitio.js`).
+
+**"Que las fotos no se puedan abrir en pestañas aparte ni que se puedan descargar."** (mantener apretado la foto de
+perfil la ampliaba y dejaba guardarla). En todo el sitio y la demo (inicio, fila de historias, tarjetas, perfil y su
+avatar, visor de fotos, historias y destacadas, shorts, swipe, Cerca, barra inferior, contenido comprado y el panel):
+- `sitio.css`: `-webkit-touch-callout:none; -webkit-user-select:none; user-select:none` en `img`, `video`, `picture`
+  y sus contenedores (`.media`, `.avatar`, `.story-media`, `.story-view`, `.story-ring`, `.pf-thumb`, `.pf-tile`,
+  `.lb-stage`, `.swipe-card`, `.bn-av`, `.hl-c`, `.sh-item`, `.pc2-media`, `.sr-hs-prev`); `-webkit-user-drag:none` en
+  fotos y videos; los links con foto (tarjetas) tampoco muestran la vista previa de iOS. `input`, `textarea`, `select`
+  y `[contenteditable]` vuelven a lo normal.
+- `prod-sitio.js`: un listener en captura cancela `contextmenu` (clic derecho; Android: "Descargar imagen", "Abrir en
+  pestaña nueva") y `dragstart` sobre fotos, videos y esos contenedores (`HH.MEDIA_SEL`, los mismos del CSS); nunca en
+  campos de texto. No toca `touchstart`/`pointerdown`: tocar, deslizar y desplazarse siguen igual. Un MutationObserver
+  pone `draggable="false"` en cada `<img>` y en cada `<video>` `controlslist="nodownload noplaybackrate
+  noremoteplayback"`, `disablepictureinpicture` y `disableremoteplayback`, también en lo que se dibuje después.
+- Plantillas: todas las `<img>` del sitio llevan `draggable="false"` y todos los `<video>` esos tres atributos (los
+  `alt` quedan). Ningún link apunta al archivo de una foto o un video (el visor se abre con botones).
+- Admin: no carga `sitio.css` ni este listener; ahí se siguen abriendo las fotos en otra pestaña. Solo cambia que los
+  helpers compartidos de `core.js` (avatar, foto, miniatura, video) dibujan `draggable="false"` y el video sin descarga.
+- Límite (dicho a Juan): es disuasivo. No evita capturas de pantalla ni que alguien copie la dirección del archivo
+  desde el código o la red: las fotos y videos públicos son archivos del CDN con marca de agua. La entrega del
+  servidor/CDN no cambió.
+
+Pruebas: `app/test/historia-borrar-proteccion.test.js` (visor en una caja: "⋯" solo con el gancho y en lo suyo;
+`HH.storyOwnMenu` con y sin sesión, rutas y textos; servidor: lo de otra → 404 y sigue, sin sesión → 401, lo suyo se
+borra; CSS, `draggable`, atributos de video y links a archivos en las plantillas y en el paquete armado).
+
+## Portada de la destacada — 17/11/2026 (pedido de Juan)
+
+**"La persona deberá tener la posibilidad de poner la imagen que quieran de perfil de la historia destacada."** Como
+"Editar portada" de Instagram: la acompañante elige la imagen del círculo de cada destacada.
+- Tres opciones (`lib/destacadas.js`, `db/250-destacada-portada.sql`: `destacadas.portada_item`, `portada_clave`,
+  `portada_url`; nunca las dos a la vez):
+  - **Automática** (la de antes y la de siempre si no elige): el primer elemento listo; si es un video, su portada.
+  - **Uno de sus elementos**: una foto de ESA destacada, o un video ya listo (se usa su portada `urlMini`). Si ese
+    elemento se borra, vuelve la automática (FK `ON DELETE SET NULL`).
+  - **Imagen subida aparte**: mismo proceso que las fotos públicas (gira según EXIF, sin metadatos ni ubicación, marca
+    de agua, mismos topes: 12 MB, 40 MP, mínimo 200 × 200 px) y recortada al centro en un cuadrado de hasta 480 px
+    (`procesarPortada` en `lib/imagenes.js`; no se agranda). Almacenamiento público `d/p-<uuid>.webp`. El archivo se
+    borra al cambiar la portada, al volver a la automática y al borrar la destacada (también desde el admin).
+  - Sin elección de posición: recorte al centro (el círculo muestra lo mismo que el cuadrado guardado).
+- API (`/api/cuenta`, sesión de acompañante activa, mismo origen + X-SR: 1). Todas → `{ ok, portada }`:
+  - `PUT /destacadas/:id/portada {itemId}`: el elemento tiene que ser de esa destacada y de su cuenta → si no, 404
+    «No encontramos ese elemento.»; sin `itemId` 400 «Elegí una foto de la destacada.»; un video que se procesa o falló
+    400 «Elegí una foto o un video que ya esté listo.».
+  - `POST /destacadas/:id/portada` (multipart `foto`): mismo límite de subidas por hora que las fotos (60); sin archivo
+    400 «Elegí una imagen.»; imagen inválida 400 con el mensaje de siempre; destacada ajena 404 (no se guarda nada).
+  - `DELETE /destacadas/:id/portada`: vuelve a la automática.
+  - Destacada ajena o inexistente: 404 «No encontramos esa destacada.».
+- Datos: `GET /destacadas` y `GET /yo` → cada destacada suma `portada`: `null` (automática) ·
+  `{ tipo: 'item', itemId, url }` · `{ tipo: 'subida', url }`. `GET /api/sitio/estado` y `GET /api/cuenta/vista-previa`
+  → `perfiles[].destacadas[].portada`: la URL de la elegida o `null` (automática). La demo no la manda: automática.
+- Front (`prod-sitio.js`): `buildDb` pone `cover` en cada destacada y `HH.highlightCover` lo usa (si no, el primer
+  elemento). Panel → Historias → cada destacada: círculo con la portada actual, «La elegiste vos.» / «Automática: la
+  primera foto o video.» y «Cambiar portada» → hoja «Portada de la destacada»: vista previa en el círculo, «Elegí una de
+  esta destacada» (sus fotos y videos listos; la subida actual marcada «Actual»), «Subir otra imagen» (se ve en la
+  grilla como «Nueva» antes de guardar), «Usar la automática» (solo si eligió una; se aplica en el momento) y
+  Cancelar / Guardar. Visor de historias en SUS destacadas: el «⋯» suma «Cambiar portada» (antes de «Quitar de la
+  destacada»): cierra el visor y abre la misma hoja con lo que estaba mirando ya elegido (`core.js`: el menú propio
+  acepta `extra: [{ label, icon, run }]`). Al guardar se vuelven a pedir sus datos y lo que se ve (sitio o vista previa).
+- Textos en inglés y portugués en `prod-sitio.js` (incluidos los mensajes nuevos del servidor).
+
+Pruebas: `app/test/destacada-portada.test.js` (automática por defecto; elegir un elemento → panel, sitio y vista previa;
+subida: WebP cuadrado sin EXIF, una chica no se agranda, reemplazar / pasar a un elemento / volver a la automática borra
+el archivo, inválida o chica → 400 sin archivo; elemento de otra destacada, de otra acompañante, inexistente, sin
+terminar o destacada ajena → 404/400; video listo usa su portada; borrar el elemento elegido → automática; borrar la
+destacada con portada de elemento o subida → se borra todo).

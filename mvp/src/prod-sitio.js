@@ -145,8 +145,9 @@
   // Sin "+ Nueva" ni edición desde el perfil (eso va en el panel). No vencen ni se marcan como vistas.
   const hlRow0 = HH.highlightsRow;
   HH.highlightItems = (h) => (h && h.items) || [];
-  // Portada: el primer elemento; si es un video, su portada como foto (no se carga el video en el círculo)
-  HH.highlightCover = (h) => { const c = HH.highlightItems(h)[0]; return c ? (c.video ? { id: c.id, src: c.poster, hue: c.hue } : c) : null; };
+  // Portada: la que eligió (h.cover: un elemento suyo o una imagen subida aparte, perfiles[].destacadas[].portada);
+  // si no eligió, el primer elemento; si es un video, su portada como foto (no se carga el video en el círculo)
+  HH.highlightCover = (h) => { if (h && h.cover) return h.cover; const c = HH.highlightItems(h)[0]; return c ? (c.video ? { id: c.id, src: c.poster, hue: c.hue } : c) : null; };
   HH.highlightsOf = (workerId) => HH.highlights().filter((h) => h.workerId === workerId && HH.highlightItems(h).length);
   HH.visibleHighlights = HH.highlightsOf;
   HH.highlightsRow = (p) => (hlRow0 && p ? hlRow0(p, false) : '');
@@ -348,16 +349,16 @@
     const src = chica && mini ? mini : raw;
     // El swipe (fit) es lo primero que se ve: carga con prioridad; el resto, diferida.
     const lazy = opts.eager || opts.fit ? ' fetchpriority="high"' : ' loading="lazy"';
-    const bg = opts.fit ? `<img class="ph-bg" src="${HH.esc(mini || raw)}" alt="" aria-hidden="true"${lazy} decoding="async">` : '';
-    return `<div class="media ${cls}${opts.fit ? ' fit' : ''}${opts.noWm ? '' : ' wm'}" style="${opts.style || ''}">${bg}<img src="${HH.esc(src)}" alt="${HH.esc(HH.fotoAlt(profile, index))}"${lazy} decoding="async">${opts.children || ''}</div>`;
+    const bg = opts.fit ? `<img draggable="false" class="ph-bg" src="${HH.esc(mini || raw)}" alt="" aria-hidden="true"${lazy} decoding="async">` : '';
+    return `<div class="media ${cls}${opts.fit ? ' fit' : ''}${opts.noWm ? '' : ' wm'}" style="${opts.style || ''}">${bg}<img draggable="false" src="${HH.esc(src)}" alt="${HH.esc(HH.fotoAlt(profile, index))}"${lazy} decoding="async">${opts.children || ''}</div>`;
   };
 
   /* ---------- Videos (bunny.net): portada en las miniaturas, video solo en el visor ---------- */
   HH.videoMedia = function (v, opts = {}) {
     if (!v || !v.src) return `<div class="ph" style="background:${HH.hueGradient((v && v.hue) || 300, true)}">${HH.icon('video')}</div>`;
     const poster = v.poster ? HH.esc(v.poster) : '';
-    if (!opts.controls) return poster ? `<img src="${poster}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : `<video src="${HH.esc(v.src)}" muted playsinline preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>`;
-    return `<video src="${HH.esc(v.src)}"${poster ? ` poster="${poster}"` : ''} controls playsinline preload="metadata" controlslist="nodownload" disablepictureinpicture style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000"></video>`;
+    if (!opts.controls) return poster ? `<img draggable="false" src="${poster}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${HH.esc(v.src)}" muted playsinline preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>`;
+    return `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${HH.esc(v.src)}"${poster ? ` poster="${poster}"` : ''} controls playsinline preload="metadata" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000"></video>`;
   };
 
   /* ---------- API ---------- */
@@ -446,11 +447,13 @@
     // Historias con foto o video (video: src = MP4, poster = portada, dur = segundos)
     db.stories = (e.historias || []).map((h) => ({ id: h.id, workerId: h.cuentaId, src: h.url, caption: h.texto || '', hue: hash(h.id) % 360, views: 0, createdAt: h.creado, expiresAt: h.expira,
       ...(h.tipo === 'video' ? { video: true, poster: h.urlMini || '', dur: Number(h.segundos) || 0, w: h.ancho || 0, h: h.alto || 0 } : {}) }));
-    // Destacadas: cada elemento con la forma de una historia (video: src = MP4, poster = portada, dur = segundos)
+    // Destacadas: cada elemento con la forma de una historia (video: src = MP4, poster = portada, dur = segundos).
+    // cover: la portada que eligió (null = la automática, el primer elemento). highlightId: para "Cambiar portada" en el visor.
     db.highlights = [];
     (e.perfiles || []).forEach((x) => (x.destacadas || []).forEach((d) => db.highlights.push({
       id: d.id, workerId: x.cuentaId, title: d.titulo, createdAt: d.creado,
-      items: (d.items || []).map((it) => ({ id: it.id, workerId: x.cuentaId, src: it.url, caption: '', hue: hash(it.id) % 360, createdAt: it.creado, expiresAt: far,
+      cover: d.portada ? { id: 'hlp_' + d.id, src: d.portada, hue: hash(d.id) % 360 } : null,
+      items: (d.items || []).map((it) => ({ id: it.id, workerId: x.cuentaId, highlightId: d.id, src: it.url, caption: '', hue: hash(it.id) % 360, createdAt: it.creado, expiresAt: far,
         ...(it.tipo === 'video' ? { video: true, poster: it.urlMini || '', dur: Number(it.segundos) || 0, w: it.ancho || 0, h: it.alto || 0 } : {}) })),
     })));
     const aj = e.ajustes || {};
@@ -585,7 +588,7 @@
       let ultimo;
       if (logged) {
         const p = (S.yo && S.yo.perfil) || {}; const f = (p.fotos || [])[0];
-        const avatar = f ? `<span class="bn-av"><img src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
+        const avatar = f ? `<span class="bn-av"><img draggable="false" src="${esc(f.urlMini || f.url)}" alt="" width="26" height="26" decoding="async"></span>` : `<span class="bn-av bn-av-ini">${esc(HH.initials((yoDatos() || {}).displayName || 'SR'))}</span>`;
         // Punto de aviso: el perfil necesita algo de ella (rechazado o verificación rechazada)
         ultimo = { h: '#panel', l: 'Mi panel', html: avatar, dot: p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0 };
       } else ultimo = { h: '#favoritos', l: 'Tu espacio', i: 'user', dot: !!(HH.spClientes && HH.spClientes.noLeidos() > 0) };
@@ -805,7 +808,7 @@
     try { SU.url = URL.createObjectURL(f); } catch (e) { SU.url = ''; }
     const q = histQuedan(); const pub = S.yo.perfil.estado === 'publicado';
     const prev = !SU.url ? `<div class="ph" style="background:${HH.hueGradient(hash(S.yo.id) % 360, true)}"></div>`
-      : esVideo ? `<video src="${esc(SU.url)}" muted playsinline autoplay loop></video>` : `<img src="${esc(SU.url)}" alt="">`;
+      : esVideo ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(SU.url)}" muted playsinline autoplay loop></video>` : `<img draggable="false" src="${esc(SU.url)}" alt="">`;
     HH.modal({
       title: 'Nueva historia',
       body: `<div class="sr-hs">
@@ -850,6 +853,98 @@
     HH.renderShell();
   }
   Object.assign(HH.actions, { spStoryAdd: () => storyAdd() });
+
+  /* ---------- Eliminar su historia desde el visor (17/11/2026, pedido de Juan: "al igual que en Instagram") ----------
+     Solo la acompañante con sesión (S.yo) y solo lo suyo: "⋯" en la cabecera del visor (core.js) → "Eliminar historia"
+     (o "Quitar de la destacada" en sus destacadas) → confirmar. Misma API que el panel: DELETE /api/cuenta/historias/:id
+     y DELETE /api/cuenta/destacadas/items/:id (el servidor exige que sea de su cuenta). Al terminar el visor sigue con
+     la próxima o se cierra, y se vuelven a pedir sus datos y lo que se ve (sitio o vista previa: anillo y fila del inicio). */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Más opciones': ['More options', 'Mais opções'],
+    'Opciones': ['Options', 'Opções'],
+    'Eliminar historia': ['Delete story', 'Excluir story'],
+    '¿Eliminar esta historia? No se puede deshacer.': ['Delete this story? This cannot be undone.', 'Excluir este story? Não dá para desfazer.'],
+    'Eliminar': ['Delete', 'Excluir'],
+    'Eliminando…': ['Deleting…', 'Excluindo…'],
+    'Historia eliminada.': ['Story deleted.', 'Story excluído.'],
+    'Quitar de la destacada': ['Remove from highlight', 'Remover do destaque'],
+    '¿Quitar esto de la destacada? Se borra la foto o el video y no se puede deshacer.': ['Remove this from the highlight? The photo or video is deleted and this cannot be undone.', 'Remover isto do destaque? A foto ou o vídeo é apagado e não dá para desfazer.'],
+    'Quitar': ['Remove', 'Remover'],
+    'Quitado de la destacada.': ['Removed from the highlight.', 'Removido do destaque.'],
+  });
+  const esPropia = (st, c) => !!(S.yo && S.yo.id && st && st.id && c && c.workerId === S.yo.id && (!st.workerId || st.workerId === S.yo.id));
+  HH.storyOwnMenu = (st, c) => {
+    if (!esPropia(st, c)) return null;
+    if (c.highlight) {
+      // "Cambiar portada" (si la destacada está entre las suyas), con lo que estaba mirando ya elegido
+      const hid = st.highlightId; const suya = hid && (S.yo.destacadas || []).some((d) => d.id === hid);
+      return { label: 'Quitar de la destacada', confirm: '¿Quitar esto de la destacada? Se borra la foto o el video y no se puede deshacer.', okLabel: 'Quitar', done: 'Quitado de la destacada.', run: () => borrarPropia(st, true),
+        extra: suya ? [{ label: 'Cambiar portada', icon: 'image', run: () => abrirPortada(hid, st.id) }] : [] };
+    }
+    return { label: 'Eliminar historia', confirm: '¿Eliminar esta historia? No se puede deshacer.', okLabel: 'Eliminar', done: 'Historia eliminada.', run: () => borrarPropia(st, false) };
+  };
+  async function borrarPropia(st, destacada) {
+    await api('DELETE', (destacada ? '/cuenta/destacadas/items/' : '/cuenta/historias/') + encodeURIComponent(st.id));
+    // Fuera de lo que se ve ya mismo (el visor sigue sin esperar la recarga)
+    if (HH.db) {
+      if (destacada) (HH.db.highlights || []).forEach((h) => { h.items = (h.items || []).filter((x) => x.id !== st.id); });
+      else HH.db.stories = (HH.db.stories || []).filter((x) => x.id !== st.id);
+    }
+    recargarPropias();
+  }
+  async function recargarPropias() {
+    await loadYo(true, true);
+    if (esVP(HH.currentHash())) { await loadVP(); return; }
+    await loadEstado();
+    if (!document.getElementById('modalRoot').classList.contains('open')) HH.refresh();
+    HH.renderShell();
+  }
+
+  /* ---------- Fotos y videos: que no se abran aparte ni se descarguen con un toque largo (17/11/2026, pedido de Juan) ----------
+     "Al mantener presionado la foto de perfil, la misma se expande y se puede descargar." En todo el sitio (inicio, perfil,
+     visor de fotos, tarjetas, historias, shorts, swipe, Cerca, avatares y el panel de la acompañante):
+       - CSS (sitio.css): -webkit-touch-callout:none + user-select:none en fotos, videos y sus contenedores (iOS: sin la
+         vista ampliada ni "Guardar en Fotos"); -webkit-user-drag:none.
+       - Acá: un solo listener (en captura) que cancela el menú contextual (clic derecho; Android: "Descargar imagen",
+         "Abrir en pestaña nueva") y el arrastre sobre fotos y videos; draggable="false" en cada <img> y en cada <video>
+         controlslist="nodownload noplaybackrate noremoteplayback", disablepictureinpicture y disableremoteplayback,
+         también en los que se dibujen después (las plantillas ya los traen; esto cubre cualquiera que falte).
+     Tocar, deslizar y desplazarse siguen igual (no se cancela ni touchstart ni pointerdown); campos de texto, sin cambios.
+     Es disuasivo: no evita capturas de pantalla ni que alguien lea la dirección del archivo en el código o en la red
+     (las fotos públicas llevan la marca de agua). El admin no carga este archivo: ahí se siguen abriendo las fotos. */
+  const MEDIA_SEL = 'img,video,picture,.media,.avatar,.story-media,.story-view,.story-ring,.pf-thumb,.pf-tile,.lb-stage,.swipe-card,.bn-av,.hl-c,.sh-item,.pc2-media,.sr-hs-prev';
+  HH.MEDIA_SEL = MEDIA_SEL;
+  const VIDEO_ATR = [['controlslist', 'nodownload noplaybackrate noremoteplayback'], ['disablepictureinpicture', ''], ['disableremoteplayback', '']];
+  const esCampo = (t) => !!(t.closest('input,textarea,select,[contenteditable=""],[contenteditable="true"]'));
+  // Arrastrar una tarjeta (link con foto) tampoco: el navegador arrastraría la foto junto con el link
+  const sobreMedia = (t, conLink) => {
+    if (!t || !t.closest || esCampo(t)) return false;
+    if (t.closest(MEDIA_SEL)) return true;
+    const a = conLink && t.closest('a[href]'); return !!(a && a.querySelector('img,video'));
+  };
+  const protegerMedia = (ev) => { if (sobreMedia(ev.target, ev.type === 'dragstart')) ev.preventDefault(); };
+  function blindarMedia(raiz) {
+    if (!raiz || raiz.nodeType !== 1) return;
+    const imgs = raiz.tagName === 'IMG' ? [raiz] : raiz.querySelectorAll('img:not([draggable="false"])');
+    imgs.forEach((im) => { if (im.getAttribute('draggable') !== 'false') im.setAttribute('draggable', 'false'); });
+    const vids = raiz.tagName === 'VIDEO' ? [raiz] : raiz.querySelectorAll('video');
+    vids.forEach((v) => VIDEO_ATR.forEach(([k, val]) => { if (v.getAttribute(k) !== val) v.setAttribute(k, val); }));
+  }
+  HH.blindarMedia = blindarMedia;
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('contextmenu', protegerMedia, true);
+    document.addEventListener('dragstart', protegerMedia, true);
+    if (typeof MutationObserver !== 'undefined') {
+      const pend = new Set(); let prog = false;
+      new MutationObserver((muts) => {
+        muts.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) pend.add(n); }));
+        if (prog || !pend.size) return; prog = true;
+        queueMicrotask(() => { prog = false; pend.forEach((n) => { if (n.isConnected) blindarMedia(n); }); pend.clear(); });
+      }).observe(document.documentElement, { childList: true, subtree: true });
+      const ini = () => blindarMedia(document.body);
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini();
+    }
+  }
   if (typeof document !== 'undefined' && !document.getElementById('sr-hs-css')) {
     const st = document.createElement('style'); st.id = 'sr-hs-css';
     st.textContent = `
@@ -960,7 +1055,7 @@
   // Su foto principal (la primera, versión pública chica) o sus iniciales: barra lateral del panel y círculo del encabezado
   function avatarYo(size) {
     const f = (S.yo.perfil.fotos || [])[0]; const d = yoDatos();
-    return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px;background:${HH.hueGradient(hash(S.yo.id) % 360)}">${f ? `<img src="${esc(f.urlMini || f.url)}" alt="" width="${size}" height="${size}" decoding="async">` : `<span data-noi18n>${esc(HH.initials(d.displayName || 'SR'))}</span>`}</span>`;
+    return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px;background:${HH.hueGradient(hash(S.yo.id) % 360)}">${f ? `<img draggable="false" src="${esc(f.urlMini || f.url)}" alt="" width="${size}" height="${size}" decoding="async">` : `<span data-noi18n>${esc(HH.initials(d.displayName || 'SR'))}</span>`}</span>`;
   }
   function panelLayout(tab, main) {
     const p = S.yo.perfil; const d = yoDatos();
@@ -1252,7 +1347,7 @@
         <div class="row between"><div class="card-title">${fotos.length} / ${max}</div>${fotos.length < max ? `<label class="btn sm${up ? ' disabled' : ''}" id="spFotosUp">${icon('upload')} Subir fotos<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple class="sr-only" data-change="spFotosFile"${up ? ' disabled' : ''}></label>` : badge('neutral', 'Llegaste al límite de tu plan')}</div>
         ${up ? `<div class="sp-prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(up.p * 100)}"><i style="width:${Math.round(up.p * 100)}%"></i></div><div class="small muted">Subiendo ${up.i} de ${up.n}…</div>` : ''}
         ${fotos.length ? `<div class="sp-fotos">${fotos.map((f, i) => `<div class="sp-foto${i === 0 ? ' main' : ''}">
-            <div class="media sp-fmedia"><img src="${esc(f.urlMini || f.url)}" alt="Foto ${i + 1}" loading="lazy">${i === 0 ? `<span class="badge ok sp-main">${icon('star')} Principal</span>` : ''}</div>
+            <div class="media sp-fmedia"><img draggable="false" src="${esc(f.urlMini || f.url)}" alt="Foto ${i + 1}" loading="lazy">${i === 0 ? `<span class="badge ok sp-main">${icon('star')} Principal</span>` : ''}</div>
             ${i === 0 ? `<span class="sp-fmain small">Se ve primero</span>` : `<button type="button" class="btn secondary sm sp-fprin" data-action="spFotoPrincipal" data-id="${esc(f.id)}">Hacer principal</button>`}
             <div class="sp-fact">
               <button type="button" class="icon-btn sm" data-action="spFotoMover" data-id="${esc(f.id)}" data-dir="-1" aria-label="Mover antes" title="Mover antes"${i === 0 ? ' disabled' : ''}>${icon('chevronLeft')}</button>
@@ -1277,7 +1372,7 @@
         <div class="row between"><div><div class="card-title">Videos · ${usados} / ${max}</div><div class="small muted">Hasta 30 segundos y 95 MB. Les agregamos la marca de agua y les sacamos los datos de ubicación.</div></div>${usados < max ? `<label class="btn sm${up ? ' disabled' : ''}">${icon('upload')} Subir video<input type="file" accept="video/mp4,video/quicktime,video/webm,video/3gpp,.mp4,.mov,.webm,.3gp" class="sr-only" data-change="spVideoFile"${up ? ' disabled' : ''}></label>` : badge('neutral', 'Llegaste al límite de tu plan')}</div>
         ${up ? `<div class="sp-prog sp-vprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(up.p * 100)}"><i style="width:${Math.round(up.p * 100)}%"></i></div><div class="small muted">Subiendo video… <span class="num" id="spVidPct">${Math.round(up.p * 100)}</span>%</div>` : ''}
         ${vids.length ? `<div class="sp-fotos">${vids.map((v) => { const k = listos.indexOf(v); return `<div class="sp-foto">
-            <div class="media sp-fmedia">${v.poster ? `<img src="${esc(v.poster)}" alt="Video" loading="lazy">` : `<div class="ph" style="background:${HH.hueGradient(hash(v.id) % 360, true)}">${icon('video')}</div>`}${v.segundos ? `<span class="pub-vbadge">${icon('play')} ${Math.round(v.segundos)}s</span>` : ''}${est(v)}</div>
+            <div class="media sp-fmedia">${v.poster ? `<img draggable="false" src="${esc(v.poster)}" alt="Video" loading="lazy">` : `<div class="ph" style="background:${HH.hueGradient(hash(v.id) % 360, true)}">${icon('video')}</div>`}${v.segundos ? `<span class="pub-vbadge">${icon('play')} ${Math.round(v.segundos)}s</span>` : ''}${est(v)}</div>
             <div class="sp-fact">
               <button type="button" class="icon-btn sm" data-action="spVideoMover" data-id="${esc(v.id)}" data-dir="-1" aria-label="Mover antes" title="Mover antes"${k > 0 ? '' : ' disabled'}>${icon('chevronLeft')}</button>
               <button type="button" class="icon-btn sm" data-action="spVideoMover" data-id="${esc(v.id)}" data-dir="1" aria-label="Mover después" title="Mover después"${k >= 0 && k < listos.length - 1 ? '' : ' disabled'}>${icon('chevronRight')}</button>
@@ -1361,7 +1456,7 @@
     const conVideo = !!S.yo.videosHabilitados;
     const hEst = (h) => (h.estado === 'procesando' ? `<div class="sp-vstate"><span class="sp-spin" aria-hidden="true"></span><span>Procesando…</span></div>`
       : h.estado === 'error' ? `<div class="sp-vstate err">${icon('alert')}<span data-noi18n>${esc(h.error || 'No se pudo procesar.')}</span></div>` : '');
-    const hMini = (h) => (h.urlMini ? `<img src="${esc(h.urlMini)}" alt="" loading="lazy">` : `<div class="ph" style="background:${HH.hueGradient(hash(h.id) % 360, true)}"></div>`)
+    const hMini = (h) => (h.urlMini ? `<img draggable="false" src="${esc(h.urlMini)}" alt="" loading="lazy">` : `<div class="ph" style="background:${HH.hueGradient(hash(h.id) % 360, true)}"></div>`)
       + (h.tipo === 'video' && h.segundos ? `<span class="pub-vbadge">${icon('play')} ${Math.round(h.segundos)}s</span>` : '') + hEst(h);
     return head('Historias', 'Tus historias', 'Duran 24 horas y aparecen en el inicio con tu anillo. Lo mejor para mostrar tu día.') + `
       ${pub ? '' : `<div class="notice info">${icon('info')}<span>Tus historias se ven en el sitio cuando tu perfil esté publicado.</span></div>`}
@@ -1429,6 +1524,11 @@
           <button type="button" class="btn danger sm" data-action="spDestBorrar" data-id="${esc(d.id)}">${icon('trash')} Borrar destacada</button>
         </form>
         ${d.visible === false ? `<div class="tiny" style="color:var(--warn)">${icon('alert')} <span>no se ve: supera el límite de tu plan</span></div>` : ''}
+        <div class="row sp-pt-row" style="gap:12px;align-items:center">
+          <span class="hl-c sm" aria-hidden="true"><span class="hl-in">${ptImg(ptSrc(d, d.portada ? (d.portada.tipo === 'subida' ? 'subida' : d.portada.itemId) : 'auto'), d.id)}</span></span>
+          <div class="grow" style="min-width:0"><div class="small" style="font-weight:600">Portada</div><div class="tiny muted">${d.portada ? 'La elegiste vos.' : 'Automática: la primera foto o video.'}</div></div>
+          <button type="button" class="btn secondary sm" data-action="spDestPortada" data-id="${esc(d.id)}">${icon('image')} Cambiar portada</button>
+        </div>
         ${(d.items || []).length ? `<div class="sp-hist">${d.items.map((it) => `<div class="card pad-sm sp-h"><div class="media tall">${hMini(it)}</div><div class="row between tiny muted"><span></span><button type="button" class="btn danger sm" data-action="spDestItemBorrar" data-id="${esc(it.id)}">Borrar</button></div></div>`).join('')}</div>`
           : `<p class="small muted" style="margin:0">Todavía no tiene fotos ni videos.</p>`}
         <form class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end" data-submit="spDestSubir" data-id="${esc(d.id)}" novalidate>
@@ -1447,6 +1547,159 @@
         </form>${fieldErr('spDErr')}`}
       </div>
       ${ds.map(card).join('')}`;
+  }
+
+  /* ---- Portada de cada destacada (17/11/2026, pedido de Juan: "La persona deberá tener la posibilidad de poner la
+     imagen que quieran de perfil de la historia destacada", como "Editar portada" de Instagram) ----
+     Panel (Historias → Destacadas → "Cambiar portada") y el "⋯" del visor en sus destacadas: una hoja con la vista previa
+     en el círculo, sus fotos y videos listos para elegir (el video aporta su portada), "Subir otra imagen" y "Guardar";
+     "Usar la automática" (solo si eligió una) vuelve al primer elemento en el momento. Recorte al centro (el servidor la
+     guarda cuadrada; en el círculo se ve igual). API: PUT/POST/DELETE /api/cuenta/destacadas/:id/portada (lib/destacadas.js). */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Cambiar portada': ['Change cover', 'Alterar capa'],
+    'La elegiste vos.': ['You chose it.', 'Você escolheu.'],
+    'Automática: la primera foto o video.': ['Automatic: the first photo or video.', 'Automática: a primeira foto ou vídeo.'],
+    'Portada de la destacada': ['Highlight cover', 'Capa do destaque'],
+    'Así se ve en tu perfil.': ['This is how it looks on your profile.', 'É assim que aparece no seu perfil.'],
+    'Elegí una de esta destacada': ['Choose one from this highlight', 'Escolha uma deste destaque'],
+    'Subir otra imagen': ['Upload another image', 'Enviar outra imagem'],
+    'JPG, PNG, WebP o HEIC, hasta 12 MB. Se muestra en un círculo, recortada al centro.': ['JPG, PNG, WebP or HEIC, up to 12 MB. It shows in a circle, cropped to the center.', 'JPG, PNG, WebP ou HEIC, até 12 MB. Aparece em um círculo, recortada no centro.'],
+    'Usar la automática': ['Use the automatic one', 'Usar a automática'],
+    'Actual': ['Current', 'Atual'],
+    'Usar de portada': ['Use as cover', 'Usar como capa'],
+    'Portada guardada.': ['Cover saved.', 'Capa salva.'],
+    'Volvió la portada automática.': ['The automatic cover is back.', 'A capa automática voltou.'],
+    'Guardando…': ['Saving…', 'Salvando…'],
+    // Mensajes del servidor (routes/cuenta.js, lib/destacadas.js)
+    'Elegí una foto de la destacada.': ['Choose a photo from the highlight.', 'Escolha uma foto do destaque.'],
+    'Elegí una imagen.': ['Choose an image.', 'Escolha uma imagem.'],
+    'Elegí una foto o un video que ya esté listo.': ['Choose a photo or a video that is already ready.', 'Escolha uma foto ou um vídeo que já esteja pronto.'],
+    'No encontramos esa destacada.': ['We could not find that highlight.', 'Não encontramos esse destaque.'],
+    'No encontramos ese elemento.': ['We could not find that item.', 'Não encontramos esse item.'],
+  });
+  const PT = { id: null, sel: 'auto', ini: 'auto', file: null, url: '', busy: false };
+  const ptLimpiar = () => { if (PT.url) { try { URL.revokeObjectURL(PT.url); } catch (e) { /* */ } } PT.file = null; PT.url = ''; };
+  const ptListos = (d) => (d.items || []).filter((it) => it.estado === 'listo' && (it.urlMini || it.url));
+  // URL de la imagen para una selección: 'auto' | 'subida' | 'archivo' | id de un elemento
+  function ptSrc(d, sel) {
+    if (sel === 'archivo') return PT.url;
+    if (sel === 'subida') return d.portada && d.portada.tipo === 'subida' ? d.portada.url : '';
+    const its = ptListos(d);
+    const it = sel === 'auto' ? its[0] : its.find((x) => x.id === sel);
+    return it ? (it.urlMini || it.url) : '';
+  }
+  const ptImg = (src, seed) => (src ? `<img draggable="false" src="${esc(src)}" alt="">` : `<div class="ph" style="background:${HH.hueGradient(hash(String(seed || '')) % 360, true)}"></div>`);
+  const ptDest = () => (S.yo && S.yo.destacadas || []).find((x) => x.id === PT.id) || null;
+  function ptBody() {
+    const d = ptDest(); if (!d) return '';
+    const its = ptListos(d);
+    const tile = (sel, src, extra) => `<button type="button" class="sp-pt-it${PT.sel === sel ? ' on' : ''}" data-action="spPtElegir" data-sel="${esc(sel)}" aria-pressed="${PT.sel === sel}" aria-label="${esc(HH.t('Usar de portada'))}">${ptImg(src, sel)}${extra || ''}<span class="sp-pt-ok" aria-hidden="true">${icon('check')}</span></button>`;
+    const tiles = (PT.file ? tile('archivo', PT.url, `<span class="sp-pt-tag">${esc(HH.t('Nueva'))}</span>`) : '')
+      + (d.portada && d.portada.tipo === 'subida' ? tile('subida', d.portada.url, `<span class="sp-pt-tag">${esc(HH.t('Actual'))}</span>`) : '')
+      + its.map((it) => tile(it.id, it.urlMini || it.url, it.tipo === 'video' ? `<span class="sp-pt-vid" aria-hidden="true">${icon('play')}</span>` : '')).join('');
+    return `<div class="sp-pt-prev"><span class="hl-c sp-pt-big" aria-hidden="true"><span class="hl-in">${ptImg(ptSrc(d, PT.sel), d.id)}</span></span>
+        <div class="stack" style="gap:2px;min-width:0"><strong class="ellipsis" data-noi18n>${esc(d.titulo)}</strong><span class="small muted">Así se ve en tu perfil.</span></div></div>
+      ${tiles ? `<div class="label" style="margin:0">Elegí una de esta destacada</div><div class="sp-pt-grid">${tiles}</div>` : '<p class="small muted" style="margin:0">Todavía no tiene fotos ni videos.</p>'}
+      <div class="stack" style="gap:4px">
+        <div class="row" style="gap:8px;flex-wrap:wrap"><label class="btn secondary sm${PT.busy ? ' disabled' : ''}">${icon('upload')} <span>Subir otra imagen</span><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="sr-only" data-change="spPtArchivo"${PT.busy ? ' disabled' : ''}></label>
+        ${d.portada ? `<button type="button" class="btn ghost sm" data-action="spPtAuto"${PT.busy ? ' disabled' : ''}>${icon('refresh')} Usar la automática</button>` : ''}</div>
+        <span class="tiny muted">JPG, PNG, WebP o HEIC, hasta 12 MB. Se muestra en un círculo, recortada al centro.</span>
+      </div>
+      <div class="sp-prog" id="spPtProg" hidden><i style="width:0%"></i></div>
+      ${fieldErr('spPtErr')}`;
+  }
+  function ptPintar() {
+    const el = document.getElementById('spPtBody'); if (!el) return;
+    const g = el.querySelector('.sp-pt-grid'); const y = g ? g.scrollTop : 0;
+    el.innerHTML = ptBody();
+    const g2 = el.querySelector('.sp-pt-grid'); if (g2) g2.scrollTop = y;
+  }
+  // itemId: preseleccionado (desde el visor, el que estaba mirando)
+  function abrirPortada(id, itemId) {
+    if (PT.busy) return;
+    ptLimpiar(); PT.id = id;
+    const d = ptDest();
+    if (!d) { HH.toast('No encontramos esa destacada.', { type: 'danger' }); return; }
+    PT.ini = d.portada ? (d.portada.tipo === 'subida' ? 'subida' : d.portada.itemId) : 'auto';
+    PT.sel = itemId && ptListos(d).some((x) => x.id === itemId) ? itemId : PT.ini;
+    HH.modal({
+      title: 'Portada de la destacada',
+      body: `<div class="sp-pt" id="spPtBody">${ptBody()}</div>`,
+      actions: [
+        { label: 'Cancelar', cls: 'ghost', onClick: () => { if (PT.busy) return; HH.closeModal(); ptLimpiar(); } },
+        { label: 'Guardar', id: 'spPtGuardar', onClick: () => ptGuardar() },
+      ],
+    });
+  }
+  async function ptHecho(msg) {
+    PT.busy = false;
+    if (document.getElementById('spPtBody')) HH.closeModal();
+    ptLimpiar();
+    HH.toast(msg, { type: 'ok' });
+    await recargarPropias();
+  }
+  function ptOcupado(on) {
+    PT.busy = on;
+    const b = document.getElementById('spPtGuardar'); if (b) { b.disabled = on; b.textContent = HH.t(on ? 'Guardando…' : 'Guardar'); }
+    document.querySelectorAll('#spPtBody button, #spPtBody input').forEach((x) => { x.disabled = on; });
+  }
+  async function ptGuardar() {
+    if (PT.busy) return;
+    const d = ptDest(); if (!d) return;
+    if (PT.sel === PT.ini && PT.sel !== 'archivo') { HH.closeModal(); ptLimpiar(); return; }
+    showErr('spPtErr', ''); ptOcupado(true);
+    const base = '/cuenta/destacadas/' + encodeURIComponent(d.id) + '/portada';
+    try {
+      if (PT.sel === 'archivo') {
+        const fd = new FormData(); fd.append('foto', PT.file);
+        const prog = document.getElementById('spPtProg'); const bar = prog && prog.querySelector('i'); if (prog) prog.hidden = false;
+        await upload(base, fd, (p) => { if (bar) bar.style.width = Math.round(p * 100) + '%'; });
+      } else if (PT.sel === 'auto') await api('DELETE', base);
+      else await api('PUT', base, { itemId: PT.sel });
+    } catch (e) {
+      ptOcupado(false); const prog = document.getElementById('spPtProg'); if (prog) prog.hidden = true;
+      if (document.getElementById('spPtErr')) showErr('spPtErr', e.message); else HH.toast(e.message, { type: 'danger', ms: 5000 });
+      return;
+    }
+    await ptHecho('Portada guardada.');
+  }
+  Object.assign(HH.actions, {
+    spDestPortada: (el) => abrirPortada(el.dataset.id),
+    spPtElegir: (el) => { if (PT.busy) return; PT.sel = el.dataset.sel; showErr('spPtErr', ''); ptPintar(); },
+    spPtArchivo: (el) => {
+      const f = el.files && el.files[0]; if (!f || PT.busy) return;
+      if (!/^image\//.test(f.type || '') && !/\.(heic|heif|jpe?g|png|webp)$/i.test(f.name || '')) { showErr('spPtErr', 'Elegí una imagen.'); return; }
+      if (f.size > 12 * 1024 * 1024) { showErr('spPtErr', 'La imagen pesa más de 12 MB.'); return; }
+      ptLimpiar(); PT.file = f; try { PT.url = URL.createObjectURL(f); } catch (e) { PT.url = ''; }
+      PT.sel = 'archivo'; ptPintar();
+    },
+    spPtAuto: async () => {
+      const d = ptDest(); if (!d || PT.busy) return;
+      showErr('spPtErr', ''); ptOcupado(true);
+      try { await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(d.id) + '/portada'); } catch (e) { ptOcupado(false); showErr('spPtErr', e.message); return; }
+      await ptHecho('Volvió la portada automática.');
+    },
+  });
+  HH.spAbrirPortada = abrirPortada;
+  if (typeof document !== 'undefined' && !document.getElementById('sp-pt-css')) {
+    const st = document.createElement('style'); st.id = 'sp-pt-css';
+    st.textContent = `
+.sp-pt{display:grid;gap:14px}
+.sp-pt-prev{display:flex;align-items:center;gap:14px;min-width:0}
+.hl-c.sp-pt-big{width:96px;height:96px;flex:none;cursor:default}
+.sp-pt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;max-height:min(38vh,320px);overflow:auto;padding:2px}
+.sp-pt-it{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:2px solid transparent;padding:0;background:var(--surface);cursor:pointer}
+.sp-pt-it>img,.sp-pt-it>.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sp-pt-it.on{border-color:var(--berry)}
+.sp-pt-it:focus-visible{outline:2px solid var(--berry);outline-offset:2px}
+.sp-pt-ok{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:var(--berry);color:#fff;display:none;place-items:center}
+.sp-pt-ok svg{width:13px;height:13px}
+.sp-pt-it.on .sp-pt-ok{display:grid}
+.sp-pt-tag{position:absolute;left:4px;bottom:4px;font-size:11px;font-weight:600;line-height:1;padding:3px 6px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff}
+.sp-pt-vid{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center}
+.sp-pt-vid svg{width:11px;height:11px}
+`;
+    document.head.appendChild(st);
   }
 
   /* ---------- Planes v2: créditos, plan, Destacado y avisos (contrato: FASE1-CONTRATO.md, "Planes v2, créditos y destacado") ----------
@@ -2247,9 +2500,9 @@
     // Las que no van primero se piden cuando están por entrar en pantalla (IntersectionObserver, después del primer
     // dibujo): así no le sacan ancho de banda al JS ni a las fotos de arriba en conexiones lentas.
     const pre = !eager && imgIO ? 'data-' : '';
-    const img = HH.isImgSrc(grande) ? `<img ${pre}src="${esc(mini || grande)}"${mini && mini !== grande ? ` ${pre}srcset="${esc(mini)} 480w, ${esc(grande)} 1200w" sizes="(min-width:1100px) 22vw, (min-width:720px) 30vw, 48vw"` : ''} alt="${esc(HH.fotoAlt(p, 0))}"${eager ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">` : HH.photo(p, 0, { noWm: true });
+    const img = HH.isImgSrc(grande) ? `<img draggable="false" ${pre}src="${esc(mini || grande)}"${mini && mini !== grande ? ` ${pre}srcset="${esc(mini)} 480w, ${esc(grande)} 1200w" sizes="(min-width:1100px) 22vw, (min-width:720px) 30vw, 48vw"` : ''} alt="${esc(HH.fotoAlt(p, 0))}"${eager ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">` : HH.photo(p, 0, { noWm: true });
     const vid = p.previewUrl && PREVIEW_PLANES.has(HH.levelOf(p.userId)) && !sinMovimiento()
-      ? `<video class="pc2-vid" muted loop playsinline preload="none" disablepictureinpicture tabindex="-1" aria-hidden="true" data-src="${esc(p.previewUrl)}"></video>` : '';
+      ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback class="pc2-vid" muted loop playsinline preload="none" tabindex="-1" aria-hidden="true" data-src="${esc(p.previewUrl)}"></video>` : '';
     const lugar = p.zone || p.city || '';
     const fav = esFav(p.userId);
     // Destacado: variante A (arriba del nombre) o B (pastilla arriba a la izquierda). HH.BADGE_DESTACADO permite probar la otra.
@@ -2359,17 +2612,17 @@
     if (S.pv.inicio > max) S.pv.inicio = max;
     const estado = !pv ? '' : pv.estado === 'procesando' ? `<div class="sp-vstate"><span class="sp-spin" aria-hidden="true"></span><span>Procesando…</span></div>`
       : pv.estado === 'error' ? `<div class="sp-vstate err">${icon('alert')}<span data-noi18n>${esc(pv.error || 'No se pudo armar el clip.')}</span></div>` : '';
-    const actual = pv && pv.url ? `<video src="${esc(pv.url)}" muted loop playsinline autoplay preload="metadata" disablepictureinpicture></video>` : `<div class="ph" style="background:${HH.hueGradient(hash(S.yo.id) % 360, true)}">${icon('video')}</div>`;
+    const actual = pv && pv.url ? `<video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback src="${esc(pv.url)}" muted loop playsinline autoplay preload="metadata"></video>` : `<div class="ph" style="background:${HH.hueGradient(hash(S.yo.id) % 360, true)}">${icon('video')}</div>`;
     const fmt = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
     return `<div class="card stack pv-card" style="gap:14px;margin-top:14px" id="spPreview">
       <div class="row between">${titulo}${pv ? `<span class="badge ${pv.elegido ? 'ok' : 'neutral'}">${pv.elegido ? 'Elegido por vos' : 'Automático'}</span>` : ''}</div>
       <div class="pv-frames">
         <div class="pv-col"><span class="label">Así se ve ahora</span><div class="pv-frame">${actual}${estado}</div></div>
-        <div class="pv-col"><span class="label">Tu recorte</span><div class="pv-frame"><video id="spPvVid" src="${esc(sel.url)}" muted playsinline preload="metadata" disablepictureinpicture></video></div></div>
+        <div class="pv-col"><span class="label">Tu recorte</span><div class="pv-frame"><video controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback id="spPvVid" src="${esc(sel.url)}" muted playsinline preload="metadata"></video></div></div>
       </div>
       <div class="pv-col pv-edit">
         ${listos.length > 1 ? `<span class="label">Elegí el video</span>
-        <div class="pv-vids">${listos.map((v) => `<button type="button" class="pv-v${v.id === sel.id ? ' on' : ''}" data-action="spPvVideo" data-id="${esc(v.id)}" aria-pressed="${v.id === sel.id}" aria-label="Usar este video">${v.poster ? `<img src="${esc(v.poster)}" alt="" loading="lazy">` : icon('video')}<span>${Math.round(Number(v.segundos) || 0)}s</span></button>`).join('')}</div>` : ''}
+        <div class="pv-vids">${listos.map((v) => `<button type="button" class="pv-v${v.id === sel.id ? ' on' : ''}" data-action="spPvVideo" data-id="${esc(v.id)}" aria-pressed="${v.id === sel.id}" aria-label="Usar este video">${v.poster ? `<img draggable="false" src="${esc(v.poster)}" alt="" loading="lazy">` : icon('video')}<span>${Math.round(Number(v.segundos) || 0)}s</span></button>`).join('')}</div>` : ''}
         <label class="label" for="spPvRange">Desde qué segundo</label>
         ${max > 0 ? `<input type="range" class="pv-range" id="spPvRange" min="0" max="${max}" step="0.5" value="${S.pv.inicio}" data-input="spPvInicio">` : `<p class="small muted">Este video dura menos de 5 segundos: se usa completo.</p>`}
         <div class="small" id="spPvTxt">Del segundo <strong class="num" id="spPvA">${fmt(S.pv.inicio)}</strong> al <strong class="num" id="spPvB">${fmt(Math.min(S.pv.inicio + 5, Number(sel.segundos) || 5))}</strong></div>

@@ -78,6 +78,20 @@ export async function procesarFoto(buffer) {
   return { grande, mini };
 }
 
+// Portada de una destacada subida aparte (lib/destacadas.js): el mismo proceso que las fotos públicas (gira según EXIF,
+// sin metadatos, marca de agua), recortada al centro en un cuadrado de hasta 480 px (en el perfil se ve en un círculo).
+export const PORTADA_LADO = 480;
+export async function procesarPortada(buffer) {
+  const meta = await abrir(buffer);
+  const lado = Math.min(PORTADA_LADO, meta.width, meta.height);
+  const { data, info } = await sharp(buffer, { limitInputPixels: MAX_PIXELS, failOn: 'error' })
+    .rotate()
+    .resize({ width: lado, height: lado, fit: 'cover', position: 'centre' })
+    .toBuffer({ resolveWithObject: true });
+  const out = await sharp(data).composite([marcaSvg(info.width, info.height)]).webp({ quality: 80 }).toBuffer({ resolveWithObject: true });
+  return { buffer: out.data, ancho: out.info.width, alto: out.info.height, tipo: 'image/webp', ext: 'webp' };
+}
+
 export async function procesarPrivada(buffer) {
   await abrir(buffer);
   const { data, info } = await sharp(buffer, { limitInputPixels: MAX_PIXELS, failOn: 'error' })

@@ -4,13 +4,19 @@
 // - Cantidad por plan: LIMITES[plan].destacadas (Bronce 1, Plata 2, Oro 5, Star ilimitadas).
 // - Si baja de plan, en el perfil se ven las primeras que entran (por fecha de creación) y el resto queda guardado
 //   (en su panel figura "no se ve: supera el límite de tu plan").
-// - Nombre hasta 16 caracteres; portada = primer elemento; hasta 100 elementos por destacada; no vencen.
+// - Nombre hasta 16 caracteres; hasta 100 elementos por destacada; no vencen.
+// - Portada (17/11/2026, pedido de Juan, como "Editar portada" de Instagram; migración 250):
+//     automática  el primer elemento listo (si es un video, su portada), como hasta ahora;
+//     de un elemento  una foto de ESA destacada (o la portada de uno de sus videos ya listo);
+//     subida aparte   una imagen de su dispositivo: procesarPortada (sin metadatos, cuadrada al centro, marca de agua).
+//   Si se borra el elemento elegido vuelve la automática (ON DELETE SET NULL). El archivo subido se borra al cambiar la
+//   portada, al volver a la automática y al borrar la destacada.
 // - Fotos: el mismo proceso que las fotos de las historias. Videos: la misma cola que las historias en video (lib/videos.js,
 //   hasta 60 s, solo con almacenamiento externo).
 // - Borrar una destacada o un elemento borra sus archivos.
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
-import { ImagenInvalida, procesarFoto } from './imagenes.js';
+import { ImagenInvalida, procesarFoto, procesarPortada } from './imagenes.js';
 import { limitesDe, planEfectivo, planesEfectivos } from './planes-ref.js';
 
 export const TITULO_MAX = 16;
@@ -35,9 +41,23 @@ export const itemJson = (x) => ({
   segundos: x.segundos == null ? null : Number(x.segundos), ancho: x.ancho ?? null, alto: x.alto ?? null, error: x.error || null, creado: x.creado,
 });
 
+// Portada elegida (null = automática). items: los elementos de esa destacada (filas).
+// Panel: { tipo: 'item', itemId, url } | { tipo: 'subida', url }. En el sitio público solo va la URL.
+function portadaDe(d, items) {
+  if (d.portada_url) return { tipo: 'subida', url: d.portada_url };
+  if (!d.portada_item) return null;
+  const it = items.find((x) => x.id === d.portada_item && (x.estado || 'listo') === 'listo');
+  return it ? { tipo: 'item', itemId: it.id, url: it.url_mini || it.url } : null;
+}
+
 export function createDestacadas({ pool, storage, videos = () => null, planes = () => null, invalidar = () => {}, log = () => {} }) {
   const vids = () => (typeof videos === 'function' ? videos() : videos);
   const limite = async (cuentaId) => limitesDe(await planEfectivo(cuentaId, planes())).destacadas;
+
+  async function borrarClave(clave) {
+    if (!clave) return;
+    try { await storage.del(clave); } catch (e) { log('destacada: no se pudo borrar el archivo', clave, e.code || e.message); }
+  }
 
   async function borrarArchivos(items) {
     for (const it of items) {
@@ -53,15 +73,18 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
   async function listar(cuentaId) {
     const [lim, { rows: ds }, { rows: its }] = await Promise.all([
       limite(cuentaId),
-      pool.query('SELECT id, titulo, creado FROM destacadas WHERE cuenta_id = $1 ORDER BY creado, id', [cuentaId]),
+      pool.query('SELECT id, titulo, creado, portada_item, portada_url FROM destacadas WHERE cuenta_id = $1 ORDER BY creado, id', [cuentaId]),
       pool.query('SELECT * FROM destacada_items WHERE cuenta_id = $1 ORDER BY creado, id', [cuentaId]),
     ]);
     const de = new Map(ds.map((d) => [d.id, []]));
-    for (const it of its) if (de.has(it.destacada_id)) de.get(it.destacada_id).push(itemJson(it));
+    for (const it of its) if (de.has(it.destacada_id)) de.get(it.destacada_id).push(it);
     return {
       limite: lim,
       usadas: ds.length,
-      destacadas: ds.map((d, i) => ({ id: d.id, titulo: d.titulo, creado: d.creado, visible: lim === null || i < lim, items: de.get(d.id) })),
+      destacadas: ds.map((d, i) => ({
+        id: d.id, titulo: d.titulo, creado: d.creado, visible: lim === null || i < lim,
+        portada: portadaDe(d, de.get(d.id)), items: de.get(d.id).map(itemJson),
+      })),
     };
   }
 
@@ -77,7 +100,7 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
     );
     if (!rows[0]) throw he(400, `Tu plan permite ${plural(lim, 'destacada', 'destacadas')}. Subí de plan para sumar más.`);
     invalidar();
-    return { id: rows[0].id, titulo: rows[0].titulo, creado: rows[0].creado, items: [] };
+    return { id: rows[0].id, titulo: rows[0].titulo, creado: rows[0].creado, portada: null, items: [] };
   }
 
   async function renombrar(cuentaId, id, titulo) {
@@ -90,9 +113,10 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
 
   async function borrar(cuentaId, id) {
     const { rows: its } = await pool.query('SELECT id, tipo, clave, clave_mini FROM destacada_items WHERE destacada_id = $1 AND cuenta_id = $2', [id, cuentaId]);
-    const { rowCount } = await pool.query('DELETE FROM destacadas WHERE id = $1 AND cuenta_id = $2', [id, cuentaId]);
-    if (!rowCount) throw he(404, 'No encontramos esa destacada.');
+    const { rows } = await pool.query('DELETE FROM destacadas WHERE id = $1 AND cuenta_id = $2 RETURNING portada_clave', [id, cuentaId]);
+    if (!rows[0]) throw he(404, 'No encontramos esa destacada.');
     await borrarArchivos(its);
+    await borrarClave(rows[0].portada_clave);
     invalidar();
     return { ok: true };
   }
@@ -151,12 +175,63 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
     return { ok: true };
   }
 
+  // --- Portada ---
+  // Cambia la portada de una destacada suya y devuelve la clave del archivo subido que tenía antes (para borrarlo).
+  // La fila se bloquea para leer la anterior: dos cambios simultáneos no dejan un archivo huérfano.
+  async function cambiarPortada(cuentaId, destId, { item = null, clave = null, url = null }) {
+    const { rows } = await pool.query(
+      `UPDATE destacadas d SET portada_item = $3, portada_clave = $4, portada_url = $5, actualizado = now()
+         FROM (SELECT id, portada_clave FROM destacadas WHERE id = $1 AND cuenta_id = $2 FOR UPDATE) antes
+        WHERE d.id = antes.id
+          AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM destacada_items WHERE id = $3 AND destacada_id = $1 AND cuenta_id = $2 AND estado = 'listo'))
+       RETURNING antes.portada_clave AS vieja`,
+      [destId, cuentaId, item, clave, url],
+    );
+    if (!rows[0]) return { ok: false };
+    if (rows[0].vieja && rows[0].vieja !== clave) await borrarClave(rows[0].vieja);
+    invalidar();
+    return { ok: true };
+  }
+  async function portadaActual(cuentaId, destId) {
+    const { rows: [d] } = await pool.query('SELECT id, portada_item, portada_url FROM destacadas WHERE id = $1 AND cuenta_id = $2', [destId, cuentaId]);
+    if (!d) return null;
+    const { rows: its } = d.portada_item ? await pool.query('SELECT * FROM destacada_items WHERE id = $1', [d.portada_item]) : { rows: [] };
+    return portadaDe(d, its);
+  }
+
+  // Uno de los elementos de esa destacada (foto, o un video ya listo: se usa su portada).
+  async function portadaDeItem(cuentaId, destId, itemId) {
+    await propia(cuentaId, destId);
+    const { rows: [it] } = await pool.query('SELECT estado FROM destacada_items WHERE id = $1 AND destacada_id = $2 AND cuenta_id = $3', [itemId, destId, cuentaId]);
+    if (!it) throw he(404, 'No encontramos ese elemento.');
+    if (it.estado !== 'listo') throw he(400, 'Elegí una foto o un video que ya esté listo.');
+    if (!(await cambiarPortada(cuentaId, destId, { item: itemId })).ok) throw he(404, 'No encontramos ese elemento.');
+    return { ok: true, portada: await portadaActual(cuentaId, destId) };
+  }
+
+  // Una imagen de su dispositivo: mismo proceso que las fotos públicas, cuadrada (en el perfil se ve en un círculo).
+  async function subirPortada(cuentaId, destId, buffer) {
+    await propia(cuentaId, destId);
+    let img;
+    try { img = await procesarPortada(buffer); } catch (e) { if (e instanceof ImagenInvalida) throw he(400, e.message); throw e; }
+    const clave = `d/p-${crypto.randomUUID()}.webp`;
+    const url = await storage.put(clave, img.buffer, img.tipo);
+    if (!(await cambiarPortada(cuentaId, destId, { clave, url })).ok) { await borrarClave(clave); throw he(404, 'No encontramos esa destacada.'); }
+    return { ok: true, portada: { tipo: 'subida', url } };
+  }
+
+  // Vuelve a la automática (el primer elemento).
+  async function portadaAutomatica(cuentaId, destId) {
+    if (!(await cambiarPortada(cuentaId, destId, {})).ok) throw he(404, 'No encontramos esa destacada.');
+    return { ok: true, portada: null };
+  }
+
   // Sitio público: por acompañante, solo las que entran en su plan y con elementos listos (las vacías no se muestran).
   async function publicas(ids, planesMap) {
     const out = new Map();
     if (!ids.length) return out;
     const [{ rows: ds }, { rows: its }] = await Promise.all([
-      pool.query('SELECT id, cuenta_id, titulo, creado FROM destacadas WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, creado, id', [ids]),
+      pool.query('SELECT id, cuenta_id, titulo, creado, portada_item, portada_url FROM destacadas WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, creado, id', [ids]),
       pool.query("SELECT * FROM destacada_items WHERE cuenta_id = ANY($1) AND estado = 'listo' ORDER BY creado, id", [ids]),
     ]);
     const itemsDe = new Map();
@@ -167,8 +242,9 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
     for (const [cuentaId, lista] of porCuenta) {
       const lim = limitesDe(pm.get(cuentaId) || 'E').destacadas;
       const vis = lim === null ? lista : lista.slice(0, lim);
+      // portada: la URL de la que eligió (null = automática: el primer elemento)
       const pub = vis.map((d) => ({
-        id: d.id, titulo: d.titulo, creado: d.creado,
+        id: d.id, titulo: d.titulo, creado: d.creado, portada: (portadaDe(d, itemsDe.get(d.id) || []) || {}).url || null,
         items: (itemsDe.get(d.id) || []).map((x) => ({
           id: x.id, tipo: x.tipo, url: x.url, urlMini: x.url_mini || x.url, creado: x.creado,
           ...(x.tipo === 'video' ? { segundos: x.segundos == null ? null : Number(x.segundos), ancho: x.ancho, alto: x.alto } : {}),
@@ -179,5 +255,5 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
     return out;
   }
 
-  return { listar, crear, renombrar, borrar, agregarFoto, agregarVideo, borrarItem, publicas, limite };
+  return { listar, crear, renombrar, borrar, agregarFoto, agregarVideo, borrarItem, portadaDeItem, subirPortada, portadaAutomatica, publicas, limite };
 }
