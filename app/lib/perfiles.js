@@ -13,6 +13,9 @@ export const GENEROS = ['mujer', 'trans', 'hombre'];
 export const TIPOS = ['acompanante', 'virtual', 'ambas'];
 export const TIPO_DEFAULT = 'acompanante';
 export const CONTEXTURAS = ['delgada', 'atletica', 'mediana', 'robusta'];
+// Idiomas que se eligen en el panel (mismo orden y nombres que IDIOMAS en mvp/src/prod-sitio.js) más uno "Otro" escrito a mano
+export const IDIOMAS = ['Español', 'Inglés', 'Portugués'];
+export const IDIOMA_OTRO_MAX = 20;
 export const SLUGS_RESERVADOS = new Set(['admin', 'api', 'media', 'demo', 'cuenta', 'panel', 'perfil', 'profile', 'hombres', 'men', 'homens',
   'en', 'pt', 'es', 'terminos', 'privacidad', 'contenido', 'trata', 'denunciar', 'buscar', 'swipe', 'cerca', 'shorts', 'stars', 'sitemap',
   'robots', 'inicio', 'login', 'registro', 'sexyrose', 'soporte', 'ayuda', 'contacto']);
@@ -138,9 +141,12 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
   }
   if (has('idiomas')) {
     if (!Array.isArray(body.idiomas) || body.idiomas.length > 6) return { error: 'Podés indicar hasta 6 idiomas.' };
+    // Los de la lista y, como mucho, uno más escrito a mano (17/11/2026)
     const v = [...new Set(body.idiomas.map(linea).filter(Boolean))];
-    if (v.some((x) => len(x) > 20)) return { error: 'Cada idioma puede tener hasta 20 caracteres.' };
-    d.idiomas = v;
+    const otros = v.filter((x) => !IDIOMAS.includes(x));
+    if (otros.length > 1) return { error: 'Podés escribir un solo idioma en "Otro".' };
+    if (otros.some((x) => len(x) > IDIOMA_OTRO_MAX)) return { error: `El idioma de "Otro" puede tener hasta ${IDIOMA_OTRO_MAX} caracteres.` };
+    d.idiomas = IDIOMAS.filter((x) => v.includes(x)).concat(otros);
   }
   if (has('alturaCm')) {
     if (vacio(body.alturaCm)) d.alturaCm = undefined;

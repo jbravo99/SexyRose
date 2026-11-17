@@ -200,9 +200,12 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       }
       res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=(), usb=()');
       if (segs.length && PRIVATE.has(segs[0])) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      // Vista previa del perfil de la acompañante (/panel/vista-previa): sin ninguna caché (los datos llegan aparte, de
+      // /api/cuenta/vista-previa, solo con su sesión)
+      const cacheHtml = segs[0] === 'panel' && segs[1] === 'vista-previa' ? 'no-store' : 'no-cache';
       if (spa.pq) {
         // Cáscara chica, siempre revalidada (no-cache + ETag → 304), comprimida; con el <head> de esa página
-        const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': 'no-cache', 'Content-Type': 'text/html; charset=utf-8' };
+        const headers = { 'Content-Security-Policy': cspSitio(null, mediaOrigin, mapaOrig), 'Cache-Control': cacheHtml, 'Content-Type': 'text/html; charset=utf-8' };
         let m = seo ? await seo.meta(p).catch((e) => { log('seo: ' + e.message); return null; }) : null;
         // Home provisoria: <html data-prelanzamiento> desde la cáscara, así la ventana de +18 no aparece ni antes de que
         // llegue /api/sitio/estado (agegate.js y gateTemprano en prod-sitio.js lo miran)
@@ -217,7 +220,7 @@ export function createSpaSitioRouter({ config = {}, log = () => {}, pool = null,
       }
       const nonce = crypto.randomBytes(16).toString('base64');
       res.setHeader('Content-Security-Policy', cspSitio(nonce, mediaOrigin, mapaOrig));
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', cacheHtml);
       res.type('html');
       let out = html.replace(/<script\b/gi, `<script nonce="${nonce}"`);
       if (pre) out = out.replace(/<html\b/i, '<html data-prelanzamiento');

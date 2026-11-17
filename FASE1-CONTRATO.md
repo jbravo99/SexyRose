@@ -690,6 +690,7 @@ acompañantes: el registro de interesados queda cerrado hasta abrir el sitio.
     vuelve al inicio; el ingreso de interesados no ofrece crear cuenta. Traducciones en el mismo archivo
     (`HH.I18N`). Estilos: `.sr-pre` en `mvp/src/sitio.css`.
 - **Apagada**: todo como antes.
+- Vista previa del perfil de cada acompañante: funciona igual con la home prendida (ver «Vista previa del perfil»).
 - Tests: `app/test/prelanzamiento.test.js`.
 
 ## SEO: escorts y acompañantes — desde el 13/11/2026 (decisión de Juan; su abogado aprobó la palabra "escort")
@@ -806,6 +807,21 @@ devoluciones, consejos legales o impositivos, funcionamiento interno, pedir cont
 buscan a una acompañante → contacto directo desde su perfil; fuera de tema o enojo → `derivar_a_juan`). Respuestas
 cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados en el código**:
 - `precios`, `ayuda(tema)` (textos fijos en `lib/asistente-ayuda.js`, armados con los del sitio; Juan los edita ahí).
+  Contexto de todo el sitio (17/11/2026, Juan: "que tenga contexto de toda la web sin pasar nada vital del negocio ni
+  información confidencial"): además de registro, verificacion, publicar, fotos, planes, semanas, creditos, destacado,
+  contrasena, email y enlaces (ahora con todas las secciones del panel y /trata), los temas `perfil`, `historias`,
+  `videos`, `mis_numeros`, `avisos`, `ocultar_o_baja`, `como_funciona` (inicio, swipe, cerca, shorts, stars, filtros y
+  contacto directo por WhatsApp/Telegram), `denuncias`, `idiomas` y `contenido`. Solo con textos que ya son públicos o
+  que el panel le muestra a la acompañante; las pruebas revisan que ninguno nombre comisiones, porcentajes, proveedores,
+  costos, servidores, captación, admin, alertas, la IA ni otros sitios (Mercado Pago solo en `contenido`). Las
+  instrucciones listan estos temas en "Respondé SOLO sobre"; lo que queda afuera sigue yendo a `derivar_a_juan` como antes.
+  `contenido` depende de si la venta de contenido se puede usar (Juan: "tendría que decirle 'próximamente'… hasta que no
+  vincule una cuenta de MP"): el app guarda `contenido.disponible()` (cuenta de comisión activa completa, del `.env` o del
+  admin) en el ajuste `venta_contenido_estado = { disponible }` al arrancar, al cargar/editar/borrar una cuenta de Mercado
+  Pago y al elegir la activa (`contenido.publicarEstado`), y el agente lo lee de la base (`ventaContenidoDisponible`; no
+  tiene las credenciales de Mercado Pago). Sin fila o `false` → "La venta de contenido todavía no está disponible en
+  SexyRose: va a estar próximamente." (sin fechas ni motivos); `true` → cómo empezar con lo que dice el panel (Panel →
+  Contenido, conectar su Mercado Pago, "Agregar pack", pedidos personalizados con Oro y Star), sin comisiones.
 - `pedido_por_codigo`, `datos_transferencia(codigo, moneda?: 'ARS'|'USD')` (manda el mensaje del punto 2; USD sin
   cuenta en dólares → error "solo se puede transferir en pesos"): solo pedidos cuyo código se escribió en ese chat o de
   la cuenta identificada.
@@ -1136,3 +1152,36 @@ cada uno con sus controles abajo: "Hacer principal" (la principal muestra "Princ
 lateral muestran la miniatura pública (`urlMini`, la procesada con marca de agua) de su foto principal; sin fotos,
 las iniciales. Se actualiza al cambiar la principal o subir la primera.
 
+## Vista previa del perfil — desde el 17/11/2026 (pedido de Juan)
+
+"Los acompañantes deberán poder ver su perfil (vista previa) incluso si el home provisorio está habilitado."
+
+- **API** `GET /api/cuenta/vista-previa` (`routes/cuenta.js`, `auth.requireCuenta`; 401 sin sesión). Siempre el perfil
+  de la cuenta de la sesión: no recibe slug ni id (otra acompañante solo ve el suyo). En cualquier estado (borrador,
+  en revisión, rechazado, oculto, pausado) y con la home provisoria prendida o apagada. Lo último guardado, armado con
+  la misma función que el estado público (`routes/sitio.js → perfilesPublicos`: fotos y videos listos dentro del
+  límite del plan, clip de la tarjeta desde Plata, Destacado, historias destacadas; historias vigentes con
+  `historiaPublica`). → `{ ok, perfil, historias, ubicaciones, publico }` (`perfil` con la forma de
+  `/api/sitio/perfil/:slug`; `ubicaciones`: su lugar y los que lo contienen, como `ubicacionesUsadas`; `publico`: hoy lo
+  ve cualquiera: publicado, verificado, no oculto, cuenta activa y home provisoria apagada). Nunca email, documento ni
+  fecha de nacimiento (solo la edad). `Cache-Control: no-store` y `X-Robots-Tag: noindex, nofollow`.
+- **Página** `/panel/vista-previa` (en/pt: `/en/panel/vista-previa`, `/pt/panel/vista-previa`; clave `panel.vista-previa`):
+  es del panel, así que sigue abierta con la home provisoria, sale `noindex,nofollow` (meta y X-Robots-Tag), no está
+  en el sitemap y su cáscara va con `Cache-Control: no-store`. Sin sesión → ingreso (y vuelve ahí al entrar).
+  Dibuja el perfil con la MISMA vista pública (`views-public.js → HH.profileView(slug, { preview: true })`: como lo
+  ve un visitante, con tarifa y botones de contacto, sin los avisos de "tu perfil" y sin sumar visitas). Datos
+  pedidos de nuevo cada vez que entra. Mientras se ve, `HH.db` es una copia con solo su perfil; al salir vuelve el del
+  sitio (`prod-sitio.js`, bloque «Vista previa»).
+- **Barra** fija debajo del encabezado: «Vista previa: así se va a ver tu perfil. Solo vos la ves.» + «Con lo último
+  que guardaste. Lo que toques acá no suma visitas ni contactos.» (en el celular solo la primera línea) y «Volver al
+  panel» (a la sección de donde vino). EN/PT en `HH.I18N`. Estilos `.sp-vp` en `mvp/src/sitio.css`.
+- **Contacto**: WhatsApp, Telegram y «Me interesa» funcionan (abren su propio número: sirve para probarlos) y no
+  cuentan: la página es del panel (el aviso de tráfico no la cuenta) y el perfil es el suyo (sus propias visitas y
+  toques nunca se cuentan). Reportar, Compartir, Links y las migas no hacen nada: avisan «Es una vista previa: esto
+  funciona cuando tu perfil esté publicado.» (si ya es público: «… en tu perfil público.»).
+- **Entradas**: «Ver vista previa» en Resumen y en Mi perfil (arriba a la derecha); en la tarjeta de la barra lateral
+  y en el menú de la cuenta, «Ver mi perfil público» / «Ver mi perfil» solo si hoy lo ve cualquiera (publicado, no
+  oculto y home provisoria apagada); si no, «Ver vista previa» (antes llevaba a un perfil que no existía).
+- **Sin cambios** para el público: con la home provisoria prendida, `/api/sitio/perfil/:slug` sigue en 404 y
+  `/perfil/…` en 302 para todos (sin sesión, con la de otra acompañante o con la suya).
+- Tests: `app/test/vista-previa.test.js`.

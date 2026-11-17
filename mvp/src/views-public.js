@@ -1481,13 +1481,17 @@
       <p class="tiny muted lk-legal">Los links externos los agrega cada acompañante. SexyRose no controla ni se hace cargo del contenido de sitios de terceros.</p>
     </div>`;
   });
-  HH.route("perfil.:slug", ({ slug }) => {
+  HH.route("perfil.:slug", ({ slug }) => profileView(slug));
+  // opts.preview (vista previa de la acompañante, prod-sitio.js): se dibuja como lo ve un visitante (tarifa y botones de
+  // contacto incluidos), sin los avisos de "tu perfil" y sin sumar visitas, aunque todavía no esté publicado.
+  HH.profileView = (slug, opts) => profileView(slug, opts);
+  function profileView(slug, opts = {}) {
     const p = HH.profileBySlug(slug);
     const me = HH.me();
     if (!p)
       return `<div class="container section"><div class="empty">${HH.icon("search")}<h4>No encontramos ese perfil</h4><p class="small">Puede que haya cambiado de nombre o que ya no esté publicado.</p><button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} Explorar perfiles</button></div></div>`;
-    const mine = !!(me && me.id === p.userId);
-    const published = HH.publishedProfiles().includes(p);
+    const mine = !opts.preview && !!(me && me.id === p.userId);
+    const published = !!opts.preview || HH.publishedProfiles().includes(p);
     if (!published && !mine && !(me && me.role === "admin"))
       return `<div class="container section"><div class="empty">${HH.icon("clock")}<h4>Este perfil no está disponible</h4><p class="small">Mientras tanto, mirá otras acompañantes.</p><button type="button" class="btn" data-go="#swipe">${HH.icon("heart")} Explorar perfiles</button></div></div>`;
     if (S.profileSlug !== slug) {
@@ -1496,7 +1500,7 @@
       S.galTab = "all";
       S.pfTab = "gal";
     }
-    if (!mine) HH.view(p.userId);
+    if (!mine && !opts.preview) HH.view(p.userId);
     const lvl = HH.levelOf(p.userId);
     const badges = [
       HH.isStar(p.userId) ? HH.starBadge() : "",
@@ -1530,7 +1534,7 @@
     const BUILD = HH.BUILDS || {};
     const actLabels = (p.activities || []).map((a) => HH.activity(a).label);
     const about = [
-      (p.languages || []).length ? ["Idiomas", p.languages.join(", "), false] : null,
+      (p.languages || []).length ? ["Idiomas", p.languages.map((l) => HH.t(l)).join(", "), false] : null,
       p.heightCm ? ["Altura", (p.heightCm / 100).toFixed(2).replace(".", ",") + " m", false] : null,
       p.build && BUILD[p.build] ? ["Contextura", BUILD[p.build], true] : null,
       HH.interestsOf && HH.interestsOf(p).length ? ["Servicios", HH.interestsOf(p).map((id) => HH.interestLabel(id)).join(" · "), false] : null,
@@ -1593,7 +1597,7 @@
         <div id="pubContentBody">${contentBody(p, S.profileTab)}</div>
       </section>` : ""}
     </div>`;
-  });
+  }
 
   /* ============================================================
      4. SHORTS

@@ -94,6 +94,17 @@ export function descifrar(cuenta, guardado) {
 // Notificaciones de Mercado Pago: se descartan las firmadas hace más de 10 minutos (o con el reloj adelantado).
 export const TOLERANCIA_FIRMA_SEG = 600;
 
+// Si la venta de contenido se puede usar (hay una cuenta de comisión activa completa), para los procesos que no tienen
+// las credenciales de Mercado Pago: el asistente de WhatsApp (contenedor "agente") contesta "próximamente" o cómo
+// empezar según este dato. Lo escribe el app (publicarEstado: al arrancar y cada vez que se carga, edita o borra una
+// cuenta de comisión o se elige la activa). Sin fila = no disponible.
+export const AJUSTE_ESTADO = 'venta_contenido_estado';
+export async function ventaContenidoDisponible(db) {
+  const { rows } = await db.query('SELECT valor FROM ajustes WHERE clave = $1', [AJUSTE_ESTADO]);
+  const v = rows[0] && rows[0].valor;
+  return Boolean(v && typeof v === 'object' && v.disponible === true);
+}
+
 export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = () => {}, invalidar = () => {}, now = () => Date.now(), planDe = async () => 'E', notify = () => {} }) {
   // Packs que puede tener a la venta según su plan (null = ilimitados).
   const limitePacks = async (cuentaId) => { const l = limitesDe(await planDe(cuentaId)).packs; return l === undefined ? 0 : l; };
@@ -113,6 +124,15 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
     return elegida || cuentas[0] || null;
   }
   async function disponible(db = pool) { return cuentaCompleta(await cuentaActiva(db)); }
+  // Guarda disponible() en ajustes (AJUSTE_ESTADO) para el agente; no reescribe la fila si no cambió.
+  async function publicarEstado(db = pool) {
+    const disp = await disponible(db);
+    await db.query(
+      `INSERT INTO ajustes (clave, valor, actualizado) VALUES ($1, $2::jsonb, now())
+       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now() WHERE ajustes.valor IS DISTINCT FROM EXCLUDED.valor`,
+      [AJUSTE_ESTADO, JSON.stringify({ disponible: disp })]);
+    return disp;
+  }
   // Ajuste 'comision': descuento total a la acompañante y costo estimado de Mercado Pago (ver creditos.js)
   async function comisionCfg(db = pool) {
     const c = await leerAjuste('comision', db);
@@ -541,6 +561,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
       `INSERT INTO ajustes (clave, valor, actualizado) VALUES ('venta_contenido', $1::jsonb, now())
        ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now()`, [JSON.stringify({ cuenta: c.id })]);
     invalidar();
+    await publicarEstado().catch((e) => log('venta de contenido: no se pudo guardar si está disponible:', e.code || e.message));
     return resumenAdmin();
   }
   async function ventasAdmin({ estado = null, limite = 300 } = {}) {
@@ -568,7 +589,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
   function detenerTarea() { if (timer) clearInterval(timer); timer = null; }
 
   return {
-    cuentaActiva, disponible, comisionPct, estadoConexion, iniciarOAuth, completarOAuth, desconectar, renovarTokens,
+    cuentaActiva, disponible, publicarEstado, comisionPct, estadoConexion, iniciarOAuth, completarOAuth, desconectar, renovarTokens,
     items, crearItem, editarItem, borrarItem, ventasDe, panel, itemsPublicos, comprar, webhook, compra, aplicarPago,
     puedeCobrar, tomaPedidos, pagarItemPedido, verificarItemPedido, comprasDeCliente,
     resumenAdmin, elegirCuenta, ventasAdmin, iniciarTarea, detenerTarea, redirectUri,

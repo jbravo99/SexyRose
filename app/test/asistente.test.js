@@ -13,7 +13,9 @@ import sharp from 'sharp';
 import { start } from '../server.js';
 import { startAgente } from '../agente.js';
 import { createAsistente } from '../lib/asistente.js';
-import { createLlm, MODELO_DEFAULT } from '../lib/asistente-llm.js';
+import { createLlm, HERRAMIENTAS, MODELO_DEFAULT, promptSistema } from '../lib/asistente-llm.js';
+import { AYUDA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/asistente-ayuda.js';
+import { AJUSTE_ESTADO, ventaContenidoDisponible } from '../lib/contenido.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
 import { telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
 import { detectarIdioma, codigoEnTexto, monedaEnTexto } from '../lib/asistente-textos.js';
@@ -849,5 +851,95 @@ describe('admin: conversaciones, desvincular y limpieza', () => {
     const res = await agente.asistente.recibir({ jid: '5491155550099@s.whatsapp.net', telefono: '5491155550099', waId: 'z', tipo: 'texto', texto: 'hola' });
     assert.equal(res.ignorado, 'apagado');
     assert.equal(SOCK.enviados.length, antes);
+  });
+});
+
+describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', () => {
+  const TEMAS_NUEVOS = ['perfil', 'historias', 'videos', 'mis_numeros', 'avisos', 'ocultar_o_baja', 'como_funciona', 'denuncias', 'idiomas', 'contenido'];
+  // Nada interno en los textos de ayuda (Juan: "sin pasar nada vital del negocio ni información confidencial").
+  // "Telegram" como contacto de su perfil sí; Mercado Pago solo en el texto de "contenido" (lo muestra su panel).
+  const PROHIBIDAS = [/comisi[oó]n/i, /%/, /porcentaje/i, /proveedor/i, /\bcostos?\b/i, /bunny/i, /mailgun/i, /cloudflare/i, /anthropic/i,
+    /claude/i, /haiku/i, /baileys/i, /hetzner/i, /servidor/i, /contenedor/i, /docker/i, /captaci[oó]n/i, /\badmin/i, /alerta/i,
+    /aviso a juan/i, /\bjuan\b/i, /\bbot de telegram\b/i, /georef/i, /marketplace/i, /client.?secret/i, /webhook/i, /credencial/i,
+    /skokka/i, /simpleescort/i, /argxp/i, /otros sitios/i, /m[eé]tricas/i, /moderador/i, /estrategia/i, /abogad/i];
+  const TODOS = () => [...Object.entries(AYUDA), ['contenido (próximamente)', CONTENIDO_PROXIMAMENTE]];
+
+  test('cada tema devuelve texto, con la dirección del sitio y de un largo de WhatsApp', () => {
+    for (const t of TEMAS_NUEVOS) assert.ok(TEMAS_AYUDA.includes(t), `falta el tema ${t}`);
+    for (const t of TEMAS_AYUDA) {
+      for (const contenidoDisponible of [false, true]) {
+        const x = textoAyuda(t, 'https://sexyrose.test/', { contenidoDisponible });
+        assert.ok(typeof x === 'string' && x.length > 20, `${t}: sin texto`);
+        assert.ok(!x.includes('{url}') && !x.includes('test//'), `${t}: dirección mal armada`);
+        assert.ok(x.length <= 1200, `${t}: demasiado largo para WhatsApp (${x.length})`);
+      }
+    }
+    assert.equal(textoAyuda('no-existe', SITE), null);
+    assert.equal(textoAyuda('toString', SITE), null);
+    // la herramienta ofrece exactamente estos temas
+    const ayuda = HERRAMIENTAS.find((h) => h.name === 'ayuda');
+    assert.deepEqual(ayuda.input_schema.properties.tema.enum, TEMAS_AYUDA);
+    for (const t of TEMAS_NUEVOS) assert.match(ayuda.input_schema.properties.tema.description, new RegExp(`\\b${t}\\b`));
+    // enlaces: las secciones del panel que existen
+    const enl = textoAyuda('enlaces', SITE);
+    for (const p of ['numeros', 'perfil', 'fotos', 'verificacion', 'historias', 'plan', 'destacado', 'creditos', 'contenido', 'avisos', 'cuenta']) assert.ok(enl.includes(`${SITE}/panel/${p}\n`), `enlaces: falta /panel/${p}`);
+    assert.ok(enl.includes(`${SITE}/trata`) && enl.includes(`${SITE}/denunciar`));
+  });
+
+  test('ningún texto de ayuda nombra cosas internas; Mercado Pago solo en "contenido"', () => {
+    for (const [tema, t] of TODOS()) {
+      for (const re of PROHIBIDAS) assert.ok(!re.test(t), `${tema}: dice algo interno (${re})`);
+      if (tema !== 'contenido') assert.ok(!/mercado ?pago/i.test(t), `${tema}: nombra Mercado Pago`);
+      assert.ok(!/sexual|sexo|desnud/i.test(t), `${tema}: contenido sexual`);
+    }
+    // "próximamente": sin fechas, sin motivos, sin Mercado Pago
+    assert.equal(CONTENIDO_PROXIMAMENTE, 'La venta de contenido todavía no está disponible en SexyRose: va a estar próximamente.');
+    assert.ok(!/\d|mercado|pago|configur|cuenta/i.test(CONTENIDO_PROXIMAMENTE));
+  });
+
+  test('las instrucciones incluyen los temas nuevos y la derivación sigue igual', () => {
+    for (const captacion of [false, true]) {
+      const p = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion });
+      for (const x of ['los datos de su perfil', 'videos', 'historias', 'venta de contenido (packs y pedidos personalizados)', 'Mis números', 'avisos del panel',
+        'ocultar el perfil o dar de baja la cuenta', 'cómo funciona el sitio para los clientes', 'denuncias', 'idiomas del sitio', 'enlaces del sitio']) {
+        assert.ok(p.includes(x), `falta "${x}"`);
+      }
+      assert.ok(p.includes('Para explicar cómo funciona algo usá la herramienta "ayuda"'));
+      assert.ok(p.includes('Si piden hablar con una persona, si la consulta está fuera de estos temas o si la persona está enojada: usá "derivar_a_juan".'));
+      assert.ok(p.includes('Expliques cómo funciona el negocio por dentro (comisiones, proveedores, costos'));
+    }
+  });
+
+  test('"contenido": "próximamente" sin Mercado Pago de la plataforma; cómo empezar cuando está habilitada (lo ve el agente por la base)', async () => {
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ('5491155550301@s.whatsapp.net', '5491155550301') RETURNING id");
+    const ayudaContenido = async () => (await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'contenido' })).resultado.texto;
+    // Al arrancar, el app publicó el estado (estas pruebas no tienen cuentas de Mercado Pago)
+    assert.equal(await instance.ctx.contenido.disponible(), false);
+    const { rows: [fila] } = await db.query('SELECT valor FROM ajustes WHERE clave = $1', [AJUSTE_ESTADO]);
+    assert.deepEqual(fila.valor, { disponible: false });
+    assert.equal(await ventaContenidoDisponible(dbAgente), false);
+    assert.equal(await ayudaContenido(), CONTENIDO_PROXIMAMENTE);
+    // Juan carga la aplicación de Mercado Pago desde el admin: el agente (otra conexión, sin las credenciales) lo ve
+    const APP = { nombre: 'Prueba asistente', clientId: '7777000011', clientSecret: 'secreto-app-asistente-123', webhookSecret: 'webhook-asistente-456' };
+    let r = await admJson('POST', '/integraciones/mp', APP);
+    assert.equal(r.status, 201, await r.clone().text());
+    assert.equal(await ventaContenidoDisponible(dbAgente), true);
+    const t = await ayudaContenido();
+    assert.match(t, /Conectar Mercado Pago/);
+    assert.match(t, /Agregar pack/);
+    assert.ok(t.includes(`${SITE}/panel/contenido`) && t.includes(`${SITE}/panel/pedidos`));
+    assert.ok(!/comisi|%/i.test(t));
+    // la borra: vuelve a "próximamente"
+    r = await admJson('DELETE', '/integraciones/mp/' + APP.clientId);
+    assert.equal(r.status, 200);
+    assert.equal(await ventaContenidoDisponible(dbAgente), false);
+    assert.equal(await ayudaContenido(), CONTENIDO_PROXIMAMENTE);
+    // un valor raro en la base cuenta como no disponible
+    await db.query("UPDATE ajustes SET valor = '\"si\"'::jsonb WHERE clave = $1", [AJUSTE_ESTADO]);
+    assert.equal(await ayudaContenido(), CONTENIDO_PROXIMAMENTE);
+    await instance.ctx.contenido.publicarEstado();
+    // los demás temas no dependen de esto
+    assert.equal((await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'perfil' })).resultado.texto, textoAyuda('perfil', SITE));
+    assert.equal((await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'nada' })).resultado.error, 'Tema desconocido.');
   });
 });

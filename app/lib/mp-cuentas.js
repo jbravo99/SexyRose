@@ -80,7 +80,7 @@ export function createMpCuentas({ pool, secretsKey = '', envCuentas = [], lista 
     await pool.query(
       `INSERT INTO mp_cuentas (client_id, nombre, client_secret_cifrado, webhook_secret_cifrado) VALUES ($1, $2, $3, $4)`,
       [v.clientId, v.nombre, cifrarSecreto(secretsKey, v.clientSecret), cifrarSecreto(secretsKey, v.webhookSecret)]);
-    await cargar(); onChange();
+    await cargar(); await onChange();
     return listar();
   }
   // Dejar un secreto vacío = conservar el que estaba. El Client ID no se cambia (es la aplicación): borrar y cargar de nuevo.
@@ -94,14 +94,14 @@ export function createMpCuentas({ pool, secretsKey = '', envCuentas = [], lista 
               webhook_secret_cifrado = COALESCE($4, webhook_secret_cifrado), actualizado = now()
         WHERE client_id = $1`,
       [id, v.nombre, v.clientSecret ? cifrarSecreto(secretsKey, v.clientSecret) : null, v.webhookSecret ? cifrarSecreto(secretsKey, v.webhookSecret) : null]);
-    await cargar(); onChange();
+    await cargar(); await onChange();
     return listar();
   }
   async function borrar(id) {
     const existe = delAdmin(id) || ilegibles.find((c) => c.id === id);
     if (!existe) throw he(404, 'Esa cuenta no existe o está configurada en el servidor (no se borra desde acá).');
     await pool.query('DELETE FROM mp_cuentas WHERE client_id = $1', [id]);
-    await cargar(); onChange();
+    await cargar(); await onChange();
     return listar();
   }
   // Pide un token de la aplicación a Mercado Pago. No dice nada de la clave del webhook (esa se comprueba con la

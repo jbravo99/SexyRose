@@ -220,3 +220,13 @@ html[data-prelanzamiento] main#app{padding-bottom:0}
 .sr-pre-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%;margin-top:10px}
 .sr-pre-btns .btn{flex:1 1 220px;max-width:280px;justify-content:center}
 @media(min-width:900px){.hero.sr-pre{padding-block:72px 80px}.hero.sr-pre h1{max-width:20ch}.hero.sr-pre .lead{font-size:18px}.sr-pre-mark{width:68px;height:68px;border-radius:21px}.sr-pre-mark svg{width:34px;height:34px}}
+/* Vista previa del perfil de la acompañante (/panel/vista-previa, prod-sitio.js): barra fija debajo del encabezado */
+.sp-vp{position:sticky;top:calc(var(--header-h) + env(safe-area-inset-top,0px));z-index:45;background:var(--berry-tint);border-bottom:1px solid rgba(255,92,138,.38);box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.sp-vp-in{display:flex;align-items:center;gap:12px;padding-block:10px}
+.sp-vp-ic{width:36px;height:36px;border-radius:12px;background:var(--berry);color:var(--berry-ink);display:grid;place-items:center;flex:none}
+.sp-vp-ic svg{width:19px;height:19px}
+.sp-vp-tx{min-width:0;font-size:14px;line-height:1.35;color:var(--fg)}
+.sp-vp-sub{display:block;margin-top:2px;font-size:12.5px;color:var(--fg-2)}
+.sp-vp-btn{flex:none;white-space:nowrap}
+/* Celular: barra más baja (sin la segunda línea) para que no tape el perfil */
+@media(max-width:600px){.sp-vp-in{gap:10px;padding-block:8px}.sp-vp-ic,.sp-vp-sub{display:none}.sp-vp-tx{font-size:13px}.sp-vp-btn{padding-inline:12px}}

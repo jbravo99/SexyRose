@@ -71,16 +71,17 @@ export function aclaraciones(lista, ubic) {
   return out;
 }
 
-export async function armarEstado(pool, planesInst) {
-  const cat = await cargarCatalogos(pool);
-  // Home provisoria (lib/prelanzamiento.js): sin perfiles, historias ni lugares; el sitio muestra solo la portada
-  const pre = prelanzamientoActivo(cat.ajustes);
-  const { rows: perfiles } = pre ? { rows: [] } : await pool.query(
-    `SELECT p.cuenta_id, p.slug, p.datos, p.actualizado, p.publicado_en
-       FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-      WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'
-      ORDER BY p.publicado_en DESC NULLS LAST, p.cuenta_id`,
-  );
+// Historia activa con la forma pública (video: url = MP4, urlMini = portada)
+export const historiaPublica = (h) => ({
+  id: h.id, cuentaId: h.cuenta_id, tipo: h.tipo || 'foto', url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira,
+  ...(h.tipo === 'video' ? { segundos: h.segundos == null ? null : Number(h.segundos), ancho: h.ancho, alto: h.alto } : {}),
+});
+
+/* Perfiles con la forma pública (fotos y videos dentro del límite del plan, clip de la tarjeta, Destacado, historias
+   destacadas) e historias activas, a partir de filas de perfiles (cuenta_id, slug, datos, actualizado, publicado_en).
+   Lo usan el estado del sitio (solo los publicados) y la vista previa de la acompañante (GET /api/cuenta/vista-previa,
+   solo su propio perfil, en cualquier estado): así la vista previa es exactamente lo que se publica. */
+export async function perfilesPublicos(pool, planesInst, perfiles, cat) {
   const ids = perfiles.map((p) => p.cuenta_id);
   const [fotos, historias, planes, videos, previews, destacados] = await Promise.all([
     ids.length ? pool.query('SELECT cuenta_id, url, url_mini, ancho, alto FROM fotos WHERE cuenta_id = ANY($1) ORDER BY cuenta_id, orden, creado', [ids]) : { rows: [] },
@@ -117,6 +118,20 @@ export async function armarEstado(pool, planesInst) {
     const hl = destacadasDe.get(p.cuenta_id);
     return hl ? { ...pub, destacadas: hl } : pub;
   });
+  return { lista, historias: historias.rows };
+}
+
+export async function armarEstado(pool, planesInst) {
+  const cat = await cargarCatalogos(pool);
+  // Home provisoria (lib/prelanzamiento.js): sin perfiles, historias ni lugares; el sitio muestra solo la portada
+  const pre = prelanzamientoActivo(cat.ajustes);
+  const { rows: perfiles } = pre ? { rows: [] } : await pool.query(
+    `SELECT p.cuenta_id, p.slug, p.datos, p.actualizado, p.publicado_en
+       FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
+      WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'
+      ORDER BY p.publicado_en DESC NULLS LAST, p.cuenta_id`,
+  );
+  const { lista, historias } = await perfilesPublicos(pool, planesInst, perfiles, cat);
   const aj = cat.ajustes;
   const mapa = mapaConfig();
   return {
@@ -130,11 +145,7 @@ export async function armarEstado(pool, planesInst) {
     // Las actividades (tabla categorias) no se publican: el sitio es de anuncios y no menciona qué se ofrece
     intereses: cat.interesesLista.map((i) => ({ id: i.id, nombre: i.nombre, nombreEn: i.nombre_en, nombrePt: i.nombre_pt, orden: i.orden })),
     perfiles: lista,
-    historias: historias.rows.map((h) => ({
-      id: h.id, cuentaId: h.cuenta_id, tipo: h.tipo || 'foto', url: h.url, urlMini: h.url_mini || h.url, texto: h.texto, creado: h.creado, expira: h.expira,
-      // Video: url = MP4, urlMini = portada
-      ...(h.tipo === 'video' ? { segundos: h.segundos == null ? null : Number(h.segundos), ancho: h.ancho, alto: h.alto } : {}),
-    })),
+    historias: historias.map(historiaPublica),
   };
 }
 

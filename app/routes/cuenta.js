@@ -13,7 +13,8 @@ import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesItems, li
 import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_V2 } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
-import { invalidarSitio } from './sitio.js';
+import { invalidarSitio, perfilesPublicos, historiaPublica, ubicacionesUsadas } from './sitio.js';
+import { prelanzamientoActivo } from '../lib/prelanzamiento.js';
 import { DestacadaError } from '../lib/destacadas.js';
 import { crearLimitesAuth } from '../lib/seguridad.js';
 import { PERIODOS_CUENTA, numerosCuenta } from '../lib/metricas.js';
@@ -376,6 +377,25 @@ export function createCuentaRouter(ctx) {
     if (!PERIODOS_CUENTA.includes(periodo)) return fail(res, 400, 'Período inválido: 7d, 30d o 90d.');
     const t = ctx.config && typeof ctx.config.metricasAhora === 'function' ? ctx.config.metricasAhora() : null;
     res.json({ ok: true, ...(await numerosCuenta(pool, req.cuenta.id, { periodo, ahora: t })) });
+  }));
+
+  /* Vista previa de su propio perfil (17/11/2026, pedido de Juan): lo que se publicaría con lo último que guardó, en
+     cualquier estado (borrador, en revisión, rechazado, oculto, pausado) y aunque la home provisoria esté prendida.
+     Mismo armado que el sitio público (routes/sitio.js → perfilesPublicos: fotos y videos dentro del límite del plan,
+     clip, Destacado, historias y destacadas). Solo la cuenta de la sesión: no recibe slug ni id, así que nunca muestra
+     otro perfil. Sin caché y fuera de los buscadores; no pasa por /api/sitio/evento, así que no suma visitas ni toques.
+     → { perfil, historias, ubicaciones, publico } (publico: hoy lo ve cualquiera en el sitio) */
+  r.get('/vista-previa', auth.requireCuenta, ah(async (req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    const { rows } = await pool.query(
+      `SELECT p.cuenta_id, p.slug, p.datos, p.actualizado, p.publicado_en, p.estado, p.verificacion, p.oculto, c.estado AS cuenta_estado
+         FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id WHERE p.cuenta_id = $1`, [req.cuenta.id]);
+    const p = rows[0];
+    if (!p) return fail(res, 404, 'No encontramos tu perfil.');
+    const cat = await cargarCatalogos(pool);
+    const { lista, historias } = await perfilesPublicos(pool, planes(), [{ ...p, slug: p.slug || 'vista-previa', datos: p.datos || {} }], cat);
+    const publico = p.estado === 'publicado' && p.verificacion === 'verificada' && !p.oculto && p.cuenta_estado === 'activa' && !prelanzamientoActivo(cat.ajustes);
+    res.json({ ok: true, perfil: lista[0], historias: historias.map(historiaPublica), ubicaciones: ubicacionesUsadas(cat, lista), publico });
   }));
 
   r.post('/cambiar-password', auth.requireCuenta, ah(async (req, res) => {

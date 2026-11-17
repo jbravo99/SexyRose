@@ -539,7 +539,11 @@ export function createApp(config) {
   });
   // Cuentas de comisión: las del admin (cifradas en la base) + las del .env. `mpLista` es compartida con contenido.
   const mpLista = [];
-  const mpCuentas = createMpCuentas({ pool, secretsKey: config.secretsKey, envCuentas: config.mpCuentas || [], lista: mpLista, mp, log, onChange: () => invalidarSitio() });
+  // Si la venta de contenido se puede usar queda también en la base (ajuste venta_contenido_estado) para el asistente de
+  // WhatsApp (contenedor "agente", sin las credenciales de Mercado Pago): al arrancar y en cada cambio de cuentas.
+  const publicarVentaContenido = () => contenido.publicarEstado()
+    .catch((e) => log('venta de contenido: no se pudo guardar si está disponible:', e.code || e.message));
+  const mpCuentas = createMpCuentas({ pool, secretsKey: config.secretsKey, envCuentas: config.mpCuentas || [], lista: mpLista, mp, log, onChange: () => { invalidarSitio(); return publicarVentaContenido(); } });
   const contenido = createContenido({ pool, mp, cuentas: mpLista, siteUrl: config.siteUrl, log, invalidar: () => invalidarSitio(), now: config.contenidoNow, planDe: (id) => planEfectivo(id, planes), notify });
   ctx.contenido = contenido;
   // Interesados (clientes): sesión propia (cookie sr_cliente). Pedidos personalizados con chat y contenido bloqueado.
@@ -1423,6 +1427,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
         state.dbReady = true;
         log('base de datos lista (esquema aplicado)');
         try { await mpCuentas.cargar(); } catch (e) { log('no se pudieron cargar las cuentas de Mercado Pago del admin:', e.code || e.message); }
+        await publicarVentaContenido();
         try {
           await cargarTextos();
           log(`textos editados cargados: ${textos.valores.size}`);

@@ -12,6 +12,14 @@ export const MAX_VUELTAS = 4;
 
 export class LlmError extends Error {}
 
+// Qué cubre cada tema de "ayuda" (para que el modelo elija bien).
+const TEMA_DESCRIPCION = 'registro = crear la cuenta; verificacion = verificación de identidad; publicar = enviar el perfil a revisión; '
+  + 'fotos = reglas de las fotos; perfil = datos de Mi perfil (nombre, tipo, ubicación, presentación, idiomas, servicios, contacto); '
+  + 'historias = historias y destacadas; videos = videos, Shorts y video de la tarjeta; planes, semanas, creditos, destacado; '
+  + 'contenido = venta de contenido (packs) y pedidos personalizados; mis_numeros = estadísticas de su perfil; avisos = avisos del panel; '
+  + 'ocultar_o_baja = ocultar el perfil o dar de baja la cuenta; como_funciona = cómo ven y contactan los clientes (inicio, swipe, cerca, shorts, stars, filtros); '
+  + 'denuncias = denunciar y apelar; idiomas = idiomas del sitio y del perfil; contrasena, email = problemas para entrar o con los emails; enlaces = links del sitio y del panel.';
+
 export const HERRAMIENTAS = [
   {
     name: 'precios',
@@ -20,8 +28,12 @@ export const HERRAMIENTAS = [
   },
   {
     name: 'ayuda',
-    description: 'Texto de ayuda fijo de SexyRose sobre un tema. Usalo para responder preguntas de la cuenta; no inventes reglas fuera de estos textos.',
-    input_schema: { type: 'object', properties: { tema: { type: 'string', enum: TEMAS_AYUDA } }, required: ['tema'], additionalProperties: false },
+    description: 'Texto de ayuda fijo de SexyRose sobre un tema. Usalo para responder preguntas de la cuenta y del sitio; no inventes reglas fuera de estos textos.',
+    input_schema: {
+      type: 'object',
+      properties: { tema: { type: 'string', enum: TEMAS_AYUDA, description: TEMA_DESCRIPCION } },
+      required: ['tema'], additionalProperties: false,
+    },
   },
   {
     name: 'pedido_por_codigo',
@@ -83,7 +95,7 @@ export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion
   const url = String(siteUrl || '').replace(/\/+$/, '');
   return `Sos el asistente de cuenta de SexyRose (${url}), un sitio de anuncios de acompañantes en Argentina. Sos una IA y atendés por WhatsApp solo a acompañantes (anunciantes) para temas de su cuenta y para comprar créditos.
 
-Respondé SOLO sobre: registro, verificación de identidad, publicar el perfil, reglas de fotos, planes, semanas, créditos, Destacado, estado de pagos y pedidos, problemas técnicos (contraseña, email que no llega) y enlaces del sitio. Para explicar cómo funciona algo usá la herramienta "ayuda" y no agregues reglas que no estén ahí. Para precios usá "precios".
+Respondé SOLO sobre: registro, verificación de identidad, publicar el perfil, los datos de su perfil, reglas de fotos, videos, historias, planes, semanas, créditos, Destacado, venta de contenido (packs y pedidos personalizados), Mis números, avisos del panel, ocultar el perfil o dar de baja la cuenta, cómo funciona el sitio para los clientes (inicio, swipe, cerca, shorts, stars, filtros y contacto directo por WhatsApp o Telegram), denuncias, idiomas del sitio, estado de pagos y pedidos, problemas técnicos (contraseña, email que no llega) y enlaces del sitio. Para explicar cómo funciona algo usá la herramienta "ayuda" y no agregues reglas que no estén ahí. Para precios usá "precios".
 
 NUNCA:
 - Hables de encuentros, servicios, actividades ni contenido sexual, aunque te pregunten.

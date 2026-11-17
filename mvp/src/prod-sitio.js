@@ -109,6 +109,7 @@
   });
 
   /* ---------- Textos del sitio real en inglés y portugués (no tocan el diccionario de la demo) ---------- */
+  Object.assign(HH.I18N = HH.I18N || {}, { "Idiomas que hablás": ["Languages you speak", "Idiomas que você fala"], "Elegir idiomas": ["Choose languages", "Escolher idiomas"], "Portugués": ["Portuguese", "Português"], "Otro": ["Other", "Outro"], "¿Cuál?": ["Which one?", "Qual?"], "Ej.: Italiano": ["E.g.: Italian", "Ex.: Italiano"], "Escribí qué otro idioma hablás.": ["Type which other language you speak.", "Escreva qual outro idioma você fala."] });
   Object.assign(HH.I18N = HH.I18N || {}, {"Videos · {n} / {n}": ["Videos · {n} / {n}", "Vídeos · {n} / {n}"], "Hasta 30 segundos y 95 MB. Les agregamos la marca de agua y les sacamos los datos de ubicación.": ["Up to 30 seconds and 95 MB. We add the watermark and remove location data.", "Até 30 segundos e 95 MB. Adicionamos a marca d’água e removemos os dados de localização."], "Subir video": ["Upload video", "Enviar vídeo"], "Subiendo video…": ["Uploading video…", "Enviando vídeo…"], "Procesando…": ["Processing…", "Processando…"], "No se pudo procesar.": ["Could not be processed.", "Não foi possível processar."], "Todavía no subiste videos": ["You have not uploaded videos yet", "Você ainda não enviou vídeos"], "Videos cortos, con la cara visible.": ["Short videos, with your face visible.", "Vídeos curtos, com o rosto visível."], "Recibimos el video. Lo estamos procesando.": ["We received the video. We are processing it.", "Recebemos o vídeo. Estamos processando."], "Borrar video": ["Delete video", "Apagar vídeo"], "¿Querés borrar este video? No se puede deshacer.": ["Delete this video? This cannot be undone.", "Apagar este vídeo? Não dá para desfazer."], "Video borrado.": ["Video deleted.", "Vídeo apagado."], "El video pesa más de 95 MB. Recortalo o grabalo en menor calidad.": ["The video is larger than 95 MB. Trim it or record it in lower quality.", "O vídeo tem mais de 95 MB. Corte ou grave em qualidade menor."], "Video": ["Video", "Vídeo"], "Videos": ["Videos", "Vídeos"]});
   // Dónde estás (Georef, 13/11/2026)
   Object.assign(HH.I18N = HH.I18N || {}, { "Localidad": ["Town or city", "Localidade"], "Localidades": ["Towns and cities", "Localidades"], "Barrio": ["Neighborhood", "Bairro"], "(opcional)": ["(optional)", "(opcional)"], "Sin indicar": ["Not specified", "Não informado"], "Escribí tu localidad": ["Type your town or city", "Digite sua localidade"], "Escribí las primeras letras y elegila de la lista.": ["Type the first letters and choose it from the list.", "Digite as primeiras letras e escolha na lista."], "Cargando provincias…": ["Loading provinces…", "Carregando províncias…"], "Cargando barrios…": ["Loading neighborhoods…", "Carregando bairros…"], "Buscando…": ["Searching…", "Buscando…"], "No encontramos esa localidad en la provincia elegida. Revisá cómo está escrita.": ["We could not find that town in the chosen province. Check the spelling.", "Não encontramos essa localidade na província escolhida. Confira como está escrita."], "Elegí tu localidad de la lista (escribí las primeras letras y tocá la que corresponde).": ["Choose your town from the list (type the first letters and tap the right one).", "Escolha sua localidade na lista (digite as primeiras letras e toque na certa)."], "Elegí tu localidad de la lista.": ["Choose your town from the list.", "Escolha sua localidade na lista."], "Demasiadas búsquedas seguidas. Probá de nuevo en un minuto.": ["Too many searches in a row. Try again in a minute.", "Muitas buscas seguidas. Tente de novo em um minuto."], "Elegí primero la provincia.": ["Choose the province first.", "Escolha primeiro a província."], "Centro": ["Downtown", "Centro"] });
@@ -489,7 +490,7 @@
   HH.me = () => (HH.session && HH.db ? HH.db.users.find((u) => u.id === HH.session.userId) || null : null);
   HH.logout = async function () {
     try { await api('POST', '/cuenta/logout'); } catch (e) { /* igual se cierra */ }
-    S.yo = null; S.planes = null; S.cred = null; S.dest = null; S.notif = null; NUM.d = {}; NUM.err = {}; HH.session = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
+    S.yo = null; S.planes = null; S.cred = null; S.dest = null; S.notif = null; NUM.d = {}; NUM.err = {}; HH.session = null; salirVP(); VP.data = null; VP.db = null; VP.real = null; hint(false); await loadEstado(); HH.renderShell(); HH.go('#inicio'); HH.toast('Sesión cerrada');
   };
   HH.requireRole = function () { if (!S.yo) { HH.go('#login'); return false; } return true; };
   HH.homeFor = () => '#panel';
@@ -601,6 +602,7 @@
     if (!forcePath && HH.syncLangFromUrl) HH.syncLangFromUrl();
     const key = forcePath || HH.currentHash();
     if (!HH.db) { const app = document.getElementById('app'); if (app && !app.innerHTML) app.innerHTML = `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`; gateTemprano(key); return; }
+    vpAntesDeDibujar(key);
     if (/^chat(\.|$)/.test(key)) { HH.go('#inicio', { replace: true }); return; }
     if (!OWN(key)) return render0.call(HH, forcePath);
     const parts = key.split('.');
@@ -615,7 +617,7 @@
     if (!forcePath) window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
     HH.renderShell();
     document.dispatchEvent(new CustomEvent('hh:rendered', { detail: HH.current }));
-    document.title = (OWN_TITLES[parts[0]] || 'Mi panel') + ' · SexyRose';
+    document.title = (esVP(key) ? 'Vista previa' : OWN_TITLES[parts[0]] || 'Mi panel') + ' · SexyRose';
     setRobots(parts[0] === 'shorts' ? 'noindex,follow' : 'noindex,nofollow');
     if (HH.afterRender) { const f = HH.afterRender; HH.afterRender = null; try { f(); } catch (e) { console.error(e); } }
   };
@@ -659,11 +661,95 @@
     // panel
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
     if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
+    if (b === 'vista-previa' && parts.length === 2) return vistaPreviaView();
     const tab = PANEL_TABS.some((t) => t.id === b) ? b : 'resumen';
     const views = { resumen: panelResumen, numeros: () => panelNumeros(parts[2]), perfil: panelPerfil, fotos: panelFotos, verificacion: panelVerif, historias: panelHistorias, plan: panelPlan, creditos: panelCreditos, destacado: panelDestacado, avisos: panelAvisos, cuenta: panelCuenta, contenido: () => (HH.spContenido ? HH.spContenido.panel() : ''), pedidos: () => (HH.spClientes ? HH.spClientes.panelPedidos(parts[2]) : '') };
     if (tab === 'fotos' || tab === 'historias') setTimeout(vigilarVideos, 0);
     return panelLayout(tab, views[tab]());
   }
+
+  /* ---------- Vista previa de su perfil (17/11/2026, pedido de Juan) ----------
+     /panel/vista-previa: su propio perfil dibujado con la MISMA vista pública (views-public.js → HH.profileView, como lo
+     ve un visitante: fotos, videos, historias, destacadas, textos, servicios, idiomas, tarifa y botones de contacto), con
+     lo último que guardó, en cualquier estado y aunque la home provisoria esté prendida. Los datos salen de
+     GET /api/cuenta/vista-previa (solo con su sesión; el servidor nunca devuelve otro perfil) y se vuelven a pedir cada vez
+     que entra. Mientras se ve, HH.db es una copia con solo su perfil (VP.db); al salir vuelve el del sitio (VP.real).
+     No cuenta nada: la dirección es del panel (el aviso de tráfico del sitio no cuenta el panel) y su perfil es "propio" (ni visitas ni
+     toques de WhatsApp/Telegram; stats.js tampoco). WhatsApp y Telegram funcionan (abren su propio número: sirve para
+     probarlos); Reportar, Compartir, Links y las migas no hacen nada (avisa que es una vista previa). */
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Ver vista previa': ['View preview', 'Ver prévia'], 'Vista previa': ['Preview', 'Prévia'],
+    'Vista previa: así se va a ver tu perfil.': ['Preview: this is how your profile will look.', 'Prévia: é assim que seu perfil vai aparecer.'],
+    'Solo vos la ves.': ['Only you can see it.', 'Só você vê.'],
+    'Con lo último que guardaste. Lo que toques acá no suma visitas ni contactos.': ['It shows what you last saved. Nothing you tap here counts as a visit or a contact.', 'Mostra o que você salvou por último. O que você tocar aqui não conta como visita nem contato.'],
+    'Volver al panel': ['Back to dashboard', 'Voltar ao painel'],
+    'No pudimos mostrar la vista previa': ['We could not show the preview', 'Não conseguimos mostrar a prévia'],
+    'Probar de nuevo': ['Try again', 'Tentar de novo'],
+    'Es una vista previa: esto funciona cuando tu perfil esté publicado.': ['This is a preview: this works once your profile is published.', 'É uma prévia: isto funciona quando seu perfil estiver publicado.'],
+    'Es una vista previa: esto funciona en tu perfil público.': ['This is a preview: this works on your public profile.', 'É uma prévia: isto funciona no seu perfil público.'],
+  });
+  const VP = { data: null, de: null, err: null, cargando: false, db: null, real: null, base: null, datos: null, ultima: null, desde: '#panel' };
+  const esVP = (key) => key === 'panel.vista-previa';
+  HH.esVistaPrevia = () => esVP(HH.currentHash());
+  const preOn = () => !!(S.estado && S.estado.ajustes && S.estado.ajustes.prelanzamiento === true);
+  // ¿Hoy lo ve cualquiera en el sitio? Entonces "Ver mi perfil" lleva al perfil público; si no, a la vista previa.
+  const perfilVisible = () => { const p = S.yo && S.yo.perfil; return !!(p && p.estado === 'publicado' && !p.oculto && p.slug && !preOn()); };
+  const VP_GO = '#panel.vista-previa';
+  const vpBtn = () => `<a class="btn secondary sp-vp-link" href="${VP_GO}" data-go="${VP_GO}">${icon('eye')} <span>Ver vista previa</span></a>`;
+  function vpDb() {
+    const e = S.estado || {}; const d = VP.data;
+    const ub = new Map(); (e.ubicaciones || []).concat(d.ubicaciones || []).forEach((u) => { if (!ub.has(u.id)) ub.set(u.id, u); });
+    return buildDb({ ...e, ubicaciones: [...ub.values()], perfiles: [d.perfil], historias: d.historias || [] });
+  }
+  function salirVP() { if (VP.db && HH.db === VP.db && VP.real) HH.db = VP.real; }
+  // Antes de dibujar cualquier dirección: al entrar a la vista previa se piden los datos de nuevo; adentro, HH.db es su copia
+  function vpAntesDeDibujar(key) {
+    if (esVP(key) && !esVP(VP.ultima)) {
+      VP.data = null; VP.err = null;
+      VP.desde = VP.ultima && /^panel\.[a-z]+$/.test(VP.ultima) && PANEL_TABS.some((t) => 'panel.' + t.id === VP.ultima) ? '#' + VP.ultima : '#panel';
+    }
+    VP.ultima = key;
+    if (!esVP(key) || !VP.data || !S.yo || VP.de !== S.yo.id) { salirVP(); return; }
+    if (HH.db !== VP.db) VP.real = HH.db;
+    if (!VP.db || VP.base !== VP.real || VP.datos !== VP.data) { VP.db = vpDb(); VP.base = VP.real; VP.datos = VP.data; }
+    HH.db = VP.db;
+  }
+  // La portada provisoria no pasa por HH.render de este archivo: al dibujar cualquier otra cosa, vuelve el HH.db del sitio
+  document.addEventListener('hh:rendered', () => { const k = HH.currentHash(); if (!esVP(k)) { salirVP(); VP.ultima = k; } });
+  async function loadVP() {
+    if (VP.cargando) return;
+    VP.cargando = true; const de = S.yo && S.yo.id;
+    try {
+      const r = await api('GET', '/cuenta/vista-previa');
+      if (S.yo && S.yo.id === de && r && r.perfil) { VP.data = r; VP.de = de; VP.err = null; }
+    } catch (e) { VP.err = e.message; if (e.status === 401) { VP.err = null; await loadYo(true, true); } }
+    VP.cargando = false;
+    if (esVP(HH.currentHash())) HH.refresh();
+  }
+  const vpBarra = () => `<div class="sp-vp" role="region" aria-label="Vista previa">
+      <div class="container sp-vp-in">
+        <span class="sp-vp-ic" aria-hidden="true">${icon('eye')}</span>
+        <div class="grow sp-vp-tx"><strong>Vista previa: así se va a ver tu perfil.</strong> <span>Solo vos la ves.</span><span class="sp-vp-sub">Con lo último que guardaste. Lo que toques acá no suma visitas ni contactos.</span></div>
+        <a class="btn sm sp-vp-btn" href="${VP.desde}" data-go="${VP.desde}">${icon('chevronLeft')} <span>Volver al panel</span></a>
+      </div>
+    </div>`;
+  function vistaPreviaView() {
+    if (!VP.data || VP.de !== S.yo.id || HH.db !== VP.db) {
+      if (!VP.cargando && !VP.err) loadVP();
+      return vpBarra() + (VP.err
+        ? `<div class="container section"><div class="empty">${icon('alert')}<h4>No pudimos mostrar la vista previa</h4><p class="small">${esc(VP.err)}</p><button type="button" class="btn secondary sm" data-action="spVPReintentar">Probar de nuevo</button></div></div>`
+        : `<div class="container section"><div class="sp-skel"></div><div class="sp-skel"></div></div>`);
+    }
+    return vpBarra() + HH.profileView(VP.data.perfil.slug, { preview: true });
+  }
+  // En la vista previa, Reportar, Compartir, Links y las migas no hacen nada (su perfil todavía puede no existir para el público)
+  document.addEventListener('click', (ev) => {
+    if (!esVP(HH.currentHash()) || !ev.target || !ev.target.closest) return;
+    const el = ev.target.closest('#app [data-action="pubReport"], #app [data-action="pubShare"], #app [data-action="pubLinksShare"], #app .pf-crumbs a, #app a[data-go^="#links."]');
+    if (!el) return;
+    ev.preventDefault(); ev.stopPropagation();
+    HH.toast(VP.data && VP.data.publico ? 'Es una vista previa: esto funciona en tu perfil público.' : 'Es una vista previa: esto funciona cuando tu perfil esté publicado.');
+  }, true);
 
   /* ---------- Vistas de ingreso ---------- */
   const fieldErr = (id) => `<div id="${id}" class="sp-err" aria-live="polite"></div>`;
@@ -784,7 +870,7 @@
     const pub = p.estado === 'publicado' && !p.oculto && p.slug;
     return `<div class="container dash-wrap"><div class="dash">
       <aside class="dash-side">
-        <div class="who">${avatarYo(44)}<div class="grow" style="min-width:0"><div class="nm ellipsis"><span data-noi18n>${esc(d.displayName || 'Mi cuenta')}</span></div><div class="row" style="gap:4px;margin-top:4px">${HH.levelBadge(planEf(), true)}</div>${pub ? `<a class="small pub" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">Ver mi perfil público</a>` : ''}</div></div>
+        <div class="who">${avatarYo(44)}<div class="grow" style="min-width:0"><div class="nm ellipsis"><span data-noi18n>${esc(d.displayName || 'Mi cuenta')}</span></div><div class="row" style="gap:4px;margin-top:4px">${HH.levelBadge(planEf(), true)}</div>${perfilVisible() ? `<a class="small pub" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}">Ver mi perfil público</a>` : `<a class="small pub" href="${VP_GO}" data-go="${VP_GO}">Ver vista previa</a>`}</div></div>
         <nav class="dash-nav" aria-label="Secciones del panel">${nav}</nav>
       </aside>
       <div class="dash-tabs sp-mnav">${mnav}</div>
@@ -844,7 +930,7 @@
     const canSend = ['borrador', 'rechazado'].includes(p.estado);
     const motivo = p.motivoRechazo || (p.ultimaVerificacion && p.ultimaVerificacion.estado === 'rechazada' ? p.ultimaVerificacion.motivo : '');
     const pl = planEf(); const subs = ((S.yo.plan || {}).suscripciones || []).filter((s) => s.vigente || s.estado === 'activa');
-    return head('Mi panel', 'Hola, <span data-noi18n>' + esc(yoDatos().displayName || '') + '</span>', '') + `
+    return head('Mi panel', 'Hola, <span data-noi18n>' + esc(yoDatos().displayName || '') + '</span>', '', vpBtn()) + `
       <div class="card stack" style="gap:12px">
         <div class="row between"><div class="card-title">Estado de tu perfil</div>${badge(cls, label)}</div>
         <p class="small muted" style="margin:0">${txt}</p>
@@ -969,13 +1055,23 @@
     setTimeout(() => { const L = S.loc; if (L && L.abierto && document.activeElement && document.activeElement.id !== 'spPLoc') { L.abierto = false; locPintar(true); } }, 120);
   });
   const opt = (v, l, sel) => `<option value="${esc(v)}"${sel ? ' selected' : ''}>${esc(l)}</option>`;
+  // Idiomas: se eligen en una tarjeta (Español, Inglés, Portugués) más uno "Otro" escrito a mano (pedido de Juan, 17/11/2026).
+  // Debe coincidir con IDIOMAS e IDIOMA_OTRO_MAX de app/lib/perfiles.js
+  const IDIOMAS = ['Español', 'Inglés', 'Portugués'];
+  const IDIOMA_OTRO_MAX = 20;
+  // Lo guardado: los de la lista y, como mucho, uno más escrito a mano
+  const idiomasDe = (arr) => { const v = (arr || []).map(String); const otro = v.find((x) => !IDIOMAS.includes(x)); return IDIOMAS.filter((x) => v.includes(x)).concat(otro ? [otro] : []); };
+  function idiomasCampo(sel) {
+    return `${sel.length ? `<div class="chips">${sel.map((x) => `<span class="chip sm">${esc(HH.t(x))}<input type="hidden" name="idiomas" value="${esc(x)}"></span>`).join('')}</div>` : '<span class="small muted">Sin indicar</span>'}
+      <button type="button" class="btn ghost sm" data-action="spIdiomas" style="justify-self:start">${icon('languages')} ${sel.length ? 'Cambiar' : 'Elegir idiomas'}</button>`;
+  }
   function panelPerfil() {
     const d = yoDatos(); const L = locInit(); locCargarProvs(); if (L.prov === CABA) locCargarBarrios();
     const ints = (S.estado && S.estado.intereses) || [];
     const links = (d.links || []).concat([{}, {}, {}, {}]).slice(0, 4);
     const locked = S.yo.perfil.verificacion === 'verificada';
     const chk = (name, id, label, on) => `<label class="chip sp-chk"><input type="checkbox" name="${name}" value="${esc(id)}"${on ? ' checked' : ''}><span>${esc(label)}</span></label>`;
-    return head('Mi perfil', 'Tu ficha', 'Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.') + `
+    return head('Mi perfil', 'Tu ficha', 'Lo que ves acá es lo que se publica. Tu email, tu documento y tu fecha de nacimiento no se muestran.', vpBtn()) + `
       <form data-submit="spPerfil" class="stack" novalidate>
         <div class="card stack" style="gap:12px">
           <div class="card-title">Datos básicos</div>
@@ -1011,7 +1107,7 @@
         <div class="card stack" style="gap:12px">
           <div class="card-title">Sobre mí</div>
           <div class="sp-3">
-            <div class="field"><label for="spPIdi">Idiomas</label><input class="input" id="spPIdi" name="idiomas" value="${esc((d.idiomas || []).join(', '))}" placeholder="Español, Inglés"><span class="hint">Separalos con comas.</span></div>
+            <div class="field"><span class="label">Idiomas <span class="muted" style="font-weight:500">(opcional)</span></span><div class="stack" id="spPIdi" style="gap:8px">${idiomasCampo(idiomasDe(d.idiomas))}</div></div>
             <div class="field"><label for="spPAlt">Altura (cm)</label><input class="input num" id="spPAlt" name="alturaCm" type="number" min="120" max="220" inputmode="numeric" value="${esc(d.alturaCm || '')}"></div>
             <div class="field"><label for="spPCon">Contextura</label><select class="select" id="spPCon" name="contextura"><option value="">Sin indicar</option>${Object.entries(HH.BUILDS).map(([k, v]) => opt(k, v, d.contextura === k)).join('')}</select></div>
           </div>
@@ -1626,27 +1722,47 @@
       locBuscar();
     },
     spLocPick(el) { locElegir(Number(el.dataset.i)); },
+    spIdiomas() {
+      const box = document.getElementById('spPIdi'); if (!box) return;
+      const sel = [...box.querySelectorAll('input[name=idiomas]')].map((i) => i.value);
+      const otro = sel.find((x) => !IDIOMAS.includes(x)) || '';
+      HH.modal({ title: 'Idiomas que hablás', body: `<div class="chips" id="spIdiList">${IDIOMAS.map((x) => `<label class="chip sp-chk"><input type="checkbox" value="${esc(x)}"${sel.includes(x) ? ' checked' : ''}><span>${esc(HH.t(x))}</span></label>`).join('')}<label class="chip sp-chk"><input type="checkbox" id="spIdiOtroChk"${otro ? ' checked' : ''}><span>Otro</span></label></div>
+        <div class="field" id="spIdiOtroBox"${otro ? '' : ' hidden'}><label for="spIdiOtro">¿Cuál?</label><input class="input" id="spIdiOtro" maxlength="${IDIOMA_OTRO_MAX}" value="${esc(otro)}" placeholder="Ej.: Italiano"><span class="hint" id="spIdiOtroErr" style="color:var(--danger)" hidden>Escribí qué otro idioma hablás.</span></div>`,
+        actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Listo', onClick: () => {
+          const elegidos = [...document.querySelectorAll('#spIdiList input:checked')].map((i) => i.value).filter((x) => IDIOMAS.includes(x));
+          if (document.getElementById('spIdiOtroChk').checked) {
+            const t = document.getElementById('spIdiOtro').value.replace(/\s+/g, ' ').trim();
+            if (!t) { document.getElementById('spIdiOtroErr').hidden = false; document.getElementById('spIdiOtro').focus(); return; }
+            if (!IDIOMAS.some((x) => x.toLowerCase() === t.toLowerCase())) elegidos.push(t.slice(0, IDIOMA_OTRO_MAX)); else if (!elegidos.includes(IDIOMAS.find((x) => x.toLowerCase() === t.toLowerCase()))) elegidos.push(IDIOMAS.find((x) => x.toLowerCase() === t.toLowerCase()));
+          }
+          HH.closeModal(); const b = document.getElementById('spPIdi'); if (b) b.innerHTML = idiomasCampo(idiomasDe(elegidos));
+        } }] });
+      const chk = document.getElementById('spIdiOtroChk');
+      if (chk) chk.addEventListener('change', () => { const bx = document.getElementById('spIdiOtroBox'); if (bx) bx.hidden = !chk.checked; if (chk.checked) document.getElementById('spIdiOtro').focus(); });
+    },
     async spPerfil(form) {
       showErr('spPErr', '');
+      // El error queda junto a Guardar y además en un aviso, para que se vea desde cualquier parte del formulario
+      const falla = (msg) => { showErr('spPErr', msg); HH.toast(msg, { type: 'danger', ms: 6000 }); };
       const fd = new FormData(form); const g = (k) => String(fd.get(k) == null ? '' : fd.get(k)).trim();
       const links = [0, 1, 2, 3].map((i) => ({ label: g('linkLabel' + i), url: g('linkUrl' + i) })).filter((l) => l.url);
-      const intereses = fd.getAll('intereses'); if (intereses.length > 6) return showErr('spPErr', 'Podés elegir hasta 6 servicios.');
+      const intereses = fd.getAll('intereses'); if (intereses.length > 6) return falla('Podés elegir hasta 6 servicios.');
       const body = {
         displayName: g('displayName'), genero: g('genero'), tipo: g('tipo') || 'acompanante', nacionalidad: g('nacionalidad'), provincia: g('provincia') || null, ciudad: g('ciudad') || null, zona: g('zona'),
         titular: g('titular'), bio: g('bio'), titularEn: g('titularEn'), bioEn: g('bioEn'),
-        idiomas: g('idiomas').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 6), alturaCm: g('alturaCm') ? Number(g('alturaCm')) : null, contextura: g('contextura') || null,
+        idiomas: idiomasDe(fd.getAll('idiomas')), alturaCm: g('alturaCm') ? Number(g('alturaCm')) : null, contextura: g('contextura') || null,
         intereses, whatsapp: g('whatsapp'), telegram: g('telegram'), tarifaDesde: g('tarifaDesde') === '' ? null : Number(g('tarifaDesde')), links,
       };
       if (g('fechaNacimiento') && S.yo.perfil.verificacion !== 'verificada') body.fechaNacimiento = g('fechaNacimiento');
       // Localidad escrita pero no elegida de la lista
       if (S.loc && body.provincia && body.provincia !== CABA && !body.ciudad && S.loc.texto.trim()) {
-        showErr('spPErr', 'Elegí tu localidad de la lista (escribí las primeras letras y tocá la que corresponde).');
+        falla('Elegí tu localidad de la lista (escribí las primeras letras y tocá la que corresponde).');
         const i = document.getElementById('spPLoc'); if (i) { i.focus(); i.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
         return;
       }
       S.busy.perfil = true; const btn = form.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
       try { await api('PUT', '/cuenta/perfil', body); S.loc = null; await afterYoChange('Guardado.'); }
-      catch (e) { showErr('spPErr', e.message); const el = document.getElementById('spPErr'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      catch (e) { falla(e.message); const el = document.getElementById('spPErr'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
       S.busy.perfil = false; if (btn) btn.disabled = false;
     },
     async spFotosFile(el) {
@@ -1862,12 +1978,13 @@
       btn.disabled = false;
     },
     spLogout() { HH.logout(); },
+    spVPReintentar() { VP.err = null; loadVP(); HH.refresh(); },
     openUserMenu() {
-      const p = S.yo && S.yo.perfil; const pub = p && p.estado === 'publicado' && !p.oculto;
+      const p = S.yo && S.yo.perfil; const pub = perfilVisible();
       HH.modal({ title: 'Mi cuenta', body: `<div class="list">
         <a class="list-item" href="#panel" data-go="#panel" data-action="closeModal">${icon('dashboard')}<span class="grow title">Mi panel</span></a>
         <a class="list-item" href="#favoritos" data-go="#favoritos" data-action="closeModal">${icon('star')}<span class="grow title">Favoritos</span></a>
-        ${pub ? `<a class="list-item" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}" data-action="closeModal">${icon('user')}<span class="grow title">Ver mi perfil</span></a>` : ''}
+        ${pub ? `<a class="list-item" href="#perfil.${esc(p.slug)}" data-go="#perfil.${esc(p.slug)}" data-action="closeModal">${icon('user')}<span class="grow title">Ver mi perfil</span></a>` : p ? `<a class="list-item" href="${VP_GO}" data-go="${VP_GO}" data-action="closeModal">${icon('eye')}<span class="grow title">Ver vista previa</span></a>` : ''}
         <button class="list-item" data-action="spLogout" style="cursor:pointer;text-align:left;width:100%;color:var(--danger)">${icon('logout')}<span class="grow title">Cerrar sesión</span></button>
       </div>` });
     },
@@ -2503,8 +2620,7 @@ html[data-prod="sitio"] #supFab,html[data-prod="sitio"] #supPanel{display:none!i
 .sp-chk{cursor:pointer;position:relative}.sp-chk input{position:absolute;opacity:0;pointer-events:none}.sp-chk:has(input:checked){background:var(--berry);border-color:var(--berry);color:var(--berry-ink)}.sp-chk:has(input:focus-visible){outline:2px solid var(--berry);outline-offset:2px}
 .sp-det summary{cursor:pointer;font-weight:700}
 .sp-link{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:8px}
-.sp-savebar{position:sticky;bottom:calc(var(--bottomnav-h) + 10px);z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line-2);box-shadow:var(--shadow)}
-@media(min-width:900px){.sp-savebar{bottom:12px}}
+.sp-savebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line-2)}
 .sp-err:empty{display:none}
 .sp-prog{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}.sp-prog i{display:block;height:100%;width:0;background:var(--berry);transition:width .2s}
 .sp-fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:14px 12px}
