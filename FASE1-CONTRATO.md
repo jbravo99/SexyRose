@@ -28,7 +28,7 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `perfiles` (cuenta_id pk fk, slug text unique, datos jsonb not null default '{}', estado text default 'borrador' check in (borrador, en_revision, publicado, rechazado, pausado, suspendido), motivo_rechazo text, verificacion text default 'sin_enviar' check in (sin_enviar, pendiente, verificada, rechazada), oculto boolean default false, creado, actualizado, publicado_en timestamptz).
   - `datos` (lo edita la acompañante; el servidor valida y descarta todo lo demás): displayName (2–30), genero (mujer|trans|hombre), fechaNacimiento (YYYY-MM-DD, ≥18 años; se publica solo la edad), nacionalidad, pais, provincia, ciudad, zona, titular (≤80), bio (≤1500), titularEn, bioEn, idiomas[], alturaCm, contextura (clave del MVP HH.BUILDS), intereses[] (ids de la tabla intereses, máx 6), salidas[] (ids de categorías), tarifaDesde (USD, entero ≥0 o null), whatsapp (E.164), telegram (usuario), links[{label,url}] (máx 4, https).
 - `fotos` (id uuid pk, cuenta_id fk, orden int, clave text, url text, url_mini text, ancho, alto, creado). Límite por plan (LEVELS del MVP: E 8, D 15, C 30, B 50, A 500, S 1000).
-- `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text, estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text).
+- `verificaciones` (id uuid pk, cuenta_id fk, selfie_ruta text, documento_ruta text (frente), dorso_ruta text (desde 230), formato smallint (1 = selfie + frente, 2 = frente + dorso + selfie; desde 230), estado text check in (pendiente, aprobada, rechazada), motivo text, creado, revisado timestamptz, revisado_por text).
 - `historias` (id uuid pk, cuenta_id fk, url, url_mini, texto (≤120), creado, expira = creado + 24 h). Límite por día según plan (E 1, D 3, resto ilimitado).
   Desde `075-historias-video.sql`: `tipo` ('foto' | 'video'), `estado` ('listo' | 'procesando' | 'error'), `segundos`, `ancho`, `alto`, `error`; en un video `url` = MP4 y `url_mini` = portada (WebP), y las 24 h corren desde que queda listo. Ver "Historias en video".
 - `ubicaciones` (id text pk (slug), nombre, tipo (pais|provincia|ciudad|zona), padre text null, activa boolean, orden int), `categorias` (id text pk, nombre, icono, orden, activa), `intereses` (id text pk, nombre, nombre_en, nombre_pt, orden). Se siembran (INSERT … ON CONFLICT DO NOTHING) con los valores del MVP: ubicaciones de Argentina (todas las provincias + ciudades principales que tenga mvp/src/geo.js o data.js), categorías HH.ACTIVITIES, 16 intereses iniciales.
@@ -57,19 +57,19 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `POST verificar-email` {token}; `POST reenviar-verificacion`.
 - `POST olvide` {email} (siempre ok, no revela si existe); `POST restablecer` {token, password} (cierra las demás sesiones).
 - `POST cambiar-password` {actual, nueva}; `POST cambiar-email` (opcional, puede quedar fuera).
-- `GET yo` → `Yo` = {id, email, emailVerificado, estado, perfil:{slug, estado, motivoRechazo, verificacion, oculto, datos, fotos:[{id,url,urlMini,orden}], completo:bool, faltantes:[...]}, plan:{efectivo, suscripciones:[...], pedidos:[...]} (este bloque lo completa B vía función exportada de lib/planes.js `resumenPlan(cuentaId)`; si no existe todavía, A devuelve plan:{efectivo:'E', suscripciones:[], pedidos:[]}), limites:{fotos, historiasDia}, historias:[...]}.
+- `GET yo` → `Yo` = {id, email, emailVerificado, estado, perfil:{slug, estado, motivoRechazo, verificacion, oculto, datos, fotos:[{id,url,urlMini,orden}], completo:bool, faltantes:[...], faltantesClaves:[...]}, plan:{efectivo, suscripciones:[...], pedidos:[...]} (este bloque lo completa B vía función exportada de lib/planes.js `resumenPlan(cuentaId)`; si no existe todavía, A devuelve plan:{efectivo:'E', suscripciones:[], pedidos:[]}), limites:{fotos, historiasDia}, historias:[...]}.
 - `PUT perfil` {datos parciales} → valida y guarda; slug se genera del displayName la primera vez (único, con sufijo numérico) y no cambia después.
 - `POST perfil/enviar-revision` → si está completo (≥3 fotos, datos obligatorios, email verificado, verificación enviada) pasa a en_revision.
 - `POST perfil/ocultar` {oculto:bool}.
 - `POST fotos` (multipart, campo `foto`, máx 12 MB, jpeg/png/webp/heic si sharp lo soporta) → procesa y guarda → foto. `DELETE fotos/:id`. `PUT fotos/orden` {ids:[...]}. La primera foto es la principal.
-- `POST verificacion` (multipart: `selfie`, `documento`) → guarda privado, estado pendiente.
+- `POST verificacion` (multipart: `frente` (o `documento`), `dorso`, `selfie`, `consentimiento`; las tres fotos obligatorias, si falta una → 400) → guarda privado, estado pendiente.
 - `POST historias` (multipart `foto` + `texto`) / `DELETE historias/:id`.
 - Pedidos y planes (agente B, routes/cuenta-planes.js montado bajo /api/cuenta): `GET planes` → {precios, plan efectivo, suscripciones, pedidos, transferencia (texto de ajustes), cupoStar:{provincia, libres}}; `POST pedidos` {plan, periodo} → pedido pendiente con referencia y monto; `POST pedidos/:id/informar` (multipart opcional `comprobante` + nota) → informado; `POST pedidos/:id/cancelar`.
 
 ### Admin (agente B) — routes/admin-fase1.js bajo `${A}/api/` (mismo Basic Auth y reglas de POST de Fase 0: JSON + X-SR-Admin: 1 + mismo origen)
 - `GET acompanantes?estado=&q=` → lista {cuentaId, email, emailVerificado, slug, displayName, ciudad, provincia, estado perfil, verificacion, plan efectivo, creado, fotos (n), fotoPrincipal}.
 - `GET acompanantes/:id` → detalle completo (datos, fotos, verificaciones con ids, pedidos, suscripciones, historias).
-- `GET verificaciones/:id/selfie` y `/documento` → transmite el archivo privado (no-store).
+- `GET verificaciones/:id/selfie`, `/documento` (frente) y `/dorso` → transmite el archivo privado (no-store).
 - `POST acompanantes/:id/verificacion` {decision: aprobar|rechazar, motivo} → actualiza verificaciones + perfiles.verificacion; si aprueba y el perfil estaba en_revision → publicado; email a la acompañante.
 - `POST acompanantes/:id/estado` {estado: publicado|pausado|suspendido|rechazado, motivo} (+ email).
 - `POST acompanantes/:id/plan` {plan, dias, nota} → suscripción manual (pedido_id null).
@@ -1100,3 +1100,39 @@ Vista: selector 7 / 30 / 90 días, tiles Visitas a tu perfil, Toques en WhatsApp
 contacto (con la variación como en el admin), un gráfico de líneas "Visitas y toques" (`graficos.js`, con tooltip y
 "Ver tabla") y la línea "¿Qué cuenta?" (se abrió tu perfil y toques en tus botones de WhatsApp y Telegram; no incluye
 sus propias visitas; tasa = toques ÷ visitas). Textos nuevos en inglés y portugués. Pruebas: `app/test/numeros.test.js`.
+
+## Arreglos del panel — 17/11/2026 (pedidos de Juan)
+
+**Verificación en tres fotos.** `POST /api/cuenta/verificacion` (multipart) pide `frente` (también vale `documento`),
+`dorso` y `selfie` (selfie sosteniendo el documento) + `consentimiento`. Si falta cualquiera de las tres → 400
+"Subí las tres fotos: el frente y el dorso de tu documento y una selfie sosteniéndolo." Mismo tratamiento que antes:
+`procesarPrivada` (JPEG sin EXIF, máx. 2400 px, sin marca de agua), disco privado `verif/<hex>-doc|dorso|selfie.jpg`,
+sin dirección pública, 5 envíos por día, reenviar reemplaza la pendiente y borra sus archivos. Migración
+`230-verificacion-tres-fotos.sql`: `dorso_ruta` y `formato` (1 = formato anterior: selfie con el documento + frente;
+2 = tres fotos). Las pendientes del formato anterior se revisan igual: el admin muestra lo que hay con la etiqueta
+"Formato anterior" y no se le pide a nadie que reenvíe salvo que se rechace. Admin (`GET acompanantes/:id`):
+cada verificación trae `tieneDorso` y `formato`; las tres fotos van una al lado de la otra (Frente, Dorso, Selfie),
+clic = zoom como antes; aprobar/rechazar sin cambios. Al decidir se recomprimen las tres; la purga de los 90 días
+(`retencionVerif`) borra las tres y deja las rutas en NULL. El aviso de Telegram no cambia (no describe el contenido).
+Pruebas: `app/test/verificacion-tres-fotos.test.js`.
+
+**"Para publicar te falta" con "Completar".** `GET /api/cuenta/yo` suma `perfil.faltantesClaves` (mismo orden que
+`faltantes`; `lib/perfiles.js → faltantesItems`): `email`, `nombre`, `genero`, `nacimiento`, `ubicacion`,
+`contacto`, `fotos`, `verificacion`. En Resumen (único lugar donde aparece la lista) cada renglón tiene "Completar"
+(EN Complete, PT Completar), que lleva a la sección y deja a la vista y con foco el campo: Mi perfil (nombre, género,
+fecha de nacimiento, provincia/localidad/barrio, WhatsApp), Fotos (botón Subir fotos), Verificación (primera foto).
+El email se confirma con el link del email: "Completar" lleva al aviso de arriba con "Reenviar".
+
+**Panel en el celular agrupado.** En lugar de la fila de chips: un botón con la sección actual (grupo + nombre) y
+"Secciones" que abre las mismas secciones agrupadas que la barra lateral (Inicio, Mi aviso, Visibilidad, Ventas,
+Cuenta), con los contadores; un punto en el botón avisa si otra sección tiene contador. Se cierra al elegir, con
+Escape o tocando afuera. La computadora no cambia.
+
+**Fotos y videos del panel.** Grilla de mosaicos iguales (4:5, `object-fit: cover`) que no se pisan a ningún ancho;
+cada uno con sus controles abajo: "Hacer principal" (la principal muestra "Principal" sobre la foto, borde y
+"Se ve primero"), mover antes/después y borrar. Los videos usan el mismo mosaico (sin "Hacer principal").
+
+**Foto en el círculo de arriba.** Con sesión, el círculo del encabezado (antes las iniciales) y la tarjeta de la barra
+lateral muestran la miniatura pública (`urlMini`, la procesada con marca de agua) de su foto principal; sin fotos,
+las iniciales. Se actualiza al cambiar la principal o subir la primera.
+

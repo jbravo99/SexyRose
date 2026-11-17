@@ -207,7 +207,7 @@
       if (pc.pendientes) pend.push({ ic: 'wallet', cls: 'warn', t: `${pc.pendientes} ${HH.plural(pc.pendientes, 'pedido de créditos pendiente', 'pedidos de créditos pendientes')}`, s: `${pc.conComprobante || 0} con comprobante. Confirmá cuando el pago esté en tu cuenta.`, go: '#admin.creditos.pedidos' });
       if (pa) pend.push({ ic: 'clock', cls: 'danger', t: `${pa} ${HH.plural(pa, 'perfil pausado', 'perfiles pausados')} por falta de saldo`, s: 'No les alcanzaron los créditos para renovar el plan.', go: '#admin.planes.renovaciones' });
       if (v7.sinSaldo) pend.push({ ic: 'alert', cls: 'warn', t: `${v7.sinSaldo} ${HH.plural(v7.sinSaldo, 'plan vence', 'planes vencen')} en 7 días sin saldo para renovar`, s: 'Avisales que carguen créditos antes del vencimiento.', go: '#admin.planes.renovaciones' });
-      if (vp) pend.push({ ic: 'shield', cls: 'warn', t: `${vp} ${HH.plural(vp, 'verificación pendiente', 'verificaciones pendientes')}`, s: 'Compará la selfie con el documento y aprobá o rechazá.', go: '#admin.acompanantes' });
+      if (vp) pend.push({ ic: 'shield', cls: 'warn', t: `${vp} ${HH.plural(vp, 'verificación pendiente', 'verificaciones pendientes')}`, s: 'Compará la selfie con las fotos del documento y aprobá o rechazá.', go: '#admin.acompanantes' });
       if (ac.enRevision) pend.push({ ic: 'users', cls: 'info', t: `${ac.enRevision} ${HH.plural(ac.enRevision, 'perfil en revisión', 'perfiles en revisión')}`, s: 'Se publican al aprobar la identidad.', go: '#admin.acompanantes' });
       if (d.urgentes) pend.push({ ic: 'alert', cls: 'danger', t: `${d.urgentes} ${HH.plural(d.urgentes, 'denuncia urgente', 'denuncias urgentes')} sin resolver`, s: 'Abuso infantil, imágenes sin consentimiento o trata: revisar ya.', go: '#admin.reportes' });
       if (d.abiertas && d.abiertas !== d.urgentes) pend.push({ ic: 'flag', cls: 'warn', t: `${d.abiertas} ${HH.plural(d.abiertas, 'denuncia abierta', 'denuncias abiertas')}`, s: 'Marcalas como resueltas cuando las revises.', go: '#admin.reportes' });
@@ -557,6 +557,18 @@
     add('Links', (d.links || []).filter((l) => l && l.url).map((l) => ext(l.url, esc(l.label || l.url))).join('<br>'));
     return rows.length ? `<dl class="pa-dl">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd data-noi18n>${v}</dd></div>`).join('')}</dl>` : '<p class="small muted">Todavía no cargó datos.</p>';
   }
+  // Fotos de una verificación, una al lado de la otra (clic = zoom). Desde el 17/11/2026 son tres: frente y dorso del
+  // documento y selfie sosteniéndolo (formato 2). Las de antes (formato 1) tienen selfie con el documento y frente.
+  function vFotos(v) {
+    const nuevo = (v.formato || 1) >= 2;
+    const fig = (archivo, label, tiene) => `<figure><figcaption class="small muted" title="${esc(label)}">${label}</figcaption>${tiene ? `<div class="pa-priv" data-blob="/verificaciones/${esc(v.id)}/${archivo}" data-alt="${esc(label)}">${loadingCard(1)}</div>` : `<div class="pa-priv pa-priv-vacio small muted">${v.archivosBorrados ? 'Borrada a los 3 meses.' : 'No está.'}</div>`}</figure>`;
+    const figs = nuevo
+      ? [fig('documento', 'Frente', v.tieneDocumento), fig('dorso', 'Dorso', v.tieneDorso), fig('selfie', 'Selfie', v.tieneSelfie)]
+      : [fig('selfie', 'Selfie', v.tieneSelfie), fig('documento', 'Frente', v.tieneDocumento)];
+    return `${nuevo ? '' : `<div class="row" style="gap:8px;align-items:center"><span class="badge neutral">Formato anterior</span><span class="tiny muted">Selfie con el documento y frente, sin dorso. Se revisa igual.</span></div>`}
+            ${nuevo ? '<div class="tiny muted">Frente y dorso del documento y selfie sosteniéndolo. Tocá una foto para verla grande.</div>' : ''}
+            <div class="pa-verif${nuevo ? ' tres' : ''}">${figs.join('')}</div>${v.archivosBorrados ? '<div class="tiny muted">Imágenes borradas a los 3 meses.</div>' : ''}`;
+  }
   function vAcompanante(id) {
     const k = 'acd:' + id;
     load(k, '/acompanantes/' + encodeURIComponent(id)); loadCatalogos();
@@ -572,12 +584,9 @@
           <div class="row between"><div class="card-title">${icon('shield')} Verificación de identidad</div>${badge(VERIF[p.verificacion], p.verificacion)}</div>
           ${vLast ? `<div class="small muted">Enviada el ${fecha(vLast.creado)}${vLast.revisado ? ` · revisada el ${fecha(vLast.revisado)}${vLast.revisadoPor ? ' por ' + esc(vLast.revisadoPor) : ''}` : ''}</div>
             ${vLast.motivo ? `<div class="notice warn">${icon('alert')}<span><strong>Motivo:</strong> ${esc(vLast.motivo)}</span></div>` : ''}
-            <div class="pa-verif">
-              <figure><figcaption class="small muted">Selfie</figcaption>${vLast.tieneSelfie ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/selfie" data-alt="Selfie">${loadingCard(1)}</div>` : (vLast.archivosBorrados ? '<div class="small muted">Imágenes borradas a los 3 meses.</div>' : '<div class="small muted">No hay selfie.</div>')}</figure>
-              <figure><figcaption class="small muted">Documento</figcaption>${vLast.tieneDocumento ? `<div class="pa-priv" data-blob="/verificaciones/${esc(vLast.id)}/documento" data-alt="Documento">${loadingCard(1)}</div>` : (vLast.archivosBorrados ? '<div class="small muted">Imágenes borradas a los 3 meses.</div>' : '<div class="small muted">No hay documento.</div>')}</figure>
-            </div>
+            ${vFotos(vLast)}
             ${datos.fechaNacimiento ? `<div class="small">Fecha de nacimiento declarada: <strong>${esc(datos.fechaNacimiento)}</strong>${edadDe(datos.fechaNacimiento) != null ? ` (${edadDe(datos.fechaNacimiento)} años)` : ''}. Comparala con el documento.</div>` : ''}
-            ${vPend ? `<div class="row" style="gap:8px"><button type="button" class="btn" data-action="prodVerif" data-id="${esc(c.id)}" data-d="aprobar">${icon('check')} Aprobar identidad</button><button type="button" class="btn danger" data-action="prodVerif" data-id="${esc(c.id)}" data-d="rechazar">${icon('x')} Rechazar</button></div><p class="tiny muted">Si el perfil está en revisión, al aprobar la identidad se publica solo. Los archivos son privados: nunca se publican.</p>` : ''}` : '<p class="small muted">Todavía no envió la selfie ni el documento.</p>'}
+            ${vPend ? `<div class="row" style="gap:8px"><button type="button" class="btn" data-action="prodVerif" data-id="${esc(c.id)}" data-d="aprobar">${icon('check')} Aprobar identidad</button><button type="button" class="btn danger" data-action="prodVerif" data-id="${esc(c.id)}" data-d="rechazar">${icon('x')} Rechazar</button></div><p class="tiny muted">Si el perfil está en revisión, al aprobar la identidad se publica solo. Los archivos son privados: nunca se publican.</p>` : ''}` : '<p class="small muted">Todavía no envió las fotos del documento ni la selfie.</p>'}
           ${(d.verificaciones || []).length > 1 ? `<details class="pa-done"><summary class="small"><strong>Envíos anteriores · ${(d.verificaciones || []).length - 1}</strong></summary><div class="list" style="margin-top:8px">${(d.verificaciones || []).filter((v) => v !== vLast).map((v) => `<div class="list-item small">${badge({ pendiente: ['Pendiente', 'warn'], aprobada: ['Aprobada', 'ok'], rechazada: ['Rechazada', 'danger'] }[v.estado], v.estado)}<div class="grow">${fecha(v.creado)}${v.motivo ? ' · ' + esc(v.motivo) : ''}</div></div>`).join('')}</div></details>` : ''}
         </section>`;
       const est = p.estado;
@@ -1395,7 +1404,7 @@
         .then((r) => { HH.closeModal(); const est = r && r.perfil && r.perfil.estado; HH.toast(decision === 'aprobar' ? (est === 'publicado' ? 'Identidad aprobada: el perfil quedó publicado' : 'Identidad aprobada') : 'Verificación rechazada: le avisamos por email', { type: 'ok' }); after([k, 'ac']); })
         .catch((e) => { if (reenable) reenable(); fail(e); });
       if (el.dataset.d === 'aprobar') HH.confirm({ title: 'Aprobar identidad', text: 'Confirmás que la selfie coincide con el documento y que es mayor de 18 años. Si el perfil está en revisión, se publica.', okLabel: 'Aprobar', onOk: () => run('aprobar', '') });
-      else pedirMotivo({ title: 'Rechazar verificación', intro: 'Le mandamos el motivo por email y puede volver a enviar la selfie y el documento.', motivos: MOTIVOS_VERIF, okLabel: 'Rechazar', cls: 'danger', onOk: (m, re) => run('rechazar', m, re) });
+      else pedirMotivo({ title: 'Rechazar verificación', intro: 'Le mandamos el motivo por email y puede volver a enviar las fotos del documento y la selfie.', motivos: MOTIVOS_VERIF, okLabel: 'Rechazar', cls: 'danger', onOk: (m, re) => run('rechazar', m, re) });
     },
     prodPerfilEstado(el) {
       const id = el.dataset.id; const to = el.dataset.e; const k = 'acd:' + id;
@@ -1927,8 +1936,9 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-detail{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 @media(min-width:1100px){.pa-detail{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
 .pa-dl{display:grid;gap:8px;margin:0}.pa-dl>div{display:grid;grid-template-columns:minmax(110px,34%) minmax(0,1fr);gap:10px;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pa-dl>div:last-child{border-bottom:0}.pa-dl dt{color:var(--muted)}.pa-dl dd{margin:0;overflow-wrap:anywhere}
-.pa-verif{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pa-verif figure{margin:0;display:grid;gap:6px}
-@media(max-width:420px){.pa-verif{grid-template-columns:minmax(0,1fr)}}
+.pa-verif{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pa-verif.tres{grid-template-columns:repeat(3,minmax(0,1fr))}.pa-verif figure{margin:0;display:grid;gap:6px;align-content:start;min-width:0}
+.pa-priv-vacio{padding:10px;text-align:center}.pa-verif figcaption{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:420px){.pa-verif,.pa-verif.tres{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pa-priv{min-height:120px;border-radius:12px;background:var(--surface-2);overflow:hidden;display:grid;place-items:center}
 .pa-priv-img{display:block;width:100%;max-height:420px;object-fit:contain;cursor:zoom-in;background:#000}
 .pa-full{display:block;width:100%;max-height:75vh;object-fit:contain;border-radius:12px;background:#000}

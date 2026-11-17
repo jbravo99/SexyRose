@@ -1,4 +1,5 @@
-// Retención de la verificación de identidad (selfie y documento, en el disco privado).
+// Retención de la verificación de identidad (frente y dorso del documento y selfie con el documento, en el disco privado;
+// las del formato anterior no tienen dorso).
 // - Al decidir (aprobar o rechazar) se recomprimen: máx. 1280 px, JPEG calidad 70.
 // - A los 3 meses (DIAS_RETENCION) de la decisión se borran los archivos; la fila queda con estado y fechas.
 import fsp from 'node:fs/promises';
@@ -24,13 +25,13 @@ export function createRetencionVerif({ pool, storage, log = () => {} }) {
     return true;
   };
 
-  // Recomprime la selfie y el documento de una verificación ya decidida. Nunca tira: solo registra.
+  // Recomprime las fotos (frente, dorso y selfie) de una verificación ya decidida. Nunca tira: solo registra.
   async function comprimir(id) {
     try {
       const { rows } = await pool.query(
-        "SELECT selfie_ruta, documento_ruta FROM verificaciones WHERE id = $1 AND estado <> 'pendiente' AND comprimido IS NULL AND archivos_borrados IS NULL", [id]);
+        "SELECT selfie_ruta, documento_ruta, dorso_ruta FROM verificaciones WHERE id = $1 AND estado <> 'pendiente' AND comprimido IS NULL AND archivos_borrados IS NULL", [id]);
       if (!rows[0]) return false;
-      for (const rel of [rows[0].selfie_ruta, rows[0].documento_ruta]) {
+      for (const rel of [rows[0].selfie_ruta, rows[0].documento_ruta, rows[0].dorso_ruta]) {
         if (rel) await recomprimirArchivo(rel).catch((e) => log('verificación: no se pudo recomprimir', e.message));
       }
       await pool.query('UPDATE verificaciones SET comprimido = now() WHERE id = $1', [id]);
@@ -45,14 +46,13 @@ export function createRetencionVerif({ pool, storage, log = () => {} }) {
   async function purgar({ dias = DIAS_RETENCION } = {}) {
     try {
       const { rows } = await pool.query(
-        `SELECT id, selfie_ruta, documento_ruta FROM verificaciones
+        `SELECT id, selfie_ruta, documento_ruta, dorso_ruta FROM verificaciones
           WHERE estado <> 'pendiente' AND archivos_borrados IS NULL AND revisado IS NOT NULL
             AND revisado < now() - ($1::int * interval '1 day')
           ORDER BY revisado LIMIT 500`, [dias]);
       for (const v of rows) {
-        await storage.borrarPrivado(v.selfie_ruta);
-        await storage.borrarPrivado(v.documento_ruta);
-        await pool.query('UPDATE verificaciones SET selfie_ruta = NULL, documento_ruta = NULL, archivos_borrados = now() WHERE id = $1', [v.id]);
+        for (const rel of [v.selfie_ruta, v.documento_ruta, v.dorso_ruta]) if (rel) await storage.borrarPrivado(rel);
+        await pool.query('UPDATE verificaciones SET selfie_ruta = NULL, documento_ruta = NULL, dorso_ruta = NULL, archivos_borrados = now() WHERE id = $1', [v.id]);
       }
       if (rows.length) log(`verificaciones: imágenes borradas a los ${dias} días: ${rows.length}`);
       return rows.length;

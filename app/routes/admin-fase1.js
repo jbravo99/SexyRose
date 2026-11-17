@@ -83,7 +83,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!x) throw he(404, 'Acompañante no encontrada.');
     const [fotos, verifs, hist, resumen] = await Promise.all([
       pool.query('SELECT id, orden, url, url_mini, ancho, alto, creado FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [id]),
-      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d, consentimiento_at, archivos_borrados FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
+      pool.query('SELECT id, estado, motivo, creado, revisado, revisado_por, selfie_ruta IS NOT NULL AS s, documento_ruta IS NOT NULL AS d, dorso_ruta IS NOT NULL AS o, formato, consentimiento_at, archivos_borrados FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC', [id]),
       pool.query('SELECT id, tipo, estado, url, url_mini, texto, segundos, error, creado, expira FROM historias WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 50', [id]),
       planes.resumenPlan(id),
     ]);
@@ -91,7 +91,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       cuenta: { id: x.id, email: x.email, emailVerificado: x.email_verificado, estado: x.cuenta_estado, creado: x.creado, ultimoLogin: x.ultimo_login, aceptoTerminos: x.acepto_terminos, mayorEdadDeclarada: x.mayor_edad_declarada },
       perfil: { slug: x.slug, datos: x.datos || {}, estado: x.estado, motivoRechazo: x.motivo_rechazo, verificacion: x.verificacion, oculto: x.oculto, creado: x.p_creado, actualizado: x.actualizado, publicadoEn: x.publicado_en },
       fotos: fotos.rows.map((f) => ({ id: f.id, orden: f.orden, url: f.url, urlMini: f.url_mini, ancho: f.ancho, alto: f.alto, creado: f.creado })),
-      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d, consentimiento: v.consentimiento_at, archivosBorrados: v.archivos_borrados })),
+      verificaciones: verifs.rows.map((v) => ({ id: v.id, estado: v.estado, motivo: v.motivo, creado: v.creado, revisado: v.revisado, revisadoPor: v.revisado_por, tieneSelfie: v.s, tieneDocumento: v.d, tieneDorso: v.o, formato: Number(v.formato) || 1, consentimiento: v.consentimiento_at, archivosBorrados: v.archivos_borrados })),
       historias: hist.rows.map((h) => ({ id: h.id, tipo: h.tipo || 'foto', estado: h.estado || 'listo', url: h.url, urlMini: h.url_mini, texto: h.texto, segundos: h.segundos == null ? null : Number(h.segundos), error: h.error || null, creado: h.creado, expira: h.expira })),
       plan: resumen.efectivo,
       suscripciones: resumen.suscripciones,
@@ -113,11 +113,12 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     f.stream.on('error', () => res.destroy());
     f.stream.pipe(res);
   };
-  r.get('/verificaciones/:id/:archivo(selfie|documento)', ah(async (req, res) => {
+  // documento = frente del documento; dorso solo existe en las de tres fotos (formato 2, desde el 17/11/2026)
+  r.get('/verificaciones/:id/:archivo(selfie|documento|dorso)', ah(async (req, res) => {
     const id = uuid(req);
-    const { rows } = await pool.query('SELECT selfie_ruta, documento_ruta FROM verificaciones WHERE id = $1', [id]);
+    const { rows } = await pool.query('SELECT selfie_ruta, documento_ruta, dorso_ruta FROM verificaciones WHERE id = $1', [id]);
     if (!rows[0]) throw he(404, 'Verificación no encontrada.');
-    const ruta = req.params.archivo === 'selfie' ? rows[0].selfie_ruta : rows[0].documento_ruta;
+    const ruta = { selfie: rows[0].selfie_ruta, documento: rows[0].documento_ruta, dorso: rows[0].dorso_ruta }[req.params.archivo];
     await enviarPrivado(res, ruta, req.params.archivo);
   }));
 
@@ -162,7 +163,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
           : 'Hola:\n\nRevisamos tu verificación: tu identidad quedó verificada. Cuando completes tu perfil y lo envíes a revisión, lo publicamos.\n\nSexyRose');
     } else {
       await planes.mail(id, 'Tu verificación no fue aprobada',
-        `Hola:\n\nNo pudimos aprobar tu verificación.\nMotivo: ${motivo}\n\nPodés volver a enviar la selfie y el documento desde tu panel.\n\nSexyRose`);
+        `Hola:\n\nNo pudimos aprobar tu verificación.\nMotivo: ${motivo}\n\nPodés volver a enviar las fotos de tu documento y la selfie desde tu panel.\n\nSexyRose`);
     }
     res.json({ ok: true, perfil });
   }));

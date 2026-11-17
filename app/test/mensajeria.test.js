@@ -267,6 +267,26 @@ describe('piezas sueltas', () => {
     assert.match(r.contactos.find((c) => c.telefono === '+34612345678').motivo, /extranjero/);
     assert.match(contactosDeFilas([['Nombre', 'Ciudad'], ['a', 'b']]).error, /teléfono/);
   });
+
+  test('la planilla de Juan: títulos arriba, encabezados con barras y paréntesis ("Nombre / alias", "Sitio(s)"…)', () => {
+    const r = contactosDeFilas([
+      ['SexyRose — Contactos relevados de sitios de avisos'],
+      ['Una fila por teléfono…'],
+      [],
+      ['Nombre / alias', 'Teléfono (WhatsApp)', 'Categoría', 'Ciudad / zona', 'Sitio(s)', 'Avisos con este teléfono', 'URL del aviso', 'Fecha de relevamiento', 'Estado', 'Nota', 'WhatsApp (mensaje listo)'],
+      ['Bibi M. / Sofy', '+5491153487597', 'Trans', 'Capital Federal / Caballito', 'sexo3.com, distintas.net', '3', 'https://www.sexo3.com/es/x', '2026-11-13', 'Pendiente', 'Mismo teléfono', 'Abrir WhatsApp'],
+      ['Lolita', '+5491155550202', 'Escort', 'Rosario', 'skokka', '1', 'https://ar.skokka.com/x', '2026-11-13', 'Pendiente', '', 'Abrir WhatsApp'],
+    ]);
+    assert.deepEqual(r.columnas, ['nombres', 'telefono', 'categoria', 'ciudad', 'sitios', 'avisos', 'url', 'fecha', 'estado', 'nota']);
+    const bibi = r.contactos.find((c) => c.telefono === '+5491153487597');
+    assert.deepEqual(bibi.nombres, ['Bibi M.', 'Sofy']);
+    assert.deepEqual(bibi.ciudades, ['Capital Federal', 'Caballito']);
+    assert.deepEqual(bibi.sitios, ['sexo3.com', 'distintas.net']);
+    assert.equal(bibi.avisos, 3);
+    assert.equal(bibi.estado, 'pendiente');
+    const lol = r.contactos.find((c) => c.telefono === '+5491155550202');
+    assert.equal(lol.estado, 'revisar', 'el nombre se lee y las palabras de alguien muy joven lo mandan a revisar');
+  });
 });
 
 describe('captación: importar, cola y estados', () => {

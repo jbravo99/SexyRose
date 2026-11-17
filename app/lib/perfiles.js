@@ -205,19 +205,22 @@ export function validarDatos(body, actual, catalogos, bloqueos = {}) {
 
 export const MIN_FOTOS = 3;
 
-// Lo que falta para poder enviar el perfil a revisión (textos para la acompañante).
-export function faltantesDe({ datos = {}, fotosN = 0, emailVerificado = false, verificacion = 'sin_enviar' }) {
+// Lo que falta para poder enviar el perfil a revisión: [{ clave, texto }] (textos para la acompañante). La clave le dice al
+// panel adónde llevarla con el botón "Completar" (17/11/2026).
+export function faltantesItems({ datos = {}, fotosN = 0, emailVerificado = false, verificacion = 'sin_enviar' }) {
   const f = [];
-  if (!emailVerificado) f.push('Confirmá tu email (te mandamos un link).');
-  if (!datos.displayName) f.push('Completá tu nombre artístico.');
-  if (!datos.genero) f.push('Elegí tu género.');
-  if (!datos.fechaNacimiento) f.push('Cargá tu fecha de nacimiento.');
-  if (!datos.provincia || !datos.ciudad) f.push('Elegí tu provincia y tu ciudad.');
-  if (!datos.whatsapp && !datos.telegram) f.push('Agregá tu WhatsApp o tu usuario de Telegram.');
-  if (fotosN < MIN_FOTOS) f.push(`Subí al menos ${MIN_FOTOS} fotos (tenés ${fotosN}).`);
-  if (verificacion === 'sin_enviar' || verificacion === 'rechazada') f.push('Enviá tu verificación de identidad (selfie y documento).');
+  const add = (clave, texto) => f.push({ clave, texto });
+  if (!emailVerificado) add('email', 'Confirmá tu email (te mandamos un link).');
+  if (!datos.displayName) add('nombre', 'Completá tu nombre artístico.');
+  if (!datos.genero) add('genero', 'Elegí tu género.');
+  if (!datos.fechaNacimiento) add('nacimiento', 'Cargá tu fecha de nacimiento.');
+  if (!datos.provincia || !datos.ciudad) add('ubicacion', 'Elegí tu provincia y tu ciudad.');
+  if (!datos.whatsapp && !datos.telegram) add('contacto', 'Agregá tu WhatsApp o tu usuario de Telegram.');
+  if (fotosN < MIN_FOTOS) add('fotos', `Subí al menos ${MIN_FOTOS} fotos (tenés ${fotosN}).`);
+  if (verificacion === 'sin_enviar' || verificacion === 'rechazada') add('verificacion', 'Enviá tu verificación de identidad (selfie y documento).');
   return f;
 }
+export const faltantesDe = (x) => faltantesItems(x).map((i) => i.texto);
 
 // Forma pública (lo que ve cualquiera en el sitio). ubic: Map(id → {nombre}).
 export function perfilPublico({ cuentaId, slug, datos = {}, fotos = [], videos = [], preview = null, plan = 'E', destacado = false, actualizado, publicadoEn }, ubic) {

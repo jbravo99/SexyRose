@@ -8,13 +8,14 @@ export const AYUDA = Object.freeze({
   registro: 'Para publicar tu perfil:\n'
     + '1. Creá tu cuenta en {url}/registro con tu email y una contraseña de al menos 10 caracteres, y confirmá tu email con el link que te mandamos.\n'
     + '2. Completá tu perfil y subí al menos 3 fotos.\n'
-    + '3. Mandá una selfie y tu documento para verificar tu identidad: nunca se publican.\n'
+    + '3. Mandá las fotos de tu documento y una selfie para verificar tu identidad: nunca se publican.\n'
     + '4. Enviá tu perfil a revisión.\n'
     + 'Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.',
 
-  verificacion: 'La verificación de identidad se manda desde {url}/panel/verificacion con dos fotos:\n'
-    + '- Una selfie sosteniendo tu documento al lado de la cara, con buena luz.\n'
+  verificacion: 'La verificación de identidad se manda desde {url}/panel/verificacion con tres fotos:\n'
     + '- Una foto del frente de tu documento (DNI o pasaporte), que se lean el nombre y la fecha de nacimiento.\n'
+    + '- Una foto del dorso de tu documento, completo y sin reflejos.\n'
+    + '- Una selfie sosteniendo tu documento al lado de la cara, con buena luz.\n'
     + 'Confirmamos que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten, y se borran a los 3 meses. '
     + 'Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.',
 
@@ -24,7 +25,7 @@ export const AYUDA = Object.freeze({
     + 'Si lo rechazamos, revisá el motivo, corregí lo necesario y volvé a enviarlo. '
     + 'Con "Ocultar mi perfil" lo sacás del sitio cuando quieras, sin perder nada.',
 
-  fotos: 'Fotos reales, con la cara visible. Sin desnudos. Mínimo 3; el máximo depende de tu plan. '
+  fotos: 'Fotos reales, con la cara visible. Mínimo 3; el máximo depende de tu plan. '
     + 'La primera es la principal (la del swipe y las historias). Les agregamos la marca de agua de SexyRose y les sacamos los datos de ubicación. '
     + 'Las reglas completas están en {url}/contenido.',
 

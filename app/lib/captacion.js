@@ -149,6 +149,17 @@ const CAMPOS = {
 };
 const ALIAS_CAMPO = new Map();
 for (const [k, lista] of Object.entries(CAMPOS)) for (const a of lista) ALIAS_CAMPO.set(a, k);
+// Título de columna → campo. Exacto primero; si no, el título empieza con un alias seguido de más palabras
+// ("Nombre / alias", "Ciudad / zona", "Sitio(s)", "Avisos con este teléfono", "URL del aviso", "Fecha de relevamiento":
+// así vienen en la planilla de captación de Juan, 13/11/2026). El alias más largo gana.
+const ALIAS_ORDENADOS = [...ALIAS_CAMPO.keys()].sort((a, b) => b.length - a.length);
+function campoDeTitulo(h) {
+  const t = normalizar(h);
+  if (!t) return null;
+  if (ALIAS_CAMPO.has(t)) return ALIAS_CAMPO.get(t);
+  const a = ALIAS_ORDENADOS.find((x) => t.startsWith(x + ' '));
+  return a ? ALIAS_CAMPO.get(a) : null;
+}
 const lista = (s, sep = /\s*[,;|/]\s*/) => String(s || '').split(sep).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
 const unir = (a, b, max) => { const out = [...a]; const vistos = new Set(a.map((x) => x.toLowerCase())); for (const x of b) { const k = x.toLowerCase(); if (!vistos.has(k)) { vistos.add(k); out.push(x); } } return out.slice(0, max); };
 // Estado escrito a mano en la planilla (solo los que evitan escribir de más; lo demás queda "pendiente")
@@ -167,7 +178,7 @@ export function contactosDeFilas(filas) {
   let cab = -1; let mapa = null;
   for (let i = 0; i < Math.min(15, filas.length); i++) {
     const m = {};
-    (filas[i] || []).forEach((h, j) => { const k = ALIAS_CAMPO.get(normalizar(h)); if (k && m[k] === undefined) m[k] = j; });
+    (filas[i] || []).forEach((h, j) => { const k = campoDeTitulo(h); if (k && m[k] === undefined) m[k] = j; });
     if (m.telefono !== undefined) { cab = i; mapa = m; break; }
   }
   if (cab < 0) return { error: 'No encontré la columna del teléfono. La primera fila tiene que tener los títulos (Nombres, Teléfono, Ciudad…).' };

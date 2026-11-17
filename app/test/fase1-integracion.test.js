@@ -102,7 +102,7 @@ async function cuentaEnRevision() {
   assert.equal(r.status, 200, JSON.stringify(r.body));
   for (let i = 0; i < 3; i++) assert.equal((await c.subir('/api/cuenta/fotos', { foto: await jpeg() })).status, 201);
   c.selfie = await jpeg({ r: 10, g: 200, b: 30 });
-  r = await c.subir('/api/cuenta/verificacion', { selfie: c.selfie, documento: await jpeg({ r: 30, g: 30, b: 200 }), consentimiento: '1' });
+  r = await c.subir('/api/cuenta/verificacion', { selfie: c.selfie, documento: await jpeg({ r: 30, g: 30, b: 200 }), dorso: await jpeg({ r: 200, g: 200, b: 30 }), consentimiento: '1' });
   assert.ok(r.status === 200 || r.status === 201, JSON.stringify(r.body));
   r = await c.json('POST', '/api/cuenta/perfil/enviar-revision', {});
   assert.equal(r.status, 200, JSON.stringify(r.body));

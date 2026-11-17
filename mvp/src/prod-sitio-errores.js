@@ -134,7 +134,7 @@
     "Elegí una foto para la historia.": ["Choose a photo for the story.", "Escolha uma foto para a história."],
     "El texto de la historia puede tener hasta 120 caracteres.": ["The story text can be up to 120 characters.", "O texto da história pode ter até 120 caracteres."],
     "Historia no encontrada.": ["Story not found.", "História não encontrada."],
-    "Subí la selfie y la foto de tu documento.": ["Upload the selfie and the photo of your ID.", "Envie a selfie e a foto do seu documento."],
+    "Subí las tres fotos: el frente y el dorso de tu documento y una selfie sosteniéndolo.": ["Upload the three photos: the front and back of your ID and a selfie holding it.", "Envie as três fotos: a frente e o verso do seu documento e uma selfie segurando-o."],
     "Tu identidad ya está verificada.": ["Your identity is already verified.", "Sua identidade já está verificada."],
     "Ya enviaste varias verificaciones hoy. Probá mañana.": ["You already sent several verifications today. Try tomorrow.", "Você já enviou várias verificações hoje. Tente amanhã."],
 

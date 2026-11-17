@@ -9,7 +9,7 @@ import { hashPassword, sha256, tokenAleatorio, verifyDummy, verifyPassword } fro
 import { cargarCatalogos } from '../lib/catalogos.js';
 import { ImagenInvalida, MAX_BYTES, procesarFoto, procesarPrivada } from '../lib/imagenes.js';
 import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
-import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesDe, linea, slugify, validarDatos } from '../lib/perfiles.js';
+import { GENEROS, TIPOS, MIN_FOTOS, SLUGS_RESERVADOS, edadDe, faltantesItems, linea, slugify, validarDatos } from '../lib/perfiles.js';
 import { limitesDe, planEfectivo, resumenPlan, PLANES_PREVIEW as PLANES_PREVIEW_V2 } from '../lib/planes-ref.js';
 import * as storage from '../lib/storage.js';
 import { MAX_BYTES_SUBIDA, contenedorPorFirma, inicioValido, leerFirma } from '../lib/videos.js';
@@ -143,7 +143,7 @@ export function createCuentaRouter(ctx) {
     const plan = await resumenPlan(cuentaId, planes());
     const efectivo = plan && plan.efectivo ? plan.efectivo : 'E';
     const lim = limitesDe(efectivo);
-    const faltantes = faltantesDe({ datos: p.datos, fotosN: fs.length, emailVerificado: Boolean(c.email_verificado), verificacion: p.verificacion });
+    const faltan = faltantesItems({ datos: p.datos, fotosN: fs.length, emailVerificado: Boolean(c.email_verificado), verificacion: p.verificacion });
     const datos = { ...p.datos };
     // Nombres de la ubicación elegida (el panel no tiene la lista completa de lugares: la busca de a poco)
     const cat = await cargarCatalogos(pool);
@@ -174,8 +174,9 @@ export function createCuentaRouter(ctx) {
         fotos: fs.map((f) => ({ id: f.id, url: f.url, urlMini: f.url_mini || f.url, orden: f.orden, ancho: f.ancho, alto: f.alto })),
         videos: vids.map(videoJson),
         preview: prv[0] ? { videoId: prv[0].video_id, inicio: Number(prv[0].inicio), elegido: prv[0].elegido, estado: prv[0].estado, url: prv[0].url || null, error: prv[0].error || null } : null,
-        completo: faltantes.length === 0,
-        faltantes,
+        completo: faltan.length === 0,
+        faltantes: faltan.map((x) => x.texto),
+        faltantesClaves: faltan.map((x) => x.clave), // en el mismo orden que faltantes: adónde lleva "Completar"
       },
       plan: plan || { efectivo: 'E', suscripciones: [], pedidos: [] },
       limites: { fotos: lim.fotos, videos: lim.videos, historiasDia: lim.historiasDia, destacadas: lim.destacadas, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
@@ -472,24 +473,43 @@ export function createCuentaRouter(ctx) {
   }));
 
   // --- Verificación de identidad (privada) --------------------------------------------
+  // Tres fotos (17/11/2026): frente del documento (`frente`; `documento` también vale), dorso (`dorso`) y selfie
+  // sosteniendo el documento (`selfie`). Las tres son obligatorias. Mismo tratamiento que antes: sin metadatos (EXIF),
+  // disco privado, sin dirección pública, sin marca de agua.
+  const uploadVerif = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_BYTES, files: 3, fields: 6, fieldSize: 2048, parts: 10, fieldNameSize: 50 },
+  });
+  const subirVerif = (req, res, next) => {
+    if (!String(req.headers['content-type'] || '').toLowerCase().startsWith('multipart/form-data')) {
+      return fail(res, 415, 'Enviá el archivo como multipart/form-data.');
+    }
+    uploadVerif.fields([{ name: 'frente', maxCount: 1 }, { name: 'documento', maxCount: 1 }, { name: 'dorso', maxCount: 1 }, { name: 'selfie', maxCount: 1 }])(req, res, (err) => {
+      if (!err) return next();
+      if (err.code === 'LIMIT_FILE_SIZE') return fail(res, 413, 'La imagen pesa más de 12 MB.');
+      if (err instanceof multer.MulterError) return fail(res, 400, 'No pudimos leer el archivo enviado.');
+      next(err);
+    });
+  };
   r.post('/verificacion', conCuentaActiva, (req, res, next) => (limit(req, res, 'verif:' + req.cuenta.id, 5, 24 * HOUR, 'Ya enviaste varias verificaciones hoy. Probá mañana.') ? next() : null),
-    subir([{ name: 'selfie', maxCount: 1 }, { name: 'documento', maxCount: 1 }]), ah(async (req, res) => {
+    subirVerif, ah(async (req, res) => {
       rl.hit('verif:' + req.cuenta.id);
       const { rows: ps } = await pool.query('SELECT verificacion FROM perfiles WHERE cuenta_id = $1', [req.cuenta.id]);
       if (ps[0]?.verificacion === 'verificada') return fail(res, 409, 'Tu identidad ya está verificada.');
-      const s = archivo(req, 'selfie'); const d = archivo(req, 'documento');
-      if (!s || !d) return fail(res, 400, 'Subí la selfie y la foto de tu documento.');
+      const f = archivo(req, 'frente') || archivo(req, 'documento'); const d = archivo(req, 'dorso'); const s = archivo(req, 'selfie');
+      if (!f || !d || !s) return fail(res, 400, 'Subí las tres fotos: el frente y el dorso de tu documento y una selfie sosteniéndolo.');
       if (!['1', 'true', 'on', 'si', 'sí'].includes(String((req.body && req.body.consentimiento) || '').trim().toLowerCase())) {
         return fail(res, 400, 'Tenés que aceptar el uso de tu documento y tu selfie para verificar tu identidad.');
       }
-      let si; let di;
-      try { si = await procesarPrivada(s.buffer); di = await procesarPrivada(d.buffer); } catch (e) { if (e instanceof ImagenInvalida) return fail(res, 400, e.message); throw e; }
+      let fi; let di; let si;
+      try { fi = await procesarPrivada(f.buffer); di = await procesarPrivada(d.buffer); si = await procesarPrivada(s.buffer); } catch (e) { if (e instanceof ImagenInvalida) return fail(res, 400, e.message); throw e; }
+      const frente = await storage.guardarPrivado('verif', fi.buffer, fi.ext, 'doc');
+      const dorso = await storage.guardarPrivado('verif', di.buffer, di.ext, 'dorso');
       const selfie = await storage.guardarPrivado('verif', si.buffer, si.ext, 'selfie');
-      const documento = await storage.guardarPrivado('verif', di.buffer, di.ext, 'doc');
-      // Las verificaciones pendientes anteriores quedan reemplazadas.
-      const viejas = await pool.query("DELETE FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' RETURNING selfie_ruta, documento_ruta", [req.cuenta.id]);
-      for (const v of viejas.rows) { await storage.borrarPrivado(v.selfie_ruta); await storage.borrarPrivado(v.documento_ruta); }
-      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, consentimiento_at) VALUES ($1, $2, $3, now())', [req.cuenta.id, selfie, documento]);
+      // Las verificaciones pendientes anteriores quedan reemplazadas (con sus archivos).
+      const viejas = await pool.query("DELETE FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' RETURNING selfie_ruta, documento_ruta, dorso_ruta", [req.cuenta.id]);
+      for (const v of viejas.rows) { for (const rel of [v.selfie_ruta, v.documento_ruta, v.dorso_ruta]) if (rel) await storage.borrarPrivado(rel); }
+      await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, dorso_ruta, formato, consentimiento_at) VALUES ($1, $2, $3, $4, 2, now())', [req.cuenta.id, selfie, frente, dorso]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
       if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.', 'verificacion');
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
