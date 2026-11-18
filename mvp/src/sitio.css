@@ -223,6 +223,8 @@ html[data-prelanzamiento] main#app{padding-bottom:0}
 .hero.sr-pre .lead{font-size:16px;line-height:1.5;color:var(--fg-2);max-width:42ch}
 .sr-pre-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;width:100%;margin-top:10px}
 .sr-pre-btns .btn{flex:1 1 220px;max-width:280px;justify-content:center}
+/* Home provisoria: botón grande a la demo debajo de los dos botones (18/11/2026) */
+.sr-pre .sr-pre-demo{width:100%;max-width:570px;justify-content:center;background:transparent;color:var(--fg);border:1px solid var(--line-2);box-shadow:none}.sr-pre .sr-pre-demo:hover{border-color:var(--berry);color:var(--berry)}@media(max-width:600px){.sr-pre-btns .btn{max-width:none}}
 @media(min-width:900px){.hero.sr-pre{padding-block:72px 80px}.hero.sr-pre h1{max-width:20ch}.hero.sr-pre .lead{font-size:18px}.sr-pre-mark{width:68px;height:68px;border-radius:21px}.sr-pre-mark svg{width:34px;height:34px}}
 /* Vista previa del perfil de la acompañante (/panel/vista-previa, prod-sitio.js): barra fija debajo del encabezado */
 .sp-vp{position:sticky;top:calc(var(--header-h) + env(safe-area-inset-top,0px));z-index:45;background:var(--berry-tint);border-bottom:1px solid rgba(255,92,138,.38);box-shadow:0 8px 22px rgba(0,0,0,.28)}

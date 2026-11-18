@@ -273,8 +273,9 @@ el admin. Si el agente se cae, el sitio sigue igual. Detalle: `FASE1-CONTRATO.md
    Sin `ANTHROPIC_API_KEY` funciona igual lo automático (pedidos, comprobantes, avisos) y lo demás se responde con
    "Te va a responder una persona del equipo" + aviso por Telegram.
 3. Desplegá: `bash ~/SexyRose/infra/server/deploy.sh` (arma `.env.agente` y levanta el contenedor `agente`).
-4. Admin → **Mensajería → WhatsApp**: cargá el alias y el nombre del titular de la cuenta donde se transfiere, prendé el
-   asistente y escaneá el QR con el teléfono del chip (WhatsApp → Dispositivos vinculados → Vincular un dispositivo).
+4. Admin → **Créditos → Banco**: cargá el alias y el nombre del titular de la cuenta donde se transfiere. Después, en
+   Admin → **Mensajería → WhatsApp**, prendé el asistente y escaneá el QR con el teléfono del chip (WhatsApp →
+   Dispositivos vinculados → Vincular un dispositivo).
 5. El botón de comprar créditos del panel usa solo el número del chip vinculado (hasta vincularlo, el que estaba cargado).
 6. Telegram tiene que estar vinculado (Admin → Mensajería → Telegram) para recibir los comprobantes con botones.
 
@@ -292,6 +293,9 @@ el admin. Si el agente se cae, el sitio sigue igual. Detalle: `FASE1-CONTRATO.md
   9.000 tokens de entrada (instrucciones + historial + herramientas): alrededor de USD 0,001 por pregunta, unos
   USD 1 cada 1.000 preguntas. Los códigos de pedido y los comprobantes no usan la API.
 - Logs: `docker compose -f infra/docker-compose.yml logs --tail 50 agente` (sin teléfonos, emails ni textos).
+  Si alguien ve "Esperando mensaje" en una respuesta del bot:
+  `docker compose -f infra/docker-compose.yml logs --since 2h agente | grep -Ei "descifrar|reenv|candado|instancia|440|baileys"`
+  ("pidió reenvío" + "se reenvía" = WhatsApp lo resolvió solo; "no hay copia" = ese mensaje no se puede reenviar).
 
 ### A tener en cuenta
 

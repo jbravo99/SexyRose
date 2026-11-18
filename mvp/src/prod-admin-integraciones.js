@@ -1,7 +1,7 @@
 /* ============================================================
    SexyRose — prod-admin-integraciones.js (admin de producción)
    Admin → Mensajería → Telegram: vincular Telegram (avisos internos). Admin → Mensajería → WhatsApp: probar el
-   botón de comprar créditos. Admin → Ajustes: las cuentas de Mercado Pago que cobran la comisión.
+   botón de comprar créditos. Admin → Créditos → Banco (antes Ajustes): las cuentas de Mercado Pago que cobran la comisión.
    Usa la API de app/routes/admin-integraciones.js. prod-admin-asistente.js llama a HH.adminInt.telegramCard() y
    HH.adminInt.botonProbarWa(); prod-admin.js, a HH.adminInt.mpCuentas(vc, err).
    ============================================================ */
@@ -190,5 +190,5 @@
     },
   });
 
-  HH.adminInt = { telegramCard, mpCuentas, botonProbarWa };
+  HH.adminInt = { telegramCard, mpCuentas, botonProbarWa, recargarMp: () => cargarMp(true) };
 })();

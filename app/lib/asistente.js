@@ -160,7 +160,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     await responder(conv, d.texto);
     if (!d.completo) {
       await avisarJuan(conv, `Asistente: no pude pasar los datos para transferir del pedido ${p.codigo}.`,
-        'Falta cargar el alias o el titular en pesos (Admin → Mensajería → WhatsApp) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
+        'Falta cargar el alias o el titular en pesos (Admin → Créditos → Banco) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
     }
     return d.completo;
   }

@@ -1,5 +1,5 @@
 // Cuentas de comisión de Mercado Pago (cada una = una aplicación de Mercado Pago de Juan o de su socio).
-// Se cargan desde Admin → Ajustes → Venta de contenido y se guardan cifradas en la tabla mp_cuentas (lib/secretos.js,
+// Se cargan desde Admin → Créditos → Banco (antes Ajustes → Venta de contenido) y se guardan cifradas en la tabla mp_cuentas (lib/secretos.js,
 // clave SECRETS_KEY del servidor). Las del .env (MP_CUENTA_<n>_*) siguen funcionando y se muestran como
 // "desde el servidor" (solo lectura).
 // `lista` es el mismo arreglo que usa lib/contenido.js: se actualiza en el lugar (primero las del admin, después las

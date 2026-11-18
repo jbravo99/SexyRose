@@ -26,6 +26,8 @@
   // Textos nuevos en inglés y portugués ("Publicá tu perfil", "Ya tengo cuenta" e "Ir a mi panel" ya están en el diccionario)
   Object.assign(HH.I18N = HH.I18N || {}, {
     'Muy pronto': ['Coming soon', 'Em breve'],
+    'Publicá tu perfil GRATIS': ['Post your profile for FREE', 'Publique seu perfil GRÁTIS'],
+    'Conocé SexyRose: mirá la demo': ['Discover SexyRose: see the demo', 'Conheça o SexyRose: veja a demo'],
     'Acompañantes y escorts en': ['Companions and escorts in', 'Acompanhantes e escorts na'],
     'Estamos por abrir. Si sos acompañante, ya podés crear tu perfil y dejarlo listo.': ["We're about to open. If you're a companion, you can already create your profile and have it ready.", 'Estamos quase abrindo. Se você é acompanhante, já pode criar seu perfil e deixá-lo pronto.'],
   });
@@ -39,7 +41,7 @@
     const worker = !!(HH.me && HH.me());
     const principal = worker
       ? `<a class="btn lg" href="#panel" data-go="#panel">${icon('dashboard')} <span>Ir a mi panel</span></a>`
-      : `<a class="btn lg" href="#registro" data-go="#registro">${icon('user')} <span>Publicá tu perfil</span></a>
+      : `<a class="btn lg" href="#registro" data-go="#registro">${icon('user')} <span>Publicá tu perfil GRATIS</span></a>
          <a class="btn secondary lg" href="#login" data-go="#login"><span>Ya tengo cuenta</span></a>`;
     return `
     <section class="hero sr-pre">
@@ -51,6 +53,7 @@
         <h1>Acompañantes y escorts en <em>Argentina</em>.</h1>
         <p class="lead">Estamos por abrir. Si sos acompañante, ya podés crear tu perfil y dejarlo listo.</p>
         <div class="sr-pre-btns">${principal}</div>
+        <a class="btn lg sr-pre-demo" href="/demo/" target="_blank" rel="noopener">${icon('sparkles')} <span>Conocé SexyRose: mirá la demo</span></a>
       </div>
     </section>
     ${HH.pubFooter ? HH.pubFooter() : ''}`;

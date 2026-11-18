@@ -312,7 +312,7 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
   comisión (`ajustes.comision.porcentaje`, la de siempre) va como `marketplace_fee` a la dueña de la aplicación.
   El comprador no tiene cuenta.
 - **Cuentas de comisión** (`.env`): `MP_CUENTA_<n>_NOMBRE`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_WEBHOOK_SECRET` (n = 1..9;
-  id = client_id). Activa: ajuste `venta_contenido = {cuenta}` (Admin → Ajustes) o, si no hay, la primera. Sin los
+  id = client_id). Activa: ajuste `venta_contenido = {cuenta}` (Admin → Créditos → Banco; antes Ajustes) o, si no hay, la primera. Sin los
   tres datos de la activa, la función no se muestra (panel: "todavía no está disponible"; perfil: sin sección).
 - **Cambio de cuenta activa**: los tokens están atados a cada aplicación (`mp_conexiones` por cuenta_id + app_id). Las
   vendedoras sin conexión con la nueva ven "Volvé a conectar Mercado Pago" y sus contenidos no se pueden comprar.
@@ -335,7 +335,8 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
   rechazada | reembolsada (una aprobada solo cambia si ESE pago se devuelve).
 - **Admin** (`${A}/api`): `GET /contenido/resumen` (cuentas, activa, conectadas por cuenta, URLs para configurar),
   `PUT /contenido/cuenta-activa {cuenta}`, `GET /contenido/ventas?estado=` (+ totales de aprobadas). Pestaña
-  "Ventas de contenido"; tarjeta "Venta de contenido" en Ajustes (comisión % + cuenta que la recibe).
+  "Ventas de contenido"; tarjeta "Cuenta que recibe la comisión" en Créditos → Banco (hasta el 18/11/2026, "Venta de
+  contenido" en Ajustes; el % está en Precios).
 - **Front**: `mvp/src/prod-contenido.js` (solo sitio real; en la demo no hace nada). Panel → Contenido; sección
   "Contenido" al final del perfil; `/compra/<token>` (noindex). El navegador guarda `{itemId: token}` en
   `localStorage.sr_compras` y el perfil muestra "Ver contenido".
@@ -535,7 +536,8 @@ Migración `app/db/110-admin-moderacion.sql`: `solicitudes.motivo_cierre`, `cerr
 
 ## Integraciones del admin (Telegram, Mercado Pago, WhatsApp) — desde el 13/11/2026
 
-Admin → Ajustes. API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que modifica, con `apiPost`).
+Hoy: Telegram y WhatsApp en Admin → Mensajería; cuentas de Mercado Pago en Admin → Créditos → Banco (al principio,
+todo en Ajustes). API bajo `${A}/api` (`routes/admin-integraciones.js`; lo que modifica, con `apiPost`).
 
 - **Avisos por Telegram** (`lib/telegram.js`). El token del bot queda en el servidor (`TELEGRAM_BOT_TOKEN`). El chat se
   vincula desde el admin: `POST /integraciones/telegram/vincular` → código de un solo uso (8 caracteres, vence a los
@@ -747,6 +749,30 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
   por commit en el lock): el Dockerfile instala las dependencias en una etapa `deps` con git, que no queda en la imagen.
   Sesión de Baileys en la tabla `asistente_auth`, **cifrada** con `SECRETS_KEY` (`lib/secretos.js`). Reconexión con
   espera creciente (1 → 60 s); si WhatsApp desvincula el dispositivo (401) borra la sesión y vuelve a pedir QR.
+  **Sesión e integridad del cifrado (18/11/2026, "Esperando mensaje" en el teléfono de Juan):**
+  - Reenvíos: cada mensaje que manda el bot se guarda (el proto `Message`, cifrado con `SECRETS_KEY`, sin teléfono) en
+    `asistente_wa_enviados` (`db/270`), 30 días (lo borra el agente). Cuando el teléfono del otro lado no lo puede
+    descifrar manda un "retry receipt"; Baileys lo reenvía con una sesión nueva usando `getMessage(key)`, que lo saca de
+    ahí (antes devolvía `undefined` y el mensaje quedaba en "Esperando mensaje" para siempre). Si el pedido llega
+    mientras el mensaje todavía se está mandando, lo espera (hasta 10 s). `msgRetryCounterCache` única por proceso
+    (sobrevive a las reconexiones), como el ejemplo de Baileys; claves con `makeCacheableSignalKeyStore`.
+  - Claves de Signal (todas las categorías: `pre-key`, `session`, `sender-key`, `sender-key-memory`,
+    `app-state-sync-key`, `app-state-sync-version`) y `creds`: se escriben **en orden** (una cola) y cada escritura es
+    **una sola sentencia** (todo o nada); el valor se toma al llamar. Antes de reconectar, al cerrar y antes de borrar
+    la sesión se espera a que termine lo pendiente; después de un 401 / "Desvincular" lo pendiente se descarta.
+  - Una sola conexión por sesión: el agente toma un candado de Postgres (`pg_try_advisory_lock(7262701)`) en una
+    conexión propia antes de conectarse a WhatsApp y lo tiene mientras está prendido. Otro proceso con la misma base
+    (contenedor viejo que no terminó, un agente local apuntando a producción) espera y reintenta cada 3 s. Si se cae la
+    conexión del candado (lo revisa el latido), corta WhatsApp y lo vuelve a pedir. Si WhatsApp igual avisa que otra
+    conexión reemplazó a esta (440), espera 60 s en vez de pelear.
+  - Cierre (SIGTERM en cada deploy): termina las respuestas en curso (hasta 15 s), cierra WhatsApp, termina de escribir
+    la sesión, suelta el candado y cierra la base; corte forzado a los 25 s. En `infra/docker-compose.yml` el agente
+    tiene `stop_grace_period: 30s` (con los 10 s por defecto Docker podía matarlo a mitad).
+  - Logs (`docker compose logs agente`), sin teléfonos ni contenido (números de 6+ cifras → `#`, ids → últimos 6):
+    "el otro teléfono no pudo descifrar el mensaje …XXXXXX y pidió reenvío (intento N)", "se reenvía el mensaje …" /
+    "pidieron reenviar … pero no hay copia", "llegó un mensaje que no se pudo descifrar (…: motivo)", "otra instancia
+    del agente tiene la sesión…", "otra conexión con la misma sesión reemplazó a esta (440)", y los avisos de Baileys
+    sobre reintentos, descifrado, sesiones y commits de claves que fallan.
   `markOnlineOnConnect: false` (el teléfono sigue recibiendo notificaciones). Solo chats 1:1: ignora grupos, estados,
   difusiones y canales; ignora mensajes de más de 2 h (llegados con el agente apagado). "Escribiendo…" + pausa corta
   antes de cada respuesta. Archivos hasta 10 MB; como comprobante solo imagen (JPG/PNG/WebP/HEIC) o PDF, por firma.
@@ -781,7 +807,7 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
    titular, el código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu
    cuenta. Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los
    datos para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
-   **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Mensajería → WhatsApp): si
+   **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Créditos → Banco): si
    está cargada (alias y titular en dólares), la primera respuesta a un pedido pendiente sin moneda elegida es
    "Pedido SR-1234: Trimestre Plata, 105 créditos.\n¿Vas a transferir en pesos o en dólares?" (EN "Will you transfer in
    pesos or in dollars?", PT "Você vai transferir em pesos ou em dólares?") y el chat queda esperando
@@ -869,7 +895,8 @@ días. Logs sin teléfonos, emails ni textos.
   botonCreditos: { vinculado, guardado, usa: 'vinculado'|'guardado'|null } }` (desde el 16/11/2026).
 - `PUT /asistente/ajustes { activo, alias, titular, aliasUsd?, titularUsd? }` (alias 6–20: letras, números, puntos,
   guiones; titular 3–80; las mismas reglas en dólares, con los dos datos o ninguno; sin `aliasUsd`/`titularUsd` quedan
-  los guardados). Admin → Mensajería → WhatsApp → "Cuenta para las transferencias": bloques "En pesos" y "En dólares (opcional)".
+  los guardados). Admin → Créditos → Banco → "Cuenta para las transferencias" (hasta el 18/11/2026, en Mensajería →
+  WhatsApp): bloques "En pesos" y "En dólares (opcional)".
 - Moneda elegida a la vista: `GET /asistente/conversaciones/:id` → `pedidos[].moneda` ("Pedidos nombrados en el chat":
   "· en dólares"), y `GET /pedidos-creditos` → `items[].monedaAsistente` (Admin → Créditos → Pedidos: "Transfiere en
   dólares/pesos").
@@ -890,14 +917,14 @@ Barra lateral con títulos de grupo (en el celular, la misma fila de chips en el
 
 - **General**: Resumen, Métricas (desde el 16/11/2026, ver "Admin → Métricas"; con Exportar a Excel y "De dónde vienen las visitas").
 - **Acompañantes**: Acompañantes (perfiles y verificación), Reportes, Interesados.
-- **Cobros**: Créditos [Pedidos | Movimientos], Mensajería [Conversaciones | Captación | WhatsApp | Telegram | Mensajes]
+- **Cobros**: Créditos [Pedidos | Movimientos | Banco (desde el 18/11/2026)], Mensajería [Conversaciones | Captación | WhatsApp | Telegram | Mensajes]
   (antes "Asistente", desde el 16/11/2026), Planes [Suscripciones | Renovaciones],
   Destacados [Destacado | Star], Contenido [Ventas | Pedidos personalizados].
 - **Sitio**: Ubicaciones, Servicios, Textos, SEO.
 - **Configuración**: Precios (precios de los planes, packs de créditos, precios del Destacado, cotización del dólar y
   comisión de la venta de contenido: descuento total, costo de Mercado Pago, saldo negativo máximo) y Ajustes (Home
-  provisoria, cuenta de Mercado Pago que recibe la comisión, textos del inicio; contacto para comprar créditos, avisos
-  por Telegram y mensajes pasaron a Mensajería el 16/11/2026). Mismas tarjetas, botones, validaciones y "Actualizado el…"; solo cambiaron de lugar.
+  provisoria y textos del inicio; contacto para comprar créditos, avisos por Telegram y mensajes pasaron a Mensajería
+  el 16/11/2026; la cuenta de Mercado Pago que recibe la comisión, a Créditos → Banco el 18/11/2026). Mismas tarjetas, botones, validaciones y "Actualizado el…"; solo cambiaron de lugar.
 
 Cada pestaña tiene su dirección (`#admin.<sección>.<pestaña>`) y su contador; la sección muestra la suma (Créditos =
 pedidos pendientes; Planes = renovaciones con problema; Contenido = pedidos personalizados sin responder). El enlace
@@ -932,7 +959,7 @@ Una sola sección **Mensajería** (Cobros, donde estaba "Asistente"; ícono de W
 | --- | --- | --- |
 | Conversaciones | chats del asistente ("Pasar a humano" / "Devolver al asistente", pedidos nombrados en el chat), chips Todas / Con una persona / Con el asistente / **Captación**; aviso si el asistente está apagado o sin conectar | Admin → Asistente |
 | Captación | ver abajo | nuevo |
-| WhatsApp | el único chip del asistente: prendido/apagado, estado y QR, "Desvincular", **Botón de comprar créditos** (número que usa + "Probar") y cuenta para las transferencias (pesos y dólares) | Admin → Asistente y Ajustes → Contacto |
+| WhatsApp | el único chip del asistente: prendido/apagado, estado y QR, "Desvincular", **Botón de comprar créditos** (número que usa + "Probar"); la cuenta para las transferencias pasó a Créditos → Banco el 18/11/2026 (acá queda un enlace, o un aviso si falta el alias) | Admin → Asistente y Ajustes → Contacto |
 | Telegram | vincular tu Telegram (avisos y botones), qué avisos llegan, y "Telegram para comprar créditos" (usuario + "Mostrar también Telegram") | Ajustes |
 | Mensajes | mensaje del pedido de créditos (es/en/pt) + "Tu respuesta" (ajuste `mensajes`) y la invitación de captación (ajuste `captacion`) | Ajustes + nuevo |
 
@@ -1536,3 +1563,24 @@ obligatorio y límites, solo admin, 404 al repetir, lista y búsqueda, volver a 
 `app/test/asistente.test.js` → "motivo de una cuenta eliminada" (mismo número sí; otro número, sin número o con datos
 escritos por la persona no; la más reciente; la IA recibe solo fecha y motivo); `app/test/nombre-completo.test.js` (el
 asistente solo lee `fecha, motivo` de `cuentas_eliminadas`).
+
+## Admin → Créditos → Banco — desde el 18/11/2026 (pedido de Juan)
+
+Juan: "Actualmente la tarjeta para poner el alias se encuentra en Mensajería, lo cual me parece poco práctico. Además el
+botón a vincular cuenta de MP está en Contenido [la tarjeta "Venta de contenido" de Ajustes], lo cual también me parece
+poco práctico." Créditos suma una tercera pestaña, **Banco** (`#admin.creditos.banco`, después de Pedidos y Movimientos),
+con exactamente dos tarjetas. Solo cambiaron de lugar: mismos campos, validaciones, botones, API y ajustes.
+
+| Tarjeta | Qué tiene | Antes |
+| --- | --- | --- |
+| Cuenta para las transferencias | alias y titular en pesos y, opcional, en dólares; aviso "En un rato te paso los datos" si falta el alias o el titular en pesos; "Guardar" → `PUT /asistente/ajustes` (`cardCuenta` en `prod-admin-asistente.js`, expuesta como `HH.adminBanco.cuentaCard`) | Mensajería → WhatsApp |
+| Cuenta que recibe la comisión | cuentas de Mercado Pago: lista, "Recibe la comisión", "Probar", "Usar esta cuenta", Agregar / Editar / Borrar, aviso de `SECRETS_KEY`, cuentas ilegibles, dirección de redirección y de webhooks (`comisionCuentaCard` en `prod-admin.js` + `HH.adminInt.mpCuentas`) | Ajustes → "Venta de contenido" |
+
+- "Actualizar" de Banco recarga el asistente (`/asistente`), `/contenido/resumen` y `/integraciones/mp`.
+- Lugares de antes: Mensajería → WhatsApp muestra una línea "La cuenta para las transferencias que pasa el asistente se
+  configura en Créditos → Banco" o, si falta el alias o el titular en pesos, el aviso con el mismo enlace. Ajustes ya no
+  tiene la tarjeta (subtítulo "Home provisoria y textos del inicio"). Precios → Comisión y Contenido → Ventas dicen "La
+  cuenta de Mercado Pago que recibe la comisión se configura en Créditos → Banco".
+- El aviso de Telegram del asistente cuando falta la cuenta dice "Admin → Créditos → Banco".
+- Contadores: sin cambios (Créditos = pedidos pendientes; Banco no suma).
+- Prueba: `app/test/admin-banco.test.js` (revisión estática del admin: las dos tarjetas en Banco y no en los lugares viejos).

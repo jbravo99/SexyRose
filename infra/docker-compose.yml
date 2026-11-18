@@ -74,6 +74,9 @@ services:
     mem_limit: 512m
     pids_limit: 128
     init: true
+    # Al recrearlo (deploy) recibe SIGTERM: termina la respuesta en curso, cierra WhatsApp y guarda la sesión antes de
+    # salir (app/agente.js corta solo a los 25 s). Con los 10 s por defecto Docker lo mataba a mitad.
+    stop_grace_period: 30s
     # Sano = escribió su latido en los últimos 2 minutos (no tiene puerto HTTP).
     healthcheck:
       test: ["CMD", "node", "-e", "const f=require('fs');try{process.exit(Date.now()-f.statSync('/tmp/agente-latido').mtimeMs<120000?0:1)}catch(e){process.exit(1)}"]

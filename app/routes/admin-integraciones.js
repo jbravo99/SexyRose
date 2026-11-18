@@ -1,4 +1,5 @@
-// Admin → Ajustes → integraciones. Se monta bajo `${A}/api` (Basic Auth del admin; lo que modifica, con apiPost).
+// Integraciones del admin (Mensajería → Telegram y WhatsApp; Créditos → Banco → cuentas de Mercado Pago).
+// Se monta bajo `${A}/api` (Basic Auth del admin; lo que modifica, con apiPost).
 //   GET    /integraciones/telegram                → estado del bot, chat vinculado, código pendiente y avisos
 //   POST   /integraciones/telegram/vincular       → genera el código de un solo uso y el link t.me/<bot>?start=<código>
 //   POST   /integraciones/telegram/cancelar       → descarta el código pendiente

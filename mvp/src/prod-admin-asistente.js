@@ -3,8 +3,9 @@
    Admin → Mensajería (antes "Asistente"), pestañas:
    - Conversaciones: los chats del asistente de cuenta por WhatsApp ("Pasar a humano" / "Devolver al asistente",
      pedidos nombrados en el chat) con el filtro "Captación".
-   - WhatsApp: el único número (chip) del asistente: estado y QR para vincularlo, "Desvincular", prendido/apagado, el
-     número que usa el botón de comprar créditos y la cuenta para las transferencias (pesos y, opcional, dólares).
+   - WhatsApp: el único número (chip) del asistente: estado y QR para vincularlo, "Desvincular", prendido/apagado y el
+     número que usa el botón de comprar créditos. La cuenta para las transferencias (pesos y, opcional, dólares) se
+     carga en Créditos → Banco desde el 18/11/2026 (HH.adminBanco.cuentaCard, la arma este archivo); acá queda un aviso.
    - Telegram: vincular tu Telegram (avisos y botones), qué avisos llegan, y el usuario de Telegram para comprar créditos.
    - Mensajes: el mensaje del pedido de créditos (es/en/pt) y el mensaje de captación.
    La pestaña Captación la arma prod-admin-captacion.js. API: app/routes/admin-asistente.js (bajo ${API}/asistente).
@@ -24,8 +25,9 @@
 
   const fail = (e) => HH.toast(e.message, { type: 'danger' });
   const enVista = () => /^admin\.mensajeria/.test((HH.current && HH.current.path) || '');
+  const enBanco = () => /^admin\.creditos\.banco$/.test((HH.current && HH.current.path) || '');
   const modalAbierto = () => document.getElementById('modalRoot').classList.contains('open');
-  const rerender = () => { if (enVista() && !modalAbierto()) HH.refresh(); };
+  const rerender = () => { if ((enVista() || enBanco()) && !modalAbierto()) HH.refresh(); };
   S.asf = S.asf || 'todas'; S.asq = S.asq || '';
   const recargar = (k) => `<button type="button" class="btn ghost sm" data-action="asisRecargar" data-k="${esc(k)}">${icon('refresh')} Actualizar</button>`;
 
@@ -101,14 +103,14 @@
       </section>`;
   }
 
-  // En pesos (alias, titular: como siempre) y en dólares (aliasUsd, titularUsd: opcional). Con la de dólares cargada, el
-  // asistente primero pregunta si va a transferir en pesos o en dólares.
+  // Créditos → Banco (antes en Mensajería → WhatsApp): en pesos (alias, titular: como siempre) y en dólares (aliasUsd,
+  // titularUsd: opcional). Con la de dólares cargada, el asistente primero pregunta si va a transferir en pesos o en dólares.
   const camposCuenta = (pre, alias, titular, ph) => `<div class="grid-2" style="align-items:start"><div class="field"><label for="${pre}Alias">Alias</label><input class="input" id="${pre}Alias" maxlength="20" autocomplete="off" spellcheck="false" value="${esc(alias || '')}" placeholder="${ph}" data-noi18n><span class="hint">6 a 20 caracteres: letras, números, puntos o guiones.</span></div>
           <div class="field"><label for="${pre}Titular">Nombre del titular</label><input class="input" id="${pre}Titular" maxlength="80" autocomplete="off" value="${esc(titular || '')}" placeholder="Nombre y apellido" data-noi18n><span class="hint">Tal como aparece en la cuenta.</span></div></div>`;
   function cardCuenta(d) {
     const aj = d.ajustes || {};
     const falta = !aj.alias || !aj.titular;
-    return `<section class="card stack" style="gap:12px">
+    return `<section class="card stack" style="gap:12px" id="bancoCuenta">
         <div class="card-title">${icon('wallet')} Cuenta para las transferencias</div>
         <p class="small muted" style="margin:0">El asistente le pasa el alias, el titular y el monto a quien manda un pedido de créditos, para que verifique el nombre antes de transferir. Si cargás la cuenta en dólares, antes le pregunta si va a transferir en pesos o en dólares.</p>
         <div class="asis-cta"><div class="card-title" style="font-size:15px">En pesos</div>
@@ -119,6 +121,24 @@
         ${camposCuenta('asisUsd', aj.aliasUsd, aj.titularUsd, 'mi.alias.usd')}</div>
         <div class="row"><button type="button" class="btn sm" data-action="asisGuardar">${icon('check')} Guardar</button></div>
       </section>`;
+  }
+
+  // Créditos → Banco: la tarjeta con su carga (S.asis ya se pide al abrir el panel)
+  function cuentaCard() {
+    load('asis', '/asistente');
+    const d = S.asis;
+    if (!d && S.err.asis) return errorCard(S.err.asis, 'asis');
+    if (!d) return loadingCard(2);
+    return cardCuenta(d);
+  }
+  HH.adminBanco = { cuentaCard };
+  // Mensajería → WhatsApp: en lugar de la tarjeta, una línea que lleva a Créditos → Banco (aviso si falta el alias en pesos)
+  function lineaCuenta(d) {
+    const aj = d.ajustes || {};
+    const ir = '<a href="#admin.creditos.banco" data-go="#admin.creditos.banco">Créditos → Banco</a>';
+    return !aj.alias || !aj.titular
+      ? `<div class="notice warn" id="asisCuentaFalta">${icon('alert')}<span>Falta la cuenta para las transferencias: sin alias o titular en pesos, el asistente responde "En un rato te paso los datos" y te avisa por Telegram. Cargala en ${ir}.</span></div>`
+      : `<p class="small muted" style="margin:0" id="asisCuentaLink">${icon('wallet')} La cuenta para las transferencias que pasa el asistente se configura en ${ir}.</p>`;
   }
 
   /* ---------- Conversaciones ---------- */
@@ -164,7 +184,7 @@
   const vista = (sub, inner) => layout('mensajeria', `${head('Mensajería', RIGHT(sub === 'conversaciones' || sub === 'whatsapp' ? 'todo' : sub), SUBTITULO[sub])}<div class="stack" style="gap:16px">${inner}</div>`);
   const SUBTITULO = {
     conversaciones: 'Chats del asistente de WhatsApp con las acompañantes: pedidos de créditos, comprobantes, preguntas y respuestas a las invitaciones',
-    whatsapp: 'El número del asistente (un solo chip para todo): conexión, prendido o apagado, botón de comprar créditos y cuenta para las transferencias',
+    whatsapp: 'El número del asistente (un solo chip para todo): conexión, prendido o apagado y botón de comprar créditos',
     telegram: 'Tus avisos por Telegram y el usuario de Telegram para comprar créditos',
     mensajes: 'El mensaje del pedido de créditos y el de la invitación de captación',
   };
@@ -200,7 +220,7 @@
     let body;
     if (!d && S.err.asis) body = errorCard(S.err.asis, 'asis');
     else if (!d) body = loadingCard(3);
-    else body = `<div class="asis-top">${cardEstado(d)}${cardBoton(d)}</div>${cardCuenta(d)}`;
+    else body = `<div class="asis-top">${cardEstado(d)}${cardBoton(d)}</div>${lineaCuenta(d)}`;
     setTimeout(vigilar, 0);
     return vista('whatsapp', body);
   }

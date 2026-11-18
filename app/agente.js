@@ -92,13 +92,19 @@ export async function startAgente(overrides = {}) {
   if (timer.unref) timer.unref();
   const escucha = config.escuchar === false ? null : escucharSalida({ databaseUrl: config.databaseUrl, destino: 'whatsapp', alAvisar: procesarSalida, log, cadaMs: 30000 });
 
-  async function cerrar() {
+  // Cierre ordenado (SIGTERM en cada deploy): 1) terminar las respuestas en curso (como mucho esperaMs), 2) cerrar
+  // WhatsApp, terminar de escribir la sesión en la base y soltar el candado, 3) cerrar la base. Si se corta a mitad,
+  // la sesión guardada puede quedar atrás de lo que ya se mandó y el próximo mensaje no se puede descifrar del otro lado.
+  async function cerrar({ esperaMs = 15000 } = {}) {
     parado = true;
     clearInterval(timer);
     if (escucha) await escucha.cerrar();
-    await asistente.esperar().catch(() => {});
-    await wa.detener('apagado').catch(() => {});
+    let t;
+    await Promise.race([asistente.esperar().catch(() => {}), new Promise((r) => { t = setTimeout(r, esperaMs); if (t.unref) t.unref(); })]);
+    clearTimeout(t);
+    await wa.detener('apagado').catch((e) => log('agente: al cerrar WhatsApp:', e.code || e.message));
     if (!config.pool) await pool.end().catch(() => {});
+    log('agente: cerrado');
   }
   return { pool, asistente, wa, telegram, llm, procesarSalida, supervisar, cerrar };
 }
@@ -112,7 +118,7 @@ if (isMain) {
     if (cerrando) return;
     cerrando = true;
     console.log(new Date().toISOString(), `agente: ${sig} recibido: cerrando...`);
-    setTimeout(() => process.exit(1), 10000).unref();
+    setTimeout(() => process.exit(1), 25000).unref(); // docker compose: stop_grace_period 30s (infra/docker-compose.yml)
     inst.cerrar().then(() => process.exit(0), () => process.exit(1));
   };
   process.on('SIGTERM', () => onSignal('SIGTERM'));

@@ -111,7 +111,9 @@
      sale de Ajustes. Las direcciones viejas (#admin.pedidos, #admin.stars, #admin.solicitudes.<id>, #admin.creditos.<cuenta>…)
      llevan a la sección y pestaña nuevas (aliasAdmin, en HH.render). */
   const SECCIONES = {
-    creditos: [['pedidos', 'Pedidos'], ['movimientos', 'Movimientos']],
+    // Banco (18/11/2026, decisión de Juan: el alias estaba en Mensajería y la cuenta de Mercado Pago en Ajustes, "poco
+    // práctico"): la cuenta para las transferencias y la cuenta que recibe la comisión, juntas (vBanco)
+    creditos: [['pedidos', 'Pedidos'], ['movimientos', 'Movimientos'], ['banco', 'Banco']],
     planes: [['suscripciones', 'Suscripciones'], ['renovaciones', 'Renovaciones']],
     destacados: [['destacado', 'Destacado'], ['star', 'Star']],
     contenido: [['ventas', 'Ventas'], ['pedidos', 'Pedidos personalizados']],
@@ -444,7 +446,7 @@
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
   const PATHS = { geo: '/georef', vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos', elim: '/cuentas-eliminadas' };
-  // Para prod-admin-integraciones.js (Ajustes → cuentas de Mercado Pago)
+  // Para prod-admin-integraciones.js (Créditos → Banco → cuentas de Mercado Pago)
   HH.adminRecargar = (k) => load(k, PATHS[k], true);
   HH.adminVc = () => S.vc;
   const pathDe = (k) => (k === 'pc' ? pcPath() : k.startsWith('acd:') ? '/acompanantes/' + encodeURIComponent(k.slice(4)) : k.startsWith('cr:') ? '/creditos/' + encodeURIComponent(k.slice(3)) : PATHS[k]);
@@ -1234,10 +1236,9 @@
           <p class="small muted" style="margin:0">Ahora están en <strong>Mensajería</strong>: el WhatsApp para comprar créditos es el número vinculado al asistente, y ahí también están los avisos por Telegram y los mensajes.</p>
           <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn secondary sm" href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">${icon('whatsapp')} WhatsApp</a><a class="btn secondary sm" href="#admin.mensajeria.telegram" data-go="#admin.mensajeria.telegram">${icon('send')} Telegram</a><a class="btn secondary sm" href="#admin.mensajeria.mensajes" data-go="#admin.mensajeria.mensajes">${icon('message')} Mensajes</a></div>
         </section>
-        ${ventaContenidoCard()}
         ${textosInicioCard()}`;
     }
-    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria, Mercado Pago y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
+    return layout('ajustes', `${head('Ajustes', actualizar('aj'), 'Home provisoria y textos del inicio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
   /* ---------- Movido a Admin → Mensajería (16/11/2026): mismas tarjetas, mismos campos y mismo guardado ---------- */
@@ -1692,11 +1693,12 @@
           <div class="grid-2">
           <div class="field"><label for="ajComN">Saldo negativo máximo (créditos)</label><input class="input" id="ajComN" type="number" min="0" max="10000" step="1" value="${esc(cm.saldoNegativoMax != null ? cm.saldoNegativoMax : '')}"></div></div>
           <div class="row"><button type="button" class="btn sm" data-action="prodAjSave" data-k="comision">${icon('check')} Guardar comisión</button></div>
-          <p class="tiny muted" style="margin:0">La cuenta de Mercado Pago que recibe la comisión se elige en <a href="#admin.ajustes" data-go="#admin.ajustes">Ajustes</a>.</p>
+          <p class="tiny muted" style="margin:0">La cuenta de Mercado Pago que recibe la comisión se configura en <a href="#admin.creditos.banco" data-go="#admin.creditos.banco">Créditos → Banco</a>.</p>
         </section>`;
   }
-  // Ajustes → Venta de contenido: la cuenta de Mercado Pago que recibe la comisión (los porcentajes están en Precios)
-  function ventaContenidoCard() {
+  // Créditos → Banco: la cuenta de Mercado Pago que recibe la comisión (hasta el 18/11/2026, en Ajustes → «Venta de
+  // contenido»; los porcentajes están en Precios)
+  function comisionCuentaCard() {
     load('vc', PATHS.vc);
     const vc = S.vc;
     let cuentas;
@@ -1711,13 +1713,20 @@
         </div>`).join('')}</div>
         <p class="tiny muted" style="margin:0">En cada aplicación de Mercado Pago: dirección de redirección <code>${esc(vc.redirectUri)}</code> y notificaciones (webhooks, evento «Pagos») <code>${esc(vc.webhookUrl)}</code>.</p>`;
     }
-    return `<section class="card stack" style="gap:12px">
-          <div class="card-title">${icon('bag')} Venta de contenido</div>
-          <p class="small muted">Quien compra paga con Mercado Pago. El dinero va a la cuenta de Mercado Pago de la acompañante y la comisión, a la cuenta elegida acá. Si cambiás la cuenta, cada acompañante tiene que volver a conectar Mercado Pago desde su panel: hasta entonces, sus contenidos no se pueden comprar.</p>
+    return `<section class="card stack" style="gap:12px" id="bancoComision">
+          <div class="card-title">${icon('bag')} Cuenta que recibe la comisión</div>
+          <p class="small muted" style="margin:0">Venta de contenido: quien compra paga con Mercado Pago. El dinero va a la cuenta de Mercado Pago de la acompañante y la comisión, a la cuenta elegida acá. Si cambiás la cuenta, cada acompañante tiene que volver a conectar Mercado Pago desde su panel: hasta entonces, sus contenidos no se pueden comprar.</p>
           <p class="tiny muted" style="margin:0">El descuento a la acompañante y el saldo negativo máximo están en <a href="#admin.precios" data-go="#admin.precios">Precios</a>.</p>
-          <div class="card-title" style="font-size:15px">Cuenta que recibe la comisión</div>
           ${HH.adminInt ? HH.adminInt.mpCuentas(vc, S.err.vc) : cuentas}
         </section>`;
+  }
+  /* ---------- Créditos → Banco (18/11/2026): las dos cuentas donde se cobra ----------
+     «Cuenta para las transferencias» (alias y titular en pesos y, opcional, en dólares: la tarjeta, la validación y el
+     guardado de siempre, PUT /asistente/ajustes; la arma prod-admin-asistente.js) y «Cuenta que recibe la comisión»
+     (las cuentas de Mercado Pago: comisionCuentaCard + HH.adminInt.mpCuentas). */
+  function vBanco() {
+    const right = `<button type="button" class="btn ghost sm" data-action="prodBancoRecargar">${icon('refresh')} Actualizar</button>`;
+    return layout('creditos', `${head('Banco', right, 'Dónde cobrás: la cuenta para las transferencias de los pedidos de créditos y la cuenta de Mercado Pago que recibe la comisión de la venta de contenido')}<div class="stack" style="gap:14px">${HH.adminBanco ? HH.adminBanco.cuentaCard() : ''}${comisionCuentaCard()}</div>`);
   }
   function vVentasContenido() {
     load('vcv', PATHS.vcv);
@@ -1734,7 +1743,7 @@
         </tbody></table></div></div>` : `<div class="card"><div class="empty">${icon('bag')}<h4>Todavía no hay ventas</h4><p class="small">Acá aparecen las compras de contenido apenas el comprador inicia el pago en Mercado Pago.</p></div></div>`}`;
     }
     const right = `<button type="button" class="btn ghost sm" data-action="prodRetry" data-k="vcv">${icon('refresh')} Actualizar</button>`;
-    return layout('ventas', `${head('Ventas de contenido', right)}${body}`);
+    return layout('ventas', `${head('Ventas de contenido', right, 'La cuenta de Mercado Pago que recibe la comisión se configura en <a href="#admin.creditos.banco" data-go="#admin.creditos.banco">Créditos → Banco</a>.')}${body}`);
   }
 
   /* ---------- Secciones que llegan en las próximas fases ---------- */
@@ -1761,7 +1770,7 @@
   TABS.forEach((t) => { views[t.id] = () => vSoon(t.id); });
   Object.assign(views, { ventas: vVentasContenido, resumen: vResumen, preregistros: vPre, reportes: vReportes, textos: vTextos, acompanantes: vAcompanantes, pedidos: vPedidos, pagos: vPedidos, renovaciones: vRenovaciones, destacados: vDestacados, suscripciones: vSuscripciones, stars: vStars, ubicaciones: vUbicaciones, categorias: vCategorias, ajustes: vAjustes, precios: vPrecios });
   // Secciones con pestañas: #admin.<sección> (sin pestaña) → la primera; #admin.<sección>.<pestaña>
-  Object.assign(SUBVISTAS, { 'creditos.pedidos': vPedidos, 'planes.suscripciones': vSuscripciones, 'planes.renovaciones': vRenovaciones, 'destacados.destacado': vDestacados, 'destacados.star': vStars, 'contenido.ventas': vVentasContenido });
+  Object.assign(SUBVISTAS, { 'creditos.pedidos': vPedidos, 'creditos.banco': vBanco, 'planes.suscripciones': vSuscripciones, 'planes.renovaciones': vRenovaciones, 'destacados.destacado': vDestacados, 'destacados.star': vStars, 'contenido.ventas': vVentasContenido });
   Object.keys(SECCIONES).forEach((sec) => {
     views[sec] = () => vSeccion(sec, null);
     HH.route(`admin.${sec}.:sub`, ({ sub }) => (HH.requireRole('admin') ? vSeccion(sec, sub) : false));
@@ -1773,6 +1782,11 @@
 
   /* ---------- Acciones ---------- */
   Object.assign(HH.actions, {
+    prodBancoRecargar() {
+      load('asis', '/asistente', true); load('vc', PATHS.vc, true);
+      if (HH.adminInt && HH.adminInt.recargarMp) HH.adminInt.recargarMp();
+      HH.refresh();
+    },
     prodVcActivar(el) {
       const c = ((S.vc && S.vc.cuentas) || []).find((x) => x.id === el.dataset.id); if (!c) return;
       HH.confirm({ title: 'Cambiar la cuenta que recibe la comisión', text: `<span>Desde ahora la comisión va a <strong>${esc(c.nombre)}</strong>.</span> <span>Las acompañantes que no conectaron esta cuenta tienen que volver a conectar Mercado Pago desde su panel; hasta entonces, sus contenidos no se pueden comprar.</span>`, okLabel: 'Cambiar', onOk: () => {

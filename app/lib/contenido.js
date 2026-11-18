@@ -11,7 +11,7 @@
 //   un pedido personalizado, lib/solicitudes.js: se desbloquea en el chat).
 // - El pago se verifica solo: notificación firmada (webhook) + consulta del pago a Mercado Pago con el token de la
 //   vendedora. Al aprobarse, /compra/<token> muestra el link. Nadie verifica pagos a mano.
-// - Admin → Ajustes elige la cuenta de comisión activa. Si cambia, las vendedoras que no conectaron esa aplicación
+// - Admin → Créditos → Banco elige la cuenta de comisión activa. Si cambia, las vendedoras que no conectaron esa aplicación
 //   ven "Volvé a conectar Mercado Pago" y sus contenidos no se pueden comprar hasta que reconecten.
 // - Solo packs (y, más adelante, pedidos a medida). Cantidad de packs a la venta por plan: LIMITES[plan].packs (Juan
 //   12/11: Bronce 0, Plata 1, Oro 5, Star ilimitados). Si baja de plan, los primeros que entran (por fecha de carga)
@@ -117,7 +117,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
     const { rows } = await db.query('SELECT valor FROM ajustes WHERE clave = $1', [claveAj]);
     return rows[0] ? rows[0].valor : null;
   };
-  // Cuenta de comisión activa: la elegida en Admin → Ajustes (si sigue configurada) o la primera del .env.
+  // Cuenta de comisión activa: la elegida en Admin → Créditos → Banco (si sigue configurada) o la primera del .env.
   async function cuentaActiva(db = pool) {
     const aj = await leerAjuste('venta_contenido', db);
     const elegida = aj && typeof aj === 'object' ? porId(aj.cuenta) : null;
@@ -581,7 +581,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
   let timer = null;
   function iniciarTarea({ listo = () => true, cadaMs = 12 * HOUR } = {}) {
     if (timer) return;
-    // Las cuentas pueden aparecer después (Admin → Ajustes): la tarea arranca siempre y no hace nada si no hay ninguna.
+    // Las cuentas pueden aparecer después (Admin → Créditos → Banco): la tarea arranca siempre y no hace nada si no hay ninguna.
     const correr = () => { if (listo() && cuentas.length) renovarTokens().catch((e) => log('mercado pago: renovación falló:', e.code || e.message)); };
     setTimeout(correr, 60 * 1000).unref();
     timer = setInterval(correr, cadaMs); timer.unref();
