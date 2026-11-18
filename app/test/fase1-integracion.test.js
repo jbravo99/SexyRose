@@ -185,7 +185,8 @@ describe('integración cuentas + admin + planes', () => {
 
     let yo = (await c.get('/api/cuenta/yo')).body.cuenta;
     assert.deepEqual(yo.creditos.saldo, { centavos: 10500, creditos: '105.00' });
-    assert.equal(yo.notificaciones.noLeidas, 1);
+    // Créditos acreditados + los avisos del alta (18/11/2026): "Recibimos tu perfil" y "Te verificamos y tu perfil ya está publicado"
+    assert.equal(yo.notificaciones.noLeidas, 3);
     assert.equal(yo.plan.efectivo, 'E');
 
     r = await c.json('POST', '/api/cuenta/plan/comprar', { plan: 'D', periodo: 'mes' });

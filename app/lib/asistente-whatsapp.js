@@ -1,6 +1,12 @@
-// Conexión de WhatsApp del asistente (Baileys, @whiskeysockets/baileys, versión fija en package.json): el número del
-// chip prepago queda vinculado como "dispositivo" (QR escaneado una vez desde Admin → Mensajería → WhatsApp).
+// Conexión de WhatsApp del asistente (Baileys, @whiskeysockets/baileys 7.x, versión fija en package.json): el número
+// del chip prepago queda vinculado como "dispositivo" (QR escaneado una vez desde Admin → Mensajería → WhatsApp).
 // - La sesión (credenciales y claves) se guarda en la base, cifrada con SECRETS_KEY (lib/secretos.js).
+// - LID: WhatsApp identifica a cada usuario con un número interno (`…@lid`) además del teléfono (`…@s.whatsapp.net`).
+//   Baileys 7 guarda la relación (claves `lid-mapping`) y usa UNA sola sesión de Signal por dispositivo aunque el chat
+//   llegue por LID o por teléfono. Respondemos a la misma dirección por la que escribió el chat; para identificar
+//   (perfil por teléfono) usamos el teléfono que da WhatsApp (remoteJidAlt) o la relación guardada.
+// - Una sesión guardada por Baileys 6 (antes del 18/11/2026) no se usa: se borra y se pide QR nuevo (ver
+//   FORMATO_SESION), con aviso en el admin y por Telegram.
 // - Estado para el admin en asistente_whatsapp (conectado / esperando_qr / desconectado + QR + latido).
 // - Se reconecta solo con espera creciente (1 s … 60 s). Si WhatsApp desvincula el dispositivo, borra la sesión y
 //   vuelve a pedir QR.
@@ -25,6 +31,12 @@ const SERVIDOR_LID = '@lid';
 const VIEJO_MS = 2 * 60 * 60 * 1000; // mensajes de más de 2 h (llegados mientras estaba apagado): no se contestan
 const RETENER_ENVIADOS_DIAS = 30;   // copia cifrada de lo enviado (asistente_wa_enviados), para reenviarlo
 const STUB_CIPHERTEXT = 2;           // proto.WebMessageInfo.StubType.CIPHERTEXT: mensaje que no se pudo descifrar
+// Marca de la sesión guardada (fila 'formato' de asistente_auth, se escribe junto con las credenciales). Una sesión con
+// credenciales y SIN esta marca es de Baileys 6: sus sesiones de Signal quedaron separadas por teléfono y por LID (el
+// origen de "Esperando mensaje" del 18/11/2026) y Baileys 7 no las puede migrar → hay que volver a vincular.
+export const FORMATO_SESION = 'baileys7-lid';
+export const AVISO_REVINCULAR = 'Se actualizó la conexión de WhatsApp del asistente y hay que vincular el chip de nuevo: '
+  + 'en el teléfono del chip, WhatsApp → Dispositivos vinculados → cerrá la sesión vieja (si sigue en la lista) y escaneá este QR.';
 
 // ---------- Sesión de Baileys en la base (cifrada) ----------
 // Todas las claves de Signal (pre-key, session, sender-key, sender-key-memory, app-state-sync-key,
@@ -36,6 +48,8 @@ const STUB_CIPHERTEXT = 2;           // proto.WebMessageInfo.StubType.CIPHERTEXT
 // - El valor se toma al momento de la llamada (no al escribir).
 // - vaciar(): espera a que se escriba todo lo pendiente (al cerrar, al reconectar y antes de borrar la sesión).
 // - descartar(): ignora lo que llegue después (sesión desvinculada: no se vuelve a crear la fila borrada).
+// - Baileys 7 agrega categorías (`lid-mapping`, `device-list`, `tctoken`, `identity-key`): se guardan igual que las demás.
+// - formatoViejo: hay credenciales de un dispositivo ya vinculado pero sin la marca FORMATO_SESION (sesión de Baileys 6).
 export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, proto }) {
   const enc = (v) => cifrarSecreto(secretsKey, JSON.stringify(v, BufferJSON.replacer));
   const dec = (s) => { const t = descifrarSecreto(secretsKey, s); return t === null ? null : JSON.parse(t, BufferJSON.reviver); };
@@ -58,8 +72,11 @@ export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, 
        INSERT INTO asistente_auth (clave, valor, actualizado) SELECT c, v, now() FROM unnest($1::text[], $2::text[]) AS t(c, v)
        ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now()`, [claves, valores, borrar]));
   };
-  const creds = (await leer('creds')) || initAuthCreds();
+  const guardadas = await leer('creds');
+  const creds = guardadas || initAuthCreds();
+  const formatoViejo = Boolean(guardadas && (guardadas.me || guardadas.registered)) && (await leer('formato')) !== FORMATO_SESION;
   return {
+    formatoViejo,
     state: {
       creds,
       keys: {
@@ -89,7 +106,7 @@ export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, 
         },
       },
     },
-    guardarCreds: () => escribir(new Map([['creds', enc(creds)]])),
+    guardarCreds: () => escribir(new Map([['creds', enc(creds)], ['formato', enc(FORMATO_SESION)]])),
     async vaciar() { let c; do { c = cola; await c; } while (c !== cola); },
     descartar() { descartada = true; },
   };
@@ -157,8 +174,8 @@ const idCorto = (id) => '…' + String(id || '?').slice(-6);
 
 // Logger con la forma que pide Baileys (pino), sin datos personales: errores (con el motivo, sin números) y los avisos
 // que sirven para diagnosticar reintentos y fallas de cifrado; nunca objetos ni contenido.
-const AVISOS_UTILES = /retry|resend|decrypt|session|commit|sent too many|message not available|bad mac|prekey|pre-key/i;
-function loggerMudo(log) {
+const AVISOS_UTILES = /retry|resend|decrypt|session|commit|sent too many|message not available|bad mac|prekey|pre-key|lid mapping|lid-pn/i;
+export function loggerMudo(log) {
   const motivo = (obj) => {
     if (!obj || typeof obj !== 'object') return '';
     const e = obj.err || obj.error;
@@ -177,7 +194,13 @@ function loggerMudo(log) {
     trace() {}, debug() {},
     info(obj, msg) { const t = typeof obj === 'string' ? obj : String(msg || ''); if (AVISOS_UTILES.test(t)) log('asistente: whatsapp (baileys):', linea(obj, msg)); },
     warn(obj, msg) { const t = typeof obj === 'string' ? obj : String(msg || ''); if (AVISOS_UTILES.test(t)) log('asistente: whatsapp (baileys) aviso:', linea(obj, msg)); },
-    error(obj, msg) { log('asistente: whatsapp (baileys):', linea(obj, msg)); },
+    error(obj, msg) {
+      const t = linea(obj, msg);
+      // Consultas que Baileys hace al conectar (props, bloqueados, privacidad): si WhatsApp no contesta en 60 s quedan
+      // los valores por defecto. No afecta mandar ni recibir mensajes.
+      if (/init queries/i.test(t) && /timed out/i.test(t)) { log('asistente: whatsapp: las consultas iniciales (ajustes de WhatsApp, bloqueados, privacidad) no respondieron en 60 s; se usan los valores por defecto (no afecta los mensajes)'); return; }
+      log('asistente: whatsapp (baileys):', t);
+    },
     fatal(obj, msg) { l.error(obj, msg); },
   };
   return l;
@@ -211,6 +234,7 @@ export function createWhatsApp({
   candado = undefined,   // undefined = candado de Postgres (crearCandado); null = sin candado
   crearAuth = null,      // pruebas: ({ B }) => auth (con socket falso, por defecto no hay sesión)
   esperaCandadoMs = 3000,
+  avisar = async () => {}, // aviso a Juan por Telegram (agente.js: telegram.notify(…, 'asistente_alerta'))
 }) {
   let sock = null;
   let estado = 'apagado';
@@ -218,6 +242,8 @@ export function createWhatsApp({
   let espera = 1000;
   let reintento = null;
   let propio = '';            // número del chip (dígitos)
+  let propioLid = '';         // LID del chip (dígitos)
+  let avisoRevincular = null; // texto para el admin mientras falta volver a vincular (sesión de Baileys 6 descartada)
   let generacion = 0;         // cada conexión nueva invalida los eventos de la anterior
   let authActual = null;      // sesión en uso (para vaciar sus escrituras pendientes)
   let avisoCandado = false;
@@ -225,6 +251,8 @@ export function createWhatsApp({
   const enviados = new Set(); // ids de mensajes que mandó el bot (para no confundirlos con los de Juan)
   const recientes = new Map(); // id → proto.IMessage de lo último enviado (además de la base)
   const guardando = new Map(); // id → promesa: el mensaje se está mandando/guardando
+  // Dirección por la que escribió cada chat (clave del chat → `…@lid` o `…@s.whatsapp.net`): se responde por ahí.
+  const direcciones = new Map();
   const contadorReintentos = cacheConVencimiento(); // msgRetryCounterCache: uno por proceso
   if (candado === undefined) candado = pool && typeof pool.connect === 'function' ? crearCandado(pool, { log }) : null;
   if (candado) candado.alPerder(() => { perderCandado().catch(() => {}); });
@@ -232,6 +260,7 @@ export function createWhatsApp({
   async function guardarEstado(e, extra = {}) {
     estado = e;
     const qr = extra.qr || null;
+    if (!extra.error && avisoRevincular && e !== 'conectado' && e !== 'apagado') extra = { ...extra, error: avisoRevincular };
     await pool.query(
       `UPDATE asistente_whatsapp SET estado = $1, qr = $2, qr_creado = CASE WHEN $2::text IS NULL THEN NULL ELSE now() END,
          numero = COALESCE($3, numero), error = $4, ia = $5, modelo = $6, latido = now(), actualizado = now() WHERE id = 1`,
@@ -289,6 +318,18 @@ export function createWhatsApp({
     if (crearAuth) auth = await crearAuth({ B });
     else if (makeSocket) auth = { state: { creds: {}, keys: {} }, guardarCreds: async () => {} }; // pruebas: socket falso, sin sesión
     else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto });
+    if (auth.formatoViejo) {
+      // Sesión de Baileys 6: no se usa (sus sesiones de Signal quedaron partidas entre teléfono y LID). Se borra y se
+      // pide QR nuevo. Si no se puede borrar, se reintenta más tarde (nunca se conecta con la vieja).
+      log('asistente: la sesión de WhatsApp guardada es de la versión anterior (Baileys 6): se borra y hay que vincular el chip de nuevo');
+      await pool.query('DELETE FROM asistente_auth');
+      avisoRevincular = AVISO_REVINCULAR;
+      Promise.resolve().then(() => avisar('Asistente de WhatsApp: se actualizó la conexión y hay que vincular el chip de nuevo. '
+        + 'Admin → Mensajería → WhatsApp: escaneá el QR con el teléfono del chip (Dispositivos vinculados).')).catch(() => {});
+      if (crearAuth) auth = await crearAuth({ B, nueva: true });
+      else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto });
+      if (auth.formatoViejo) throw new Error('la sesión vieja de WhatsApp no se pudo borrar');
+    }
     authActual = auth;
     await guardarEstado('conectando');
     // Configuración como el ejemplo de Baileys: getMessage (reenvíos cuando el otro teléfono no pudo descifrar),
@@ -342,6 +383,9 @@ export function createWhatsApp({
       espera = 1000;
       const id = String((s.user && s.user.id) || '');
       propio = id.split('@')[0].split(':')[0].replace(/\D/g, '');
+      propioLid = usuario((s.user && s.user.lid) || (auth.state && auth.state.creds && auth.state.creds.me && auth.state.creds.me.lid) || '');
+      if (avisoRevincular) log('asistente: WhatsApp vinculado de nuevo');
+      avisoRevincular = null;
       await guardarEstado('conectado', { numero: propio || null });
       log('asistente: WhatsApp conectado');
     }
@@ -379,6 +423,27 @@ export function createWhatsApp({
     programar(esperaCandadoMs);
   }
 
+  // `5491155550001:3@s.whatsapp.net` → `5491155550001@s.whatsapp.net` (sin dispositivo)
+  const sinDispositivo = (jid) => String(jid || '').replace(/:\d+@/, '@');
+  const usuario = (jid) => String(jid || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+  const esPn = (jid) => String(jid || '').endsWith(SERVIDOR_PN);
+  const esLid = (jid) => String(jid || '').endsWith(SERVIDOR_LID);
+  const esPropio = (jid) => { const u = usuario(jid); return Boolean(u) && ((propio && u === propio) || (propioLid && u === propioLid)); };
+  const relacionLid = () => (sock && sock.signalRepository && sock.signalRepository.lidMapping) || null;
+
+  // Teléfono (`…@s.whatsapp.net`) de un chat que llegó por LID: el que manda WhatsApp con el mensaje
+  // (key.remoteJidAlt; key.senderPn en Baileys 6) o la relación LID↔teléfono que guarda Baileys.
+  async function telefonoDeLid(k, jidLid) {
+    if (!k.fromMe) { // en los mensajes propios el "alt" puede ser el número del chip
+      for (const alt of [k.remoteJidAlt, k.senderPn]) if (esPn(alt) && !esPropio(alt)) return sinDispositivo(alt);
+    }
+    const rel = relacionLid();
+    if (rel && typeof rel.getPNForLID === 'function') {
+      try { const pn = await rel.getPNForLID(jidLid); if (esPn(pn) && !esPropio(pn)) return sinDispositivo(pn); } catch { /* sin relación */ }
+    }
+    return null;
+  }
+
   function esChat(jid) {
     const j = String(jid || '');
     return (j.endsWith(SERVIDOR_PN) || j.endsWith(SERVIDOR_LID)) && !j.startsWith('status@') && !j.includes('broadcast');
@@ -396,17 +461,23 @@ export function createWhatsApp({
         log(`asistente: whatsapp: llegó un mensaje que no se pudo descifrar (${idCorto(k.id)}: ${motivo}); se pidió reenvío`);
         continue;
       }
-      if (jid.endsWith(SERVIDOR_LID) && k.senderPn && String(k.senderPn).endsWith(SERVIDOR_PN)) jid = String(k.senderPn).replace(/:\d+@/, '@');
-      jid = jid.replace(/:\d+@/, '@');
-      const tel = jid.endsWith(SERVIDOR_PN) ? jid.split('@')[0].replace(/\D/g, '') : null;
-      if (tel && propio && tel === propio) continue; // chat con uno mismo
+      // El chat se guarda con su teléfono si se conoce (así se identifica el perfil y siguen los chats de antes); se
+      // responde por la dirección por la que escribió (LID o teléfono), como recomienda Baileys 7.
+      const direccion = sinDispositivo(jid);
+      if (esPropio(direccion)) continue; // chat con uno mismo
+      let lid = null;
+      if (esLid(direccion)) { lid = direccion; jid = (await telefonoDeLid(k, direccion)) || direccion; } else jid = direccion;
+      const tel = esPn(jid) ? usuario(jid) : null;
+      if (tel && propio && tel === propio) continue;
+      direcciones.delete(jid); direcciones.set(jid, direccion);
+      if (direcciones.size > 5000) direcciones.delete(direcciones.keys().next().value);
       const t0 = m.messageTimestamp;
       const ts = (t0 && typeof t0 === 'object' && typeof t0.toNumber === 'function' ? t0.toNumber() : Number(t0)) * 1000;
       if (ts && Date.now() - ts > VIEJO_MS) continue;
       const c = leerContenido(m.message);
       if (!c) continue;
       const ev = {
-        jid, telefono: tel, waId: k.id || null, deMi: Boolean(k.fromMe), porBot: Boolean(k.fromMe && k.id && enviados.has(k.id)),
+        jid, lid: lid && lid !== jid ? lid : null, telefono: tel, waId: k.id || null, deMi: Boolean(k.fromMe), porBot: Boolean(k.fromMe && k.id && enviados.has(k.id)),
         tipo: c.tipo, texto: c.texto || '',
         media: c.media ? { ...c.media, descargar: () => bajar(m) } : null,
       };
@@ -454,9 +525,22 @@ export function createWhatsApp({
     return m || undefined;
   }
 
-  async function enviar(jid, texto) {
+  // Dirección para responder a un chat (clave guardada: teléfono o LID): la última por la que escribió; si no se sabe
+  // (p. ej. un aviso después de reiniciar), el LID que WhatsApp tiene para ese teléfono; si no hay, el teléfono.
+  async function direccionPara(jid) {
+    const j = sinDispositivo(jid);
+    if (direcciones.has(j)) return direcciones.get(j);
+    const rel = relacionLid();
+    if (esPn(j) && rel && typeof rel.getLIDForPN === 'function') {
+      try { const lid = await rel.getLIDForPN(j); if (esLid(lid)) return sinDispositivo(lid); } catch { /* sin relación: por teléfono */ }
+    }
+    return j;
+  }
+
+  async function enviar(jidChat, texto) {
     const s = sock;
     if (!s || estado !== 'conectado') { const e = new Error('WhatsApp no está conectado'); e.code = 'NO_CONECTADO'; throw e; }
+    const jid = await direccionPara(jidChat);
     const id = '3EB0' + crypto.randomBytes(9).toString('hex').toUpperCase();
     enviados.add(id);
     if (enviados.size > 5000) enviados.delete(enviados.values().next().value);
@@ -514,5 +598,6 @@ export function createWhatsApp({
     conectado: () => estado === 'conectado' && Boolean(sock),
     _alLlegar: alLlegar,
     _paraReenviar: paraReenviar,
+    _direccionPara: direccionPara,
   };
 }

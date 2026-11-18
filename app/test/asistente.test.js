@@ -225,7 +225,7 @@ describe('piezas sueltas', () => {
     await a.guardarCreds();
     await a.state.keys.set({ session: { 'abc:1': { secreto: 'valor-muy-privado', buf: Buffer.from('hola') } } });
     const { rows } = await db.query('SELECT clave, valor FROM asistente_auth ORDER BY clave');
-    assert.deepEqual(rows.map((r) => r.clave), ['creds', 'session-abc-1']);
+    assert.deepEqual(rows.map((r) => r.clave), ['creds', 'formato', 'session-abc-1']); // formato: marca de Baileys 7
     for (const r of rows) { assert.match(r.valor, /^v1:/); assert.ok(!r.valor.includes('valor-muy-privado')); assert.ok(!r.valor.includes('noiseKey')); }
     const leido = await a.state.keys.get('session', ['abc:1', 'otro']);
     assert.equal(leido['abc:1'].secreto, 'valor-muy-privado');
@@ -431,6 +431,28 @@ describe('identificación y permisos', () => {
     assert.match(ultimoA(tel), /Alias: sexyrose\.pagos/);
     const { rows } = await db.query("SELECT * FROM pedidos_creditos WHERE codigo = $1 AND estado = 'pendiente'", [r.resultado.codigo]);
     assert.equal(rows[0].cuenta_id, c.id);
+    LLM.guion = null;
+  });
+
+  test('chat por LID (Baileys 7): se identifica por el teléfono y se responde por el LID; el chat guardado con el LID pasa al teléfono', async () => {
+    const tel = '5491155550061'; const lid = '204060801230061@lid';
+    const c = await acompanante({ whatsapp: '+54 11 5555-0061', nombre: 'Lucía' });
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Hola, ¿en qué te ayudo?' }] });
+    const llegaLid = (texto, alt) => agente.wa._alLlegar({ type: 'notify', messages: [{ key: { remoteJid: lid, ...(alt ? { remoteJidAlt: alt } : {}), fromMe: false, id: 'LID' + (++nMsg) }, messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: texto } }] });
+    // 1) WhatsApp no mandó el teléfono: el chat queda con el LID, sin identificar, y se le responde al LID
+    await llegaLid('hola');
+    const k1 = (await db.query('SELECT * FROM asistente_conversaciones WHERE jid = $1', [lid])).rows[0];
+    assert.ok(k1); assert.equal(k1.telefono, null); assert.equal(k1.cuenta_id, null);
+    const alLid = () => SOCK.enviados.filter((m) => m.jid === lid).length;
+    assert.equal(alLid(), 1);
+    // 2) llega con el teléfono: el MISMO chat pasa al teléfono, se identifica por el perfil y se sigue respondiendo al LID
+    await llegaLid('¿cuánto saldo tengo?', `${tel}@s.whatsapp.net`);
+    const k2 = await conv(tel);
+    assert.equal(k2.id, k1.id);
+    assert.equal(k2.jid, `${tel}@s.whatsapp.net`);
+    assert.equal(k2.cuenta_id, c.id); assert.equal(k2.identificado_por, 'telefono');
+    assert.equal(alLid(), 2);
+    assert.equal(enviadosA(tel).length, 0, 'nada al teléfono: la sesión de Signal es la del LID');
     LLM.guion = null;
   });
 

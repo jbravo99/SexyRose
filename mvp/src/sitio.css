@@ -245,3 +245,39 @@ html[data-prod="sitio"] img,html[data-prod="sitio"] video,html[data-prod="sitio"
 html[data-prod="sitio"] img,html[data-prod="sitio"] video{-webkit-user-drag:none}
 html[data-prod="sitio"] a:has(img,video){-webkit-touch-callout:none}
 html[data-prod="sitio"] input,html[data-prod="sitio"] textarea,html[data-prod="sitio"] select,html[data-prod="sitio"] [contenteditable]{-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+/* Campana de notificaciones de la acompañante (18/11/2026, prod-sitio.js → "Campana"): al lado del ☰ (celular) o de su
+   foto (computadora). Computadora: menú colgado de la campana. Celular: panel de lado a lado debajo del encabezado que
+   termina antes de la barra inferior flotante (10 px + 60 px + área segura) y respeta las áreas seguras. */
+.sp-bell{position:relative;border-radius:50%;overflow:visible}
+.sp-bell[aria-expanded="true"]{border-color:var(--berry);color:var(--berry)}
+.sp-bell-n{position:absolute;top:-5px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--berry);color:var(--berry-ink);font-size:11px;font-weight:800;line-height:19px;text-align:center;box-shadow:0 0 0 2px var(--bg);pointer-events:none}
+.sp-bell-bg{position:fixed;inset:0;z-index:60;background:transparent}
+.sp-bell-bg[hidden],.sp-bell-panel[hidden]{display:none}
+.sp-bell-panel{position:fixed;z-index:61;width:380px;max-width:calc(100vw - 16px);max-height:min(560px,calc(100dvh - var(--header-h) - 32px));display:flex;flex-direction:column;border-radius:16px;background:var(--surface);border:1px solid var(--line-2);box-shadow:var(--shadow);overflow:hidden;outline:none;animation:spBellIn .14s ease-out}
+@keyframes spBellIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.sp-bell-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+.sp-bell-hd strong{font-size:15px}
+.sp-bell-todas{border:0;background:none;padding:6px 2px;color:var(--berry);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.sp-bell-cuerpo{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+.sp-bell-l{list-style:none;margin:0;padding:4px 0}
+.sp-bell-it{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 14px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.sp-bell-it:hover,.sp-bell-it:focus-visible{background:var(--surface-2)}
+.sp-bell-it.nueva{background:color-mix(in srgb,var(--berry) 7%,transparent)}
+.sp-bell-it .sp-ndot{flex:none;margin:6px 0 0}
+.sp-bell-tx{display:grid;gap:2px;min-width:0;flex:1 1 auto}
+.sp-bell-t{font-weight:700;font-size:14px;line-height:1.3}
+.sp-bell-it.nueva .sp-bell-t{font-weight:800}
+.sp-bell-s{font-size:13px;line-height:1.4;color:var(--fg-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sp-bell-h{font-size:12px;color:var(--muted)}
+.sp-bell-ver{display:block;padding:12px 14px;border-top:1px solid var(--line);text-align:center;font-weight:700;font-size:14px;color:var(--berry)}
+.sp-bell-vacio{display:grid;justify-items:center;gap:6px;padding:28px 18px;text-align:center}.sp-bell-vacio svg{width:26px;height:26px;color:var(--muted)}
+.sp-bell-msg{display:flex;gap:8px;padding:16px 14px;color:var(--danger);font-size:14px}.sp-bell-msg svg{width:18px;height:18px;flex:none}
+.sp-bell-sk{height:58px;margin:8px 14px;border-radius:12px;background:var(--surface-2);animation:spBellSk 1.1s ease-in-out infinite alternate}
+@keyframes spBellSk{from{opacity:.55}to{opacity:1}}
+@media(max-width:899px){
+  .sp-bell-bg{background:rgba(8,6,12,.55)}
+  .sp-bell-panel{top:calc(var(--header-h) + env(safe-area-inset-top,0px) + 6px)!important;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px))!important;width:auto;max-width:none;
+    max-height:calc(100dvh - var(--header-h) - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 96px)}
+  .sp-bell-it{padding:12px 14px;min-height:56px}
+}
+@media(prefers-reduced-motion:reduce){.sp-bell-panel,.sp-bell-sk{animation:none}}

@@ -50,7 +50,9 @@ export function createCuentaRouter(ctx) {
   const fail = (res, status, error, extra = {}) => res.status(status).json({ ok: false, error, ...extra });
   // Envío automático a revisión (18/11/2026, lib/revision-auto.js): después de cada cambio que puede completar un requisito.
   // cambio = true cuando ella modificó algo (cuenta para volver a revisión después de un rechazo).
-  const revisarAuto = (cuentaId, cambio) => revisionAutomatica(pool, cuentaId, { cambio, notify: ctx.notify ? (t, tipo) => ctx.notify(t, tipo) : null, log });
+  const revisarAuto = (cuentaId, cambio) => revisionAutomatica(pool, cuentaId, {
+    cambio, notify: ctx.notify ? (t, tipo) => ctx.notify(t, tipo) : null, email: ctx.avisos ? ctx.avisos.email : null, log,
+  });
   // Ingreso: límite duro por IP y por (IP, email); por email solo demora (nadie puede bloquear la cuenta de otra).
   const limLogin = crearLimitesAuth(rl, { prefijo: 'login', dormirImpl: ctx.dormirAuth });
   const limit = (req, res, key, max, windowMs, msg) => {

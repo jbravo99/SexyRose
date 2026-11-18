@@ -241,7 +241,10 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
       return false;
     }
   };
-  const notificar = (cuentaId, tipo, texto, db) => cred.notificar(cuentaId, tipo, texto, db).catch((e) => log('planes: notificación falló:', e.message));
+  const notificar = (cuentaId, tipo, texto, db, titulo = null) => cred.notificar(cuentaId, tipo, texto, db, titulo).catch((e) => log('planes: notificación falló:', e.message));
+  // Título del aviso cuando el plan ya rige (18/11/2026, Juan: "ahora sos Plata"): plan nuevo, subida o la semana de un
+  // plan más alto que empieza ahora. Si empieza más adelante o es el mismo plan que ya tenía, queda el título de su tipo.
+  const ahoraSos = (plan, desde) => (new Date(desde).getTime() <= Date.now() + 60000 ? `Ahora sos ${PLAN_NOMBRE[plan]}` : null);
   const invalidar = () => { try { invalidarSitio(); } catch { /* */ } };
   const lockCuenta = (db, cuentaId) => db.query("SELECT pg_advisory_xact_lock(hashtext('sr-plan:' || $1::text))", [cuentaId]);
 
@@ -462,7 +465,8 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
       subida_temporal: `Subiste a ${PLAN_NOMBRE[plan]} por 7 días: del ${fmtFecha(sus.desde)} al ${fmtFecha(sus.hasta)}.`,
     }[p.tipo];
     await notificar(cuentaId, 'plan_comprado', `${texto} Se descontaron ${fmtCreditos(p.centavos)} créditos.`
-      + (res.devuelto ? ` Te devolvimos ${fmtCreditos(res.devuelto)} créditos del Destacado de tu plan anterior.` : ''));
+      + (res.devuelto ? ` Te devolvimos ${fmtCreditos(res.devuelto)} créditos del Destacado de tu plan anterior.` : ''),
+    undefined, p.tipo === 'renovacion_anticipada' ? null : ahoraSos(plan, sus.desde));
     return {
       tipo: p.tipo, suscripcion: suscripcionJson(sus), costo: montoJson(p.centavos), movimiento: res.mov,
       saldo: montoJson(await cred.saldo(cuentaId)), plan: await planEfectivo(cuentaId), reanudado: res.reanudado,
@@ -913,7 +917,8 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
       return sus;
     });
     invalidar();
-    await notificar(cuentaId, 'plan_asignado', `Te activamos el plan ${PLAN_NOMBRE[plan]} hasta el ${fmtFecha(s.hasta)}.`);
+    await notificar(cuentaId, 'plan_asignado', `Te activamos el plan ${PLAN_NOMBRE[plan]} hasta el ${fmtFecha(s.hasta)}.`, undefined,
+      (await planEfectivo(cuentaId)) === plan ? ahoraSos(plan, s.desde) : null);
     await mail(cuentaId, `Tenés el plan ${PLAN_NOMBRE[plan]} activo`,
       `Hola:\n\nTe activamos el plan ${PLAN_NOMBRE[plan]} hasta el ${fmtFecha(s.hasta)}.\n\nSexyRose`);
     return suscripcionJson(s);

@@ -20,6 +20,7 @@ import { createVideos } from './lib/videos.js';
 // ---- Fase 1 (agente B): imports ----
 import { createPlanes } from './lib/planes.js';
 import { createCreditos } from './lib/creditos.js';
+import { createAvisosCuenta } from './lib/avisos-cuenta.js';
 import { createPrivado } from './lib/privado.js';
 import { createAdminFase1Router } from './routes/admin-fase1.js';
 import { createHistorias } from './lib/historias.js';
@@ -525,7 +526,9 @@ export function createApp(config) {
   // Historias destacadas: las sube la acompañante desde su dispositivo; no vencen (lib/destacadas.js).
   const destacadas = createDestacadas({ pool, storage, videos, planes: () => planes, invalidar: () => invalidarSitio(), log });
   configurarDestacadas(destacadas);
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth, telegram, asistenteApp };
+  // Avisos a la acompañante sobre su perfil y su verificación (notificación del panel + email, lib/avisos-cuenta.js)
+  const avisos = createAvisosCuenta({ pool, sendMail: sendMailBase, log });
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth, telegram, asistenteApp, avisos };
   // Ubicaciones oficiales (Georef): importa en segundo plano al arrancar si nunca se importó y revisa una vez por
   // semana (lib/georef.js). En los tests no usa la red salvo que inyecten georefFetch.
   const georef = createGeoref({
@@ -1152,7 +1155,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // Selfie y documento: se recomprimen al decidir y se borran a los 3 meses de la decisión.
   const retencionVerif = createRetencionVerif({ pool, storage, log });
   ctx.retencionVerif = retencionVerif;
-  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log, retencionVerif, historias, georef });
+  const fase1Admin = createAdminFase1Router({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log, retencionVerif, historias, georef, avisos });
   admin.use('/api', fase1Admin.router);
   // Planes v2: créditos, pedidos de créditos, vencimientos, pausadas por saldo y Destacados.
   const creditosAdmin = createAdminCreditosRouter({ pool, planes, privado, apiPost, adminUser: config.adminUser || 'admin', log });

@@ -11,7 +11,9 @@ import path from 'node:path';
 import pg from 'pg';
 import * as B from '@whiskeysockets/baileys';
 import { start } from '../server.js';
-import { authEnBase, crearCandado, createWhatsApp, sinDatos, cacheConVencimiento } from '../lib/asistente-whatsapp.js';
+import { createRequire } from 'node:module';
+import { authEnBase, crearCandado, createWhatsApp, sinDatos, cacheConVencimiento, loggerMudo, AVISO_REVINCULAR, FORMATO_SESION } from '../lib/asistente-whatsapp.js';
+import { crearConsolaSegura, instalarConsolaSegura } from '../lib/consola-segura.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('Falta DATABASE_URL.'); process.exit(1); }
@@ -43,9 +45,9 @@ class SocketFalso {
   async logout() {}
   end() { this.terminado = true; }
 }
-function fabrica() {
+function fabrica(alCrear = () => {}) {
   const f = { sockets: [] };
-  f.makeSocket = async (opciones) => { const s = new SocketFalso(opciones); f.sockets.push(s); return s; };
+  f.makeSocket = async (opciones) => { const s = new SocketFalso(opciones); alCrear(s); f.sockets.push(s); return s; };
   f.ultimo = () => f.sockets[f.sockets.length - 1];
   return f;
 }
@@ -308,5 +310,261 @@ describe('una sola conexión por sesión', () => {
     assert.ok(await hasta(() => f.sockets.length === 2), 'volvió a conectar con el candado');
     assert.ok(logs.some((l) => /se perdió el candado/.test(l)));
     await wa.detener();
+  });
+});
+
+// ---------- LID (Baileys 7, 18/11/2026) ----------
+// WhatsApp manda los chats 1:1 por LID (`…@lid`) con el teléfono aparte (key.remoteJidAlt). Con Baileys 6 se respondía
+// al teléfono y la sesión de Signal quedaba partida: "Esperando mensaje" en el teléfono del otro lado.
+const ahora = () => Math.floor(Date.now() / 1000);
+const TEL = '5491155550071'; const PN = `${TEL}@s.whatsapp.net`; const LID = '204060801234567@lid';
+function relacion({ lidAPn = {}, pnALid = {}, falla = false } = {}) {
+  const r = { pedidosPn: [], pedidosLid: [] };
+  r.getPNForLID = async (lid) => { r.pedidosPn.push(lid); if (falla) throw new Error('usync'); return lidAPn[lid.replace(/:\d+@/, '@')] || null; };
+  r.getLIDForPN = async (pn) => { r.pedidosLid.push(pn); if (falla) throw new Error('usync'); return pnALid[pn.replace(/:\d+@/, '@')] || null; };
+  return r;
+}
+async function waLid({ rel = relacion(), user = { id: '5491100000000:7@s.whatsapp.net', lid: '998877665544332:7@lid' } } = {}) {
+  const recibidos = []; const logs = [];
+  const f = fabrica((s) => { s.signalRepository = { lidMapping: rel }; s.user = user; });
+  const wa = nuevoWa({ makeSocket: f.makeSocket, alMensaje: async (ev) => { recibidos.push(ev); }, log: (...a) => logs.push(a.join(' ')) });
+  await wa.iniciar(); await conectado(wa, f);
+  return { wa, f, recibidos, logs, rel };
+}
+const msj = (key, texto = 'hola') => ({ type: 'notify', messages: [{ key: { id: 'M' + crypto.randomUUID().slice(0, 8), fromMe: false, ...key }, messageTimestamp: ahora(), message: { conversation: texto } }] });
+
+describe('LID (Baileys 7): a quién se responde y cómo se identifica', () => {
+  test('llega por LID con el teléfono: el chat queda con el teléfono y la respuesta va al LID', async () => {
+    const { wa, f, recibidos } = await waLid();
+    await wa._alLlegar(msj({ remoteJid: '204060801234567:3@lid', remoteJidAlt: `${TEL}:3@s.whatsapp.net` }));
+    assert.equal(recibidos.length, 1);
+    assert.equal(recibidos[0].jid, PN, 'clave del chat: el teléfono (así se identifica por el perfil)');
+    assert.equal(recibidos[0].telefono, TEL);
+    assert.equal(recibidos[0].lid, LID);
+    await wa.enviar(recibidos[0].jid, 'respuesta');
+    assert.equal(f.ultimo().enviados.at(-1).jid, LID, 'se responde por donde escribió');
+    await wa.detener();
+  });
+
+  test('llega por teléfono: se responde al teléfono aunque WhatsApp tenga un LID para ese número', async () => {
+    const rel = relacion({ pnALid: { [PN]: LID } });
+    const { wa, f, recibidos } = await waLid({ rel });
+    await wa._alLlegar(msj({ remoteJid: PN, remoteJidAlt: LID }));
+    assert.equal(recibidos[0].jid, PN);
+    assert.equal(recibidos[0].lid, null);
+    await wa.enviar(PN, 'respuesta');
+    assert.equal(f.ultimo().enviados.at(-1).jid, PN);
+    assert.equal(rel.pedidosLid.length, 0, 'no hace falta buscar el LID');
+    await wa.detener();
+  });
+
+  test('Baileys 6 (key.senderPn) y sin teléfono en el mensaje: usa la relación LID↔teléfono guardada', async () => {
+    const rel = relacion({ lidAPn: { [LID]: `${TEL}:0@s.whatsapp.net` } });
+    const { wa, recibidos } = await waLid({ rel });
+    await wa._alLlegar(msj({ remoteJid: '111222333444555@lid', senderPn: '5491155550072@s.whatsapp.net' }));
+    assert.equal(recibidos[0].jid, '5491155550072@s.whatsapp.net');
+    await wa._alLlegar(msj({ remoteJid: LID }));
+    assert.equal(recibidos[1].jid, PN);
+    assert.equal(recibidos[1].telefono, TEL);
+    await wa.detener();
+  });
+
+  test('sin teléfono por ningún lado: el chat queda con el LID (se identifica por email) y se responde al LID', async () => {
+    const { wa, f, recibidos } = await waLid({ rel: relacion({ falla: true }) });
+    await wa._alLlegar(msj({ remoteJid: LID }));
+    assert.equal(recibidos[0].jid, LID);
+    assert.equal(recibidos[0].telefono, null);
+    assert.equal(recibidos[0].lid, null);
+    await wa.enviar(LID, 'x');
+    assert.equal(f.ultimo().enviados.at(-1).jid, LID);
+    await wa.detener();
+  });
+
+  test('mensaje propio (Juan desde el teléfono del chip): no toma el número del chip como teléfono del chat', async () => {
+    const rel = relacion({ lidAPn: { [LID]: PN } });
+    const { wa, recibidos } = await waLid({ rel });
+    await wa._alLlegar(msj({ remoteJid: LID, fromMe: true, remoteJidAlt: '5491100000000@s.whatsapp.net' }, 'te escribo yo'));
+    assert.equal(recibidos[0].jid, PN);
+    assert.equal(recibidos[0].deMi, true);
+    // chat con uno mismo (por teléfono o por el LID del chip): se ignora
+    await wa._alLlegar(msj({ remoteJid: '998877665544332@lid', fromMe: true }));
+    await wa._alLlegar(msj({ remoteJid: '5491100000000@s.whatsapp.net', fromMe: true }));
+    assert.equal(recibidos.length, 1);
+    await wa.detener();
+  });
+
+  test('aviso sin mensaje previo (p. ej. después de reiniciar): al LID que WhatsApp tiene para el teléfono; si falla, al teléfono', async () => {
+    let { wa, f } = await waLid({ rel: relacion({ pnALid: { [PN]: LID } }) });
+    await wa.enviar(PN, 'créditos acreditados');
+    assert.equal(f.ultimo().enviados.at(-1).jid, LID);
+    await wa.detener();
+    ({ wa, f } = await waLid({ rel: relacion({ falla: true }) }));
+    await wa.enviar(PN, 'créditos acreditados');
+    assert.equal(f.ultimo().enviados.at(-1).jid, PN);
+    await wa.detener();
+  });
+});
+
+describe('sesión guardada por Baileys 6', () => {
+  async function sesionVieja({ conMarca = false } = {}) {
+    await db.query('DELETE FROM asistente_auth');
+    const a = await nuevaAuth();
+    a.state.creds.me = { id: '5491100000000:7@s.whatsapp.net', name: 'chip' };
+    a.state.creds.registered = true;
+    await a.guardarCreds();
+    await a.state.keys.set({ session: { '5491155550071.0': Buffer.from('partida') }, 'pre-key': { 5: { public: Buffer.from('p'), private: Buffer.from('q') } } });
+    await a.vaciar();
+    if (!conMarca) await db.query("DELETE FROM asistente_auth WHERE clave = 'formato'");
+  }
+  const estadoAdmin = async () => (await db.query('SELECT estado, error FROM asistente_whatsapp WHERE id = 1')).rows[0];
+
+  test('sin la marca: se borra, se pide QR con el aviso en el admin y por Telegram; al vincular se va el aviso', async () => {
+    await sesionVieja();
+    const f = fabrica(); const avisos = []; const logs = [];
+    const wa = nuevoWa({ makeSocket: f.makeSocket, crearAuth: () => nuevaAuth(), avisar: async (t) => { avisos.push(t); }, log: (...a) => logs.push(a.join(' ')) });
+    await wa.iniciar();
+    assert.ok(await hasta(() => f.sockets.length === 1));
+    const s = f.ultimo();
+    assert.equal(s.opciones.auth.creds.me, undefined, 'credenciales nuevas: no se conecta con la sesión vieja');
+    const { rows } = await db.query('SELECT clave FROM asistente_auth');
+    assert.deepEqual(rows, [], 'la sesión vieja se borró');
+    assert.ok(await hasta(() => avisos.length === 1));
+    assert.match(avisos[0], /vincular el chip de nuevo/);
+    assert.ok(!/\d{6,}/.test(avisos[0]));
+    assert.ok(logs.some((l) => /versión anterior \(Baileys 6\)/.test(l)));
+    s.ev.emit('connection.update', { qr: 'QR-NUEVO' });
+    assert.ok(await hasta(async () => (await estadoAdmin()).estado === 'esperando_qr'), JSON.stringify(await estadoAdmin()));
+    assert.equal((await estadoAdmin()).error, AVISO_REVINCULAR);
+    // Baileys guarda las credenciales nuevas: con la marca
+    s.opciones.auth.creds.me = { id: '5491100000000:8@s.whatsapp.net' };
+    s.ev.emit('creds.update', {});
+    s.ev.emit('connection.update', { connection: 'open' });
+    assert.ok(await hasta(() => wa.conectado()));
+    assert.ok(await hasta(async () => (await estadoAdmin()).estado === 'conectado'));
+    assert.equal((await estadoAdmin()).error, null);
+    await wa.detener();
+    const b = await nuevaAuth();
+    assert.equal(b.formatoViejo, false, 'la sesión nueva tiene la marca');
+    assert.equal(b.state.creds.me.id, '5491100000000:8@s.whatsapp.net');
+  });
+
+  test('con la marca (ya es de Baileys 7) se usa tal cual; sin credenciales tampoco avisa', async () => {
+    await sesionVieja({ conMarca: true });
+    assert.equal((await nuevaAuth()).formatoViejo, false);
+    let f = fabrica(); const avisos = [];
+    let wa = nuevoWa({ makeSocket: f.makeSocket, crearAuth: () => nuevaAuth(), avisar: async (t) => { avisos.push(t); } });
+    await wa.iniciar(); await conectado(wa, f);
+    assert.equal(f.ultimo().opciones.auth.creds.me.name, 'chip');
+    await wa.detener();
+    await db.query('DELETE FROM asistente_auth');
+    f = fabrica();
+    wa = nuevoWa({ makeSocket: f.makeSocket, crearAuth: () => nuevaAuth(), avisar: async (t) => { avisos.push(t); } });
+    await wa.iniciar(); await conectado(wa, f);
+    await wa.detener();
+    assert.equal(avisos.length, 0);
+    await db.query('DELETE FROM asistente_auth');
+  });
+
+  test('si no se puede borrar la sesión vieja, no se conecta con ella ni se cae: reintenta', async () => {
+    await sesionVieja();
+    const f = fabrica(); const logs = []; let fallar = true;
+    const pool = { query: (q, p) => (fallar && /^DELETE FROM asistente_auth$/.test(q) ? Promise.reject(Object.assign(new Error('x'), { code: '57P01' })) : db.query(q, p)) };
+    const wa = createWhatsApp({ pool, secretsKey: KEY, demora: () => 0, dormir: async () => {}, candado: null, makeSocket: f.makeSocket, crearAuth: () => nuevaAuth(), log: (...a) => logs.push(a.join(' ')) });
+    await wa.iniciar();
+    assert.ok(await hasta(() => logs.some((l) => /conexión falló/.test(l))));
+    assert.equal(f.sockets.length, 0);
+    fallar = false;
+    assert.ok(await hasta(() => f.sockets.length === 1, 5000), 'reintenta y sigue');
+    assert.equal(f.ultimo().opciones.auth.creds.me, undefined);
+    await wa.detener();
+    await db.query('DELETE FROM asistente_auth');
+  });
+
+  test('las categorías nuevas de Baileys 7 (lid-mapping, device-list, tctoken, identity-key) se guardan y se releen', async () => {
+    await db.query('DELETE FROM asistente_auth');
+    const a = await nuevaAuth();
+    const keys = B.addTransactionCapability(B.makeCacheableSignalKeyStore(a.state.keys, loggerNulo), loggerNulo, { maxCommitRetries: 2, delayBetweenTriesMs: 10 });
+    await keys.transaction(async () => {
+      await keys.set({
+        'lid-mapping': { [TEL]: '204060801234567', '204060801234567_reverse': TEL },
+        'device-list': { [TEL]: ['0', '3'] },
+        tctoken: { '204060801234567@lid': { token: Buffer.from('tc'), timestamp: '1700000000' } },
+        'identity-key': { '204060801234567_1.0': Buffer.from('identidad') },
+        session: { '204060801234567_1.0': Buffer.from('sesion-lid') },
+      });
+    }, 'prueba');
+    await a.vaciar();
+    const { rows } = await db.query('SELECT valor FROM asistente_auth');
+    for (const r of rows) { assert.match(r.valor, /^v1:/); assert.ok(!r.valor.includes(TEL)); }
+    const b = await nuevaAuth();
+    assert.equal((await b.state.keys.get('lid-mapping', [TEL]))[TEL], '204060801234567');
+    assert.equal((await b.state.keys.get('lid-mapping', ['204060801234567_reverse']))['204060801234567_reverse'], TEL);
+    assert.deepEqual((await b.state.keys.get('device-list', [TEL]))[TEL], ['0', '3']);
+    const tc = (await b.state.keys.get('tctoken', ['204060801234567@lid']))['204060801234567@lid'];
+    assert.ok(Buffer.isBuffer(tc.token)); assert.equal(tc.token.toString(), 'tc');
+    assert.deepEqual((await b.state.keys.get('identity-key', ['204060801234567_1.0']))['204060801234567_1.0'], Buffer.from('identidad'));
+    // con el almacén de relaciones de Baileys 7, leyendo desde la base
+    const { LIDMappingStore } = await import('@whiskeysockets/baileys/lib/Signal/lid-mapping.js');
+    const rel = new LIDMappingStore(B.addTransactionCapability(b.state.keys, loggerNulo, { maxCommitRetries: 1, delayBetweenTriesMs: 1 }), loggerNulo, async () => null);
+    assert.equal(await rel.getPNForLID(LID), `${TEL}:0@s.whatsapp.net`);
+    assert.equal(await rel.getLIDForPN(PN), LID);
+    await db.query('DELETE FROM asistente_auth');
+  });
+});
+
+describe('logs sin claves', () => {
+  test('libsignal: sesiones y errores en una línea, sin claves ni números', () => {
+    const salida = [];
+    const c = crearConsolaSegura((m, args) => salida.push({ m, t: args.map(String).join(' ') }), { ahora: () => 'T' });
+    const sesion = { registrationId: 93562557, currentRatchet: { ephemeralKeyPair: { pubKey: Buffer.from('PUBLICA'), privKey: Buffer.from('PRIVADA') }, rootKey: Buffer.from('RAIZ') }, indexInfo: { baseKey: Buffer.from('BASE'), closed: -1 }, pendingPreKey: { signedKeyId: 1, baseKey: Buffer.from('X') } };
+    c.info('Closing session:', sesion);
+    c.info('Opening session:', sesion);
+    c.warn('Session already closed', sesion);
+    c.info('Removing old closed session:', sesion);
+    c.warn('Closing open session in favor of incoming prekey bundle');
+    c.error('Failed to decrypt message with any known session...');
+    c.error('Session error:Error: Bad MAC 5491155550001', 'Error: Bad MAC\n    at doDecryptWhisperMessage (session_cipher.js:1:1)');
+    const t = salida.map((x) => x.t).join('\n');
+    assert.equal(salida.length, 7, t);
+    assert.match(t, /signal: se cerró una sesión/);
+    assert.match(t, /signal: el otro dispositivo empezó una sesión nueva/);
+    assert.match(t, /signal: error de sesión: Bad MAC #/);
+    assert.ok(!/PRIVADA|PUBLICA|RAIZ|93562557|privKey|Buffer|5491155550001|doDecrypt/.test(t), t);
+    // el resto: igual, pero sin bytes ni objetos con claves
+    c.log('agente: algo', 3, { a: 1 });
+    c.warn('otra cosa', Buffer.from('secreto'), { privKey: 'x' }, { anidado: { y: new Uint8Array([1, 2]) } }, new Error('falló\nstack'));
+    assert.deepEqual(salida.at(-2).t, 'agente: algo 3 [object Object]');
+    assert.equal(salida.at(-1).t, 'otra cosa [bytes] [objeto omitido] [objeto omitido] Error: falló');
+  });
+
+  test('instalada en la consola del proceso: libsignal de verdad (SessionRecord) no imprime la sesión', () => {
+    const require = createRequire(import.meta.url);
+    const SessionRecord = require('libsignal/src/session_record.js');
+    const capt = []; const orig = {};
+    for (const m of ['log', 'info', 'warn', 'error', 'debug', 'trace']) { orig[m] = console[m]; console[m] = (...a) => capt.push(a); }
+    const restaurar = instalarConsolaSegura(console);
+    try {
+      const rec = new SessionRecord();
+      const s = { indexInfo: { closed: -1, baseKey: Buffer.from('BASE') }, currentRatchet: { ephemeralKeyPair: { privKey: Buffer.from('PRIVADA') } }, registrationId: 93562557 };
+      rec.closeSession(s);
+      rec.closeSession(s); // "Session already closed"
+    } finally { restaurar(); for (const m of Object.keys(orig)) console[m] = orig[m]; }
+    const t = capt.map((a) => a.map((x) => (typeof x === 'string' ? x : require('node:util').inspect(x))).join(' ')).join('\n');
+    assert.equal(capt.length, 2, t);
+    assert.ok(!/PRIVADA|93562557|privKey|Buffer/.test(t), t);
+    assert.match(t, /signal: se cerró una sesión/);
+  });
+
+  test('logger de Baileys: "init queries" Timed Out queda explicado y sin números', () => {
+    const logs = [];
+    const l = loggerMudo((...a) => logs.push(a.join(' ')));
+    l.error({ err: new Error('Timed Out') }, "unexpected error in 'init queries'");
+    l.warn({ lid: '204060801234567@lid', pn: PN }, `Invalid LID-PN mapping: ${LID}, ${PN}`);
+    l.info({ myPN: PN }, 'Own LID session created successfully');
+    const t = logs.join('\n');
+    assert.match(t, /consultas iniciales.*no afecta los mensajes/);
+    assert.ok(!new RegExp(TEL + '|204060801234567').test(t), t);
+    assert.equal(logs.length, 3);
+    assert.equal(FORMATO_SESION, 'baileys7-lid');
   });
 });

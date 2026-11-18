@@ -292,10 +292,33 @@ el admin. Si el agente se cae, el sitio sigue igual. Detalle: `FASE1-CONTRATO.md
   USD 0,50 por millón de salida, página de precios de Anthropic al 15/11/2026), cada pregunta libre usa unos 3.000 a
   9.000 tokens de entrada (instrucciones + historial + herramientas): alrededor de USD 0,001 por pregunta, unos
   USD 1 cada 1.000 preguntas. Los códigos de pedido y los comprobantes no usan la API.
-- Logs: `docker compose -f infra/docker-compose.yml logs --tail 50 agente` (sin teléfonos, emails ni textos).
+- Logs: `docker compose -f infra/docker-compose.yml logs --tail 50 agente` (sin teléfonos, emails, textos ni claves:
+  lo que imprime la librería de cifrado queda en una línea `signal: …`).
   Si alguien ve "Esperando mensaje" en una respuesta del bot:
-  `docker compose -f infra/docker-compose.yml logs --since 2h agente | grep -Ei "descifrar|reenv|candado|instancia|440|baileys"`
-  ("pidió reenvío" + "se reenvía" = WhatsApp lo resolvió solo; "no hay copia" = ese mensaje no se puede reenviar).
+  `docker compose -f infra/docker-compose.yml logs --since 2h agente | grep -Ei "descifrar|reenv|signal|candado|instancia|440|baileys|vincul"`
+  ("pidió reenvío" + "se reenvía" = WhatsApp lo resolvió solo; "no hay copia" = ese mensaje no se puede reenviar;
+  muchos "signal: error de sesión: Bad MAC" o "no se pudo descifrar" seguidos con la misma persona = sesión rota: Admin →
+  Mensajería → WhatsApp → **Desvincular** y volver a escanear el QR).
+  "Las consultas iniciales … no respondieron en 60 s" es inofensivo (ajustes de WhatsApp que tardaron; no afecta los mensajes).
+
+**Después del deploy del 18/11/2026 (Baileys 7, chats por LID) — una sola vez**
+
+La sesión guardada con la versión anterior no sirve (era la causa de "Esperando mensaje"): el agente la borra solo al
+arrancar, avisa por Telegram y el admin muestra el QR con el aviso "hay que vincular el chip de nuevo".
+
+1. Desplegá como siempre: `bash ~/SexyRose/infra/server/deploy.sh`.
+2. Mirá que arrancó: `docker compose -f infra/docker-compose.yml logs --since 10m agente | grep -Ei "versión anterior|QR|conectado|vincul"`
+   → "la sesión de WhatsApp guardada es de la versión anterior (Baileys 6): se borra…".
+3. En el teléfono del chip: WhatsApp Business → **Dispositivos vinculados**. Si sigue en la lista el dispositivo viejo
+   (Ubuntu / Chrome), tocalo → **Cerrar sesión**.
+4. Admin → **Mensajería → WhatsApp**: con el asistente prendido aparece el QR. En el teléfono del chip: **Vincular un
+   dispositivo** → escaneá. El aviso desaparece cuando queda "Conectado" (en el log: "WhatsApp vinculado de nuevo").
+5. Probá desde tu WhatsApp personal: escribile al bot y fijate que la respuesta se vea **en el celular** (no solo en
+   WhatsApp Desktop) y en la app del chip. Si tu celular sigue mostrando "Esperando mensaje" con algún mensaje VIEJO, es
+   normal: esos ya no se pueden recuperar; los nuevos tienen que llegar bien.
+6. Si algo falla: el comando de logs de arriba, y en el peor caso Admin → Mensajería → WhatsApp → **Desvincular** y
+   escanear de nuevo. Volver a la imagen anterior trae de vuelta el problema de "Esperando mensaje" (Baileys 6 no maneja
+   los chats por LID).
 
 ### A tener en cuenta
 

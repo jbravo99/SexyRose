@@ -194,7 +194,7 @@ Carga a medida: `packId: null`, sin bonificación, nombre "Carga a medida" / "Cu
 - 409 Star, 409 perfil no publicado, 400 sin provincia o `dias`/`desde` inválidos, 402 saldo.
 - **Atado al plan**: solo cuenta mientras su plan efectivo sea el mismo con el que lo compró y siga en la misma provincia. Durante una semana de subida temporal no se ve (no se devuelve); al **subir de plan mensual** se cancela y se devuelve lo no usado.
 
-**`GET /notificaciones[?limite=30]`** → `{ items: [{ id, tipo, texto, leida, creado }], noLeidas }`. Tipos: `creditos_acreditados`, `pedido_rechazado`, `plan_comprado`, `plan_renovado`, `plan_asignado`, `plan_vence`, `plan_vencio`, `saldo_insuficiente`, `perfil_pausado`, `renovacion_pendiente`, `destacado`. Los textos vienen en castellano (el front puede traducir por `tipo`).
+**`GET /notificaciones[?limite=30]`** → `{ items: [{ id, tipo, titulo, texto, leida, creado }], noLeidas }` (límite 1–100; inválido = 30). Tipos: `creditos_acreditados`, `pedido_rechazado`, `plan_comprado`, `plan_renovado`, `plan_asignado`, `plan_vence`, `plan_vencio`, `saldo_insuficiente`, `perfil_pausado`, `renovacion_pendiente`, `destacado` y, desde el 18/11/2026, `perfil_en_revision`, `verificacion_aprobada`, `perfil_publicado`, `verificacion_rechazada`, `perfil_rechazado` (ver "Notificaciones de la acompañante"). `titulo` (null = el título fijo del tipo) desde la migración 300. Los textos vienen en castellano (el front los traduce).
 **`POST /notificaciones/leer` `{ ids?: [id] }`** → `{ ok, noLeidas }` (sin `ids` marca todas).
 
 **Pedidos viejos por transferencia**: `POST /pedidos` → **410** "Los planes ahora se pagan con créditos…". `POST /pedidos/:id/informar` y `/cancelar` siguen andando solo para pedidos abiertos de antes.
@@ -743,12 +743,39 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
   `DATABASE_URL`, `SECRETS_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (por defecto `claude-haiku-5-5`, verificado en
   la página de modelos de Anthropic el 15/11/2026), `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SITE_URL`. `ANTHROPIC_*`
   no van al app. El agente no manda emails (no tiene Mailgun). No aplica migraciones: espera a que el app las cree.
-- WhatsApp: conexión no oficial con Baileys (`@whiskeysockets/baileys` **6.7.24**, la última estable sin `-rc`, Node ≥ 20;
-  la 6.17.16 que aparece en npm está deprecada por un fallo de seguridad, corregido desde la 6.7.22) vinculada como
-  dispositivo al chip prepago (QR escaneado una vez desde el admin). Su dependencia `libsignal` viene de GitHub (fijada
-  por commit en el lock): el Dockerfile instala las dependencias en una etapa `deps` con git, que no queda en la imagen.
+- WhatsApp: conexión no oficial con Baileys (`@whiskeysockets/baileys` **7.0.0-rc14**, publicada el 29/07/2026, versión
+  exacta en `package.json`; Node ≥ 20) vinculada como dispositivo al chip prepago (QR escaneado una vez desde el admin).
+  Hasta el 18/11/2026 era la 6.7.24. No hay 7.x sin `-rc`: la rc14 es la que npm marca `latest` (la 6.7.x quedó como
+  `legacy`) y es la única rama que maneja los chats por LID (ver abajo). El mismo código se publica también como
+  `baileys`; seguimos con `@whiskeysockets/baileys`. Desde la 7, `libsignal` (6.0.0, mismo código que antes) sale del
+  registro de npm (antes de GitHub); `whatsapp-rust-bridge` es WebAssembly (sin binarios nativos).
   Sesión de Baileys en la tabla `asistente_auth`, **cifrada** con `SECRETS_KEY` (`lib/secretos.js`). Reconexión con
   espera creciente (1 → 60 s); si WhatsApp desvincula el dispositivo (401) borra la sesión y vuelve a pedir QR.
+  **Chats por LID (18/11/2026, segunda parte de "Esperando mensaje"):** WhatsApp ya manda los chats 1:1 con un número
+  interno (`…@lid`) y el teléfono aparte. Baileys 6 guardaba una sesión de Signal por dirección (`<teléfono>.<disp>` y
+  `<lid>.<disp>` eran sesiones distintas para el mismo dispositivo): recibíamos por el LID y respondíamos al teléfono, así
+  que el celular del otro lado y el bot quedaban con sesiones distintas (Bad MAC / "No matching sessions" de un lado,
+  "Esperando mensaje" y reenvíos que no sirven del otro; también el reenvío a los otros dispositivos del chip). Baileys 7
+  guarda la relación LID↔teléfono (claves `lid-mapping`) y usa una sola sesión por dispositivo (las del teléfono pasan
+  al LID). Además:
+  - Clave del chat (`asistente_conversaciones.jid`): el teléfono (`…@s.whatsapp.net`) si se conoce —de
+    `key.remoteJidAlt` (en Baileys 6 `key.senderPn`; nunca el número del chip en mensajes propios) o de la relación
+    guardada (`signalRepository.lidMapping.getPNForLID`)—; si no, el LID. Así se sigue identificando por el teléfono del
+    perfil y los chats de antes siguen iguales. Si un chat guardado con el LID llega después con el teléfono, la fila
+    pasa al teléfono (mismo historial) salvo que ya exista otra con ese teléfono. El evento lleva `lid`.
+  - Se responde por la dirección por la que escribió el chat (la última vista, en memoria). Sin una (aviso después de
+    reiniciar): el LID que da la relación para ese teléfono (`getLIDForPN`); si no hay, el teléfono.
+  - Chat con uno mismo: por el teléfono o por el LID del chip (`sock.user.lid`).
+  - Sesión guardada por Baileys 6: las credenciales se guardan junto con la marca `formato` = `baileys7-lid` (fila de
+    `asistente_auth`). Al conectar, credenciales de un dispositivo vinculado SIN esa marca = sesión vieja: no se usa,
+    se borra `asistente_auth`, aviso por Telegram (`asistente_alerta`) y el admin muestra el QR con el aviso "hay que
+    vincular el chip de nuevo" (`error` de `asistente_whatsapp`, se borra al quedar conectado). Si no se puede borrar,
+    no se conecta y reintenta con la espera creciente (nunca se cae el proceso). Baileys 7 no puede migrar esas sesiones
+    (no tienen `device-list` y las de LID quedaron con otra clave) y además estaban rotas.
+  - Categorías nuevas de claves (`lid-mapping`, `device-list`, `tctoken`, `identity-key`): mismas reglas que las demás.
+  - "unexpected error in 'init queries': Timed Out": consultas que Baileys hace al conectar (props, bloqueados,
+    privacidad); si WhatsApp no contesta en 60 s usa los valores por defecto. No afecta los mensajes; el log lo explica
+    en una línea.
   **Sesión e integridad del cifrado (18/11/2026, "Esperando mensaje" en el teléfono de Juan):**
   - Reenvíos: cada mensaje que manda el bot se guarda (el proto `Message`, cifrado con `SECRETS_KEY`, sin teléfono) en
     `asistente_wa_enviados` (`db/270`), 30 días (lo borra el agente). Cuando el teléfono del otro lado no lo puede
@@ -773,6 +800,12 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
     "pidieron reenviar … pero no hay copia", "llegó un mensaje que no se pudo descifrar (…: motivo)", "otra instancia
     del agente tiene la sesión…", "otra conexión con la misma sesión reemplazó a esta (440)", y los avisos de Baileys
     sobre reintentos, descifrado, sesiones y commits de claves que fallan.
+  - Consola sin claves (`lib/consola-segura.js`, se instala al arrancar `agente.js`): libsignal escribe con `console.*`
+    y, por ejemplo, "Closing session: SessionEntry {…}" imprimía la sesión entera con claves privadas. Sus mensajes
+    quedan en una línea `signal: …` ("se cerró una sesión", "el otro dispositivo empezó una sesión nueva", "error de
+    sesión: Bad MAC", "no se pudo descifrar con ninguna sesión conocida"), sin objetos, números ni stack; en cualquier
+    otro `console.*`, los Buffer/bytes se ven como `[bytes]`, los objetos con bytes o campos de claves como
+    `[objeto omitido]` y los Error en su primera línea.
   `markOnlineOnConnect: false` (el teléfono sigue recibiendo notificaciones). Solo chats 1:1: ignora grupos, estados,
   difusiones y canales; ignora mensajes de más de 2 h (llegados con el agente apagado). "Escribiendo…" + pausa corta
   antes de cada respuesta. Archivos hasta 10 MB; como comprobante solo imagen (JPG/PNG/WebP/HEIC) o PDF, por firma.
@@ -915,7 +948,8 @@ días. Logs sin teléfonos, emails ni textos.
 - (Hasta el 16/11/2026: Admin → Ajustes → Contacto avisaba que el WhatsApp tenía que ser el del chip. Desde entonces el
   botón usa el número vinculado solo: ver "Admin → Mensajería y captación".)
 
-Pruebas: `app/test/asistente.test.js` (Baileys, Claude y Telegram falsos). Puesta en marcha y costos: `infra/README.md`
+Pruebas: `app/test/asistente.test.js` (Baileys, Claude y Telegram falsos), `app/test/whatsapp-sesion.test.js` (sesión,
+reenvíos, candado, LID, sesión de Baileys 6 y consola sin claves). Puesta en marcha y costos: `infra/README.md`
 → "Asistente de cuenta por WhatsApp".
 
 ## Admin: menú agrupado — desde el 16/11/2026 (decisión de Juan: "me marea un poco cómo está todo distribuido")
@@ -1646,7 +1680,7 @@ Pruebas: `app/test/asistente.test.js` → "varias cuentas con rotación" y `app/
 Juan creó un perfil de prueba, vio "Completá tu perfil y envialo a revisión" y no entendió qué hacer. Desde ahora:
 
 ### Envío automático a revisión (`app/lib/revision-auto.js` → `revisionAutomatica(pool, cuentaId, { cambio, notify })`)
-- No hay más botón "Enviar a revisión". Apenas el perfil tiene todo lo obligatorio (`faltantesItems` de lib/perfiles.js: nombre artístico, género, fecha de nacimiento, provincia y localidad, WhatsApp o Telegram, ≥3 fotos, email confirmado, verificación enviada) pasa solo a `en_revision`, con lo mismo que el envío a mano: `motivo_rechazo = NULL`, `actualizado = now()` y el aviso por Telegram `perfil_revisar` ("Hay un perfil nuevo para revisar en el admin."). Sin email (como antes).
+- No hay más botón "Enviar a revisión". Apenas el perfil tiene todo lo obligatorio (`faltantesItems` de lib/perfiles.js: nombre artístico, género, fecha de nacimiento, provincia y localidad, WhatsApp o Telegram, ≥3 fotos, email confirmado, verificación enviada) pasa solo a `en_revision`, con lo mismo que el envío a mano: `motivo_rechazo = NULL`, `actualizado = now()` y el aviso por Telegram `perfil_revisar` ("Hay un perfil nuevo para revisar en el admin."). Desde el 18/11/2026 también le avisa a ella (notificación "Recibimos tu perfil" + email): ver "Notificaciones de la acompañante".
 - Se revisa después de: `PUT perfil`, `POST fotos`, `DELETE fotos/:id`, `PUT fotos/orden`, `POST verificacion`, `POST verificar-email`, `POST restablecer` (confirma el email) y `GET yo` (solo borradores: un borrador que ya estaba completo antes de este cambio pasa al abrir el panel).
 - **Reglas de estado**: desde `borrador`, siempre que esté completo. Desde `rechazado`, solo cuando ella cambia algo después del rechazo (`cambio = true`: guardó datos distintos —se comparan sin importar el orden de las claves—, subió, borró u ordenó fotos, mandó la verificación o confirmó el email) y está completo; abrir el panel o guardar lo mismo no cuenta. Si el cambio la deja incompleta, sigue rechazada hasta que esté todo. Nunca desde `en_revision`, `publicado`, `pausado` ni `suspendido`; tampoco si está oculto o la cuenta no está activa.
 - **Publicado que pierde un requisito** (por ejemplo, borra fotos y queda con menos de 3): sigue publicado, igual que antes (el sitio no filtra por cantidad de fotos). El panel le muestra "Te falta completar" con "Completar".
@@ -1667,3 +1701,34 @@ Juan creó un perfil de prueba, vio "Completá tu perfil y envialo a revisión" 
 - `GET yo` suma `guia: { abrir }` = perfil en borrador con algo pendiente y `cuentas.guia_vista` vacío (`db/280-primeros-pasos.sql`). Con `abrir`, la primera entrada al panel de cada carga va a la guía. "Seguir después" y llegar a "Listo" llaman `POST guia/vista` (guarda `guia_vista`); desde ahí se retoma con "Seguir con los pasos". Las cuentas completas, en revisión o publicadas nunca la ven; los clientes tampoco (no tienen sesión de acompañante).
 - Funciona con la home provisoria prendida; respeta la barra inferior flotante (espacio abajo); fuera de los buscadores como todo el panel. Pruebas: `test/alta-guiada.test.js`.
 
+## Notificaciones de la acompañante — desde el 18/11/2026 (pedidos de Juan)
+Pedidos: "Cuando una acompañante entre a su cuenta, que le abra en su panel en Resumen"; "mientras espera nuestra verificación estaría bueno que le avisemos, y que reciba un email y notificación en la misma plataforma al verificarse"; "agregar al lado del ícono hamburguesa de menú uno de notificaciones".
+
+### Ingreso → Resumen (prod-sitio.js → `destinoIngreso()`)
+- Después de ingresar con la contraseña, con el link de contraseña nueva o con el link de confirmación del email (que abre la sesión), va a `/panel` (Resumen). La confirmación del email ya no se queda en "Confirmar email": muestra "Listo, confirmaste tu email." y entra a Resumen.
+- Única excepción: si el panel la mandó a ingresar desde una página puntual del panel (`HH.ui.next` = `panel.<sección>`, guardado junto con `HH.ui.nextAt`), vuelve ahí siempre que haya sido hace menos de 30 minutos. Un destino viejo guardado en el navegador (sesión vencida hace horas, versión anterior sin la hora), `panel` a secas o cualquier otra página: Resumen. El destino se consume al usarlo.
+- Los primeros pasos se siguen abriendo solos desde el panel mientras `guia.abrir` (sin cambios).
+
+### Avisos del perfil y la verificación (`app/lib/avisos-cuenta.js`)
+Cada aviso = notificación del panel (Avisos y campana) + email (`emailBasico`, con botón a la sección; en castellano: las cuentas no guardan idioma). Una vez por evento: la notificación se guarda en la misma transacción que el cambio de estado (filas bloqueadas con `FOR UPDATE`), y el email sale después.
+| Evento | tipo | Título | Texto | Link |
+|---|---|---|---|---|
+| Pasa solo a revisión (`revisionAutomatica`, una por transición) | `perfil_en_revision` | Recibimos tu perfil | "Recibimos tu perfil: lo estamos revisando. Te avisamos por acá y por email cuando esté listo." (el email dice "por email y en tu panel") | Resumen |
+| Admin aprueba la identidad y el perfil no se publica | `verificacion_aprobada` | Te verificamos | "Tu identidad quedó verificada." + (borrador o rechazado) "Cuando completes lo que falta en tu perfil, pasa solo a revisión." | Verificación |
+| Admin publica (`POST acompanantes/:id/estado` publicado, desde otro estado) | `perfil_publicado` | Tu perfil ya está publicado | "Revisamos tu perfil. Ya se ve en el sitio." | Mi perfil |
+| Aprobar la identidad publica el perfil (estaba en revisión): UN aviso y UN email | `perfil_publicado` | Te verificamos y tu perfil ya está publicado | "Revisamos tu verificación y tu perfil. Ya se ve en el sitio." | Mi perfil |
+| Admin rechaza la verificación | `verificacion_rechazada` | Tu verificación no fue aprobada | "No pudimos aprobar tu verificación. Podés volver a enviar las fotos de tu documento y la selfie desde tu panel. Motivo: …" | Verificación |
+| Admin rechaza el perfil | `perfil_rechazado` | Tu perfil no fue aprobado | "No pudimos aprobar tu perfil. Corregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión. Motivo: …" | Resumen |
+- Con la home provisoria prendida, publicado no dice que ya se ve: títulos "Tu perfil está aprobado" / "Te verificamos y tu perfil está aprobado" y texto "Revisamos [tu verificación y] tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto." (el mismo texto de Mi perfil).
+- Los emails anteriores de esos eventos (`planes.mail` en admin-fase1.js) se reemplazaron por estos: nunca salen dos. Pausar y suspender siguen solo con su email (sin notificación). Un segundo clic del admin (mismo estado) no avisa de nuevo.
+- El motivo va al final del texto ("… Motivo: …"); el panel lo muestra tal cual (sin traducir) y traduce el resto.
+
+### Planes: "Ahora sos …"
+- `plan_comprado` (plan nuevo, subida o semana de un plan más alto que empieza ya) y `plan_asignado` (si el plan asignado es el que rige ahora) llevan `titulo` "Ahora sos Plata" / "Ahora sos Oro" / "Ahora sos Star". La renovación anticipada del mismo plan y una semana que empieza más adelante quedan con el título del tipo ("Plan activado" / "Plan asignado"). Los textos no cambian.
+
+### Campana en el encabezado (prod-sitio.js → "Campana"; estilos en sitio.css `.sp-bell*`)
+- Solo con la sesión de una acompañante (`S.yo`): al lado del ☰ en el celular y de su foto en la computadora. Visitantes no la ven; los interesados (clientes) tampoco (no tienen notificaciones).
+- Campana con la cantidad sin leer (hasta "9+"). Al tocarla: las últimas 8 (`GET /notificaciones?limite=8`) con ícono, título, texto corto (2 líneas), hace cuánto ("Recién", "Hace 5 min", "Hace 3 h", "Ayer", "Hace 4 días" o la fecha) y punto de sin leer; tocar una la marca leída y lleva a su sección; "Marcar todas como leídas"; "Ver todos" → `/panel/avisos`. Computadora: menú colgado de la campana. Celular: panel de lado a lado debajo del encabezado que termina antes de la barra inferior flotante (respeta las áreas seguras), con fondo oscurecido. Se cierra con Escape (vuelve el foco a la campana), tocando afuera o al cambiar de página.
+- Misma fuente y mismo contador que Avisos y el menú del panel (`S.yo.notificaciones.noLeidas`): marcar en un lado marca en el otro. La cantidad se actualiza con los datos del panel (`GET /yo`) y al volver a la pestaña (foco o visibilidad, como mucho una vez por minuto); sin consultas periódicas. Funciona con la home provisoria prendida.
+- Avisos: subtítulo "Tu perfil, tu verificación, tus pagos, tu plan y Destacado."; usa el título del servidor si lo hay. Traducciones en prod-sitio.js ("Avisos del perfil y la verificación").
+- Migración `db/300-notificaciones-titulo.sql`: `notificaciones.titulo` (nullable) e índice parcial de las no leídas. Pruebas: `test/notificaciones.test.js`.

@@ -389,6 +389,8 @@
   }
 
   /* ---------- Estado ---------- */
+  // Campana de notificaciones del encabezado (ver "Campana" más abajo): lista corta, abierta o no, y última consulta
+  const CAMP = { abierta: false, items: null, err: null, cargando: false, t: 0, ruta: null };
   const S = { estado: null, estadoErr: null, yo: null, yoLoaded: false, planes: null, planesErr: null, cred: null, credErr: null, credMas: null, dest: null, destErr: null, notif: null, notifErr: null, busy: {}, forgot: false, verif: null, prov: null, up: null, upHist: null, upVid: null, upDest: null };
   const PANEL_IS = (key) => /^panel(\.|$)/.test(key);
   const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
@@ -584,6 +586,9 @@
       }
       // Con sesión, el círculo de arriba a la derecha muestra su foto principal (la miniatura pública, con marca de agua); sin fotos, sus iniciales
       if (actions && logged) { const b = actions.querySelector('[data-action="openUserMenu"]'); if (b) { b.innerHTML = `<span class="sp-hdr-pic">${avatarYo(38)}</span><span class="sp-hdr-ham" aria-hidden="true">${icon('menu')}</span>`; b.classList.add('sp-hdr-av'); } }
+      // Campana de notificaciones al lado del ☰ (celular) o de su foto (computadora): solo con la sesión de una acompañante
+      if (actions && logged && !actions.querySelector('.sp-bell')) { const b = actions.querySelector('[data-action="openUserMenu"]'); if (b) b.insertAdjacentHTML('beforebegin', campanaBtn()); }
+      if (!logged) campanaCerrar(false);
       if (['panel', 'cuenta', 'login', 'registro'].includes(top)) { const g = hi.querySelector('.hdr-genders'); if (g) g.replaceWith(Object.assign(document.createElement('span'), { className: 'hdr-spacer' })); }
     }
     if (bn) {
@@ -676,7 +681,7 @@
     }
     // panel
     if (!S.yoLoaded) return `<div class="container section"><div class="sp-skel"></div></div>`;
-    if (!S.yo) { HH.ui.next = HH.currentHash(); HH.save(); HH.go('#login', { replace: true }); return false; }
+    if (!S.yo) { HH.ui.next = HH.currentHash(); HH.ui.nextAt = Date.now(); HH.save(); HH.go('#login', { replace: true }); return false; }
     if (b === 'vista-previa' && parts.length === 2) return vistaPreviaView();
     if (b === 'mi-perfil' && parts.length === 2) return miPerfilView();
     if (b === 'primeros-pasos' && parts.length <= 3) return guiaView(parts[2]);
@@ -1418,7 +1423,12 @@
       if (t) api('POST', '/cuenta/verificar-email', { token: t })
         .then(() => { S.verif.state = 'ok'; return loadYo(true, true); })
         .catch((e) => { S.verif.state = 'error'; S.verif.msg = e.message; })
-        .finally(() => { if (/^cuenta\.verificar/.test(HH.currentHash())) HH.refresh(); });
+        .finally(() => {
+          if (!/^cuenta\.verificar/.test(HH.currentHash())) return;
+          // El link del email abre la sesión: de ahí, directo a Resumen (como el ingreso)
+          if (S.verif.state === 'ok' && S.yo) { HH.toast('Listo, confirmaste tu email.', { type: 'ok' }); HH.ui.next = null; HH.ui.nextAt = null; HH.save(); HH.renderShell(); HH.go('#panel', { replace: true }); return; }
+          HH.refresh();
+        });
     }
     const v = S.verif;
     const body = v.state === 'loading' ? `<div class="sp-skel"></div><p class="muted center">Confirmando tu email…</p>`
@@ -2549,8 +2559,22 @@
     plan_vence: ['warn', 'clock', 'Tu plan está por terminar'], plan_vencio: ['neutral', 'clock', 'Tu plan terminó'],
     saldo_insuficiente: ['warn', 'wallet', 'Faltan créditos para renovar'], perfil_pausado: ['danger', 'alert', 'Perfil pausado'],
     renovacion_pendiente: ['warn', 'refresh', 'Renovación pendiente'], destacado: ['info', 'sparkles', 'Destacado'],
+    // Perfil y verificación (18/11/2026, app/lib/avisos-cuenta.js): el servidor manda además su propio título
+    perfil_en_revision: ['info', 'clock', 'Recibimos tu perfil'], verificacion_aprobada: ['ok', 'shield', 'Te verificamos'],
+    perfil_publicado: ['ok', 'checkCircle', 'Tu perfil ya está publicado'], verificacion_rechazada: ['danger', 'alert', 'Tu verificación no fue aprobada'],
+    perfil_rechazado: ['danger', 'alert', 'Tu perfil no fue aprobado'],
   };
-  const NOTIF_LINK = { creditos_acreditados: 'creditos', pedido_rechazado: 'creditos', saldo_insuficiente: 'creditos', perfil_pausado: 'creditos', renovacion_pendiente: 'plan', plan_comprado: 'plan', plan_renovado: 'plan', plan_asignado: 'plan', plan_vence: 'plan', plan_vencio: 'plan', destacado: 'destacado' };
+  // Adónde lleva cada aviso (sección del panel; 'resumen' = /panel). Lo usan Avisos y la campana del encabezado.
+  const NOTIF_LINK = { creditos_acreditados: 'creditos', pedido_rechazado: 'creditos', saldo_insuficiente: 'creditos', perfil_pausado: 'creditos', renovacion_pendiente: 'plan', plan_comprado: 'plan', plan_renovado: 'plan', plan_asignado: 'plan', plan_vence: 'plan', plan_vencio: 'plan', destacado: 'destacado',
+    perfil_en_revision: 'resumen', verificacion_aprobada: 'verificacion', perfil_publicado: 'mi-perfil', verificacion_rechazada: 'verificacion', perfil_rechazado: 'resumen' };
+  const notifGo = (x) => { const to = NOTIF_LINK[x && x.tipo]; return !to ? '' : to === 'resumen' ? '#panel' : '#panel.' + to; };
+  const notifTit = (x) => (x && x.titulo) || (NOTIF[x && x.tipo] || [0, 0, 'Aviso'])[2];
+  // Texto del aviso: el motivo que escribió el admin ("… Motivo: …") va tal cual, sin traducir; el resto se traduce
+  function notifTxt(x) {
+    const t = String((x && x.texto) || ''); const i = t.indexOf(' Motivo: ');
+    if (i < 0) return `<span>${esc(fechasCortas(t))}</span>`;
+    return `<span>${esc(fechasCortas(t.slice(0, i)))}</span> <span>Motivo:</span> <span data-noi18n>${esc(t.slice(i + 9))}</span>`;
+  }
   /* ---------- Mis números (16/11/2026): visitas a su perfil y toques en sus botones (GET /api/cuenta/numeros) ----------
      Solo sus números; sin orígenes de las visitas (eso es solo del admin), sin otras cuentas ni posiciones. Período en
      la dirección (/panel/numeros/7d · 30d · 90d; sin período: 30 días). Gráficos de graficos.js (los del admin). */
@@ -2601,11 +2625,121 @@
     if (!S.notif && !S.notifErr) { cargar('notif', loadNotif); return skel(eb, tt); }
     if (S.notifErr) return head(eb, tt, '') + errBox(S.notifErr, 'spNotifReload');
     const items = S.notif.items || []; const n = items.filter((x) => !x.leida).length;
-    return head(eb, tt, 'Pagos, renovaciones de tu plan y Destacado.', n ? `<button type="button" class="btn ghost sm" data-action="spNotifLeer"${S.busy.leer ? ' disabled' : ''}>${icon('check')} Marcar todo como leído</button>` : '') + `
+    return head(eb, tt, 'Tu perfil, tu verificación, tus pagos, tu plan y Destacado.', n ? `<button type="button" class="btn ghost sm" data-action="spNotifLeer"${S.busy.leer ? ' disabled' : ''}>${icon('check')} Marcar todo como leído</button>` : '') + `
       ${items.length ? `<div class="card" style="padding:6px 8px"><div class="list sp-notifs">${items.map((x) => {
-        const [cls, ic, tit] = NOTIF[x.tipo] || ['neutral', 'bell', 'Aviso']; const to = NOTIF_LINK[x.tipo];
-        return `<button type="button" class="list-item sp-notif${x.leida ? '' : ' nueva'}" data-action="spNotifAbrir" data-id="${esc(String(x.id))}" data-to="${to || ''}"><span class="sp-notif-ic ${cls}">${icon(ic)}</span><div class="grow" style="min-width:0"><div class="title"><span>${esc(tit)}</span>${x.leida ? '' : '<i class="sp-ndot" aria-label="Sin leer"></i>'}</div><div class="sub sp-notif-t"><span>${esc(fechasCortas(x.texto))}</span></div><div class="tiny muted">${esc(fHora(x.creado))}</div></div>${to ? icon('chevronRight') : ''}</button>`;
-      }).join('')}</div></div>` : `<div class="empty">${icon('bell')}<h4>No tenés avisos</h4><p class="small">Acá te avisamos cuando acreditamos tus créditos, se renueva tu plan o empieza tu Destacado.</p></div>`}`;
+        const [cls, ic] = NOTIF[x.tipo] || ['neutral', 'bell']; const to = notifGo(x);
+        return `<button type="button" class="list-item sp-notif${x.leida ? '' : ' nueva'}" data-action="spNotifAbrir" data-id="${esc(String(x.id))}" data-to="${esc(to)}"><span class="sp-notif-ic ${cls}">${icon(ic)}</span><div class="grow" style="min-width:0"><div class="title"><span>${esc(notifTit(x))}</span>${x.leida ? '' : '<i class="sp-ndot" aria-label="Sin leer"></i>'}</div><div class="sub sp-notif-t">${notifTxt(x)}</div><div class="tiny muted">${esc(fHora(x.creado))}</div></div>${to ? icon('chevronRight') : ''}</button>`;
+      }).join('')}</div></div>` : `<div class="empty">${icon('bell')}<h4>No tenés avisos</h4><p class="small">Acá te avisamos cuando revisamos tu perfil, acreditamos tus créditos, cambia tu plan o empieza tu Destacado.</p></div>`}`;
+  }
+
+  /* ---------- Campana de notificaciones (18/11/2026, Juan: "agregar al lado del ícono hamburguesa de menú uno de
+     notificaciones donde verá sus notificaciones") ----------
+     Solo para la acompañante con sesión (S.yo): ni visitantes ni interesados (sus cuentas no tienen notificaciones).
+     En el encabezado, al lado del ☰ (celular) o de su foto (computadora): campana con la cantidad sin leer (hasta 9+).
+     Al tocarla abre las últimas 8 (título, texto corto, hace cuánto y punto de sin leer): en la computadora, un menú
+     colgado de la campana; en el celular, un panel de lado a lado debajo del encabezado que no tapa la barra inferior
+     flotante. Tocar una la marca leída y lleva a su sección; "Marcar todas como leídas"; "Ver todos" → /panel/avisos.
+     Misma fuente y mismo contador que Avisos (GET /api/cuenta/notificaciones, POST /api/cuenta/notificaciones/leer;
+     S.yo.notificaciones.noLeidas). La cantidad se actualiza con los datos del panel (GET /cuenta/yo) y al volver a la
+     pestaña (foco o visibilidad, como mucho una vez por minuto): sin consultas periódicas. */
+  const CAMP_LIM = 8;
+  const campN = () => { const n = noLeidas(); return n > 9 ? '9+' : String(n); };
+  function campanaBtn() {
+    const n = noLeidas();
+    return `<button type="button" class="icon-btn sp-bell" data-action="spCampana" aria-label="${n ? `Notificaciones: ${n} sin leer` : 'Notificaciones'}" title="Notificaciones" aria-haspopup="dialog" aria-expanded="${CAMP.abierta}" aria-controls="spBellPanel">${icon('bell')}${n ? `<span class="sp-bell-n num" aria-hidden="true">${campN()}</span>` : ''}</button>`;
+  }
+  // Hace cuánto: Recién · Hace 5 min · Hace 3 h · Ayer · Hace 4 días · fecha corta
+  function hace(iso) {
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (!(s >= 0) || s < 60) return 'Recién';
+    if (s < 3600) return `Hace ${Math.floor(s / 60)} min`;
+    if (s < 86400) return `Hace ${Math.floor(s / 3600)} h`;
+    const d = Math.floor(s / 86400);
+    return d === 1 ? 'Ayer' : d < 7 ? `Hace ${d} días` : HH.fmtDate(iso, { day: 'numeric', month: 'short' });
+  }
+  function campanaHtml() {
+    const items = CAMP.items || []; const n = noLeidas();
+    const lista = !CAMP.items ? (CAMP.err ? `<div class="sp-bell-msg">${icon('alert')}<span>${esc(CAMP.err)}</span></div>` : '<div class="sp-bell-sk"></div><div class="sp-bell-sk"></div><div class="sp-bell-sk"></div>')
+      : !items.length ? `<div class="sp-bell-vacio">${icon('bell')}<strong>No tenés notificaciones</strong><span class="small muted">Acá te avisamos cuando revisamos tu perfil, cambia tu plan o acreditamos tus créditos.</span></div>`
+        : `<ul class="sp-bell-l">${items.map((x) => {
+          const [cls, ic] = NOTIF[x.tipo] || ['neutral', 'bell'];
+          return `<li><button type="button" class="sp-bell-it${x.leida ? '' : ' nueva'}" data-action="spCampanaAbrir" data-id="${esc(String(x.id))}"><span class="sp-notif-ic ${cls}">${icon(ic)}</span><span class="sp-bell-tx"><span class="sp-bell-t">${esc(notifTit(x))}</span><span class="sp-bell-s">${notifTxt(x)}</span><span class="sp-bell-h">${esc(hace(x.creado))}</span></span>${x.leida ? '' : '<i class="sp-ndot" aria-label="Sin leer"></i>'}</button></li>`;
+        }).join('')}</ul>`;
+    return `<div class="sp-bell-hd"><strong id="spBellTit">Notificaciones</strong>${n && items.some((x) => !x.leida) ? `<button type="button" class="sp-bell-todas" data-action="spCampanaLeer">Marcar todas como leídas</button>` : ''}</div>
+      <div class="sp-bell-cuerpo">${lista}</div>
+      <a class="sp-bell-ver" href="#panel.avisos" data-go="#panel.avisos" data-action="spCampanaVer">Ver todos</a>`;
+  }
+  function campanaEl() {
+    let p = document.getElementById('spBellPanel');
+    if (!p) {
+      document.body.insertAdjacentHTML('beforeend', '<div class="sp-bell-bg" id="spBellBg" data-action="spCampanaCerrar" hidden></div><div class="sp-bell-panel" id="spBellPanel" role="dialog" aria-labelledby="spBellTit" tabindex="-1" hidden></div>');
+      p = document.getElementById('spBellPanel');
+    }
+    return p;
+  }
+  // Computadora: colgado de la campana (borde derecho alineado); celular: el CSS lo pone de lado a lado
+  function campanaUbicar() {
+    const p = document.getElementById('spBellPanel'); const b = document.querySelector('#headerInner .sp-bell');
+    if (!p || !b) return;
+    const r = b.getBoundingClientRect();
+    p.style.top = Math.round(r.bottom + 8) + 'px';
+    p.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+  }
+  function campanaPintar() {
+    const p = document.getElementById('spBellPanel'); if (!p || p.hidden) return;
+    p.innerHTML = campanaHtml();
+    if (HH.linkify) HH.linkify(p);
+  }
+  async function campanaCargar() {
+    if (CAMP.cargando || !S.yo) return;
+    CAMP.cargando = true;
+    try {
+      const r = await api('GET', '/cuenta/notificaciones?limite=' + CAMP_LIM);
+      const antes = noLeidas(); const tope = (r.items || [])[0];
+      CAMP.items = r.items || []; CAMP.err = null; CAMP.t = Date.now();
+      if (S.yo) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 };
+      // Avisos ya cargado y llegó algo nuevo: se vuelve a pedir al entrar (misma fuente)
+      if (S.notif && tope && !(S.notif.items || []).some((x) => String(x.id) === String(tope.id))) S.notif = null;
+      if (antes !== noLeidas()) { HH.renderShell(); if (/^panel(\.|$)/.test(HH.currentHash())) rerender(); }
+    } catch (e) { CAMP.err = e.message; }
+    CAMP.cargando = false;
+    campanaPintar(); campanaBadge();
+  }
+  // Solo la campana (sin volver a dibujar el encabezado)
+  function campanaBadge() {
+    const b = document.querySelector('#headerInner .sp-bell'); if (!b) return;
+    b.outerHTML = campanaBtn();
+  }
+  function campanaAbrir() {
+    if (!S.yo) return;
+    const p = campanaEl(); const bg = document.getElementById('spBellBg');
+    CAMP.abierta = true; CAMP.ruta = HH.currentHash();
+    p.hidden = false; bg.hidden = false; document.documentElement.classList.add('sp-bell-on');
+    campanaUbicar(); campanaPintar(); campanaBadge();
+    p.focus({ preventScroll: true });
+    campanaCargar();
+  }
+  function campanaCerrar(foco) {
+    if (!CAMP.abierta) return;
+    CAMP.abierta = false;
+    const p = document.getElementById('spBellPanel'); const bg = document.getElementById('spBellBg');
+    if (p) p.hidden = true; if (bg) bg.hidden = true; document.documentElement.classList.remove('sp-bell-on');
+    campanaBadge();
+    if (foco) { const b = document.querySelector('#headerInner .sp-bell'); if (b) b.focus(); }
+  }
+  HH.campana = { abrir: campanaAbrir, cerrar: campanaCerrar, cargar: campanaCargar, html: campanaHtml, btn: campanaBtn };
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && CAMP.abierta) { ev.stopPropagation(); campanaCerrar(true); } });
+  // Se cierra al cambiar de página (no cuando la misma página se vuelve a dibujar con datos nuevos)
+  document.addEventListener('hh:rendered', () => { if (CAMP.abierta && HH.currentHash() !== CAMP.ruta) campanaCerrar(false); });
+  window.addEventListener('resize', () => { if (CAMP.abierta) campanaUbicar(); });
+  // Al volver a la pestaña: la cantidad se pone al día (como mucho una vez por minuto)
+  const campanaVolver = () => { if (S.yo && document.visibilityState === 'visible' && Date.now() - CAMP.t > 60 * 1000) campanaCargar(); };
+  document.addEventListener('visibilitychange', campanaVolver);
+  window.addEventListener('focus', campanaVolver);
+  // Marcar leídas (una o todas) en la campana y en Avisos a la vez
+  function campanaLeidas(ids) {
+    const set = ids ? new Set(ids.map(String)) : null;
+    [CAMP.items, S.notif && S.notif.items].forEach((l) => (l || []).forEach((x) => { if (!set || set.has(String(x.id))) x.leida = true; }));
   }
 
   function panelCuenta() {
@@ -2623,6 +2757,18 @@
       <div class="card stack" style="gap:10px"><div class="card-title">Ayuda</div><p class="small muted" style="margin:0">Escribinos a <a href="mailto:contacto@sexyrose.net">contacto@sexyrose.net</a>.</p><button type="button" class="btn ghost" data-action="spLogout" style="color:var(--danger)">${icon('logout')} Cerrar sesión</button></div>`;
   }
 
+  /* ---------- Adónde va después de ingresar (18/11/2026, Juan: "que le abra en su panel en Resumen") ----------
+     Siempre a Resumen (/panel). Excepción: si la mandamos a ingresar desde una página puntual del panel (abrió, por
+     ejemplo, /panel/vista-previa sin sesión), vuelve ahí, siempre que haya sido hace menos de 30 minutos. Un destino
+     viejo guardado en el navegador (de una sesión vencida hace días) no cuenta. Los primeros pasos se siguen abriendo
+     solos desde Resumen mientras el servidor lo pida (guia.abrir), como antes. */
+  const NEXT_VIGENCIA = 30 * 60 * 1000;
+  function destinoIngreso() {
+    const n = String(HH.ui.next || '').replace(/^#/, ''); const at = Number(HH.ui.nextAt) || 0;
+    HH.ui.next = null; HH.ui.nextAt = null; HH.save();
+    return /^panel\.[a-z]/.test(n) && Date.now() - at < NEXT_VIGENCIA ? '#' + n : '#panel';
+  }
+
   /* ---------- Acciones ---------- */
   const val = (o, k) => (o[k] == null ? '' : String(o[k]).trim());
   async function afterYoChange(msg) { await loadYo(true, true); if (S.yo && S.yo.perfil && S.yo.perfil.estado === 'publicado') await loadEstado(); if (msg) HH.toast(msg, { type: 'ok' }); rerender(); HH.renderShell(); }
@@ -2634,7 +2780,7 @@
       try {
         await api('POST', '/cuenta/login', { email: val(data, 'email'), password: data.password || '' });
         await loadYo(true, true); await loadEstado(); HH.renderShell();
-        const next = HH.ui.next && /^panel/.test(HH.ui.next) ? HH.ui.next : '#panel'; HH.ui.next = null; HH.save(); HH.go(next.startsWith('#') ? next : '#' + next);
+        HH.go(destinoIngreso());
       } catch (e) { showErr('spLErr', e.message); btn.disabled = false; }
     },
     async spOlvide(form, ev, data) {
@@ -2647,7 +2793,7 @@
       if ((data.password || '').length < 10) return showErr('spNPErr', 'La contraseña tiene que tener al menos 10 caracteres.');
       if (data.password !== data.password2) return showErr('spNPErr', 'Las dos contraseñas no coinciden.');
       const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
-      try { await api('POST', '/cuenta/restablecer', { token: qToken(), password: data.password }); HH.toast('Listo, ya podés entrar con tu contraseña nueva.', { type: 'ok' }); S.forgot = false; await loadYo(true, true); HH.go(S.yo ? '#panel' : '#login', { replace: true }); }
+      try { await api('POST', '/cuenta/restablecer', { token: qToken(), password: data.password }); HH.toast('Listo, ya podés entrar con tu contraseña nueva.', { type: 'ok' }); S.forgot = false; await loadYo(true, true); HH.renderShell(); HH.go(S.yo ? destinoIngreso() : '#login', { replace: true }); }
       catch (e) { showErr('spNPErr', e.message); btn.disabled = false; }
     },
     async spRegistro(form, ev, data) {
@@ -2970,9 +3116,28 @@
     },
     async spNotifLeer() {
       S.busy.leer = true; rerender();
-      try { const r = await api('POST', '/cuenta/notificaciones/leer', {}); (S.notif.items || []).forEach((x) => { x.leida = true; }); if (S.yo) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }
+      try { const r = await api('POST', '/cuenta/notificaciones/leer', {}); (S.notif.items || []).forEach((x) => { x.leida = true; }); (CAMP.items || []).forEach((x) => { x.leida = true; }); if (S.yo) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }
       catch (e) { HH.toast(e.message, { type: 'danger' }); }
       S.busy.leer = false; rerender();
+    },
+    spCampana() { if (CAMP.abierta) campanaCerrar(true); else campanaAbrir(); },
+    spCampanaCerrar() { campanaCerrar(false); },
+    spCampanaVer() { S.notif = null; campanaCerrar(false); }, // el data-go del link lleva a /panel/avisos
+    async spCampanaLeer(el) {
+      el.disabled = true;
+      try { const r = await api('POST', '/cuenta/notificaciones/leer', {}); campanaLeidas(null); if (S.yo) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; }
+      catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      campanaPintar(); HH.renderShell(); if (/^panel(\.|$)/.test(HH.currentHash())) rerender();
+    },
+    spCampanaAbrir(el) {
+      const id = el.dataset.id; const x = (CAMP.items || []).find((n) => String(n.id) === id); if (!x) return;
+      if (!x.leida) {
+        campanaLeidas([id]); if (S.yo) S.yo.notificaciones = { noLeidas: Math.max(0, noLeidas() - 1) };
+        api('POST', '/cuenta/notificaciones/leer', { ids: [id] }).then((r) => { if (S.yo && r) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }).catch(() => {});
+      }
+      const to = notifGo(x);
+      campanaCerrar(false);
+      if (to) { S.planes = null; S.cred = null; S.dest = null; if (to === '#' + HH.currentHash()) { rerender(); HH.renderShell(); } else HH.go(to); } else { HH.renderShell(); if (/^panel(\.|$)/.test(HH.currentHash())) rerender(); }
     },
     async spNotifAbrir(el) {
       const id = el.dataset.id; const x = ((S.notif || {}).items || []).find((n) => String(n.id) === id);
@@ -2980,7 +3145,8 @@
         x.leida = true; if (S.yo) S.yo.notificaciones = { noLeidas: Math.max(0, noLeidas() - 1) };
         api('POST', '/cuenta/notificaciones/leer', { ids: [x.id] }).then((r) => { if (S.yo && r) S.yo.notificaciones = { noLeidas: r.noLeidas || 0 }; HH.renderShell(); }).catch(() => {});
       }
-      if (el.dataset.to) { S.planes = null; S.cred = null; S.dest = null; HH.go('#panel.' + el.dataset.to); } else { rerender(); HH.renderShell(); }
+      CAMP.items = null; // la campana vuelve a pedir la lista al abrirse
+      if (el.dataset.to) { S.planes = null; S.cred = null; S.dest = null; HH.go(el.dataset.to); } else { rerender(); HH.renderShell(); }
     },
     async spPass(form, ev, data) {
       showErr('spCPErr', ''); const btn = form.querySelector('button[type=submit]'); btn.disabled = true;
@@ -3486,10 +3652,9 @@
       ['Reservaste el Destacado desde el {x}.', 'You booked Featured from {x}.', 'Você reservou o Destaque a partir de {x}.'],
       ['Tu perfil está Destacado hasta el {x}.', 'Your profile is Featured until {x}.', 'Seu perfil está em Destaque até {x}.'],
       // Avisos
-      ['Avisos', 'Notifications', 'Avisos'], ['Tus avisos', 'Your notifications', 'Seus avisos'], ['Pagos, renovaciones de tu plan y Destacado.', 'Payments, plan renewals and Featured.', 'Pagamentos, renovações do plano e Destaque.'],
+      ['Avisos', 'Notifications', 'Avisos'], ['Tus avisos', 'Your notifications', 'Seus avisos'],
       ['Marcar todo como leído', 'Mark all as read', 'Marcar tudo como lido'], ['Sin leer', 'Unread', 'Não lido'], ['Tenés avisos sin leer', 'You have unread notifications', 'Você tem avisos não lidos'],
       ['No tenés avisos', 'You have no notifications', 'Você não tem avisos'],
-      ['Acá te avisamos cuando acreditamos tus créditos, se renueva tu plan o empieza tu Destacado.', 'We let you know here when your credits are added, your plan renews or your Featured spot starts.', 'Aqui avisamos quando seus créditos entram, seu plano renova ou seu Destaque começa.'],
       ['Créditos acreditados', 'Credits added', 'Créditos creditados'], ['Pedido rechazado', 'Order rejected', 'Pedido recusado'], ['Plan activado', 'Plan activated', 'Plano ativado'], ['Plan renovado', 'Plan renewed', 'Plano renovado'],
       ['Plan asignado', 'Plan assigned', 'Plano atribuído'], ['Tu plan está por terminar', 'Your plan is ending soon', 'Seu plano está terminando'], ['Tu plan terminó', 'Your plan ended', 'Seu plano terminou'],
       ['Faltan créditos para renovar', 'Not enough credits to renew', 'Faltam créditos para renovar'], ['Perfil pausado', 'Profile paused', 'Perfil pausado'], ['Renovación pendiente', 'Renewal pending', 'Renovação pendente'], ['Aviso', 'Notice', 'Aviso'],
@@ -3516,6 +3681,31 @@
       ['Tu plan {P} termina el {x}.', 'Your {P} plan ends on {x}.', 'Seu plano {P} termina em {x}.'], ['Tu semana de {P} termina el {x}.', 'Your {P} week ends on {x}.', 'Sua semana de {P} termina em {x}.'],
       ['Tu plan {P} terminó. Ahora tu perfil está en {Q}.', 'Your {P} plan ended. Your profile is now on {Q}.', 'Seu plano {P} terminou. Agora seu perfil está no {Q}.'],
       ['Tu semana de {P} terminó. Ahora tu perfil está en {Q}.', 'Your {P} week ended. Your profile is now on {Q}.', 'Sua semana de {P} terminou. Agora seu perfil está no {Q}.'],
+      // Avisos del perfil y la verificación (textos del servidor: app/lib/avisos-cuenta.js) y planes ("Ahora sos …")
+      ['Ahora sos {P}', 'You are now {P}', 'Agora você é {P}'],
+      ['Recibimos tu perfil', 'We received your profile', 'Recebemos seu perfil'],
+      ['Recibimos tu perfil: lo estamos revisando. Te avisamos por acá y por email cuando esté listo.', 'We received your profile: we are reviewing it. We will let you know here and by email when it is ready.', 'Recebemos seu perfil: estamos revisando. Avisamos por aqui e por e-mail quando estiver pronto.'],
+      ['Te verificamos', 'You are verified', 'Você foi verificada'],
+      ['Tu identidad quedó verificada.', 'Your identity is verified.', 'Sua identidade foi verificada.'],
+      ['Tu identidad quedó verificada. Cuando completes lo que falta en tu perfil, pasa solo a revisión.', 'Your identity is verified. Once you complete what is missing in your profile, it goes to review automatically.', 'Sua identidade foi verificada. Quando você completar o que falta no seu perfil, ele vai sozinho para revisão.'],
+      ['Tu perfil ya está publicado', 'Your profile is now published', 'Seu perfil já está publicado'], ['Tu perfil está aprobado', 'Your profile is approved', 'Seu perfil está aprovado'],
+      ['Te verificamos y tu perfil ya está publicado', 'You are verified and your profile is now published', 'Você foi verificada e seu perfil já está publicado'],
+      ['Te verificamos y tu perfil está aprobado', 'You are verified and your profile is approved', 'Você foi verificada e seu perfil está aprovado'],
+      ['Revisamos tu perfil. Ya se ve en el sitio.', 'We reviewed your profile. It is now shown on the site.', 'Revisamos seu perfil. Ele já aparece no site.'],
+      ['Revisamos tu verificación y tu perfil. Ya se ve en el sitio.', 'We reviewed your verification and your profile. It is now shown on the site.', 'Revisamos sua verificação e seu perfil. Ele já aparece no site.'],
+      ['Revisamos tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto.', 'We reviewed your profile. It is approved. It is not on the site yet: we open very soon.', 'Revisamos seu perfil. Ele foi aprovado. Ainda não aparece no site: abrimos muito em breve.'],
+      ['Revisamos tu verificación y tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto.', 'We reviewed your verification and your profile. It is approved. It is not on the site yet: we open very soon.', 'Revisamos sua verificação e seu perfil. Ele foi aprovado. Ainda não aparece no site: abrimos muito em breve.'],
+      ['Tu verificación no fue aprobada', 'Your verification was not approved', 'Sua verificação não foi aprovada'],
+      ['No pudimos aprobar tu verificación. Podés volver a enviar las fotos de tu documento y la selfie desde tu panel.', 'We could not approve your verification. You can send the photos of your ID and the selfie again from your dashboard.', 'Não conseguimos aprovar sua verificação. Você pode enviar de novo as fotos do seu documento e a selfie pelo painel.'],
+      ['Tu perfil no fue aprobado', 'Your profile was not approved', 'Seu perfil não foi aprovado'],
+      ['No pudimos aprobar tu perfil. Corregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.', 'We could not approve your profile. Fix what is needed from your dashboard: when you save the changes, your profile goes back to review automatically.', 'Não conseguimos aprovar seu perfil. Corrija o necessário pelo painel: quando você salvar as mudanças, seu perfil volta sozinho para revisão.'],
+      ['Tu perfil, tu verificación, tus pagos, tu plan y Destacado.', 'Your profile, your verification, your payments, your plan and Featured.', 'Seu perfil, sua verificação, seus pagamentos, seu plano e Destaque.'],
+      ['Acá te avisamos cuando revisamos tu perfil, acreditamos tus créditos, cambia tu plan o empieza tu Destacado.', 'We let you know here when we review your profile, add your credits, your plan changes or your Featured spot starts.', 'Aqui avisamos quando revisamos seu perfil, creditamos seus créditos, seu plano muda ou seu Destaque começa.'],
+      // Campana del encabezado
+      ['Notificaciones: {n} sin leer', 'Notifications: {n} unread', 'Notificações: {n} não lidas'], ['Marcar todas como leídas', 'Mark all as read', 'Marcar todas como lidas'],
+      ['No tenés notificaciones', 'You have no notifications', 'Você não tem notificações'],
+      ['Acá te avisamos cuando revisamos tu perfil, cambia tu plan o acreditamos tus créditos.', 'We let you know here when we review your profile, your plan changes or we add your credits.', 'Aqui avisamos quando revisamos seu perfil, seu plano muda ou creditamos seus créditos.'],
+      ['Recién', 'Just now', 'Agora mesmo'], ['Hace {n} min', '{n} min ago', 'Há {n} min'], ['Hace {n} h', '{n} h ago', 'Há {n} h'], ['Hace {n} días', '{n} days ago', 'Há {n} dias'],
       // Tarjetas, panel, registro
       ['Disponible desde Plata', 'Available from Silver', 'Disponível a partir do Prata'],
       ['Con el plan Plata o más alto, tu tarjeta muestra unos segundos de uno de tus videos y llama más la atención.', 'With the Silver plan or higher, your card shows a few seconds of one of your videos and stands out more.', 'Com o plano Prata ou superior, seu card mostra alguns segundos de um dos seus vídeos e chama mais atenção.'],

@@ -97,8 +97,8 @@ RUN REQUIRE_MAPA=1 python3 app/scripts/build-sitio.py \
     && mkdir -p /out-sitio && cp -a app/sitio-spa/. /out-sitio/
 
 # ---------- Etapa 2: dependencias de Node (en la plataforma de destino: sharp trae binarios nativos) ----------
-# git solo hace falta acá: Baileys (asistente de WhatsApp) depende de libsignal publicado en GitHub (versión fijada
-# por commit en package-lock.json). No queda en la imagen final.
+# git: hasta Baileys 6 (asistente de WhatsApp) libsignal venía de GitHub; desde Baileys 7 (18/11/2026) todo sale del
+# registro de npm. Se deja por si alguna dependencia lo vuelve a necesitar. No queda en la imagen final.
 FROM node:22-bookworm-slim AS deps
 # hadolint ignore=DL3008
 RUN apt-get update \

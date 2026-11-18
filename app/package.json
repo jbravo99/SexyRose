@@ -14,7 +14,7 @@
     "build:demo": "python3 scripts/build-demo.py"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.24",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "express": "^4.21.2",
     "multer": "^2.5.0",
     "pg": "^8.13.1",

@@ -11,7 +11,8 @@ import {
   validarPacks, validarContacto, validarCotizacion, validarComision, validarMensajes,
   CONTACTO_DEFAULT, COTIZACION_DEFAULT, COMISION_DEFAULT, MENSAJES_DEFAULT, montoJson,
 } from '../lib/creditos.js';
-import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, validarPrelanzamiento } from '../lib/prelanzamiento.js';
+import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, prelanzamientoEn, validarPrelanzamiento } from '../lib/prelanzamiento.js';
+import { avisos as AVISOS, guardarAviso, createAvisosCuenta } from '../lib/avisos-cuenta.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
@@ -34,7 +35,8 @@ const bool = (v, def) => (typeof v === 'boolean' ? v : def);
 class HttpError extends Error { constructor(status, message) { super(message); this.status = status; this.expose = true; } }
 const he = (s, m) => new HttpError(s, m);
 
-export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {}, retencionVerif = null, historias = null, georef = null }) {
+export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUser = 'admin', log = () => {}, retencionVerif = null, historias = null, georef = null, avisos = null }) {
+  const av = avisos || createAvisosCuenta({ pool, log });
   const r = express.Router();
   r.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -132,8 +134,11 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!['aprobar', 'rechazar'].includes(b.decision)) throw he(400, 'Decisión inválida: aprobar o rechazar.');
     const motivo = str(b.motivo, 500);
     if (b.decision === 'rechazar' && !motivo) throw he(400, 'Escribí el motivo del rechazo: se lo mandamos a la acompañante.');
+    // Aviso a ella (lib/avisos-cuenta.js): si la aprobación publica el perfil (estaba en revisión), UN aviso combinado;
+    // si no, "Te verificamos". La notificación se guarda en la misma transacción; el email sale después.
+    const pre = b.decision === 'aprobar' ? await prelanzamientoEn(pool) : false;
     const client = await pool.connect();
-    let perfil; let verifId;
+    let perfil; let verifId; let aviso;
     try {
       await client.query('BEGIN');
       const v = await client.query("SELECT id, nombre_completo FROM verificaciones WHERE cuenta_id = $1 AND estado = 'pendiente' ORDER BY creado DESC LIMIT 1 FOR UPDATE", [id]);
@@ -142,6 +147,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       const aprobar = b.decision === 'aprobar';
       await client.query('UPDATE verificaciones SET estado = $2, motivo = $3, revisado = now(), revisado_por = $4 WHERE id = $1',
         [v.rows[0].id, aprobar ? 'aprobada' : 'rechazada', motivo || null, adminUser]);
+      const antes = await client.query('SELECT estado FROM perfiles WHERE cuenta_id = $1 FOR UPDATE', [id]);
       const p = await client.query(
         `UPDATE perfiles SET verificacion = $2, actualizado = now(),
            estado = CASE WHEN $3 AND estado = 'en_revision' THEN 'publicado'
@@ -154,6 +160,10 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       // El nombre completo aprobado queda en la cuenta (sobrevive a la purga de las imágenes) y desde ahí es fijo.
       // Las del formato anterior no traen nombre: no se toca.
       if (aprobar && v.rows[0].nombre_completo) await client.query('UPDATE cuentas SET nombre_completo = $2 WHERE id = $1', [id, v.rows[0].nombre_completo]);
+      const publico = perfil && perfil.estado === 'publicado' && (antes.rows[0] || {}).estado !== 'publicado';
+      aviso = !aprobar ? AVISOS.verificacionRechazada(motivo)
+        : publico ? AVISOS.publicado({ prelanzamiento: pre, verificada: true }) : AVISOS.verificada({ estado: perfil && perfil.estado });
+      if (perfil) await guardarAviso(client, id, aviso);
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK').catch(() => {});
@@ -163,15 +173,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     }
     invalidar();
     if (retencionVerif) await retencionVerif.comprimir(verifId);
-    if (b.decision === 'aprobar') {
-      await planes.mail(id, perfil.estado === 'publicado' ? 'Tu perfil está publicado en SexyRose' : 'Verificamos tu identidad',
-        perfil.estado === 'publicado'
-          ? 'Hola:\n\nRevisamos tu verificación y tu perfil ya está publicado en SexyRose.\n\nSexyRose'
-          : 'Hola:\n\nRevisamos tu verificación: tu identidad quedó verificada. Cuando completes lo que falta en tu perfil, pasa solo a revisión.\n\nSexyRose');
-    } else {
-      await planes.mail(id, 'Tu verificación no fue aprobada',
-        `Hola:\n\nNo pudimos aprobar tu verificación.\nMotivo: ${motivo}\n\nPodés volver a enviar las fotos de tu documento y la selfie desde tu panel.\n\nSexyRose`);
-    }
+    await av.email(id, aviso);
     res.json({ ok: true, perfil });
   }));
 
@@ -184,20 +186,38 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const cur = await pool.query('SELECT estado, verificacion FROM perfiles WHERE cuenta_id = $1', [id]);
     if (!cur.rows[0]) throw he(404, 'Acompañante no encontrada.');
     if (b.estado === 'publicado' && cur.rows[0].verificacion !== 'verificada') throw he(409, 'No se puede publicar: la identidad no está verificada.');
-    const { rows } = await pool.query(
-      `UPDATE perfiles SET estado = $2, motivo_rechazo = $3, actualizado = now(),
-         pausado_por = CASE WHEN $2 = 'pausado' THEN 'admin' ELSE NULL END,
-         publicado_en = CASE WHEN $2 = 'publicado' THEN COALESCE(publicado_en, now()) ELSE publicado_en END
-       WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
-      [id, b.estado, b.estado === 'publicado' ? null : (motivo || null)]);
+    // Publicado y rechazado avisan a ella con notificación + email (lib/avisos-cuenta.js); pausado y suspendido, solo email.
+    // El estado anterior se lee con la fila bloqueada: dos clics seguidos del admin hacen un solo aviso.
+    const pre = b.estado === 'publicado' ? await prelanzamientoEn(pool) : false;
+    const client = await pool.connect();
+    let rows; let antes; let aviso = null;
+    try {
+      await client.query('BEGIN');
+      const a = await client.query('SELECT estado FROM perfiles WHERE cuenta_id = $1 FOR UPDATE', [id]);
+      antes = a.rows[0] && a.rows[0].estado;
+      ({ rows } = await client.query(
+        `UPDATE perfiles SET estado = $2, motivo_rechazo = $3, actualizado = now(),
+           pausado_por = CASE WHEN $2 = 'pausado' THEN 'admin' ELSE NULL END,
+           publicado_en = CASE WHEN $2 = 'publicado' THEN COALESCE(publicado_en, now()) ELSE publicado_en END
+         WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
+        [id, b.estado, b.estado === 'publicado' ? null : (motivo || null)]));
+      if (antes !== b.estado && b.estado === 'publicado') aviso = AVISOS.publicado({ prelanzamiento: pre });
+      if (antes !== b.estado && b.estado === 'rechazado') aviso = AVISOS.perfilRechazado(motivo);
+      if (aviso) await guardarAviso(client, id, aviso);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
     invalidar();
     const textos = {
-      publicado: ['Tu perfil está publicado en SexyRose', 'Hola:\n\nTu perfil ya está publicado en SexyRose.\n\nSexyRose'],
       pausado: ['Tu perfil quedó pausado', `Hola:\n\nPausamos tu perfil: por ahora no se ve en el sitio.${motivo ? `\nMotivo: ${motivo}` : ''}\n\nSexyRose`],
       suspendido: ['Tu perfil fue suspendido', `Hola:\n\nSuspendimos tu perfil.\nMotivo: ${motivo}\n\nSi creés que es un error, respondé este email.\n\nSexyRose`],
-      rechazado: ['Tu perfil no fue aprobado', `Hola:\n\nNo pudimos aprobar tu perfil.\nMotivo: ${motivo}\n\nCorregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.\n\nSexyRose`],
     };
-    if (cur.rows[0].estado !== b.estado) await planes.mail(id, ...textos[b.estado]);
+    if (aviso) await av.email(id, aviso);
+    else if (antes !== b.estado && textos[b.estado]) await planes.mail(id, ...textos[b.estado]);
     res.json({ ok: true, perfil: rows[0] });
   }));
 

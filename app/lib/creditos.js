@@ -307,13 +307,17 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
   }
 
   // ---------- Notificaciones ----------
-  async function notificar(cuentaId, tipo, texto, db = pool) {
-    await db.query('INSERT INTO notificaciones (cuenta_id, tipo, texto) VALUES ($1, $2, $3)', [cuentaId, tipo, String(texto).slice(0, 500)]);
+  // titulo (opcional, migración 300): el título propio del aviso ("Ahora sos Plata"); sin título, el panel usa el de su tipo.
+  async function notificar(cuentaId, tipo, texto, db = pool, titulo = null) {
+    await (db || pool).query('INSERT INTO notificaciones (cuenta_id, tipo, texto, titulo) VALUES ($1, $2, $3, $4)',
+      [cuentaId, tipo, String(texto).slice(0, 500), titulo ? String(titulo).slice(0, 120) : null]);
   }
+  // Lo mismo lee Avisos (limite 50) y la campana del encabezado (limite 8): la misma fuente y el mismo contador.
   async function notificaciones(cuentaId, { limite = 30 } = {}) {
-    const { rows } = await pool.query('SELECT * FROM notificaciones WHERE cuenta_id = $1 ORDER BY id DESC LIMIT $2', [cuentaId, Math.min(100, Number(limite) || 30)]);
+    const lim = Math.max(1, Math.min(100, Math.trunc(Number(limite)) || 30));
+    const { rows } = await pool.query('SELECT * FROM notificaciones WHERE cuenta_id = $1 ORDER BY id DESC LIMIT $2', [cuentaId, lim]);
     const n = await pool.query('SELECT count(*)::int AS n FROM notificaciones WHERE cuenta_id = $1 AND NOT leida', [cuentaId]);
-    return { items: rows.map((x) => ({ id: String(x.id), tipo: x.tipo, texto: x.texto, leida: x.leida, creado: x.creado })), noLeidas: n.rows[0].n };
+    return { items: rows.map((x) => ({ id: String(x.id), tipo: x.tipo, titulo: x.titulo || null, texto: x.texto, leida: x.leida, creado: x.creado })), noLeidas: n.rows[0].n };
   }
   async function noLeidas(cuentaId) {
     const n = await pool.query('SELECT count(*)::int AS n FROM notificaciones WHERE cuenta_id = $1 AND NOT leida', [cuentaId]);

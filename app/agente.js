@@ -18,6 +18,7 @@ import { createLlm } from './lib/asistente-llm.js';
 import { createAsistente } from './lib/asistente.js';
 import { createWhatsApp } from './lib/asistente-whatsapp.js';
 import { escucharSalida, leerAjustes } from './lib/asistente-comun.js';
+import { instalarConsolaSegura } from './lib/consola-segura.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,6 +69,7 @@ export async function startAgente(overrides = {}) {
   const wa = createWhatsApp({
     pool, secretsKey: config.secretsKey, log, makeSocket: config.makeSocket || null, descargar: config.descargar || null,
     alMensaje: (ev) => asistente.recibir(ev), ia: { configurada: llm.disponible, modelo: llm.modelo },
+    avisar: (texto) => telegram.notify(texto, 'asistente_alerta'),
     ...(config.demora ? { demora: config.demora } : {}), ...(config.dormir ? { dormir: config.dormir } : {}),
   });
   asistente.setEnviar((jid, texto) => wa.enviar(jid, texto));
@@ -111,6 +113,8 @@ export async function startAgente(overrides = {}) {
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
+  // libsignal imprime sesiones enteras (claves privadas incluidas) con console.*: se resumen en una línea sin claves.
+  instalarConsolaSegura(console);
   process.on('unhandledRejection', (e) => console.log(new Date().toISOString(), 'agente: error sin manejar:', (e && (e.code || e.message)) || e));
   const inst = await startAgente();
   let cerrando = false;

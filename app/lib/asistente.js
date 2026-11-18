@@ -52,7 +52,14 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   }
 
   // ---------- Conversaciones y mensajes ----------
-  async function conversacion(jid, telefono) {
+  // lid: dirección `…@lid` del mismo chat cuando ya se sabe su teléfono. Si el chat empezó cuando WhatsApp todavía no
+  // daba el teléfono (quedó guardado con el LID), pasa a guardarse con el teléfono: mismo historial, y se identifica.
+  async function conversacion(jid, telefono, lid = null) {
+    if (lid && lid !== jid) {
+      await pool.query(
+        `UPDATE asistente_conversaciones SET jid = $1, telefono = COALESCE(telefono, $3), actualizado = now()
+          WHERE jid = $2 AND NOT EXISTS (SELECT 1 FROM asistente_conversaciones WHERE jid = $1)`, [jid, lid, telefono || null]);
+    }
     const { rows } = await pool.query(
       `INSERT INTO asistente_conversaciones (jid, telefono) VALUES ($1, $2)
        ON CONFLICT (jid) DO UPDATE SET telefono = COALESCE(asistente_conversaciones.telefono, EXCLUDED.telefono)
@@ -577,9 +584,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   }
 
   // ---------- Entrada ----------
-  // ev = { jid, telefono, waId, deMi, porBot, tipo: texto|imagen|documento|audio|video|otro, texto, media: { mime, tamano, descargar } }
+  // ev = { jid (teléfono@s.whatsapp.net o, si no se sabe, …@lid), lid (…@lid si jid es el teléfono), telefono, waId, deMi, porBot, tipo: texto|imagen|documento|audio|video|otro, texto, media: { mime, tamano, descargar } }
   async function procesar(ev) {
-    let conv = await conversacion(ev.jid, ev.telefono);
+    let conv = await conversacion(ev.jid, ev.telefono, ev.lid || null);
     if (ev.deMi) {
       if (ev.porBot) return { ignorado: 'bot' };
       // La invitación de captación (o un mensaje a un contacto de la cola) no silencia al bot: marca "enviado".
