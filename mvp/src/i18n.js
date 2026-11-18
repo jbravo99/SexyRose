@@ -105,7 +105,8 @@
   /* ---------- Selector de idioma ---------- */
   HH.langSelect = (cls) => `<label class="lang-sel ${cls || ''}" data-noi18n><span class="sr-only">Idioma / Language</span>${HH.icon('languages')}<select data-change="setLang" aria-label="Idioma / Language">${Object.entries(HH.LANGS).map(([k, v]) => `<option value="${k}"${k === HH.lang ? ' selected' : ''}>${k.toUpperCase()}</option>`).join('')}</select></label>`;
   const st = document.createElement('style');
-  st.textContent = '.lang-sel{display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 4px 0 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg-2);font-weight:700;font-size:12px}.lang-sel svg{width:15px;height:15px;flex:none}.lang-sel select{appearance:none;-webkit-appearance:none;background:transparent;border:0;color:var(--fg);font:inherit;padding:0 6px 0 2px;cursor:pointer}.lang-sel select:focus-visible{outline:2px solid var(--berry);border-radius:6px}.lang-sel option{color:#000}';
+  // En la compu el botón lleva hide-mobile, cuyo display:initial !important lo dejaba en línea y descentrado: se repone inline-flex (17/11/2026)
+  st.textContent = '.lang-sel{display:inline-flex;align-items:center;gap:4px;height:36px;padding:0 4px 0 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg-2);font-weight:700;font-size:12px}.lang-sel svg{width:15px;height:15px;flex:none}.lang-sel select{appearance:none;-webkit-appearance:none;background:transparent;border:0;color:var(--fg);font:inherit;padding:0 6px 0 2px;cursor:pointer}.lang-sel select:focus-visible{outline:2px solid var(--berry);border-radius:6px}.lang-sel option{color:#000}@media (min-width:900px){.lang-sel.hide-mobile{display:inline-flex!important}}';
   document.head.appendChild(st);
   HH.actions = HH.actions || {};
   HH.actions.setLang = (el) => HH.setLang(el.value);

@@ -14,6 +14,10 @@
 // - Fotos: el mismo proceso que las fotos de las historias. Videos: la misma cola que las historias en video (lib/videos.js,
 //   hasta 60 s, solo con almacenamiento externo).
 // - Borrar una destacada o un elemento borra sus archivos.
+// - Sin elementos no queda (17/11/2026, Juan): al borrar el último elemento (listo o en proceso; los que fallaron no
+//   cuentan) se borra la destacada, con su portada subida (borrarItem → destacadaBorrada: true). Una destacada recién
+//   creada sin elementos sí existe: el panel crea primero la destacada (solo el nombre) y después sube; esas no se
+//   tocan (no salen en el sitio y en el panel se llenan o se borran).
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
 import { ImagenInvalida, procesarFoto, procesarPortada } from './imagenes.js';
@@ -167,12 +171,38 @@ export function createDestacadas({ pool, storage, videos = () => null, planes = 
     return itemJson(rows[0]);
   }
 
+  // Borra un elemento. Si era el último (17/11/2026, Juan: "si elimino todas las fotos de una destacada, elimino esa
+  // destacada"), en la misma operación se borra la destacada con su portada subida y los videos que fallaron.
+  // Cuentan como elementos los listos y los que se procesan (un video en proceso la mantiene); los que fallaron, no.
+  // La fila de la destacada se bloquea: dos borrados simultáneos de los dos últimos no la dejan vacía.
+  // → { ok, destacadaBorrada: bool, destacadaId }
   async function borrarItem(cuentaId, itemId) {
-    const { rows } = await pool.query('DELETE FROM destacada_items WHERE id = $1 AND cuenta_id = $2 RETURNING id, tipo, clave, clave_mini', [itemId, cuentaId]);
-    if (!rows[0]) throw he(404, 'No encontramos ese elemento.');
-    await borrarArchivos(rows);
+    const client = await pool.connect();
+    let borrados = []; let portadaClave = null; let destacadaBorrada = false; let destId = null;
+    try {
+      await client.query('BEGIN');
+      const { rows: [it] } = await client.query('SELECT destacada_id FROM destacada_items WHERE id = $1 AND cuenta_id = $2', [itemId, cuentaId]);
+      if (!it) throw he(404, 'No encontramos ese elemento.');
+      destId = it.destacada_id;
+      await client.query('SELECT id FROM destacadas WHERE id = $1 AND cuenta_id = $2 FOR UPDATE', [destId, cuentaId]);
+      const { rows } = await client.query('DELETE FROM destacada_items WHERE id = $1 AND cuenta_id = $2 RETURNING id, tipo, clave, clave_mini', [itemId, cuentaId]);
+      if (!rows[0]) throw he(404, 'No encontramos ese elemento.');
+      borrados = rows;
+      const { rows: [q] } = await client.query("SELECT count(*)::int AS n FROM destacada_items WHERE destacada_id = $1 AND estado <> 'error'", [destId]);
+      if (q.n === 0) {
+        const { rows: resto } = await client.query('SELECT id, tipo, clave, clave_mini FROM destacada_items WHERE destacada_id = $1', [destId]);
+        const { rows: d } = await client.query('DELETE FROM destacadas WHERE id = $1 AND cuenta_id = $2 RETURNING portada_clave', [destId, cuentaId]);
+        if (d[0]) { destacadaBorrada = true; portadaClave = d[0].portada_clave; borrados = borrados.concat(resto); }
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally { client.release(); }
+    await borrarArchivos(borrados);
+    if (destacadaBorrada) await borrarClave(portadaClave);
     invalidar();
-    return { ok: true };
+    return { ok: true, destacadaBorrada, destacadaId: destId };
   }
 
   // --- Portada ---

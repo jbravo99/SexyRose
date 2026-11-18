@@ -1191,7 +1191,12 @@
      Solo la acompañante con sesión (S.yo) y solo lo suyo: "⋯" en la cabecera del visor (core.js) → "Eliminar historia"
      (o "Quitar de la destacada" en sus destacadas) → confirmar. Misma API que el panel: DELETE /api/cuenta/historias/:id
      y DELETE /api/cuenta/destacadas/items/:id (el servidor exige que sea de su cuenta). Al terminar el visor sigue con
-     la próxima o se cierra, y se vuelven a pedir sus datos y lo que se ve (sitio o vista previa: anillo y fila del inicio). */
+     la próxima o se cierra, y se vuelven a pedir sus datos y lo que se ve (sitio o vista previa: anillo y fila del inicio).
+     Destacadas (17/11/2026, Juan: "si elimino todas las fotos de una destacada, elimino esa destacada" y "debo poder eliminar
+     la destacada completa desde el perfil"): quitar la última (los videos en proceso cuentan) avisa «Es la última de esta
+     destacada: se elimina la destacada completa…» y el servidor borra la destacada en la misma operación
+     (destacadaBorrada: true); además, «Eliminar destacada» (rojo, con su confirmación) → DELETE /api/cuenta/destacadas/:id.
+     En los dos casos: «Destacada eliminada.», se cierra el visor y se vuelven a pedir Mi perfil y sus datos. */
   Object.assign(HH.I18N = HH.I18N || {}, {
     'Más opciones': ['More options', 'Mais opções'],
     'Opciones': ['Options', 'Opções'],
@@ -1204,6 +1209,11 @@
     '¿Quitar esto de la destacada? Se borra la foto o el video y no se puede deshacer.': ['Remove this from the highlight? The photo or video is deleted and this cannot be undone.', 'Remover isto do destaque? A foto ou o vídeo é apagado e não dá para desfazer.'],
     'Quitar': ['Remove', 'Remover'],
     'Quitado de la destacada.': ['Removed from the highlight.', 'Removido do destaque.'],
+    // Eliminar la destacada completa / quitar la última (17/11/2026, Juan)
+    'Eliminar destacada': ['Delete highlight', 'Excluir destaque'],
+    '¿Eliminar la destacada «{x}» completa? Se borran todas sus fotos y videos. No se puede deshacer.': ['Delete the whole highlight “{x}”? All its photos and videos are deleted. This cannot be undone.', 'Excluir o destaque “{x}” inteiro? Todas as fotos e vídeos são apagados. Não dá para desfazer.'],
+    'Es la última de esta destacada: se elimina la destacada completa. No se puede deshacer.': ['This is the last one in this highlight: the whole highlight is deleted. This cannot be undone.', 'É a última deste destaque: o destaque inteiro é excluído. Não dá para desfazer.'],
+    'Destacada eliminada.': ['Highlight deleted.', 'Destaque excluído.'],
   });
   const esPropia = (st, c) => !!(S.yo && S.yo.id && st && st.id && c && c.workerId === S.yo.id && (!st.workerId || st.workerId === S.yo.id));
   HH.storyOwnMenu = (st, c) => {
@@ -1211,19 +1221,37 @@
     if (!esPropia(st, c) || (HH.esVistaPrevia && HH.esVistaPrevia())) return null;
     if (c.highlight) {
       // "Cambiar portada" (si la destacada está entre las suyas), con lo que estaba mirando ya elegido
-      const hid = st.highlightId; const suya = hid && (S.yo.destacadas || []).some((d) => d.id === hid);
-      return { label: 'Quitar de la destacada', confirm: '¿Quitar esto de la destacada? Se borra la foto o el video y no se puede deshacer.', okLabel: 'Quitar', done: 'Quitado de la destacada.', run: () => borrarPropia(st, true),
-        extra: suya ? [{ label: 'Cambiar portada', icon: 'image', run: () => abrirPortada(hid, st.id) }] : [] };
+      const hid = st.highlightId; const d = hid ? (S.yo.destacadas || []).find((x) => x.id === hid) : null;
+      // Si es la última (los videos en proceso cuentan; los que fallaron, no), el servidor borra la destacada completa
+      const ultima = !!d && ultimaDeDestacada(d, st.id);
+      return { label: 'Quitar de la destacada', okLabel: 'Quitar', run: () => borrarPropia(st, true),
+        ...(ultima ? { confirm: DEST_ULTIMA, done: 'Destacada eliminada.', cierra: true }
+          : { confirm: '¿Quitar esto de la destacada? Se borra la foto o el video y no se puede deshacer.', done: 'Quitado de la destacada.' }),
+        extra: d ? [{ label: 'Cambiar portada', icon: 'image', run: () => abrirPortada(hid, st.id) }] : [],
+        // Eliminar la destacada completa (17/11/2026, Juan: "debo poder eliminar la destacada completa desde el perfil")
+        danger: d ? [{ label: 'Eliminar destacada', icon: 'trash', okLabel: 'Eliminar', done: 'Destacada eliminada.', cierra: true,
+          confirm: `¿Eliminar la destacada «${d.titulo}» completa? Se borran todas sus fotos y videos. No se puede deshacer.`, run: () => borrarDestacadaPropia(hid) }] : [] };
     }
     return { label: 'Eliminar historia', confirm: '¿Eliminar esta historia? No se puede deshacer.', okLabel: 'Eliminar', done: 'Historia eliminada.', run: () => borrarPropia(st, false) };
   };
+  const DEST_ULTIMA = 'Es la última de esta destacada: se elimina la destacada completa. No se puede deshacer.';
+  // ¿Quitar este elemento deja la destacada sin elementos? (los que fallaron no cuentan, como en el servidor)
+  const ultimaDeDestacada = (d, itemId) => { const vivos = (d.items || []).filter((x) => x.estado !== 'error'); return vivos.length <= 1 && (!vivos.length || vivos[0].id === itemId); };
   async function borrarPropia(st, destacada) {
-    await api('DELETE', (destacada ? '/cuenta/destacadas/items/' : '/cuenta/historias/') + encodeURIComponent(st.id));
+    const r = await api('DELETE', (destacada ? '/cuenta/destacadas/items/' : '/cuenta/historias/') + encodeURIComponent(st.id));
     // Fuera de lo que se ve ya mismo (el visor sigue sin esperar la recarga)
     if (HH.db) {
-      if (destacada) (HH.db.highlights || []).forEach((h) => { h.items = (h.items || []).filter((x) => x.id !== st.id); });
+      if (destacada && r && r.destacadaBorrada) HH.db.highlights = (HH.db.highlights || []).filter((h) => h.id !== r.destacadaId);
+      else if (destacada) (HH.db.highlights || []).forEach((h) => { h.items = (h.items || []).filter((x) => x.id !== st.id); });
       else HH.db.stories = (HH.db.stories || []).filter((x) => x.id !== st.id);
     }
+    recargarPropias();
+    return r;
+  }
+  // La destacada completa, desde el "⋯" del visor (mismo endpoint que «Borrar destacada» del panel)
+  async function borrarDestacadaPropia(id) {
+    await api('DELETE', '/cuenta/destacadas/' + encodeURIComponent(id));
+    if (HH.db) HH.db.highlights = (HH.db.highlights || []).filter((h) => h.id !== id);
     recargarPropias();
   }
   async function recargarPropias() {
@@ -2584,8 +2612,10 @@
       } });
     },
     async spDestItemBorrar(el) {
-      HH.confirm({ title: 'Borrar', text: '¿Querés borrar este elemento de la destacada?', okLabel: 'Borrar', cls: 'danger', onOk: async () => {
-        try { await api('DELETE', '/cuenta/destacadas/items/' + encodeURIComponent(el.dataset.id)); await afterYoChange('Borrado.'); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
+      const d = (S.yo.destacadas || []).find((x) => (x.items || []).some((it) => it.id === el.dataset.id));
+      const ultima = !!d && ultimaDeDestacada(d, el.dataset.id);
+      HH.confirm({ title: 'Borrar', text: ultima ? DEST_ULTIMA : '¿Querés borrar este elemento de la destacada?', okLabel: 'Borrar', cls: 'danger', onOk: async () => {
+        try { const r = await api('DELETE', '/cuenta/destacadas/items/' + encodeURIComponent(el.dataset.id)); await afterYoChange(r && r.destacadaBorrada ? 'Destacada eliminada.' : 'Borrado.'); } catch (e) { HH.toast(e.message, { type: 'danger' }); }
       } });
     },
     async spDestSubir(form) {

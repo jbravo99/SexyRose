@@ -380,7 +380,8 @@ comisión la retiene Mercado Pago en el cobro (marketplace_fee), así que NO se 
     `POST /destacadas {titulo}` → 201 (400 si llegó al límite del plan) · `PUT /destacadas/:id {titulo}` ·
     `DELETE /destacadas/:id` · `POST /destacadas/:id/fotos` (multipart `foto`) → 201 `{ item }` ·
     `POST /destacadas/:id/videos` (multipart `video`) → 202 `{ item }` con `estado: 'procesando'` (409 sin almacenamiento
-    externo) · `DELETE /destacadas/items/:itemId`. `GET /yo` suma `destacadas` (la misma lista).
+    externo) · `DELETE /destacadas/items/:itemId` → `{ ok, destacadaBorrada, destacadaId }` (si era el último elemento,
+    también se borra la destacada; ver «Destacadas sin elementos…», 17/11). `GET /yo` suma `destacadas` (la misma lista).
   - Sitio: `GET /api/sitio/estado` → `perfiles[].destacadas = [{ id, titulo, creado, items: [{ id, tipo, url, urlMini,
     creado, (video: segundos, ancho, alto) }] }]`, solo las que entran en el plan y con elementos listos (las vacías no
     van). En el perfil, fila de círculos debajo de la cabecera (visual de `highlights.js`); al tocar, el visor de
@@ -1207,7 +1208,8 @@ las iniciales. Se actualiza al cambiar la principal o subir la primera.
   visitas ni toques (no llama a `HH.view` y no tiene botones de contacto).
 - **Dibujo**: `HH.profileView(slug, { own: true, aviso, acciones })` (`views-public.js`), la misma vista pública con:
   - el "+" del avatar y la hoja «Nueva historia»; el avatar abre sus historias activas o, sin historias, la subida;
-  - el "⋯" en sus historias y destacadas (Eliminar historia / Quitar de la destacada / Cambiar portada);
+  - el "⋯" en sus historias y destacadas (Eliminar historia / Quitar de la destacada / Cambiar portada / Eliminar
+    destacada);
   - «Nueva» primero en la fila de destacadas (ver «Nueva destacada desde Mi perfil» más abajo);
   - debajo de la cabecera, en lugar del contacto, dos botones iguales (`.pf-own`): «Editar perfil» (→ Panel → Mi
     perfil) y «Mi panel» (→ Resumen; con el mismo punto de aviso que la barra). Sin migas, Compartir ni Reportar.
@@ -1372,14 +1374,45 @@ demo no la definen (sin "+"; la demo no tiene cuentas). Pruebas: `app/test/histo
   inicio (si veía la cola del inicio y no le quedan, se cierra); en la vista previa no hay "⋯" (desde el 17/11).
 - Sus destacadas: «Quitar de la destacada» → «¿Quitar esto de la destacada? Se borra la foto o el video y no se puede
   deshacer.» (Cancelar / Quitar) → `DELETE /api/cuenta/destacadas/items/:id` (la del panel; el elemento se subió solo
-  para esa destacada, así que se borra con su archivo) → «Quitado de la destacada.». Si era el último, se cierra y la
-  destacada deja de verse (las vacías no se muestran).
+  para esa destacada, así que se borra con su archivo) → «Quitado de la destacada.». Si era el último, ver «Destacadas
+  sin elementos y eliminar la destacada completa» (abajo).
 - Con la hoja o la confirmación abiertas la historia queda en pausa (barra y video); los toques no avanzan, mantener
   apretado no la reanuda, Escape cierra la hoja (no el visor). Si el servidor responde error: aviso rojo y sigue.
 - El servidor ya exigía que sea suya (`WHERE id = $1 AND cuenta_id = $2` → 404 «Historia no encontrada.» /
   «No encontramos ese elemento.»; sin sesión 401). La hoja va dentro del visor (z 200; el modal del sitio queda
   debajo) y los avisos (`.toast-root`) pasan a z-index 220 para verse encima de los visores.
 - Textos en inglés y portugués (`prod-sitio.js`).
+
+### Destacadas sin elementos y eliminar la destacada completa — 17/11/2026 (pedidos de Juan)
+
+"1. Si elimino todas las fotos de una destacada, elimino esa destacada. 2. Debo poder eliminar la destacada completa
+desde el perfil."
+
+- **El último elemento se lleva la destacada** (`lib/destacadas.js → borrarItem`, `DELETE /api/cuenta/destacadas/items/:id`):
+  en la misma operación (transacción, con la fila de la destacada bloqueada: dos borrados simultáneos de los dos últimos
+  no la dejan vacía), si después de borrar el elemento no le quedan elementos listos ni en proceso, se borra la
+  destacada con lo mismo que «Borrar destacada»: su portada subida y los archivos de los videos que fallaron. **Cuentan**
+  los listos y los que se procesan (un video en proceso la mantiene); los que fallaron (`estado = 'error'`) no.
+  Respuesta: `{ ok, destacadaBorrada: bool, destacadaId }`. Vale para todos los caminos que borran elementos (visor y
+  panel: es el mismo endpoint).
+- **Destacadas vacías que ya existen**: no se borran (ni migración ni limpieza al listar). Una destacada sin elementos es
+  el paso normal del panel (Historias → Destacadas crea primero la destacada con el nombre y después se sube) y de la
+  hoja «Nueva destacada» entre crearla y subir; no se ven en el sitio ni en Mi perfil (las vacías no van) y en el panel
+  se llenan o se borran. Solo se borra la que se queda sin elementos al quitar uno.
+- **Visor** ("⋯" en su destacada, las mismas reglas que «Quitar de la destacada»: su sesión y lo suyo; nunca para otras,
+  visitantes, clientes ni en la vista previa):
+  - quitar el último: la confirmación dice «Es la última de esta destacada: se elimina la destacada completa. No se puede
+    deshacer.» → «Destacada eliminada.», se cierra el visor y se vuelven a pedir Mi perfil y sus datos;
+  - **«Eliminar destacada»** (rojo, después de «Quitar de la destacada»; solo si la destacada está entre las suyas) →
+    «¿Eliminar la destacada «{nombre}» completa? Se borran todas sus fotos y videos. No se puede deshacer.» (Cancelar /
+    Eliminar) → `DELETE /api/cuenta/destacadas/:id` (el del panel) → «Destacada eliminada.», se cierra el visor y se
+    vuelve a pedir Mi perfil.
+  - `core.js`: `HH.storyOwnMenu` puede devolver `danger: [{ label, icon, confirm, okLabel, done, run }]` (opciones
+    destructivas extra, cada una con su confirmación) y `cierra: true` (al terminar se cierra el visor).
+- **Panel** (Historias → Destacadas → «Borrar» de un elemento): si es el último, la confirmación dice lo mismo y, si el
+  servidor borró la destacada, el aviso es «Destacada eliminada.».
+- Otra acompañante: 404 («No encontramos ese elemento.» / «No encontramos esa destacada.»); sin sesión, 401.
+- Textos EN/PT en `HH.I18N` (`prod-sitio.js`); sin mensajes nuevos del servidor. Tests: `app/test/destacada-eliminar.test.js`.
 
 **"Que las fotos no se puedan abrir en pestañas aparte ni que se puedan descargar."** (mantener apretado la foto de
 perfil la ampliaba y dejaba guardarla). En todo el sitio y la demo (inicio, fila de historias, tarjetas, perfil y su

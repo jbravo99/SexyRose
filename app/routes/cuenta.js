@@ -664,6 +664,7 @@ export function createCuentaRouter(ctx) {
   }));
   r.put('/destacadas/:id', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => res.json(await dest().renombrar(req.cuenta.id, req.params.id, body(req).titulo))));
   r.delete('/destacadas/:id', conCuentaActiva, conDest, idOk('id'), dh(async (req, res) => res.json(await dest().borrar(req.cuenta.id, req.params.id))));
+  // Borrar un elemento → { ok, destacadaBorrada, destacadaId }: si era el último, también se borró la destacada.
   r.delete('/destacadas/items/:item', conCuentaActiva, conDest, (req, res, next) => (UUID_RE.test(req.params.item) ? next() : fail(res, 404, 'No encontramos ese elemento.')),
     dh(async (req, res) => res.json(await dest().borrarItem(req.cuenta.id, req.params.item))));
   r.post('/destacadas/:id/fotos', conCuentaActiva, conDest, idOk('id'), (req, res, next) => (limiteSubidas(req, res) ? next() : null), subir([{ name: 'foto', maxCount: 1 }]),

@@ -955,8 +955,12 @@ window.HH = (function () {
     // el servidor igual lo exige). Sin ese gancho (prototipo, demo) no hay menú.
     // Devuelve null o { label, confirm, okLabel, done, run: () => Promise, extra?: [{ label, icon, run }] }.
     // extra: opciones que van antes de la de borrar (ej. "Cambiar portada" en sus destacadas): cierran el visor y corren run().
+    // danger: más opciones destructivas después de la de borrar, cada una con su confirmación (ej. "Eliminar destacada"):
+    // [{ label, icon, confirm, okLabel, done, run }]. cierra (en la principal o en estas): al terminar se cierra el visor.
     const propia = (st) => (HH.storyOwnMenu && st ? HH.storyOwnMenu(st, { workerId: q[w], highlight: hl }) : null);
     let menu = null; // null | 'menu' | 'confirm' | 'busy'
+    let acc = -1; // la opción que se confirma: -1 = la principal; k = danger[k]
+    const accion = (m) => (m ? (acc >= 0 ? (m.danger || [])[acc] || null : m) : null);
     const render = () => {
       const st = list[i]; menu = null; if (!hl) HH.seenStories()[st.id] = true; st.views = (st.views || 0) + 1; HH.save();
       const next = q[w + 1] ? HH.profileOf(q[w + 1]) : null;
@@ -1029,13 +1033,13 @@ window.HH = (function () {
       menu = estado;
       if (mas) mas.setAttribute('aria-expanded', String(estado === 'menu'));
       if (!estado) { pausar(false); if (mas) mas.focus({ preventScroll: true }); return; }
-      const m = propia(list[i]); if (!m) { menu = null; pausar(false); return; }
+      const m = propia(list[i]); const a = accion(m); if (!m || !a) { menu = null; pausar(false); return; }
       pausar(true);
       const d = document.createElement('div');
       d.className = 'story-sheet' + (estado === 'menu' ? '' : ' confirm');
       d.innerHTML = `<div class="story-sheet-bg" data-story="menuclose"></div>` + (estado === 'menu'
-        ? `<div class="story-sheet-box" role="menu" aria-label="Opciones">${(m.extra || []).map((x, k) => `<button type="button" class="story-sheet-item" role="menuitem" data-story="extra" data-k="${k}">${x.icon ? HH.icon(x.icon) : ''}<span>${HH.esc(x.label)}</span></button>`).join('')}<button type="button" class="story-sheet-item danger" role="menuitem" data-story="del">${HH.icon('trash')}<span>${HH.esc(m.label)}</span></button><button type="button" class="story-sheet-item" role="menuitem" data-story="menuclose">Cancelar</button></div>`
-        : `<div class="story-sheet-box" role="alertdialog" aria-modal="true" aria-labelledby="storyCfTx"><p class="story-cf-tx" id="storyCfTx">${HH.esc(m.confirm)}</p><div class="story-cf-acts"><button type="button" class="story-sheet-item" data-story="menuclose"${estado === 'busy' ? ' disabled' : ''}>Cancelar</button><button type="button" class="story-sheet-item danger" data-story="delok"${estado === 'busy' ? ' disabled aria-busy="true"' : ''}>${HH.esc(estado === 'busy' ? 'Eliminando…' : m.okLabel)}</button></div></div>`);
+        ? `<div class="story-sheet-box" role="menu" aria-label="Opciones">${(m.extra || []).map((x, k) => `<button type="button" class="story-sheet-item" role="menuitem" data-story="extra" data-k="${k}">${x.icon ? HH.icon(x.icon) : ''}<span>${HH.esc(x.label)}</span></button>`).join('')}<button type="button" class="story-sheet-item danger" role="menuitem" data-story="del">${HH.icon('trash')}<span>${HH.esc(m.label)}</span></button>${(m.danger || []).map((x, k) => `<button type="button" class="story-sheet-item danger" role="menuitem" data-story="del" data-k="${k}">${HH.icon(x.icon || 'trash')}<span>${HH.esc(x.label)}</span></button>`).join('')}<button type="button" class="story-sheet-item" role="menuitem" data-story="menuclose">Cancelar</button></div>`
+        : `<div class="story-sheet-box" role="alertdialog" aria-modal="true" aria-labelledby="storyCfTx"><p class="story-cf-tx" id="storyCfTx">${HH.esc(a.confirm)}</p><div class="story-cf-acts"><button type="button" class="story-sheet-item" data-story="menuclose"${estado === 'busy' ? ' disabled' : ''}>Cancelar</button><button type="button" class="story-sheet-item danger" data-story="delok"${estado === 'busy' ? ' disabled aria-busy="true"' : ''}>${HH.esc(estado === 'busy' ? 'Eliminando…' : a.okLabel)}</button></div></div>`);
       view.appendChild(d);
       const f = d.querySelector(estado === 'menu' ? '[role="menuitem"]' : '[data-story="delok"]'); if (f && estado !== 'busy') f.focus({ preventScroll: true });
     };
@@ -1046,11 +1050,12 @@ window.HH = (function () {
       render();
     };
     const borrar = async () => {
-      const st = list[i]; const m = propia(st); if (!m || menu === 'busy') return;
+      const st = list[i]; const a = accion(propia(st)); if (!a || menu === 'busy') return;
       pintarMenu('busy');
-      try { await m.run(); } catch (e) { pintarMenu(null); HH.toast((e && e.message) || 'No se pudo completar.', { type: 'danger', ms: 4000 }); return; }
-      HH.toast(m.done, { type: 'ok' });
-      if (root.isConnected) quitada(st.id);
+      try { await a.run(); } catch (e) { pintarMenu(null); HH.toast((e && e.message) || 'No se pudo completar.', { type: 'danger', ms: 4000 }); return; }
+      HH.toast(a.done, { type: 'ok' });
+      if (!root.isConnected) return;
+      if (a.cierra) close(); else quitada(st.id);
     };
     root.onpointerdown = (ev) => {
       if (menu) return;
@@ -1076,9 +1081,9 @@ window.HH = (function () {
     document.addEventListener('keydown', onKey);
     root.onclick = (ev) => { const b = ev.target.closest('[data-story]'); if (!b) return; const a = b.dataset.story; const id = q[w];
       if (tragarClick && (a === 'prev' || a === 'next')) { tragarClick = false; return; }
-      if (a === 'more') { pintarMenu('menu'); return; }
+      if (a === 'more') { acc = -1; pintarMenu('menu'); return; }
       if (a === 'menuclose') { if (menu !== 'busy') pintarMenu(null); return; }
-      if (a === 'del') { pintarMenu('confirm'); return; }
+      if (a === 'del') { acc = b.dataset.k != null ? Number(b.dataset.k) : -1; pintarMenu('confirm'); return; }
       if (a === 'extra') { const m = propia(list[i]); const x = m && m.extra && m.extra[Number(b.dataset.k)]; close(); if (x) x.run(); return; }
       if (a === 'delok') { borrar(); return; }
       if (menu) return;
