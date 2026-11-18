@@ -428,19 +428,19 @@ describe('historias', () => {
   });
 });
 
-describe('enviar a revisión y sitio público', () => {
+describe('envío automático a revisión y sitio público', () => {
   test('completitud, revisión y aparición en /api/sitio/estado solo si está publicado y verificado', async () => {
     const a = await registrar();
-    let r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
-    assert.equal(r.status, 400); assert.ok(r.body.faltantes.length >= 4);
+    let yo = (await a.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(yo.perfil.estado, 'borrador'); assert.ok(yo.perfil.faltantes.length >= 4);
     await new Cliente().json('POST', '/api/cuenta/verificar-email', { token: ultimoLink(a.email, '/cuenta/verificar') });
     await a.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Hola', nacionalidad: 'Argentina', intereses: ['arte', 'vinos'] });
     for (let i = 0; i < 3; i++) await a.subir('/api/cuenta/fotos', { foto: await jpeg() });
-    r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
-    assert.equal(r.status, 400); assert.deepEqual(r.body.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
-    await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
-    r = await a.json('POST', '/api/cuenta/perfil/enviar-revision', {});
-    assert.equal(r.status, 200); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
+    yo = (await a.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(yo.perfil.estado, 'borrador'); assert.deepEqual(yo.perfil.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
+    // Envío automático (18/11/2026): con lo último que faltaba pasa solo a revisión
+    let r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
+    assert.equal(r.status, 201); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
 
     const pub = new Cliente();
     invalidarSitio();

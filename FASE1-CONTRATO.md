@@ -59,7 +59,7 @@ Repo de trabajo: /home/claude/repo (git; commit base = estado del dispositivo de
 - `POST cambiar-password` {actual, nueva}; `POST cambiar-email` (opcional, puede quedar fuera).
 - `GET yo` → `Yo` = {id, email, emailVerificado, estado, perfil:{slug, estado, motivoRechazo, verificacion, oculto, datos, fotos:[{id,url,urlMini,orden}], completo:bool, faltantes:[...], faltantesClaves:[...]}, plan:{efectivo, suscripciones:[...], pedidos:[...]} (este bloque lo completa B vía función exportada de lib/planes.js `resumenPlan(cuentaId)`; si no existe todavía, A devuelve plan:{efectivo:'E', suscripciones:[], pedidos:[]}), limites:{fotos, historiasDia}, historias:[...]}.
 - `PUT perfil` {datos parciales} → valida y guarda; slug se genera del displayName la primera vez (único, con sufijo numérico) y no cambia después.
-- `POST perfil/enviar-revision` → si está completo (≥3 fotos, datos obligatorios, email verificado, verificación enviada) pasa a en_revision.
+- `POST perfil/enviar-revision` → si está completo (≥3 fotos, datos obligatorios, email verificado, verificación enviada) pasa a en_revision. **Desde el 18/11/2026 el paso es automático** (ver "Alta guiada" al final); este endpoint queda solo para pestañas abiertas con el panel anterior.
 - `POST perfil/ocultar` {oculto:bool}.
 - `POST fotos` (multipart, campo `foto`, máx 12 MB, jpeg/png/webp/heic si sharp lo soporta) → procesa y guarda → foto. `DELETE fotos/:id`. `PUT fotos/orden` {ids:[...]}. La primera foto es la principal.
 - `POST verificacion` (multipart: `frente` (o `documento`), `dorso`, `selfie`, `consentimiento`, `nombreCompleto`; las tres fotos y el nombre obligatorios, si falta algo → 400) → guarda privado, estado pendiente.
@@ -805,10 +805,13 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
    con ese código), lo asocia al chat (`asistente_conv_pedidos`) y responde pack, créditos, **ARS** (=`arsSugerido`:
    USD × `cotizacion.arsPorUsd` redondeado hacia arriba a la centena, lo mismo que Admin → Créditos → Pedidos), alias,
    titular, el código como referencia y "Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu
-   cuenta. Mandame el comprobante por acá." Sin alias, titular o cotización: "En un rato te paso el monto en pesos y los
-   datos para transferir" + aviso a Juan. Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
+   cuenta. Mandame el comprobante por acá." El alias y el titular salen de la lista de cuentas de esa moneda, por turno
+   (desde el 18/11/2026, ver "Cuentas para las transferencias (varias, con rotación)"). Sin ninguna cuenta activa en esa
+   moneda, o sin cotización: "En un rato te paso el monto en pesos y los datos para transferir" + aviso a Juan con el
+   motivo ("No hay ninguna cuenta activa en pesos/dólares (Admin → Créditos → Banco)." o "Falta la cotización del dólar
+   (Admin → Precios)."). Pedido confirmado / vencido / cancelado / rechazado / inexistente: mensaje propio.
    **Cuenta en dólares** (16/11/2026, Juan: "Me gustaría tener un alias para dólares"; opcional, Admin → Créditos → Banco): si
-   está cargada (alias y titular en dólares), la primera respuesta a un pedido pendiente sin moneda elegida es
+   hay alguna cuenta activa en dólares (o a ese pedido ya se le pasó una), la primera respuesta a un pedido pendiente sin moneda elegida es
    "Pedido SR-1234: Trimestre Plata, 105 créditos.\n¿Vas a transferir en pesos o en dólares?" (EN "Will you transfer in
    pesos or in dollars?", PT "Você vai transferir em pesos ou em dólares?") y el chat queda esperando
    (`asistente_conversaciones.pago_pedido_id` + `pago_esperando_moneda`). La respuesta se detecta sin IA
@@ -819,13 +822,15 @@ mano desde WhatsApp Web (ver "Admin → Mensajería y captación").
    el mismo cierre. Después puede cambiar ("mejor en dólares") y recibe los otros datos (repetir la misma moneda no los
    reenvía; con el comprobante ya mandado tampoco). La moneda queda en `pedidos_creditos.moneda_asistente` ('ARS' |
    'USD'); el mismo código otra vez pasa los datos de esa moneda sin preguntar. Los créditos no cambian (salen del pack).
-   Sin cuenta en dólares, todo como antes: pesos directo, sin pregunta y sin guardar moneda. `crear_pedido` por chat y
+   Sin cuenta activa en dólares, todo como antes: pesos directo, sin pregunta y sin guardar moneda. `crear_pedido` por chat y
    `datos_transferencia` sin moneda también preguntan primero.
 3. Foto o PDF: se guarda en `DATA_DIR/privado/comprobantes` (el mismo lugar que los de la web) y se adjunta con
    `creditos.adjuntarComprobante` al pedido pendiente del chat (código en el texto de la foto, o el único pendiente del
    chat o de la cuenta identificada). Con varios pendientes pregunta cuál y adjunta cuando responde el código; sin
    ninguno, pide el código. Después, foto/PDF a Juan por Telegram con pedido, pack, créditos, USD, ARS, nombre artístico
-   y los botones. Con moneda elegida por el asistente, el monto va en esa moneda ("105 créditos · en dólares: USD 95" o
+   y los botones, más la línea "Alias que se le pasó: <alias> · <titular>" (la de la moneda elegida; si cambió de
+   moneda, "(antes, en pesos|dólares: …)"; sin ninguna: "ninguno (no recibió los datos por el asistente)"), para revisar
+   la cuenta correcta. Con moneda elegida por el asistente, el monto va en esa moneda ("105 créditos · en dólares: USD 95" o
    "105 créditos · en pesos: ARS 137.800 (USD 95)"); sin moneda, como antes ("USD 95 · ARS 137.800").
 4. 6 números con un código de email vigente → verificación (vence a los 15 min, 5 intentos; pedir uno nuevo anula el
    anterior; máximo 3 pedidos de código por hora y chat; la respuesta no dice si el email existe).
@@ -855,7 +860,7 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
   SexyRose: va a estar próximamente." (sin fechas ni motivos); `true` → cómo empezar con lo que dice el panel (Panel →
   Contenido, conectar su Mercado Pago, "Agregar pack", pedidos personalizados con Oro y Star), sin comisiones.
 - `pedido_por_codigo`, `datos_transferencia(codigo, moneda?: 'ARS'|'USD')` (manda el mensaje del punto 2; USD sin
-  cuenta en dólares → error "solo se puede transferir en pesos"): solo pedidos cuyo código se escribió en ese chat o de
+  cuenta activa en dólares ni una ya pasada a ese pedido → error "solo se puede transferir en pesos"): solo pedidos cuyo código se escribió en ese chat o de
   la cuenta identificada.
 - `enviar_codigo_email(email)`.
 - `estado_cuenta` (perfil, verificación, plan efectivo y plan mensual con vencimiento, saldo, últimos pedidos) y
@@ -880,8 +885,9 @@ Excepción (16/11/2026): la invitación de captación (o cualquier mensaje propi
 **Datos** — migración `db/180-asistente.sql`: `asistente_conversaciones`, `asistente_mensajes` (dir in/out, origen
 bot|juan|usuario|captacion (desde la 220), tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
 `asistente_salida` (+ trigger NOTIFY), `asistente_whatsapp` (estado, QR, número, latido, IA), `asistente_auth`. Ajuste
-`asistente` = `{ activo, alias, titular, aliasUsd, titularUsd }` (sin fila = apagado; alias/titular = cuenta en pesos;
-un ajuste viejo `{ activo, alias, titular }` se lee igual, sin cuenta en dólares). Migración `db/190-asistente-dolares.sql`:
+`asistente` = `{ activo }` (sin fila = apagado). Hasta el 18/11/2026 también guardaba la cuenta (`alias`, `titular`,
+`aliasUsd`, `titularUsd`): la migración 290 la pasó a las listas y esas claves quedan guardadas sin leerse (por si hubiera
+que volver a la versión anterior). Migración `db/190-asistente-dolares.sql`:
 `pedidos_creditos.moneda_asistente`, `asistente_conversaciones.pago_pedido_id` y `pago_esperando_moneda`. Limpieza en el app al arrancar y cada 6 h
 (`asistenteApp.purgar`): mensajes de más de 90 días y sus archivos (salvo los que quedaron como comprobante de un
 pedido), chats sin mensajes y sin actividad en 90 días, códigos de email de más de 2 días, salida procesada de más de 7
@@ -893,10 +899,12 @@ días. Logs sin teléfonos, emails ni textos.
   (latido < 90 s), numero (enmascarado), error, qrSvg (data:image/svg+xml, generado en el servidor con `qrcode` 1.5.4,
   solo si el QR tiene menos de 60 s) }, ia: { configurada, modelo }, conversaciones: { total, humano, captacion },
   botonCreditos: { vinculado, guardado, usa: 'vinculado'|'guardado'|null } }` (desde el 16/11/2026).
-- `PUT /asistente/ajustes { activo, alias, titular, aliasUsd?, titularUsd? }` (alias 6–20: letras, números, puntos,
-  guiones; titular 3–80; las mismas reglas en dólares, con los dos datos o ninguno; sin `aliasUsd`/`titularUsd` quedan
-  los guardados). Admin → Créditos → Banco → "Cuenta para las transferencias" (hasta el 18/11/2026, en Mensajería →
-  WhatsApp): bloques "En pesos" y "En dólares (opcional)".
+- `PUT /asistente/ajustes { activo }` (se suma a lo guardado; `alias`/`titular`… de un panel viejo se ignoran). Las
+  cuentas: `/asistente/cuentas` (ver "Cuentas para las transferencias (varias, con rotación)"); `GET /asistente` →
+  `cuentas: { ARS: [...], USD: [...] }`. Admin → Créditos → Banco → "Cuentas para las transferencias" (hasta el
+  18/11/2026, en Mensajería → WhatsApp): listas "En pesos" y "En dólares (opcional)".
+- Cuenta de cada pedido a la vista: `GET /asistente/conversaciones/:id` → `pedidos[].cuenta: { moneda, alias, titular } |
+  null` y `GET /pedidos-creditos` → `items[].cuentasTransferencia` (ver la sección de abajo).
 - Moneda elegida a la vista: `GET /asistente/conversaciones/:id` → `pedidos[].moneda` ("Pedidos nombrados en el chat":
   "· en dólares"), y `GET /pedidos-creditos` → `items[].monedaAsistente` (Admin → Créditos → Pedidos: "Transfiere en
   dólares/pesos").
@@ -1573,14 +1581,89 @@ con exactamente dos tarjetas. Solo cambiaron de lugar: mismos campos, validacion
 
 | Tarjeta | Qué tiene | Antes |
 | --- | --- | --- |
-| Cuenta para las transferencias | alias y titular en pesos y, opcional, en dólares; aviso "En un rato te paso los datos" si falta el alias o el titular en pesos; "Guardar" → `PUT /asistente/ajustes` (`cardCuenta` en `prod-admin-asistente.js`, expuesta como `HH.adminBanco.cuentaCard`) | Mensajería → WhatsApp |
+| Cuentas para las transferencias (hasta el 18/11/2026 "Cuenta…", una sola por moneda) | listas de cuentas en pesos y, opcional, en dólares, con rotación (ver "Cuentas para las transferencias (varias, con rotación)"); aviso "En un rato te paso los datos" si no hay ninguna activa en pesos (`cardCuenta` en `prod-admin-asistente.js`, expuesta como `HH.adminBanco.cuentaCard`) | Mensajería → WhatsApp |
 | Cuenta que recibe la comisión | cuentas de Mercado Pago: lista, "Recibe la comisión", "Probar", "Usar esta cuenta", Agregar / Editar / Borrar, aviso de `SECRETS_KEY`, cuentas ilegibles, dirección de redirección y de webhooks (`comisionCuentaCard` en `prod-admin.js` + `HH.adminInt.mpCuentas`) | Ajustes → "Venta de contenido" |
 
 - "Actualizar" de Banco recarga el asistente (`/asistente`), `/contenido/resumen` y `/integraciones/mp`.
-- Lugares de antes: Mensajería → WhatsApp muestra una línea "La cuenta para las transferencias que pasa el asistente se
-  configura en Créditos → Banco" o, si falta el alias o el titular en pesos, el aviso con el mismo enlace. Ajustes ya no
+- Lugares de antes: Mensajería → WhatsApp muestra una línea "Las cuentas para las transferencias que pasa el asistente se
+  configuran en Créditos → Banco" o, si no hay ninguna cuenta activa en pesos, el aviso con el mismo enlace. Ajustes ya no
   tiene la tarjeta (subtítulo "Home provisoria y textos del inicio"). Precios → Comisión y Contenido → Ventas dicen "La
   cuenta de Mercado Pago que recibe la comisión se configura en Créditos → Banco".
 - El aviso de Telegram del asistente cuando falta la cuenta dice "Admin → Créditos → Banco".
 - Contadores: sin cambios (Créditos = pedidos pendientes; Banco no suma).
 - Prueba: `app/test/admin-banco.test.js` (revisión estática del admin: las dos tarjetas en Banco y no en los lugares viejos).
+
+
+## Cuentas para las transferencias (varias, con rotación) — desde el 18/11/2026 (decisión de Juan)
+
+Juan: "Para el pago de créditos me interesa poner más de un alias, ya que tengo varias cuentas. Quiero que el bot vaya
+rotando entre los diferentes alias que agregue." `lib/cuentas-transferencia.js`, migración `db/290-alias-rotacion.sql`.
+
+- **Dos listas**: pesos (ARS) y dólares (USD, opcional). Cada cuenta: alias (6–20: letras, números, puntos, guiones) +
+  titular (3–80: letras, espacios, `.,'&-`) + activa/pausada + lugar. Máximo 20 por moneda; el mismo alias no se repite
+  en la misma lista (sin importar mayúsculas). Tabla `transferencia_cuentas (id, moneda, alias, titular, activo, orden)`.
+- **Rotación**: una cuenta por pedido, por turno (round-robin) entre las **activas** de esa moneda, en el orden de la
+  lista. `transferencia_rotacion (moneda, ultimo_orden)` guarda el lugar de la última que se pasó; la siguiente es la
+  primera activa con un lugar mayor o, al final, la primera activa (una pausada se saltea; al reanudarla vuelve a su
+  lugar; al reordenar, el turno sigue desde ese lugar). Se asigna la **primera vez que se le pasan los datos** de ese
+  pedido en esa moneda (punto 2 del flujo, sin IA o con `datos_transferencia`; preguntar la moneda no asigna nada) y
+  queda copiada en `pedidos_transferencia (pedido_id, moneda, cuenta_id, alias, titular, asignado)`: pedir los datos de
+  nuevo devuelve la misma, y la conserva aunque la cuenta se pause, se edite o se borre (puede que ya haya transferido;
+  `cuenta_id` sin FK a propósito). Si cambia de moneda, se asigna una de la otra lista una sola vez y también queda (al
+  volver, la misma de antes). Si ya eligió dólares y después se pausan todas las de dólares, ese pedido sigue recibiendo
+  la suya; los pedidos nuevos ya no preguntan la moneda. Pedidos a la vez: el pedido (`pedidos_creditos ... FOR UPDATE`)
+  y el turno de la moneda (`transferencia_rotacion ... FOR UPDATE`), siempre en ese orden, dentro de una transacción:
+  reciben cuentas seguidas y el mismo pedido pedido a la vez recibe una sola. Un pedido reabierto conserva la suya.
+- **Sin ninguna activa** en la moneda que hace falta: "En un rato te paso el monto en pesos y los datos para transferir" +
+  aviso a Juan por Telegram ("No hay ninguna cuenta activa en pesos|dólares (Admin → Créditos → Banco)."); no se asigna
+  nada (cuando haya una, el mismo pedido la recibe). Sin ninguna activa en dólares, el asistente no pregunta la moneda.
+- **A las acompañantes** solo les llegan el alias y el titular de su pedido (mismo mensaje que antes): nunca se nombran
+  la rotación, las otras cuentas ni si una está pausada (las pruebas lo revisan en los textos del asistente).
+- **Migración** (una sola vez, mientras `transferencia_rotacion` está vacía): `alias`/`titular` y `aliasUsd`/`titularUsd`
+  del ajuste `asistente` pasan a ser la primera cuenta de cada lista (activa, lugar 1); los pedidos pendientes que ya
+  pasaron por un chat del asistente quedan con esa cuenta (la de su moneda; pesos si no se le preguntó). Al volver a
+  aplicarse no duplica ni revive cuentas borradas.
+- **Aviso de Telegram** del comprobante: "Alias que se le pasó: <alias> · <titular>" (+ "(antes, en pesos|dólares: …)" si
+  cambió de moneda). **Admin → Créditos → Pedidos**: debajo del pack, el alias y el titular de ese pedido (y "antes, en
+  …" si cambió); `GET /pedidos-creditos` → `items[].cuentasTransferencia: [{ moneda, cuentaId, alias, titular, asignado,
+  enUso }]` (primero la de la moneda elegida; `[]` = ninguna). **Mensajería → conversación** → "Pedidos nombrados en el
+  chat": "· alias X (titular)".
+- **Admin → Créditos → Banco → "Cuentas para las transferencias"**: "En pesos" y "En dólares (opcional)", cada una con
+  "N activas de M", sus cuentas numeradas (alias, titular, cuántos pedidos la recibieron, "Pausada" o "Le toca al
+  próximo pedido") con Subir/Bajar, interruptor Activa/Pausada, Editar (ventana con alias y titular) y Borrar
+  (confirmación: los pedidos que ya la recibieron la conservan), y "Agregar cuenta en pesos|dólares" (entra activa, al
+  final). Aviso si no hay ninguna activa en pesos.
+- **API** (Basic Auth del admin; con `apiPost`; todas responden `GET /asistente` completo):
+  `POST /asistente/cuentas { moneda: 'ARS'|'USD', alias, titular, activo? }`, `PUT /asistente/cuentas/:id { alias?,
+  titular?, activo? }` (la moneda no cambia), `POST /asistente/cuentas/:id/mover { dir: 'arriba'|'abajo' }` (renumera
+  1..n; en el borde no cambia nada), `DELETE /asistente/cuentas/:id`. Errores 400 con el texto para mostrar; 404 si no
+  existe. `GET /asistente` → `cuentas: { ARS: [...], USD: [...] }`, cada una `{ id, moneda, alias, titular, activo,
+  orden, pedidos, siguiente, creado, actualizado }`.
+
+Pruebas: `app/test/asistente.test.js` → "varias cuentas con rotación" y `app/test/admin-banco.test.js`.
+
+## Alta guiada: envío automático a revisión y primeros pasos — desde el 18/11/2026 (decisiones de Juan)
+Juan creó un perfil de prueba, vio "Completá tu perfil y envialo a revisión" y no entendió qué hacer. Desde ahora:
+
+### Envío automático a revisión (`app/lib/revision-auto.js` → `revisionAutomatica(pool, cuentaId, { cambio, notify })`)
+- No hay más botón "Enviar a revisión". Apenas el perfil tiene todo lo obligatorio (`faltantesItems` de lib/perfiles.js: nombre artístico, género, fecha de nacimiento, provincia y localidad, WhatsApp o Telegram, ≥3 fotos, email confirmado, verificación enviada) pasa solo a `en_revision`, con lo mismo que el envío a mano: `motivo_rechazo = NULL`, `actualizado = now()` y el aviso por Telegram `perfil_revisar` ("Hay un perfil nuevo para revisar en el admin."). Sin email (como antes).
+- Se revisa después de: `PUT perfil`, `POST fotos`, `DELETE fotos/:id`, `PUT fotos/orden`, `POST verificacion`, `POST verificar-email`, `POST restablecer` (confirma el email) y `GET yo` (solo borradores: un borrador que ya estaba completo antes de este cambio pasa al abrir el panel).
+- **Reglas de estado**: desde `borrador`, siempre que esté completo. Desde `rechazado`, solo cuando ella cambia algo después del rechazo (`cambio = true`: guardó datos distintos —se comparan sin importar el orden de las claves—, subió, borró u ordenó fotos, mandó la verificación o confirmó el email) y está completo; abrir el panel o guardar lo mismo no cuenta. Si el cambio la deja incompleta, sigue rechazada hasta que esté todo. Nunca desde `en_revision`, `publicado`, `pausado` ni `suspendido`; tampoco si está oculto o la cuenta no está activa.
+- **Publicado que pierde un requisito** (por ejemplo, borra fotos y queda con menos de 3): sigue publicado, igual que antes (el sitio no filtra por cantidad de fotos). El panel le muestra "Te falta completar" con "Completar".
+- Pedidos simultáneos: la fila del perfil se bloquea (`SELECT … FOR UPDATE`) y el cambio es condicional (`WHERE estado = <el leído>`): una sola transición y un solo aviso. El aviso sale sin esperar a Telegram.
+- `POST perfil/enviar-revision` sigue (pestañas con el panel anterior): mismas respuestas de error y, si está completo, llama a la misma función.
+- Si el admin rechaza la verificación de un perfil en revisión, vuelve a borrador (como antes) con la verificación como pendiente de completar; al mandarla de nuevo pasa solo a revisión.
+- Textos actualizados: estado borrador "Completá lo que falta y tu perfil pasa solo a revisión. Nadie lo ve todavía."; rechazado "Revisá el motivo y corregí lo necesario. Cuando guardes los cambios, tu perfil vuelve solo a revisión."; emails del admin (verificación aprobada, perfil rechazado) y `plantillas.perfilRechazado`; asistente de WhatsApp (`AYUDA.registro`, `AYUDA.publicar`, `AYUDA.enlaces` suma /panel/primeros-pasos, etiqueta del estado borrador); el paso 4 de "Cómo funciona" del registro.
+
+### Dónde se ve qué falta (prod-sitio.js)
+- Resumen: arriba, "Para publicar te falta" con "Completar" en cada cosa y el botón "Seguir con los pasos" (borrador o rechazado; publicado con algo pendiente: "Te falta completar", sin el botón).
+- Mi perfil (`yoAviso`): el texto del estado, la lista con "Completar" (el del email lleva al Resumen, donde está el aviso con "Reenviar") y "Seguir con los pasos".
+- Barra lateral del panel (computadora): estado, "Te falta:" con cada cosa como enlace a completarla y "Seguir con los pasos".
+- La vista previa no muestra estado (es lo que ve un cliente): sin cambios.
+
+### Primeros pasos (`/panel/primeros-pasos[/<paso>]`, clave `panel.primeros-pasos[.<paso>]`)
+- Pasos: `datos` (Tus datos: solo nombre artístico, género, tipo, fecha de nacimiento, provincia y localidad, WhatsApp o Telegram; mismos campos e ids que Mi perfil, guarda con `PUT perfil`), `fotos` (≥3, la primera es la principal; misma subida y grilla que Panel → Fotos), `verificacion` (mismo formulario que Panel → Verificación, "Enviar y seguir"), `email` (solo si no está confirmado: la dirección, "Reenviar", "Ya lo confirmé" y que puede seguir mientras tanto) y `listo` (qué pasa ahora según el estado, lo que falta con enlaces a cada paso, y Mi perfil / vista previa / panel).
+- Barra de progreso con los nombres de los pasos (en el celular, solo el actual con nombre), "Atrás", "Siguiente" (guarda el paso y va al próximo sin completar) y "Seguir después" (al panel). Los pasos hechos se marcan y se pueden saltear. Qué está hecho sale del servidor (`faltantesClaves`, `emailVerificado`), así que al volver retoma en el primer paso sin completar.
+- `GET yo` suma `guia: { abrir }` = perfil en borrador con algo pendiente y `cuentas.guia_vista` vacío (`db/280-primeros-pasos.sql`). Con `abrir`, la primera entrada al panel de cada carga va a la guía. "Seguir después" y llegar a "Listo" llaman `POST guia/vista` (guarda `guia_vista`); desde ahí se retoma con "Seguir con los pasos". Las cuentas completas, en revisión o publicadas nunca la ven; los clientes tampoco (no tienen sesión de acompañante).
+- Funciona con la home provisoria prendida; respeta la barra inferior flotante (espacio abajo); fuera de los buscadores como todo el panel. Pruebas: `test/alta-guiada.test.js`.
+

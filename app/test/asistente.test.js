@@ -18,6 +18,7 @@ import { AYUDA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/a
 import { AJUSTE_ESTADO, ventaContenidoDisponible } from '../lib/contenido.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
 import { telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
+import { asignarCuenta, validarCuenta } from '../lib/cuentas-transferencia.js';
 import { detectarIdioma, codigoEnTexto, monedaEnTexto } from '../lib/asistente-textos.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -137,6 +138,23 @@ const cred = () => instance.ctx.creditos;
 const pedido = async (cuentaId, packId = 'trimestre-plata') => cred().crearPedido(cuentaId, { packId });
 const estadoPedido = async (id) => (await db.query('SELECT * FROM pedidos_creditos WHERE id = $1', [id])).rows[0];
 const conv = async (tel) => (await db.query('SELECT * FROM asistente_conversaciones WHERE telefono = $1', [tel])).rows[0];
+// Cuentas para las transferencias (Créditos → Banco): deja exactamente estas listas, cargadas por el admin
+async function ponerCuentas({ ars = [], usd = [] } = {}) {
+  await db.query('DELETE FROM transferencia_cuentas');
+  await db.query('UPDATE transferencia_rotacion SET ultimo_orden = NULL');
+  const out = { ARS: [], USD: [] };
+  for (const [moneda, lista] of [['ARS', ars], ['USD', usd]]) {
+    for (const c of lista) {
+      const r = await admJson('POST', '/asistente/cuentas', { moneda, ...c });
+      assert.equal(r.status, 200, await r.clone().text());
+      const e = await r.json();
+      out[moneda].push(e.cuentas[moneda][e.cuentas[moneda].length - 1]);
+    }
+  }
+  return out;
+}
+const PESOS = { alias: 'sexyrose.pagos', titular: 'Juan Pérez' };
+const DOLARES = { alias: 'sexyrose.usd', titular: 'Juan Pérez USD' };
 const saldo = async (id) => Number((await db.query('SELECT COALESCE(SUM(centavos), 0)::bigint AS s FROM creditos_movimientos WHERE cuenta_id = $1', [id])).rows[0].s);
 
 async function limpiar() {
@@ -146,6 +164,8 @@ async function limpiar() {
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzasis-%'");
   await db.query("DELETE FROM cuentas_eliminadas WHERE email LIKE 'zzasis-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('asistente', 'telegram', 'cotizacion')");
+  await db.query('DELETE FROM transferencia_cuentas');
+  await db.query('UPDATE transferencia_rotacion SET ultimo_orden = NULL');
   // El número del chip vinculado lo usa el botón de comprar créditos: no queda para las otras pruebas
   await db.query('UPDATE asistente_whatsapp SET numero = NULL WHERE id = 1');
 }
@@ -182,11 +202,14 @@ describe('piezas sueltas', () => {
     assert.equal(MODELO_DEFAULT, 'claude-haiku-5-5');
     assert.equal(telefonoOculto('5491155551234'), '+54 9 11 ****-1234');
     assert.equal(telefonoOculto(''), 'Número oculto');
-    assert.match(validarAjustes({ alias: 'ab', titular: 'Juan Pérez' }).error, /6 a 20/);
-    assert.match(validarAjustes({ alias: 'con espacio', titular: 'Juan' }).error, /6 a 20/);
-    assert.match(validarAjustes({ alias: 'sexyrose.pagos.muy.largo.de.mas', titular: 'Juan' }).error, /6 a 20/);
-    assert.match(validarAjustes({ alias: 'sexy.rose-1', titular: 'J' }).error, /titular/);
-    assert.deepEqual(validarAjustes({ activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez' }).valor, { activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+    assert.match(validarCuenta({ alias: 'ab', titular: 'Juan Pérez' }).error, /6 a 20/);
+    assert.match(validarCuenta({ alias: 'con espacio', titular: 'Juan' }).error, /6 a 20/);
+    assert.match(validarCuenta({ alias: 'sexyrose.pagos.muy.largo.de.mas', titular: 'Juan' }).error, /6 a 20/);
+    assert.match(validarCuenta({ alias: 'sexy.rose-1', titular: 'J' }).error, /titular/);
+    assert.deepEqual(validarCuenta({ alias: ' sexy.rose-1 ', titular: 'Juan  Pérez' }).valor, { alias: 'sexy.rose-1', titular: 'Juan Pérez' });
+    // el ajuste del asistente es solo { activo }: las claves viejas de la cuenta se ignoran
+    assert.deepEqual(validarAjustes({ activo: true, alias: 'sexy.rose-1', titular: 'Juan Pérez' }).valor, { activo: true });
+    assert.match(validarAjustes({ activo: 'si' }).error, /verdadero o falso/);
     assert.equal(detectarIdioma('Hi, I want to buy Mes Plata (35 credits, USD 35). Order SR-1234'), 'en');
     assert.equal(detectarIdioma('Olá, quero comprar Mes Plata'), 'pt');
     assert.equal(detectarIdioma('hola, cómo cambio la contraseña?'), 'es');
@@ -222,14 +245,15 @@ describe('admin y conexión', () => {
     assert.equal(e.ajustes.activo, false);
     assert.equal(e.whatsapp.estado, 'apagado');
     assert.equal(e.ia.configurada, true); assert.equal(e.ia.modelo, 'claude-haiku-5-5');
-    assert.equal((await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'x y', titular: 'Juan Pérez' })).status, 400);
-    assert.equal((await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'J' })).status, 400);
+    assert.deepEqual(e.cuentas, { ARS: [], USD: [] });
+    assert.equal((await admJson('PUT', '/asistente/ajustes', { activo: 'si' })).status, 400);
     // sin la cabecera del panel no cambia nada
     assert.equal((await adm('/asistente/ajustes', { method: 'PUT', body: '{}', headers: { 'content-type': 'application/json', origin: BASE } })).status, 403);
-    r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
+    r = await admJson('PUT', '/asistente/ajustes', { activo: true });
     assert.equal(r.status, 200, await r.clone().text());
     e = await r.json();
-    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+    assert.deepEqual(e.ajustes, { activo: true });
+    await ponerCuentas({ ars: [PESOS] });
     e = await hasta(async () => { const x = await (await adm('/asistente')).json(); return x.whatsapp.estado === 'esperando_qr' && x.whatsapp.qrSvg ? x : null; });
     assert.ok(e, 'muestra el QR');
     assert.match(e.whatsapp.qrSvg, /^data:image\/svg\+xml;base64,/);
@@ -294,6 +318,8 @@ describe('pedidos y comprobantes', () => {
     const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p1.codigo)));
     assert.equal(tg.metodo, 'sendPhoto'); assert.equal(tg.chat, '777');
     assert.match(tg.caption, /Trimestre Plata/); assert.match(tg.caption, /105 créditos · USD 95 · ARS 137\.800/); assert.match(tg.caption, /Cuenta: Valentina/);
+    // la cuenta a la que tenía que transferir (para revisar la cuenta correcta)
+    assert.match(tg.caption, /\nAlias que se le pasó: sexyrose\.pagos · Juan Pérez\n/);
     assert.ok(!tg.caption.includes(TEL) && !tg.caption.includes('1155550001') && !tg.caption.includes('@'), 'sin teléfono ni email');
     const botones = tg.markup.inline_keyboard[0];
     assert.deepEqual(botones.map((b) => b.text), ['Acreditar', 'Rechazar']);
@@ -617,9 +643,8 @@ describe('IA, persona y límites', () => {
 });
 
 describe('cuenta en dólares (16/11/2026)', () => {
-  const USD = { aliasUsd: 'sexyrose.usd', titularUsd: 'Juan Pérez USD' };
-  const ponerUsd = (extra = {}) => admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', ...USD, ...extra });
-  const sinUsd = () => admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+  const ponerUsd = () => ponerCuentas({ ars: [PESOS], usd: [DOLARES] });
+  const sinUsd = () => ponerCuentas({ ars: [PESOS] });
   const PREGUNTA = /¿Vas a transferir en pesos o en dólares\?$/;
 
   test('detección de la moneda en la respuesta (sin importar mayúsculas ni tildes)', () => {
@@ -629,15 +654,18 @@ describe('cuenta en dólares (16/11/2026)', () => {
     for (const t of ['hola', 'ya te transferí', 'dolarizado']) assert.equal(monedaEnTexto(t), null, t);
   });
 
-  test('ajustes: validación de la cuenta en dólares y compatibilidad con el ajuste viejo {activo, alias, titular}', async () => {
-    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'con espacio', titularUsd: 'Juan' }).error, /alias en dólares tiene que tener de 6 a 20/);
-    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'sexyrose.usd', titularUsd: 'J' }).error, /titular en dólares/);
-    assert.match(validarAjustes({ alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: 'sexyrose.usd' }).error, /completá el alias y el nombre del titular/);
-    assert.equal((await ponerUsd({ aliasUsd: 'x y' })).status, 400);
-    // un ajuste guardado antes de la cuenta en dólares se lee igual (pesos) y sin dólares
-    await db.query("UPDATE ajustes SET valor = $1 WHERE clave = 'asistente'", [JSON.stringify({ activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' })]);
-    let e = await (await adm('/asistente')).json();
-    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', aliasUsd: '', titularUsd: '' });
+  test('cuenta en dólares: misma validación en el admin; sin ninguna activa en dólares no pregunta la moneda', async () => {
+    await sinUsd();
+    const mal = async (b) => { const r = await admJson('POST', '/asistente/cuentas', { moneda: 'USD', ...b }); assert.equal(r.status, 400); return (await r.json()).error; };
+    assert.match(await mal({ alias: 'con espacio', titular: 'Juan' }), /alias tiene que tener de 6 a 20/);
+    assert.match(await mal({ alias: 'sexyrose.usd', titular: 'J' }), /titular/);
+    assert.match(await mal({ alias: 'sexyrose.usd' }), /Completá el alias y el nombre del titular/);
+    // un PUT viejo con alias/titular no toca las listas
+    let r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'otro.alias', titular: 'Otro', aliasUsd: 'otro.usd', titularUsd: 'Otro' });
+    let e = await r.json();
+    assert.deepEqual(e.ajustes, { activo: true });
+    assert.deepEqual(e.cuentas.ARS.map((c) => c.alias), ['sexyrose.pagos']);
+    assert.deepEqual(e.cuentas.USD, []);
     // sin cuenta en dólares no pregunta nada: pesos directo, como siempre
     const tel = '5491155550030';
     const a = await acompanante({ nombre: 'Ana' });
@@ -646,12 +674,15 @@ describe('cuenta en dólares (16/11/2026)', () => {
     assert.match(ultimoA(tel), /ARS 137\.800 \(USD 95\)/);
     assert.doesNotMatch(ultimoA(tel), /dólares\?/);
     assert.equal((await estadoPedido(p.id)).moneda_asistente, null);
-    // guardar la cuenta en dólares; un PUT viejo (sin aliasUsd/titularUsd) no la borra
-    let r = await ponerUsd();
-    assert.equal(r.status, 200, await r.clone().text());
-    r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
-    e = await r.json();
-    assert.deepEqual(e.ajustes, { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez', ...USD });
+    // una cuenta en dólares pausada es como no tenerla
+    const c = await ponerCuentas({ ars: [PESOS], usd: [{ ...DOLARES, activo: false }] });
+    assert.equal(c.USD[0].activo, false);
+    const p2 = await pedido(a.id, 'inicial');
+    await llega(tel, p2.codigo);
+    assert.match(ultimoA(tel), /ARS 14\.500 \(USD 10\)/);
+    r = await ponerUsd();
+    e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.cuentas.USD.map((x) => [x.alias, x.titular, x.activo]), [['sexyrose.usd', 'Juan Pérez USD', true]]);
   });
 
   test('con cuenta en dólares: pregunta la moneda, toma "en dólares" y pasa los datos en USD; Telegram muestra la moneda', async () => {
@@ -761,7 +792,7 @@ describe('cuenta en dólares (16/11/2026)', () => {
   });
 
   test('sin cuenta en dólares, la herramienta no acepta USD y todo vuelve a ser como antes', async () => {
-    assert.equal((await sinUsd()).status, 200);
+    await sinUsd();
     const tel = '5491155550034';
     const a = await acompanante({ nombre: 'Eli' });
     const p = await pedido(a.id, 'inicial');
@@ -776,6 +807,273 @@ describe('cuenta en dólares (16/11/2026)', () => {
     await llegaFoto(tel);
     const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p.codigo)));
     assert.match(tg.caption, /10 créditos · USD 10 · ARS 14\.500\n/);
+  });
+});
+
+// Varias cuentas para las transferencias con rotación (18/11/2026, decisión de Juan: "Quiero que el bot vaya rotando
+// entre los diferentes alias que agregue"). Una cuenta por pedido, por turno entre las activas de esa moneda; el pedido
+// se queda con la suya. Ver lib/cuentas-transferencia.js.
+describe('varias cuentas con rotación (18/11/2026)', () => {
+  const A = { alias: 'cuenta.uno', titular: 'Juan Uno' };
+  const B = { alias: 'cuenta.dos', titular: 'Juan Dos' };
+  const C = { alias: 'cuenta.tres', titular: 'Juan Tres' };
+  const U1 = { alias: 'dolar.uno', titular: 'Juan Dolar Uno' };
+  const U2 = { alias: 'dolar.dos', titular: 'Juan Dolar Dos' };
+  const aliasEn = (t) => (/Alias: (\S+)/.exec(t) || [])[1] || null;
+  const asignado = async (pedidoId, moneda = 'ARS') => (await db.query('SELECT * FROM pedidos_transferencia WHERE pedido_id = $1 AND moneda = $2', [pedidoId, moneda])).rows[0] || null;
+  let telN = 100;
+  // Una acompañante nueva por pedido (máximo 3 pedidos abiertos por cuenta) que manda el código desde su chat
+  async function pedidoPorChat(packId = 'inicial') {
+    const tel = '54911555' + String(50000 + telN++);
+    const a = await acompanante({ nombre: 'Rota' + telN });
+    const p = await pedido(a.id, packId);
+    await llega(tel, p.codigo);
+    return { tel, a, p, texto: ultimoA(tel) };
+  }
+
+  test('migración: el alias de pesos y el de dólares del ajuste viejo pasan a ser la primera cuenta de cada lista', async () => {
+    const sql = await fs.readFile(new URL('../db/290-alias-rotacion.sql', import.meta.url), 'utf8');
+    const antes = (await db.query("SELECT valor FROM ajustes WHERE clave = 'asistente'")).rows[0].valor;
+    // pedido pendiente que ya pasó por el chat (recibió el alias viejo) y otro que no
+    const a = await acompanante({ nombre: 'Migra' });
+    const p1 = await pedido(a.id, 'inicial'); const p2 = await pedido(a.id, 'mes-plata');
+    const k = (await db.query("INSERT INTO asistente_conversaciones (jid) VALUES ('5491100009999@s.whatsapp.net') RETURNING id")).rows[0];
+    await db.query('INSERT INTO asistente_conv_pedidos (conversacion_id, pedido_id) VALUES ($1, $2)', [k.id, p1.id]);
+    // base como antes de la 290: sin listas ni turno, el ajuste con { alias, titular, aliasUsd, titularUsd }
+    await db.query('DELETE FROM transferencia_cuentas'); await db.query('DELETE FROM transferencia_rotacion');
+    await db.query("UPDATE ajustes SET valor = $1 WHERE clave = 'asistente'",
+      [JSON.stringify({ activo: true, alias: 'viejo.pesos', titular: 'Juan Pérez', aliasUsd: 'viejo.usd', titularUsd: 'Juan Pérez USD' })]);
+    await db.query(sql);
+    let e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.cuentas.ARS.map((c) => [c.alias, c.titular, c.activo, c.orden]), [['viejo.pesos', 'Juan Pérez', true, 1]]);
+    assert.deepEqual(e.cuentas.USD.map((c) => [c.alias, c.titular, c.activo, c.orden]), [['viejo.usd', 'Juan Pérez USD', true, 1]]);
+    assert.deepEqual(e.ajustes, { activo: true });
+    const s1 = await asignado(p1.id);
+    assert.equal(s1.alias, 'viejo.pesos'); assert.equal(s1.cuenta_id, e.cuentas.ARS[0].id);
+    assert.equal(await asignado(p2.id), null, 'sin pasar por el chat no tiene cuenta todavía');
+    // se vuelve a aplicar en cada arranque: no duplica ni revive cuentas borradas
+    await db.query(sql);
+    await db.query('DELETE FROM transferencia_cuentas');
+    await db.query(sql);
+    e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.cuentas, { ARS: [], USD: [] });
+    // solo pesos en el ajuste viejo → solo la lista en pesos
+    await db.query('DELETE FROM transferencia_rotacion');
+    await db.query("UPDATE ajustes SET valor = $1 WHERE clave = 'asistente'", [JSON.stringify({ activo: true, alias: 'viejo.pesos', titular: 'Juan Pérez' })]);
+    await db.query(sql);
+    e = await (await adm('/asistente')).json();
+    assert.deepEqual([e.cuentas.ARS.length, e.cuentas.USD.length], [1, 0]);
+    await db.query("UPDATE ajustes SET valor = $1 WHERE clave = 'asistente'", [JSON.stringify(antes)]);
+  });
+
+  test('por turno entre las activas: cada pedido nuevo recibe la siguiente; una pausada se saltea', async () => {
+    const c = await ponerCuentas({ ars: [A, B, C] });
+    const vistos = [];
+    for (let i = 0; i < 4; i++) {
+      const x = await pedidoPorChat();
+      assert.match(x.texto, /Titular: Juan (Uno|Dos|Tres)\n/);
+      vistos.push(aliasEn(x.texto));
+      assert.equal((await asignado(x.p.id)).alias, aliasEn(x.texto));
+    }
+    assert.deepEqual(vistos, ['cuenta.uno', 'cuenta.dos', 'cuenta.tres', 'cuenta.uno']);
+    // el admin muestra a cuál le toca y cuántos pedidos recibió cada una
+    let e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.cuentas.ARS.map((x) => [x.alias, x.pedidos, x.siguiente]), [['cuenta.uno', 2, false], ['cuenta.dos', 1, true], ['cuenta.tres', 1, false]]);
+    // pausar la dos: se saltea
+    let r = await admJson('PUT', '/asistente/cuentas/' + c.ARS[1].id, { activo: false });
+    assert.equal(r.status, 200);
+    e = await r.json();
+    assert.equal(e.cuentas.ARS[1].activo, false);
+    assert.deepEqual(e.cuentas.ARS.map((x) => x.siguiente), [false, false, true]);
+    const sig = [];
+    for (let i = 0; i < 3; i++) sig.push(aliasEn((await pedidoPorChat()).texto));
+    assert.deepEqual(sig, ['cuenta.tres', 'cuenta.uno', 'cuenta.tres']);
+    // reanudarla: vuelve a entrar en su lugar
+    await admJson('PUT', '/asistente/cuentas/' + c.ARS[1].id, { activo: true });
+    assert.equal(aliasEn((await pedidoPorChat()).texto), 'cuenta.uno');
+    assert.equal(aliasEn((await pedidoPorChat()).texto), 'cuenta.dos');
+    // la acompañante no ve nada de la rotación: solo el alias y el titular de su pedido
+    const x = await pedidoPorChat();
+    assert.doesNotMatch(x.texto, /cuenta\.(uno|dos).*cuenta\.|rota|turno|otra cuenta|varias/i);
+  });
+
+  test('el mismo pedido conserva su cuenta: al pedir de nuevo, al pausarla, al editarla y al borrarla', async () => {
+    const c = await ponerCuentas({ ars: [A, B] });
+    const x = await pedidoPorChat('mes-plata');
+    assert.equal(aliasEn(x.texto), 'cuenta.uno');
+    await llega(x.tel, x.p.codigo);
+    assert.equal(aliasEn(ultimoA(x.tel)), 'cuenta.uno', 'pedir los datos de nuevo');
+    const k = await conv(x.tel);
+    const r1 = await agente.asistente.herramienta(k.id, 'datos_transferencia', { codigo: x.p.codigo });
+    assert.equal(r1.resultado.enviado, true);
+    assert.equal(aliasEn(ultimoA(x.tel)), 'cuenta.uno', 'por la herramienta de la IA');
+    // otro pedido en el medio se lleva la dos; este sigue con la uno
+    assert.equal(aliasEn((await pedidoPorChat()).texto), 'cuenta.dos');
+    await admJson('PUT', '/asistente/cuentas/' + c.ARS[0].id, { activo: false });
+    await llega(x.tel, x.p.codigo);
+    assert.equal(aliasEn(ultimoA(x.tel)), 'cuenta.uno', 'pausada');
+    await admJson('PUT', '/asistente/cuentas/' + c.ARS[0].id, { alias: 'cuenta.nueva', titular: 'Otro Nombre' });
+    await llega(x.tel, x.p.codigo);
+    assert.match(ultimoA(x.tel), /Alias: cuenta\.uno\nTitular: Juan Uno\n/, 'editada: el pedido guarda la copia de ese momento');
+    const r = await admJson('DELETE', '/asistente/cuentas/' + c.ARS[0].id);
+    assert.equal(r.status, 200);
+    assert.deepEqual((await r.json()).cuentas.ARS.map((y) => y.alias), ['cuenta.dos']);
+    await llega(x.tel, x.p.codigo);
+    assert.match(ultimoA(x.tel), /Alias: cuenta\.uno\nTitular: Juan Uno\n/, 'borrada');
+    // comprobante → Telegram con la cuenta de ese pedido
+    await llegaFoto(x.tel);
+    const tg = await hasta(() => TG.archivos.find((y) => y.caption.includes(x.p.codigo)));
+    assert.match(tg.caption, /\nAlias que se le pasó: cuenta\.uno · Juan Uno\n/);
+    // admin: lista de pedidos y chat
+    const l = await (await adm('/pedidos-creditos?q=' + x.p.codigo)).json();
+    const it = l.items.find((y) => y.id === x.p.id);
+    assert.deepEqual(it.cuentasTransferencia.map((y) => [y.moneda, y.alias, y.titular, y.enUso]), [['ARS', 'cuenta.uno', 'Juan Uno', true]]);
+    assert.equal(it.cuentasTransferencia[0].cuentaId, c.ARS[0].id);
+    const d = await (await adm('/asistente/conversaciones/' + k.id)).json();
+    assert.deepEqual(d.pedidos.find((y) => y.codigo === x.p.codigo).cuenta, { moneda: 'ARS', alias: 'cuenta.uno', titular: 'Juan Uno' });
+    // un pedido que nunca recibió los datos no muestra ninguna
+    const sin = await pedido(x.a.id, 'inicial');
+    const l2 = await (await adm('/pedidos-creditos?q=' + sin.codigo)).json();
+    assert.deepEqual(l2.items.find((y) => y.id === sin.id).cuentasTransferencia, []);
+  });
+
+  test('pedidos a la vez reciben cuentas seguidas; el mismo pedido pedido a la vez recibe una sola', async () => {
+    await ponerCuentas({ ars: [A, B, C] });
+    const peds = [];
+    for (let i = 0; i < 3; i++) {
+      const a = await acompanante({ nombre: 'Conc' + i });
+      for (let j = 0; j < 3; j++) peds.push(await pedido(a.id, 'inicial'));
+    }
+    const pools = [db, dbAgente];
+    const res = await Promise.all(peds.map((p, i) => asignarCuenta(pools[i % 2], p.id, 'ARS')));
+    const cuenta = {};
+    for (const r of res) cuenta[r.alias] = (cuenta[r.alias] || 0) + 1;
+    assert.deepEqual(cuenta, { 'cuenta.uno': 3, 'cuenta.dos': 3, 'cuenta.tres': 3 });
+    // una fila por pedido; el turno quedó después de la última (9 vueltas exactas → le toca a la primera)
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM pedidos_transferencia WHERE pedido_id = ANY($1::uuid[])', [peds.map((p) => p.id)])).rows[0].n, 9);
+    // el mismo pedido, seis veces a la vez: una sola fila y el turno avanza una vez
+    const a = await acompanante({ nombre: 'Misma' });
+    const p = await pedido(a.id, 'inicial');
+    const mismas = await Promise.all(Array.from({ length: 6 }, (_, i) => asignarCuenta(pools[i % 2], p.id, 'ARS')));
+    assert.equal(new Set(mismas.map((m) => m.cuentaId)).size, 1);
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM pedidos_transferencia WHERE pedido_id = $1', [p.id])).rows[0].n, 1);
+    assert.equal(mismas[0].alias, 'cuenta.uno');
+    const p2 = await pedido(a.id, 'inicial');
+    assert.equal((await asignarCuenta(db, p2.id, 'ARS')).alias, 'cuenta.dos');
+  });
+
+  test('cambio de moneda: una cuenta de cada lista, una sola vez; Telegram y el admin muestran las dos', async () => {
+    await ponerCuentas({ ars: [A, B], usd: [U1, U2] });
+    const x = await pedidoPorChat('trimestre-plata');
+    assert.match(x.texto, /¿Vas a transferir en pesos o en dólares\?$/);
+    assert.equal(await asignado(x.p.id), null, 'preguntar la moneda no asigna nada');
+    await llega(x.tel, 'pesos');
+    assert.match(ultimoA(x.tel), /Alias: cuenta\.uno\nTitular: Juan Uno\n/);
+    await llega(x.tel, 'mejor en dólares');
+    assert.match(ultimoA(x.tel), /Monto a transferir: USD 95\.\nAlias: dolar\.uno\nTitular: Juan Dolar Uno\n/);
+    await llega(x.tel, 'en $');
+    assert.match(ultimoA(x.tel), /Alias: cuenta\.uno\n/, 'vuelve a pesos: la misma de antes');
+    await llega(x.tel, 'dólares');
+    assert.match(ultimoA(x.tel), /Alias: dolar\.uno\n/, 'vuelve a dólares: la misma de antes');
+    // otro pedido sigue el turno de cada lista
+    const y = await pedidoPorChat();
+    await llega(y.tel, 'dolares');
+    assert.match(ultimoA(y.tel), /Alias: dolar\.dos\n/);
+    // con todas las de dólares pausadas, este pedido conserva la suya (ya eligió dólares)
+    const e0 = await (await adm('/asistente')).json();
+    for (const cu of e0.cuentas.USD) await admJson('PUT', '/asistente/cuentas/' + cu.id, { activo: false });
+    await llega(x.tel, x.p.codigo);
+    assert.match(ultimoA(x.tel), /Alias: dolar\.uno\n/);
+    const k = await conv(x.tel);
+    assert.equal((await agente.asistente.herramienta(k.id, 'datos_transferencia', { codigo: x.p.codigo, moneda: 'USD' })).resultado.enviado, true);
+    // pedidos nuevos ya no preguntan la moneda
+    const z = await pedidoPorChat();
+    assert.match(z.texto, /Alias: cuenta\.(uno|dos)\n/);
+    assert.doesNotMatch(z.texto, /dólares\?/);
+    // comprobante: Telegram muestra la de dólares (la elegida) y la de pesos que se le pasó antes
+    await llegaFoto(x.tel);
+    const tg = await hasta(() => TG.archivos.find((t) => t.caption.includes(x.p.codigo)));
+    assert.match(tg.caption, /\nAlias que se le pasó: dolar\.uno · Juan Dolar Uno \(antes, en pesos: cuenta\.uno · Juan Uno\)\n/);
+    const l = await (await adm('/pedidos-creditos?q=' + x.p.codigo)).json();
+    assert.deepEqual(l.items.find((t) => t.id === x.p.id).cuentasTransferencia.map((t) => [t.moneda, t.alias, t.enUso]), [['USD', 'dolar.uno', true], ['ARS', 'cuenta.uno', false]]);
+    for (const cu of e0.cuentas.USD) await admJson('PUT', '/asistente/cuentas/' + cu.id, { activo: true });
+  });
+
+  test('sin ninguna cuenta activa en pesos: "En un rato te paso los datos" y aviso a Juan; no se asigna nada', async () => {
+    const c = await ponerCuentas({ ars: [A, B] });
+    for (const cu of c.ARS) await admJson('PUT', '/asistente/cuentas/' + cu.id, { activo: false });
+    const n = TG.enviados.length;
+    const x = await pedidoPorChat();
+    assert.match(x.texto, /En un rato te paso el monto en pesos y los datos para transferir\.$/);
+    assert.doesNotMatch(x.texto, /Alias/);
+    assert.equal(await asignado(x.p.id), null);
+    const av = await hasta(() => TG.enviados.slice(n).find((t) => t.text.includes(x.p.codigo)));
+    assert.match(av.text, /no pude pasar los datos para transferir del pedido/);
+    assert.match(av.text, /No hay ninguna cuenta activa en pesos \(Admin → Créditos → Banco\)\. Pasale el monto y los datos vos\./);
+    // al reanudar una, el mismo pedido recibe los datos
+    await admJson('PUT', '/asistente/cuentas/' + c.ARS[1].id, { activo: true });
+    await llega(x.tel, x.p.codigo);
+    assert.equal(aliasEn(ultimoA(x.tel)), 'cuenta.dos');
+    // sin ninguna cuenta cargada, lo mismo
+    await ponerCuentas({});
+    const y = await pedidoPorChat();
+    assert.match(y.texto, /En un rato te paso/);
+  });
+
+  test('admin: agregar, validar, editar, pausar, ordenar y borrar', async () => {
+    await ponerCuentas({});
+    const post = (b) => admJson('POST', '/asistente/cuentas', b);
+    const err = async (r, re) => { assert.equal(r.status, 400); assert.match((await r.json()).error, re); };
+    await err(await post({ alias: 'cuenta.uno', titular: 'Juan Uno' }), /Elegí la moneda/);
+    await err(await post({ moneda: 'EUR', alias: 'cuenta.uno', titular: 'Juan Uno' }), /Elegí la moneda/);
+    await err(await post({ moneda: 'ARS', alias: 'ab', titular: 'Juan Uno' }), /6 a 20/);
+    await err(await post({ moneda: 'ARS', alias: 'cuenta.uno', titular: 'J' }), /entre 3 y 80/);
+    await err(await post({ moneda: 'ARS', alias: 'cuenta.uno', titular: 'Juan <b>' }), /solo puede tener letras/);
+    await err(await post({ moneda: 'ARS', alias: '', titular: '' }), /Completá el alias/);
+    // sin la cabecera del panel, nada
+    assert.equal((await adm('/asistente/cuentas', { method: 'POST', body: JSON.stringify({ moneda: 'ARS', ...A }), headers: { 'content-type': 'application/json', origin: BASE } })).status, 403);
+    let e = await (await post({ moneda: 'ARS', ...A })).json();
+    e = await (await post({ moneda: 'ARS', ...B })).json();
+    e = await (await post({ moneda: 'ARS', ...C, activo: false })).json();
+    assert.deepEqual(e.cuentas.ARS.map((x) => [x.alias, x.activo, x.orden]), [['cuenta.uno', true, 1], ['cuenta.dos', true, 2], ['cuenta.tres', false, 3]]);
+    // el mismo alias no se repite en la misma lista (sin importar mayúsculas); en la otra moneda sí se puede
+    await err(await post({ moneda: 'ARS', alias: 'CUENTA.UNO', titular: 'Otro' }), /ya está en la lista de pesos/);
+    assert.equal((await post({ moneda: 'USD', ...A })).status, 200);
+    const [uno, dos, tres] = e.cuentas.ARS;
+    // editar
+    await err(await admJson('PUT', '/asistente/cuentas/' + uno.id, { alias: 'x y' }), /6 a 20/);
+    await err(await admJson('PUT', '/asistente/cuentas/' + uno.id, { alias: 'cuenta.dos' }), /ya está en la lista de pesos/);
+    await err(await admJson('PUT', '/asistente/cuentas/' + uno.id, { activo: 'no' }), /verdadero o falso/);
+    await err(await admJson('PUT', '/asistente/cuentas/' + uno.id, {}), /nada para cambiar/);
+    e = await (await admJson('PUT', '/asistente/cuentas/' + uno.id, { alias: 'cuenta.uno.b', titular: 'Juan Uno Bis' })).json();
+    assert.deepEqual([e.cuentas.ARS[0].alias, e.cuentas.ARS[0].titular, e.cuentas.ARS[0].moneda], ['cuenta.uno.b', 'Juan Uno Bis', 'ARS']);
+    e = await (await admJson('PUT', '/asistente/cuentas/' + tres.id, { activo: true })).json();
+    assert.equal(e.cuentas.ARS[2].activo, true);
+    // ordenar: subir la tres dos veces y bajar la uno.b; en el borde no cambia nada
+    const mover = async (id, dir) => (await admJson('POST', `/asistente/cuentas/${id}/mover`, { dir })).json();
+    await mover(tres.id, 'arriba');
+    e = await mover(tres.id, 'arriba');
+    assert.deepEqual(e.cuentas.ARS.map((x) => x.alias), ['cuenta.tres', 'cuenta.uno.b', 'cuenta.dos']);
+    e = await mover(tres.id, 'arriba');
+    assert.deepEqual(e.cuentas.ARS.map((x) => [x.alias, x.orden]), [['cuenta.tres', 1], ['cuenta.uno.b', 2], ['cuenta.dos', 3]]);
+    e = await mover(uno.id, 'abajo');
+    assert.deepEqual(e.cuentas.ARS.map((x) => x.alias), ['cuenta.tres', 'cuenta.dos', 'cuenta.uno.b']);
+    await err(await admJson('POST', `/asistente/cuentas/${uno.id}/mover`, { dir: 'costado' }), /arriba/);
+    // la rotación sigue el orden nuevo
+    const a = await acompanante({ nombre: 'Orden' });
+    const p = await pedido(a.id, 'inicial');
+    assert.equal((await asignarCuenta(db, p.id, 'ARS')).alias, 'cuenta.tres');
+    // borrar; id desconocido o inválido
+    assert.equal((await admJson('DELETE', '/asistente/cuentas/' + dos.id)).status, 200);
+    assert.equal((await admJson('DELETE', '/asistente/cuentas/' + dos.id)).status, 404);
+    assert.equal((await admJson('PUT', '/asistente/cuentas/no-es-un-id', { activo: true })).status, 404);
+    e = await (await adm('/asistente')).json();
+    assert.deepEqual(e.cuentas.ARS.map((x) => x.alias), ['cuenta.tres', 'cuenta.uno.b']);
+    assert.deepEqual(e.cuentas.USD.map((x) => x.alias), ['cuenta.uno']);
+    // máximo 20 por moneda
+    for (let i = e.cuentas.ARS.length; i < 20; i++) assert.equal((await post({ moneda: 'ARS', alias: 'lote.' + String(i).padStart(2, '0'), titular: 'Juan Lote' })).status, 200);
+    await err(await post({ moneda: 'ARS', alias: 'lote.extra', titular: 'Juan Lote' }), /Ya hay 20 cuentas en pesos/);
+    await ponerCuentas({ ars: [PESOS] });
   });
 });
 

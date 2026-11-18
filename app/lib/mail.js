@@ -152,7 +152,7 @@ export const plantillas = {
     subject: 'Tu perfil de SexyRose necesita cambios',
     ...emailBasico({
       titulo: `Hola${nombre ? ', ' + nombre : ''}: tu perfil necesita cambios`,
-      parrafos: ['Revisamos tu perfil y todavía no lo podemos publicar.', ...(motivo ? [`Motivo: ${motivo}`] : []), 'Corregí lo que haga falta desde tu panel y volvé a enviarlo a revisión.'],
+      parrafos: ['Revisamos tu perfil y todavía no lo podemos publicar.', ...(motivo ? [`Motivo: ${motivo}`] : []), 'Corregí lo que haga falta desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.'],
       boton: url ? { texto: 'Ir a mi panel', url } : null,
     }),
   }),

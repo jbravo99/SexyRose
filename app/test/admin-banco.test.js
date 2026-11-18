@@ -36,14 +36,15 @@ test('Banco arma las dos tarjetas: Cuenta para las transferencias y Cuenta que r
   assert.match(v, /layout\('creditos'/);
   assert.match(v, /HH\.adminBanco\.cuentaCard\(\)/);
   assert.match(v, /comisionCuentaCard\(\)/);
-  // Transferencias: la misma tarjeta, con la carga de S.asis y el guardado de siempre (PUT /asistente/ajustes)
+  // Transferencias: la tarjeta con la carga de S.asis; desde el 18/11/2026, dos listas de cuentas (pesos y dólares)
   assert.match(cuerpo(ASIS, 'cuentaCard'), /cardCuenta\(d\)/);
   assert.match(ASIS, /HH\.adminBanco = \{ cuentaCard \}/);
   const cc = cuerpo(ASIS, 'cardCuenta');
-  assert.match(cc, /Cuenta para las transferencias/);
-  assert.match(cc, /En pesos/); assert.match(cc, /En dólares/);
-  assert.match(cc, /En un rato te paso los datos/, 'aviso si falta el alias');
-  assert.match(cc, /data-action="asisGuardar"/);
+  assert.match(cc, /Cuentas para las transferencias/);
+  assert.match(cc, /bloqueMoneda\(d, 'ARS'\)/); assert.match(cc, /bloqueMoneda\(d, 'USD'\)/);
+  const bm = cuerpo(ASIS, 'bloqueMoneda');
+  assert.match(bm, /En pesos/); assert.match(bm, /En dólares/);
+  assert.match(bm, /En un rato te paso los datos/, 'aviso si no hay ninguna activa en pesos');
   assert.match(ASIS, /HH\.api\('PUT', '\/asistente\/ajustes'/);
   // Guardar desde Banco vuelve a dibujar la pestaña
   assert.match(ASIS, /enBanco = \(\) => \/\^admin\\\.creditos\\\.banco\$\//);
@@ -78,5 +79,30 @@ test('Mensajería → WhatsApp y Ajustes ya no tienen las tarjetas; queda un enl
   assert.match(cuerpo(ADMIN, 'vVentasContenido'), /href="#admin\.creditos\.banco"/);
   assert.ok(!/cuenta para las transferencias'/.test(ASIS), 'el subtítulo de WhatsApp ya no la nombra');
   const srv = fs.readFileSync(new URL('../lib/asistente.js', import.meta.url), 'utf8');
-  assert.match(srv, /Falta cargar el alias o el titular en pesos \(Admin → Créditos → Banco\)/);
+  assert.match(srv, /No hay ninguna cuenta activa en pesos \(Admin → Créditos → Banco\)/);
+});
+
+// Varias cuentas con rotación (18/11/2026): cada lista con Agregar, Subir/Bajar, Activa/Pausada, Editar y Borrar
+test('Banco: listas de cuentas en pesos y dólares con sus acciones contra /asistente/cuentas', () => {
+  const fila = cuerpo(ASIS, 'filaCuenta');
+  for (const a of ['asisCtaMover', 'asisCtaActivo', 'asisCtaEditar', 'asisCtaBorrar']) assert.ok(fila.includes(`data-action="${a}"`), a);
+  assert.match(fila, /data-dir="arriba"/); assert.match(fila, /data-dir="abajo"/);
+  assert.match(fila, /role="switch"/);
+  assert.match(fila, /Pausada/); assert.match(fila, /Le toca al próximo pedido/);
+  assert.match(cuerpo(ASIS, 'bloqueMoneda'), /data-action="asisCtaNueva" data-m="\$\{m\}"/);
+  assert.match(ASIS, /HH\.api\('POST', '\/asistente\/cuentas'/);
+  assert.match(ASIS, /HH\.api\('PUT', '\/asistente\/cuentas\/' \+ encodeURIComponent\(c\.id\)/);
+  assert.match(ASIS, /'\/asistente\/cuentas\/' \+ encodeURIComponent\(id\) \+ sufijo/);
+  assert.match(ASIS, /cuentaApi\('DELETE'/); assert.match(ASIS, /'\/mover'/);
+  assert.ok(!/asisGuardar|asisUsdAlias/.test(ASIS), 'el formulario de una sola cuenta ya no existe');
+  // Pedidos: la cuenta que se le pasó a cada pedido, en la tabla y en las tarjetas (vía pcMoneda)
+  assert.match(ADMIN, /\+ pcCuentaT\(x\)/);
+  assert.match(cuerpo(ADMIN, 'pcRows'), /pcMoneda\(x\)[\s\S]*pcMoneda\(x\)/);
+});
+
+test('a las acompañantes nunca se les nombra la rotación ni las otras cuentas', () => {
+  for (const f of ['asistente-textos.js', 'asistente-ayuda.js', 'asistente-llm.js']) {
+    const t = fs.readFileSync(new URL('../lib/' + f, import.meta.url), 'utf8');
+    assert.ok(!/rotaci|por turno|varias cuentas|otro alias|otros alias|cuenta pausada/i.test(t), f);
+  }
 });

@@ -777,7 +777,16 @@
   const pcVenceCorto = (x) => (x.estado === 'pendiente' ? ` · <span${new Date(x.vence).getTime() - Date.now() < 6 * 36e5 ? ' style="color:var(--warn)"' : ''}>${quedaTxt(x.vence)}</span> (vence el ${fecha(x.vence)})` : x.estado === 'vencido' ? ` · venció el ${fecha(x.vence)}` : x.confirmado ? ` · ${x.estado === 'confirmado' ? 'confirmado' : 'cerrado'} el ${fecha(x.confirmado)}` : '');
   const pcCreditos = (x) => `<strong data-noi18n>${cred(x.total)}</strong>${cnum(x.bonus) > 0 ? `<div class="tiny muted">${cred(x.base, false)} + ${cred(x.bonus, false)} de regalo</div>` : ''}`;
   // Moneda que eligió en el chat del asistente (solo si se lo preguntó: con la cuenta en dólares cargada)
-  const pcMoneda = (x) => (x.monedaAsistente ? `<div class="tiny"><span class="badge sm ${x.monedaAsistente === 'USD' ? 'info' : 'neutral'}">${icon('whatsapp')} Transfiere en ${x.monedaAsistente === 'USD' ? 'dólares' : 'pesos'}</span></div>` : '');
+  const pcMoneda = (x) => (x.monedaAsistente ? `<div class="tiny"><span class="badge sm ${x.monedaAsistente === 'USD' ? 'info' : 'neutral'}">${icon('whatsapp')} Transfiere en ${x.monedaAsistente === 'USD' ? 'dólares' : 'pesos'}</span></div>` : '')
+    + pcCuentaT(x);
+  // Cuenta que el asistente le pasó para transferir (18/11/2026: rota entre varias cuentas; el pedido se queda con la
+  // suya). Primero la de la moneda elegida; si cambió de moneda, también la otra. Para revisar la cuenta correcta.
+  const pcCuentaT = (x) => {
+    const [a, ...otras] = x.cuentasTransferencia || [];
+    if (!a) return '';
+    const fmt = (c) => `<span class="pa-ctat-a" data-noi18n>${esc(c.alias)}</span> <span class="muted">·</span> <span data-noi18n>${esc(c.titular)}</span>`;
+    return `<div class="tiny pa-ctat" title="Alias que se le pasó para transferir">${icon('wallet')} <span>${fmt(a)}</span>${otras.map((c) => `<div class="muted">antes, en ${c.moneda === 'USD' ? 'dólares' : 'pesos'}: ${fmt(c)}</div>`).join('')}</div>`;
+  };
   function pcBtns(x, compact) {
     const abierto = x.estado === 'pendiente' || x.estado === 'vencido';
     const b = [];
@@ -1986,6 +1995,7 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-movs{max-height:420px;overflow:auto}
 .pa-icbtn{padding:4px 6px;min-height:0}.pa-icbtn svg{width:15px;height:15px}
 .pa-acts .btn{white-space:nowrap}.pa-acts-c{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+.pa-ctat{margin-top:4px}.pa-ctat svg{width:12px;height:12px;vertical-align:-2px}.pa-ctat-a{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
 .pa-pctable td{vertical-align:top}.pa-pctable tr.pa-mainrow>td:first-child{white-space:nowrap}.pa-pcw{max-width:210px;overflow-wrap:anywhere;white-space:normal}.pa-subrow .pa-acts{flex-wrap:wrap;justify-content:flex-end}.pa-pctable tr.has-sub>td{border-bottom:0;padding-bottom:4px}.pa-subrow>td{padding-top:4px}
 .pa-hlrow td{background:color-mix(in srgb,var(--warn) 8%,transparent)}
 .pa-pack{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.pa-pack.off{opacity:.7}

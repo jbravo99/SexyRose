@@ -7,6 +7,14 @@
 // cada movimiento (dos débitos simultáneos no se pasan del saldo).
 // Los créditos no vencen, no se devuelven en dinero y no se transfieren entre cuentas (no hay endpoint para eso).
 import crypto from 'node:crypto';
+import { cuentasDePedidos } from './cuentas-transferencia.js';
+
+// Para la lista del admin: [{ moneda, alias, titular, cuentaId, asignado, enUso }], la de la moneda elegida primero.
+function cuentasTransferencia(c, moneda) {
+  if (!c) return [];
+  const usa = moneda || 'ARS';
+  return [c[usa], c[usa === 'ARS' ? 'USD' : 'ARS']].filter(Boolean).map((x) => ({ ...x, enUso: x.moneda === usa }));
+}
 
 export class CreditoError extends Error {
   constructor(status, message, extra = {}) { super(message); this.status = status; this.expose = true; Object.assign(this, extra); }
@@ -509,7 +517,7 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
        FROM pedidos_creditos pc JOIN cuentas c ON c.id = pc.cuenta_id LEFT JOIN perfiles p ON p.cuenta_id = pc.cuenta_id
        ${conds.length ? 'WHERE ' + conds.join(' AND ') : ''}
        ORDER BY (pc.estado = 'pendiente') DESC, pc.creado DESC LIMIT 500`, args);
-    const [cot, msj] = await Promise.all([cotizacion(), mensajes()]);
+    const [cot, msj, cuentasT] = await Promise.all([cotizacion(), mensajes(), cuentasDePedidos(pool, rows.map((r) => r.id))]);
     const items = rows.map((r) => {
       const ars = arsSugerido(r.paga_usd, cot.arsPorUsd);
       const total = Number(r.base_centavos) + Number(r.bonus_centavos);
@@ -518,6 +526,9 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
         cuenta: { email: r.email, slug: r.slug, displayName: r.display_name || '' },
         // Moneda que eligió en el chat del asistente para transferir (null = no pasó por esa pregunta)
         monedaAsistente: r.moneda_asistente || null,
+        // Cuenta(s) que el asistente le pasó para transferir (copia de ese momento): primero la de la moneda elegida
+        // (pesos si no se le preguntó; enUso), después la de la otra moneda si cambió. [] = no se le pasó ninguna.
+        cuentasTransferencia: cuentasTransferencia(cuentasT.get(r.id), r.moneda_asistente),
         arsSugerido: ars,
         mensajeSugerido: ars === null ? null : rellenar(msj.admin, {
           codigo: r.codigo, pack: r.pack_nombre, creditos: fmtNum(total / 100), monto: fmtNum(r.paga_usd),

@@ -167,7 +167,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       await planes.mail(id, perfil.estado === 'publicado' ? 'Tu perfil está publicado en SexyRose' : 'Verificamos tu identidad',
         perfil.estado === 'publicado'
           ? 'Hola:\n\nRevisamos tu verificación y tu perfil ya está publicado en SexyRose.\n\nSexyRose'
-          : 'Hola:\n\nRevisamos tu verificación: tu identidad quedó verificada. Cuando completes tu perfil y lo envíes a revisión, lo publicamos.\n\nSexyRose');
+          : 'Hola:\n\nRevisamos tu verificación: tu identidad quedó verificada. Cuando completes lo que falta en tu perfil, pasa solo a revisión.\n\nSexyRose');
     } else {
       await planes.mail(id, 'Tu verificación no fue aprobada',
         `Hola:\n\nNo pudimos aprobar tu verificación.\nMotivo: ${motivo}\n\nPodés volver a enviar las fotos de tu documento y la selfie desde tu panel.\n\nSexyRose`);
@@ -195,7 +195,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       publicado: ['Tu perfil está publicado en SexyRose', 'Hola:\n\nTu perfil ya está publicado en SexyRose.\n\nSexyRose'],
       pausado: ['Tu perfil quedó pausado', `Hola:\n\nPausamos tu perfil: por ahora no se ve en el sitio.${motivo ? `\nMotivo: ${motivo}` : ''}\n\nSexyRose`],
       suspendido: ['Tu perfil fue suspendido', `Hola:\n\nSuspendimos tu perfil.\nMotivo: ${motivo}\n\nSi creés que es un error, respondé este email.\n\nSexyRose`],
-      rechazado: ['Tu perfil no fue aprobado', `Hola:\n\nNo pudimos aprobar tu perfil.\nMotivo: ${motivo}\n\nCorregilo desde tu panel y volvé a enviarlo a revisión.\n\nSexyRose`],
+      rechazado: ['Tu perfil no fue aprobado', `Hola:\n\nNo pudimos aprobar tu perfil.\nMotivo: ${motivo}\n\nCorregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.\n\nSexyRose`],
     };
     if (cur.rows[0].estado !== b.estado) await planes.mail(id, ...textos[b.estado]);
     res.json({ ok: true, perfil: rows[0] });

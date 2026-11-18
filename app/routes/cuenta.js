@@ -18,6 +18,7 @@ import { prelanzamientoActivo } from '../lib/prelanzamiento.js';
 import { DestacadaError } from '../lib/destacadas.js';
 import { crearLimitesAuth } from '../lib/seguridad.js';
 import { PERIODOS_CUENTA, numerosCuenta } from '../lib/metricas.js';
+import { revisionAutomatica } from '../lib/revision-auto.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -26,6 +27,8 @@ const TZ = 'America/Argentina/Buenos_Aires';
 // Video de 5 s en la tarjeta: desde Plata (D) en adelante (Planes v2).
 export const PLANES_PREVIEW = PLANES_PREVIEW_V2;
 
+// Mismo contenido aunque las claves vengan en otro orden (jsonb las reordena): para saber si un guardado cambió algo
+const firma = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : x));
 const normEmail = (v) => (typeof v === 'string' ? v.trim().toLowerCase() : '');
 const validEmail = (s) => s.length <= 254 && EMAIL_RE.test(s);
 // Respuesta del registro: igual exista o no el email (no se revela si ya hay una cuenta).
@@ -45,6 +48,9 @@ export function createCuentaRouter(ctx) {
   const r = express.Router();
   const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
   const fail = (res, status, error, extra = {}) => res.status(status).json({ ok: false, error, ...extra });
+  // Envío automático a revisión (18/11/2026, lib/revision-auto.js): después de cada cambio que puede completar un requisito.
+  // cambio = true cuando ella modificó algo (cuenta para volver a revisión después de un rechazo).
+  const revisarAuto = (cuentaId, cambio) => revisionAutomatica(pool, cuentaId, { cambio, notify: ctx.notify ? (t, tipo) => ctx.notify(t, tipo) : null, log });
   // Ingreso: límite duro por IP y por (IP, email); por email solo demora (nadie puede bloquear la cuenta de otra).
   const limLogin = crearLimitesAuth(rl, { prefijo: 'login', dormirImpl: ctx.dormirAuth });
   const limit = (req, res, key, max, windowMs, msg) => {
@@ -129,7 +135,7 @@ export function createCuentaRouter(ctx) {
 
   const construirYo = async (cuentaId) => {
     const [{ rows: cs }, { rows: ps }, { rows: fs }, { rows: hs }, { rows: vs }] = await Promise.all([
-      pool.query('SELECT id, email, email_verificado, estado, creado, nombre_completo FROM cuentas WHERE id = $1', [cuentaId]),
+      pool.query('SELECT id, email, email_verificado, estado, creado, nombre_completo, guia_vista FROM cuentas WHERE id = $1', [cuentaId]),
       pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
       pool.query('SELECT id, url, url_mini, orden, ancho, alto FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]),
       pool.query("SELECT id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira FROM historias WHERE cuenta_id = $1 AND (expira > now() OR estado <> 'listo') ORDER BY creado DESC", [cuentaId]),
@@ -181,6 +187,9 @@ export function createCuentaRouter(ctx) {
         faltantes: faltan.map((x) => x.texto),
         faltantesClaves: faltan.map((x) => x.clave), // en el mismo orden que faltantes: adónde lleva "Completar"
       },
+      // Primeros pasos (18/11/2026): la guía se abre sola al entrar al panel mientras el perfil es un borrador con algo
+      // pendiente y ella todavía no la cerró con "Seguir después" o "Listo" (POST /guia/vista). Los pasos salen de faltantesClaves.
+      guia: { abrir: p.estado === 'borrador' && faltan.length > 0 && !c.guia_vista },
       plan: plan || { efectivo: 'E', suscripciones: [], pedidos: [] },
       limites: { fotos: lim.fotos, videos: lim.videos, historiasDia: lim.historiasDia, destacadas: lim.destacadas, minFotos: MIN_FOTOS, historiasHoy: await historiasHoy(cuentaId) },
       ...(await creditosYo(cuentaId)),
@@ -304,6 +313,7 @@ export function createCuentaRouter(ctx) {
     // El link del email abre la sesión (el registro ya no la abre, para no revelar si el email existía).
     const actual = await auth.cuentaDeReq(req).catch(() => null);
     if (!actual || actual.id !== id) await auth.crearSesion(res, id, req);
+    await revisarAuto(id, true);
     res.json({ ok: true, cuenta: await construirYo(id) });
   }));
 
@@ -364,12 +374,23 @@ export function createCuentaRouter(ctx) {
     await pool.query('UPDATE cuentas SET pass_hash = $2, email_verificado = COALESCE(email_verificado, now()) WHERE id = $1', [ts[0].cuenta_id, hash]);
     await auth.cerrarOtrasSesiones(ts[0].cuenta_id, null);
     await auth.crearSesion(res, ts[0].cuenta_id, req);
+    await revisarAuto(ts[0].cuenta_id, false); // el email queda confirmado: puede completar lo que faltaba
     res.json({ ok: true, cuenta: await construirYo(ts[0].cuenta_id) });
   }));
 
   // --- Con sesión ------------------------------------------------------------------
   r.get('/yo', auth.requireCuenta, ah(async (req, res) => {
-    res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
+    let yo = await construirYo(req.cuenta.id);
+    // Un borrador que ya está completo (por ejemplo, de antes del envío automático) pasa a revisión al abrir el panel.
+    // Un perfil rechazado no: vuelve a revisión solo cuando ella cambia algo.
+    if (yo && yo.perfil.estado === 'borrador' && yo.perfil.completo && (await revisarAuto(req.cuenta.id, false))) yo = await construirYo(req.cuenta.id);
+    res.json({ ok: true, cuenta: yo });
+  }));
+
+  // Primeros pasos: "Seguir después" o "Listo" → la guía ya no se abre sola (se retoma desde el Resumen)
+  r.post('/guia/vista', auth.requireCuenta, ah(async (req, res) => {
+    await pool.query('UPDATE cuentas SET guia_vista = COALESCE(guia_vista, now()) WHERE id = $1', [req.cuenta.id]);
+    res.json({ ok: true });
   }));
 
   // Mis números (16/11/2026): visitas a SU perfil y toques en sus botones de WhatsApp y Telegram (lib/metricas.js).
@@ -423,9 +444,12 @@ export function createCuentaRouter(ctx) {
     if (v.error) return fail(res, 400, v.error);
     await pool.query('UPDATE perfiles SET datos = $2, actualizado = now() WHERE cuenta_id = $1', [req.cuenta.id, v.datos]);
     if (rows[0].estado === 'publicado') invalidarSitio();
+    await revisarAuto(req.cuenta.id, firma(v.datos) !== firma(rows[0].datos || {}));
     res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
   }));
 
+  // Ya no hay botón "Enviar a revisión" (18/11/2026: el perfil pasa solo, ver revisarAuto). Queda solo para una pestaña
+  // abierta con la versión anterior del panel: hace lo mismo que el envío automático (borrador o rechazado, completo).
   r.post('/perfil/enviar-revision', conCuentaActiva, ah(async (req, res) => {
     const yo = await construirYo(req.cuenta.id);
     const p = yo.perfil;
@@ -433,8 +457,7 @@ export function createCuentaRouter(ctx) {
     if (p.estado === 'publicado' || p.estado === 'en_revision') return res.json({ ok: true, cuenta: yo });
     if (p.pausadoPorSaldo) return fail(res, 409, 'Tu perfil está pausado porque no alcanzaron los créditos para renovar tu plan. Cargá créditos (se reanuda solo) o desactivá la renovación automática para seguir con Bronce.');
     if (!p.completo) return fail(res, 400, 'Todavía falta completar algunas cosas.', { faltantes: p.faltantes });
-    await pool.query("UPDATE perfiles SET estado = 'en_revision', motivo_rechazo = NULL, actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
-    if (ctx.notify) ctx.notify('Hay un perfil nuevo para revisar en el admin.', 'perfil_revisar');
+    await revisarAuto(req.cuenta.id, true);
     res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
   }));
 
@@ -470,6 +493,7 @@ export function createCuentaRouter(ctx) {
     );
     await pool.query('UPDATE perfiles SET actualizado = now() WHERE cuenta_id = $1', [req.cuenta.id]);
     invalidarSitio();
+    await revisarAuto(req.cuenta.id, true);
     const x = rows[0];
     res.status(201).json({ ok: true, foto: { id: x.id, url: x.url, urlMini: x.url_mini, orden: x.orden, ancho: x.ancho, alto: x.alto } });
   }));
@@ -480,6 +504,7 @@ export function createCuentaRouter(ctx) {
     if (!rows[0]) return fail(res, 404, 'Foto no encontrada.');
     await storage.del(rows[0].clave); await storage.del(rows[0].clave_mini);
     invalidarSitio();
+    await revisarAuto(req.cuenta.id, true);
     res.json({ ok: true });
   }));
 
@@ -491,6 +516,7 @@ export function createCuentaRouter(ctx) {
     if (ids.length !== mias.size || new Set(ids).size !== ids.length || ids.some((x) => !mias.has(x))) return fail(res, 400, 'La lista tiene que incluir todas tus fotos, una vez cada una.');
     await pool.query('UPDATE fotos f SET orden = o.ord - 1 FROM unnest($2::uuid[]) WITH ORDINALITY AS o(id, ord) WHERE f.id = o.id AND f.cuenta_id = $1', [req.cuenta.id, ids]);
     invalidarSitio();
+    await revisarAuto(req.cuenta.id, true);
     res.json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
   }));
 
@@ -543,6 +569,7 @@ export function createCuentaRouter(ctx) {
       await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, dorso_ruta, formato, consentimiento_at, nombre_completo) VALUES ($1, $2, $3, $4, 2, now(), $5)', [req.cuenta.id, selfie, frente, dorso, nombreCompleto]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
       if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.', 'verificacion');
+      await revisarAuto(req.cuenta.id, true);
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });
     }));
 

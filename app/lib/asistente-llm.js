@@ -13,7 +13,7 @@ export const MAX_VUELTAS = 4;
 export class LlmError extends Error {}
 
 // Qué cubre cada tema de "ayuda" (para que el modelo elija bien).
-const TEMA_DESCRIPCION = 'registro = crear la cuenta; verificacion = verificación de identidad; publicar = enviar el perfil a revisión; '
+const TEMA_DESCRIPCION = 'registro = crear la cuenta; verificacion = verificación de identidad; publicar = cómo se publica el perfil (qué hace falta y la revisión); '
   + 'fotos = reglas de las fotos; perfil = datos de Mi perfil (nombre, tipo, ubicación, presentación, idiomas, servicios, contacto); '
   + 'historias = historias y destacadas; videos = videos, Shorts y video de la tarjeta; planes, semanas, creditos, destacado; '
   + 'contenido = venta de contenido (packs) y pedidos personalizados; mis_numeros = estadísticas de su perfil; avisos = avisos del panel; '

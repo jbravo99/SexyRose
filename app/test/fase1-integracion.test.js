@@ -104,8 +104,7 @@ async function cuentaEnRevision() {
   c.selfie = await jpeg({ r: 10, g: 200, b: 30 });
   r = await c.subir('/api/cuenta/verificacion', { selfie: c.selfie, documento: await jpeg({ r: 30, g: 30, b: 200 }), dorso: await jpeg({ r: 200, g: 200, b: 30 }), consentimiento: '1', nombreCompleto: 'Zz Integración Prueba' });
   assert.ok(r.status === 200 || r.status === 201, JSON.stringify(r.body));
-  r = await c.json('POST', '/api/cuenta/perfil/enviar-revision', {});
-  assert.equal(r.status, 200, JSON.stringify(r.body));
+  // Envío automático (18/11/2026): con la verificación enviada ya está completo y pasó solo a revisión
   assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
   return c;
 }
@@ -222,8 +221,10 @@ describe('integración cuentas + admin + planes', () => {
     assert.equal((await new Cliente().get('/api/cuenta/planes')).status, 401);
     assert.equal((await new Cliente().get('/api/cuenta/creditos')).status, 401);
 
-    // Pausada por falta de saldo: no puede volver a publicarse mandando el perfil a revisión.
+    // Pausada por falta de saldo: no vuelve a revisión sola (ni con un cambio) ni con el endpoint viejo.
     await db.query("UPDATE perfiles SET estado = 'pausado', pausado_por = 'sin_saldo' WHERE cuenta_id = $1", [c.id]);
+    r = await c.json('PUT', '/api/cuenta/perfil', { titular: 'Otro titular' });
+    assert.equal(r.body.cuenta.perfil.estado, 'pausado');
     r = await c.json('POST', '/api/cuenta/perfil/enviar-revision', {});
     assert.equal(r.status, 409);
     assert.match(r.body.error, /créditos/);

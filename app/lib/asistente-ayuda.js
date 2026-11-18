@@ -13,9 +13,10 @@
 export const AYUDA = Object.freeze({
   registro: 'Para publicar tu perfil:\n'
     + '1. Creá tu cuenta en {url}/registro con tu email y una contraseña de al menos 10 caracteres, y confirmá tu email con el link que te mandamos.\n'
-    + '2. Completá tu perfil y subí al menos 3 fotos.\n'
+    + '2. Completá tus datos y subí al menos 3 fotos.\n'
     + '3. Mandá las fotos de tu documento y una selfie para verificar tu identidad: nunca se publican.\n'
-    + '4. Enviá tu perfil a revisión.\n'
+    + '4. Cuando está todo completo, tu perfil pasa solo a revisión. No hace falta tocar ningún botón.\n'
+    + 'La primera vez que entrás al panel te guiamos paso a paso ({url}/panel/primeros-pasos).\n'
     + 'Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.',
 
   verificacion: 'La verificación de identidad se manda desde {url}/panel/verificacion con tu nombre completo, como figura en tu documento (no se publica), y tres fotos:\n'
@@ -25,10 +26,11 @@ export const AYUDA = Object.freeze({
     + 'Confirmamos que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten, y se borran a los 3 meses. '
     + 'Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.',
 
-  publicar: 'Para enviar tu perfil a revisión tiene que estar completo: nombre artístico, género, fecha de nacimiento, provincia y ciudad, '
-    + 'tu WhatsApp o tu usuario de Telegram, al menos 3 fotos, tu email confirmado y la verificación de identidad enviada. '
-    + 'En {url}/panel ves qué te falta y el botón "Enviar a revisión". Revisamos tu perfil y tu verificación y te avisamos por email. '
-    + 'Si lo rechazamos, revisá el motivo, corregí lo necesario y volvé a enviarlo. '
+  publicar: 'Tu perfil pasa solo a revisión cuando está completo: nombre artístico, género, fecha de nacimiento, provincia y ciudad, '
+    + 'tu WhatsApp o tu usuario de Telegram, al menos 3 fotos, tu email confirmado y la verificación de identidad enviada. No hay que tocar ningún botón. '
+    + 'En {url}/panel ves qué te falta, con un botón "Completar" en cada cosa, y en {url}/panel/primeros-pasos lo hacés paso a paso. '
+    + 'Revisamos tu perfil y tu verificación y te avisamos por email. '
+    + 'Si lo rechazamos, revisá el motivo y corregí lo necesario: cuando guardes los cambios, vuelve solo a revisión. '
     + 'Con "Ocultar mi perfil" lo sacás del sitio cuando quieras, sin perder nada.',
 
   fotos: 'Fotos reales, con la cara visible. Mínimo 3; el máximo depende de tu plan. '
@@ -125,6 +127,7 @@ export const AYUDA = Object.freeze({
     + '- Crear cuenta: {url}/registro\n'
     + '- Ingresar: {url}/ingresar\n'
     + '- Tu panel: {url}/panel\n'
+    + '- Primeros pasos (tu perfil paso a paso): {url}/panel/primeros-pasos\n'
     + '- Mis números: {url}/panel/numeros\n'
     + '- Mi perfil: {url}/panel/perfil\n'
     + '- Fotos (y videos): {url}/panel/fotos\n'

@@ -2,8 +2,14 @@
 // WhatsApp). Se monta bajo `${A}/api` (Basic Auth del admin; lo que modifica, con apiPost: JSON + X-SR-Admin: 1 +
 // mismo origen). La captación tiene su propio router (routes/admin-captacion.js).
 //   GET  /asistente                                     → ajustes, estado de WhatsApp (QR en SVG si espera escaneo), IA,
-//                                                         número que usa el botón de comprar créditos (botonCreditos)
-//   PUT  /asistente/ajustes            {activo, alias, titular, aliasUsd?, titularUsd?} (sin los de dólares, quedan los guardados)
+//                                                         número que usa el botón de comprar créditos (botonCreditos),
+//                                                         cuentas para las transferencias { ARS: [...], USD: [...] }
+//   PUT  /asistente/ajustes            {activo}  (prendido/apagado; alias/titular viejos se ignoran)
+//   Cuentas para las transferencias (Créditos → Banco, 18/11/2026; lib/cuentas-transferencia.js). Todas → estado():
+//   POST   /asistente/cuentas              {moneda: 'ARS'|'USD', alias, titular, activo?}
+//   PUT    /asistente/cuentas/:id          {alias?, titular?, activo?} (editar, pausar/reanudar)
+//   POST   /asistente/cuentas/:id/mover    {dir: 'arriba'|'abajo'}
+//   DELETE /asistente/cuentas/:id          (los pedidos que ya la recibieron la conservan)
 //   POST /asistente/desvincular                         → el agente cierra la sesión de WhatsApp (pide QR nuevo)
 //   GET  /asistente/conversaciones?estado=bot|humano|captacion&q= → lista (teléfono enmascarado, cuenta, último mensaje,
 //                                                         estado, captación)
@@ -13,6 +19,7 @@
 import express from 'express';
 import QRCode from 'qrcode';
 import { LATIDO_VIVO_MS, leerAjustes, telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
+import { borrarCuenta, crearCuenta, cuentasDePedidos, editarCuenta, listarCuentas, moverCuenta } from '../lib/cuentas-transferencia.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const QR_VIGENTE_MS = 60 * 1000;
@@ -27,7 +34,7 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
   r.use('/asistente', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
   async function estado() {
-    const [aj, wa] = await Promise.all([leerAjustes(pool), pool.query('SELECT * FROM asistente_whatsapp WHERE id = 1')]);
+    const [aj, wa, cuentas] = await Promise.all([leerAjustes(pool), pool.query('SELECT * FROM asistente_whatsapp WHERE id = 1'), listarCuentas(pool)]);
     const w = wa.rows[0] || { estado: 'desconectado' };
     const vivo = Boolean(w.latido && Date.now() - new Date(w.latido).getTime() < LATIDO_VIVO_MS);
     let qrSvg = null;
@@ -42,6 +49,7 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
     const vinculado = String(w.numero || '').replace(/\D/g, '');
     return {
       ajustes: aj,
+      cuentas,
       whatsapp: {
         // Sin latido reciente el agente no está corriendo: se muestra "desconectado" aunque la fila diga otra cosa.
         estado: vivo ? w.estado : 'desconectado',
@@ -65,14 +73,33 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
   r.get('/asistente', ah(async (req, res) => res.json(await estado())));
 
   r.put('/asistente/ajustes', apiPost, ah(async (req, res) => {
-    // Quien manda solo {activo, alias, titular} (como antes de la cuenta en dólares) no borra la cuenta en dólares.
-    const b = body(req);
-    const actual = (b.aliasUsd === undefined || b.titularUsd === undefined) ? await leerAjustes(pool) : null;
-    const v = validarAjustes(actual ? { ...b, aliasUsd: b.aliasUsd ?? actual.aliasUsd, titularUsd: b.titularUsd ?? actual.titularUsd } : b);
+    // Solo {activo}. Se suma a lo guardado: las claves viejas (alias, titular…) quedan como estaban por si hubiera que
+    // volver a la versión anterior; las cuentas se cargan en sus listas (abajo).
+    const v = validarAjustes(body(req));
     if (v.error) throw he(400, v.error);
     await pool.query(
       `INSERT INTO ajustes (clave, valor, actualizado) VALUES ('asistente', $1::jsonb, now())
-       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor, actualizado = now()`, [JSON.stringify(v.valor)]);
+       ON CONFLICT (clave) DO UPDATE SET valor = ajustes.valor || EXCLUDED.valor, actualizado = now()`, [JSON.stringify(v.valor)]);
+    res.json(await estado());
+  }));
+
+  // ---------- Cuentas para las transferencias (dos listas: pesos y dólares; el asistente rota entre las activas) ----------
+  r.post('/asistente/cuentas', apiPost, ah(async (req, res) => {
+    await crearCuenta(pool, body(req));
+    log('asistente: cuenta para transferencias agregada');
+    res.json(await estado());
+  }));
+  r.put('/asistente/cuentas/:id', apiPost, ah(async (req, res) => {
+    await editarCuenta(pool, uuid(req.params.id), body(req));
+    res.json(await estado());
+  }));
+  r.post('/asistente/cuentas/:id/mover', apiPost, ah(async (req, res) => {
+    await moverCuenta(pool, uuid(req.params.id), body(req).dir);
+    res.json(await estado());
+  }));
+  r.delete('/asistente/cuentas/:id', apiPost, ah(async (req, res) => {
+    await borrarCuenta(pool, uuid(req.params.id));
+    log('asistente: cuenta para transferencias borrada');
     res.json(await estado());
   }));
 
@@ -126,10 +153,17 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       pool.query(`SELECT pc.id, pc.codigo, pc.pack_nombre, pc.estado, pc.creado, pc.comprobante_ruta IS NOT NULL AS comprobante, pc.moneda_asistente
                   FROM asistente_conv_pedidos cp JOIN pedidos_creditos pc ON pc.id = cp.pedido_id WHERE cp.conversacion_id = $1 ORDER BY pc.creado DESC`, [id]),
     ]);
+    const cuentasP = await cuentasDePedidos(pool, p.rows.map((x) => x.id));
     res.json({
       conversacion: conversacionJson(rows[0]),
       mensajes: m.rows.reverse().map((x) => ({ id: String(x.id), dir: x.dir, origen: x.origen, tipo: x.tipo, texto: x.texto, archivo: Boolean(x.media_ruta), creado: x.creado })),
-      pedidos: p.rows.map((x) => ({ id: x.id, codigo: x.codigo, pack: x.pack_nombre, estado: x.estado, creado: x.creado, comprobante: x.comprobante, moneda: x.moneda_asistente || null })),
+      // cuenta = la que se le pasó para transferir en la moneda elegida (pesos si no se le preguntó); null = ninguna
+      pedidos: p.rows.map((x) => {
+        const c = cuentasP.get(x.id) || {};
+        const k = c[x.moneda_asistente || 'ARS'] || null;
+        return { id: x.id, codigo: x.codigo, pack: x.pack_nombre, estado: x.estado, creado: x.creado, comprobante: x.comprobante, moneda: x.moneda_asistente || null,
+          cuenta: k ? { moneda: k.moneda, alias: k.alias, titular: k.titular } : null };
+      }),
     });
   }));
 

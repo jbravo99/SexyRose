@@ -429,7 +429,7 @@ describe('captación: importar, cola y estados', () => {
 
 describe('captación en el agente', () => {
   test('prender el asistente y vincular el chip', async () => {
-    let r = await admJson('PUT', '/asistente/ajustes', { activo: true, alias: 'sexyrose.pagos', titular: 'Juan Pérez' });
+    let r = await admJson('PUT', '/asistente/ajustes', { activo: true });
     assert.equal(r.status, 200);
     assert.ok(await hasta(() => SOCK), 'socket');
     await hasta(async () => (await (await adm('/asistente')).json()).whatsapp.estado === 'esperando_qr');
@@ -617,8 +617,8 @@ describe('lo que se movió de Ajustes', () => {
     // la vinculación de Telegram y los avisos siguen en la misma API
     const tg = await (await adm('/integraciones/telegram')).json();
     assert.ok(tg.vinculado && Array.isArray(tg.avisos));
-    // el ajuste del asistente (cuenta para transferir) sigue igual
-    assert.equal((await (await adm('/asistente')).json()).ajustes.alias, 'sexyrose.pagos');
+    // el ajuste del asistente sigue igual (las cuentas para transferir están en sus listas: Créditos → Banco)
+    assert.equal((await (await adm('/asistente')).json()).ajustes.activo, true);
   });
 
   test('los avisos de Telegram del asistente dicen "Admin → Mensajería"', async () => {

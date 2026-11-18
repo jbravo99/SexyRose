@@ -62,19 +62,26 @@ describe('Mi perfil: ruta, barra inferior, menú y su perfil público (prod-siti
   test('aviso cuando hoy no se ve: los textos del panel; con la home provisoria, "abrimos muy pronto"', () => {
     const f = trozo('  function yoAviso() {', '\n  }\n');
     const ESTADO_PERFIL = trozo('  const ESTADO_PERFIL = {', '\n  };\n');
-    const ctx = { S: { yo: { perfil: {} } }, VP: { data: { publico: false } }, pre: false, icon: () => '' };
+    const ctx = { S: { yo: { perfil: {} } }, VP: { data: { publico: false } }, pre: false, icon: () => '', esc: (x) => String(x), GUIA_GO: '#panel.primeros-pasos',
+      completarBtn: (clave, fuera) => (clave && fuera ? '<a>Completar</a>' : '') };
     vm.createContext(ctx);
-    vm.runInContext(ESTADO_PERFIL + 'const preOn = () => this.pre;\n' + f + '\nthis.aviso = yoAviso;', ctx);
+    const faltaLista = trozo('  const faltaLista = ', ';\n'); const guiaAplica = trozo('  const guiaAplica = ', ';\n');
+    vm.runInContext(ESTADO_PERFIL + 'const preOn = () => this.pre;\n' + faltaLista + guiaAplica + f + '\nthis.aviso = yoAviso;', ctx);
     const txt = (perfil, publico = false, pre = false) => { ctx.S.yo.perfil = perfil; ctx.VP.data.publico = publico; ctx.pre = pre; return ctx.aviso().replace(/<[^>]+>/g, ''); };
     assert.equal(txt({ estado: 'publicado' }, true), '', 'se ve: sin aviso');
     assert.equal(txt({ estado: 'publicado' }, false, true), 'Todavía no se ve en el sitio: abrimos muy pronto.');
-    assert.equal(txt({ estado: 'borrador' }, false, true), 'Completá tu perfil y envialo a revisión. Nadie lo ve todavía.', 'lo que tiene que hacer va primero');
+    assert.equal(txt({ estado: 'borrador' }, false, true), 'Completá lo que falta y tu perfil pasa solo a revisión. Nadie lo ve todavía.', 'lo que tiene que hacer va primero');
+    // Con algo pendiente (18/11/2026): además, qué falta (con "Completar") y "Seguir con los pasos"
+    ctx.S.yo.perfil = { estado: 'borrador', faltantes: ['Subí al menos 3 fotos (tenés 1).'], faltantesClaves: ['fotos'] }; ctx.VP.data.publico = false;
+    const conFalta = ctx.aviso();
+    assert.ok(conFalta.includes('<li>') && conFalta.includes('Subí al menos 3 fotos (tenés 1).') && conFalta.includes('Completar') && conFalta.includes('Seguir con los pasos'));
     assert.equal(txt({ estado: 'en_revision' }), 'Estamos revisando tu perfil y tu verificación. Te avisamos por email.');
     assert.equal(txt({ estado: 'publicado', oculto: true }), 'Tu perfil está oculto: nadie lo ve en el sitio.');
     assert.equal(txt({ estado: 'publicado', pausadoPorSaldo: true }), 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.');
     assert.equal(txt({ estado: 'publicado' }), 'Tu perfil no se ve en el sitio por ahora.');
     // Todos con inglés y portugués (los del panel ya estaban en el diccionario)
-    for (const t of ['Tu perfil está oculto: nadie lo ve en el sitio.', 'Tu perfil no se ve en el sitio por ahora.', 'Completá tu perfil y envialo a revisión. Nadie lo ve todavía.']) assert.ok(sitio.includes('"' + t + '": ['), t);
+    for (const t of ['Tu perfil está oculto: nadie lo ve en el sitio.', 'Tu perfil no se ve en el sitio por ahora.']) assert.ok(sitio.includes('"' + t + '": ['), t);
+    assert.ok(sitio.includes("'Completá lo que falta y tu perfil pasa solo a revisión. Nadie lo ve todavía.': ['"));
     assert.ok(sitio.includes("['Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.', '"));
   });
 

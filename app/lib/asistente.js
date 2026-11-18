@@ -11,7 +11,7 @@
 // Logs sin datos personales (ni teléfonos, ni textos, ni emails).
 import crypto from 'node:crypto';
 import {
-  CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, hayCuentaUsd, leerAjustes, sinContacto, telefonoComparable,
+  CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, leerAjustes, sinContacto, telefonoComparable,
 } from './asistente-comun.js';
 import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
@@ -20,6 +20,7 @@ import {
   RESPUESTA_NO_ESCRIBIR, RESPUESTA_ORIGEN, contactoPorTelefono, esMensajeCaptacion, leerAjustesCaptacion, respuestaInvitada,
 } from './captacion.js';
 import { tipoPorFirma } from './privado.js';
+import { asignarCuenta, cuentaDelPedido, hayCuentaActiva } from './cuentas-transferencia.js';
 import { arsSugerido, fmtCreditos } from './creditos.js';
 import { PLAN_NOMBRE } from './planes.js';
 import { ventaContenidoDisponible } from './contenido.js';
@@ -29,7 +30,7 @@ const EXT_OK = ['jpg', 'png', 'webp', 'pdf', 'heic'];
 const fmtNum = (n) => { const x = Math.round(Number(n) * 100) / 100; return Number.isInteger(x) ? String(x) : x.toFixed(2); };
 const fmtArs = (n) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
 const fmtFecha = (d) => (d ? new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'numeric', year: 'numeric' }).format(new Date(d)) : null);
-const ESTADO_PERFIL = { borrador: 'Borrador (todavía no se envió a revisión)', en_revision: 'En revisión', publicado: 'Publicado', rechazado: 'Rechazado', pausado: 'Pausado', suspendido: 'Suspendido' };
+const ESTADO_PERFIL = { borrador: 'Borrador (le falta completar algo; pasa solo a revisión cuando esté completo)', en_revision: 'En revisión', publicado: 'Publicado', rechazado: 'Rechazado', pausado: 'Pausado', suspendido: 'Suspendido' };
 const ESTADO_VERIF = { sin_enviar: 'Sin enviar', pendiente: 'Enviada, en revisión', verificada: 'Verificada', rechazada: 'Rechazada' };
 const SIN_IA_CADA_MS = 30 * 60 * 1000;
 const MAX_RESPUESTA_MONEDA = 80; // "en pesos", "mejor en dólares": más largo (o ambiguo) lo resuelve la IA
@@ -145,31 +146,40 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
 
   const basePedido = (conv, p) => ({ codigo: p.codigo, pack: packDe(p, conv.idioma), creditos: creditosDe(p) });
   // moneda 'USD' = cuenta en dólares (monto = lo que paga en USD); si no, la de pesos con el monto pasado a pesos.
+  // La cuenta sale de la lista de esa moneda, por turno entre las activas (lib/cuentas-transferencia.js), y el pedido
+  // se queda con ella: pedirlos de nuevo devuelve la misma, aunque después se pause o se borre. A la acompañante solo
+  // le llegan el alias y el titular de su pedido.
   async function textoDatos(conv, p, moneda) {
-    const [aj, cot] = await Promise.all([leerAjustes(pool), creditos.cotizacion()]);
     const base = basePedido(conv, p);
-    if (moneda === 'USD' && hayCuentaUsd(aj)) {
-      return { completo: true, texto: texto(conv.idioma, 'datosPedidoUsd', { ...base, usd: fmtNum(p.paga_usd), alias: aj.aliasUsd, titular: aj.titularUsd }) };
+    const enUnRato = (motivo) => ({ completo: false, motivo, texto: texto(conv.idioma, 'datosEnUnRato', base) });
+    if (moneda === 'USD') {
+      const c = await asignarCuenta(pool, p.id, 'USD');
+      if (!c) return enUnRato('No hay ninguna cuenta activa en dólares (Admin → Créditos → Banco).');
+      return { completo: true, texto: texto(conv.idioma, 'datosPedidoUsd', { ...base, usd: fmtNum(p.paga_usd), alias: c.alias, titular: c.titular }) };
     }
+    const cot = await creditos.cotizacion();
     const ars = arsSugerido(p.paga_usd, cot.arsPorUsd);
-    if (!aj.alias || !aj.titular || !ars) return { completo: false, texto: texto(conv.idioma, 'datosEnUnRato', base) };
-    return { completo: true, texto: texto(conv.idioma, 'datosPedido', { ...base, ars: fmtArs(ars), usd: fmtNum(p.paga_usd), alias: aj.alias, titular: aj.titular }) };
+    if (!ars) return enUnRato('Falta la cotización del dólar (Admin → Precios).');
+    const c = await asignarCuenta(pool, p.id, 'ARS');
+    if (!c) return enUnRato('No hay ninguna cuenta activa en pesos (Admin → Créditos → Banco).');
+    return { completo: true, texto: texto(conv.idioma, 'datosPedido', { ...base, ars: fmtArs(ars), usd: fmtNum(p.paga_usd), alias: c.alias, titular: c.titular }) };
   }
   async function mandarDatos(conv, p, moneda = 'ARS') {
     const d = await textoDatos(conv, p, moneda);
     await responder(conv, d.texto);
     if (!d.completo) {
       await avisarJuan(conv, `Asistente: no pude pasar los datos para transferir del pedido ${p.codigo}.`,
-        'Falta cargar el alias o el titular en pesos (Admin → Créditos → Banco) o la cotización (Admin → Precios). Pasale el monto y los datos vos.', 'asistente_derivacion');
+        `${d.motivo} Pasale el monto y los datos vos.`, 'asistente_derivacion');
     }
     return d.completo;
   }
+  // Se puede transferir en dólares: hay alguna cuenta activa en dólares, o a este pedido ya se le pasó una (la conserva).
+  const usdPosible = async (p) => (await hayCuentaActiva(pool, 'USD')) || Boolean(await cuentaDelPedido(pool, p.id, 'USD'));
   // Datos para pagar un pedido pendiente. Sin cuenta en dólares: los de pesos, como siempre (no se guarda moneda).
   // Con cuenta en dólares: la moneda pedida o la que ya eligió para ese pedido; si no hay ninguna, pregunta
   // "¿Vas a transferir en pesos o en dólares?" y queda esperando la respuesta. Devuelve 'pregunta' | 'datos'.
   async function ofrecerPago(conv, p, { moneda = null } = {}) {
-    const aj = await leerAjustes(pool);
-    if (!hayCuentaUsd(aj)) { await mandarDatos(conv, p, 'ARS'); return 'datos'; }
+    if (!(await usdPosible(p))) { await mandarDatos(conv, p, 'ARS'); return 'datos'; }
     const m = moneda === 'ARS' || moneda === 'USD' ? moneda : (p.moneda_asistente || null);
     if (!m) {
       await pool.query('UPDATE asistente_conversaciones SET pago_pedido_id = $2, pago_esperando_moneda = true, actualizado = now() WHERE id = $1', [conv.id, p.id]);
@@ -193,11 +203,10 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (m !== 'ARS' && m !== 'USD') return false;
     const c = await releer(conv.id);
     if (!c.pago_pedido_id) return false;
-    const aj = await leerAjustes(pool);
-    if (!hayCuentaUsd(aj)) return false;
     const { rows } = await pool.query('SELECT * FROM pedidos_creditos WHERE id = $1', [c.pago_pedido_id]);
     const p = rows[0];
     if (!p || p.estado !== 'pendiente' || p.comprobante_ruta || !(await autorizado(c, p))) return false;
+    if (!(await usdPosible(p))) return false;
     // Ya eligió esa misma moneda y no se le preguntó nada: no repite los datos (lo charla la IA)
     if (!c.pago_esperando_moneda && p.moneda_asistente === m) return false;
     await elegirMoneda(c, p, m);
@@ -247,17 +256,28 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     const cot = await creditos.cotizacion();
     const ars = arsSugerido(p.paga_usd, cot.arsPorUsd);
     const nombre = await nombreCuenta(p.cuenta_id);
+    const cuentas = await cuentaDelPedido(pool, p.id);
     // Con moneda elegida por el asistente, el monto en esa moneda; si no (sin cuenta en dólares), como siempre.
     const monto = p.moneda_asistente === 'USD' ? `en dólares: USD ${fmtNum(p.paga_usd)}`
       : p.moneda_asistente === 'ARS' ? `en pesos: ${ars ? `ARS ${fmtArs(ars)} (USD ${fmtNum(p.paga_usd)})` : `USD ${fmtNum(p.paga_usd)}, sin cotización para pasarlo a pesos`}`
         : `USD ${fmtNum(p.paga_usd)}${ars ? ` · ARS ${fmtArs(ars)}` : ''}`;
     const caption = `Comprobante recibido por WhatsApp\nPedido ${p.codigo} · ${packDe(p, 'es')}\n${creditosDe(p)} créditos · ${monto}\n`
-      + `Cuenta: ${nombre || 'sin nombre artístico'}\nAcreditá solo cuando el pago esté en tu cuenta.`;
+      + `Cuenta: ${nombre || 'sin nombre artístico'}\n${lineaCuentaTransferencia(cuentas, p.moneda_asistente)}\n`
+      + 'Acreditá solo cuando el pago esté en tu cuenta.';
     await telegram.enviar({
       texto: caption, tipo: 'asistente_comprobante',
       botones: [[{ text: 'Acreditar', callback_data: 'sr:a:' + ta }, { text: 'Rechazar', callback_data: 'sr:r:' + tr }]],
       archivo: { buffer: buf, ext, nombre: `comprobante-${p.codigo}.${ext}` },
     });
+  }
+  // Para el aviso de Telegram: a qué cuenta tenía que transferir (la de la moneda elegida; si cambió, también la otra)
+  function lineaCuentaTransferencia(c, moneda) {
+    const usa = moneda || 'ARS';
+    const otra = usa === 'ARS' ? 'USD' : 'ARS';
+    const fmt = (x) => `${x.alias} · ${x.titular}`;
+    if (!c[usa] && !c[otra]) return 'Alias que se le pasó: ninguno (no recibió los datos por el asistente)';
+    if (!c[usa]) return `Alias que se le pasó (en ${otra === 'USD' ? 'dólares' : 'pesos'}): ${fmt(c[otra])}`;
+    return `Alias que se le pasó: ${fmt(c[usa])}${c[otra] ? ` (antes, en ${otra === 'USD' ? 'dólares' : 'pesos'}: ${fmt(c[otra])})` : ''}`;
   }
   async function manejarArchivo(conv, ev, msg) {
     const mime = String((ev.media && ev.media.mime) || '').toLowerCase();
@@ -429,8 +449,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         if (!p || !(await autorizado(conv, p))) return { resultado: { error: 'No hay un pedido con ese código en este chat.' } };
         if (p.estado !== 'pendiente') return { resultado: { error: `El pedido está ${p.estado}: no se paga.` } };
         const moneda = input.moneda === 'USD' || input.moneda === 'ARS' ? input.moneda : null;
-        const aj = await leerAjustes(pool);
-        if (moneda === 'USD' && !hayCuentaUsd(aj)) return { resultado: { error: 'No hay una cuenta en dólares: por ahora solo se puede transferir en pesos.' } };
+        if (moneda === 'USD' && !(await usdPosible(p))) return { resultado: { error: 'No hay una cuenta en dólares: por ahora solo se puede transferir en pesos.' } };
         const r = await ofrecerPago(conv, p, { moneda });
         if (r === 'pregunta') return { resultado: { enviado: true, nota: 'Ya se le preguntó en un mensaje aparte si va a transferir en pesos o en dólares. No repitas la pregunta.' } };
         return { resultado: { enviado: true, nota: 'Ya se le mandaron los datos en un mensaje aparte. No los repitas.' } };
