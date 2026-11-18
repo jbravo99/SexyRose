@@ -836,6 +836,10 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
   `crear_pedido` (reusa `creditos.crearPedido`): **solo chat identificado** — por el teléfono del perfil
   (`datos.whatsapp`, comparado sin el 9 de los celulares de Argentina; tiene que coincidir una sola cuenta activa) o por
   el código de email. Sin identificar → `{ error: 'chat_no_identificado' }`.
+- `motivo_eliminacion()` (18/11/2026, ver "Admin: eliminar la cuenta de una acompañante"): sin parámetros; busca en
+  `cuentas_eliminadas` la fila más reciente cuyo `whatsapp` coincide con el número de ESTE chat (sin el 9 de los
+  celulares de Argentina) → `{ encontrado: true, fecha, motivo }` (solo eso: ni email ni nombres) o
+  `{ encontrado: false, instruccion }`. No hace falta identificar el chat (la cuenta ya no existe).
 - `derivar_a_juan(motivo)` → chat `humano` + aviso. `alerta(tipo, motivo)` (menores, trata, abuso, amenazas, legal) →
   aviso urgente, chat `humano`, respuesta neutra.
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
@@ -1479,3 +1483,56 @@ subida: WebP cuadrado sin EXIF, una chica no se agranda, reemplazar / pasar a un
 el archivo, inválida o chica → 400 sin archivo; elemento de otra destacada, de otra acompañante, inexistente, sin
 terminar o destacada ajena → 404/400; video listo usa su portada; borrar el elemento elegido → automática; borrar la
 destacada con portada de elemento o subida → se borra todo).
+
+## Admin: eliminar la cuenta de una acompañante — desde el 18/11/2026 (pedido de Juan)
+
+Juan: "Debo poder eliminar un perfil si quiero, lo cual le enviará un correo al usuario informando que su cuenta ha sido
+eliminada; si desea saber los motivos, que consulte por WhatsApp. Al eliminar el perfil, yo como admin deberé escribir el
+motivo por si se pregunta luego, manteniendo un log en texto que ocupe prácticamente nada de lugar."
+
+- **Qué se borra** (`lib/cuentas-eliminadas.js` → `eliminar`): la fila de `cuentas`, que arrastra por `ON DELETE CASCADE`
+  perfil, fotos, videos, clip de la tarjeta (`previews`), historias, destacadas y sus elementos, verificaciones,
+  sesiones, tokens de email, pedidos de plan, suscripciones, créditos (libro, saldo, pedidos, renovaciones pendientes,
+  notificaciones), Destacados, packs (`contenido_items`) y sus ventas (`ventas_contenido`), pedidos personalizados con
+  sus chats y contenidos, conexión de Mercado Pago y Mis números. Los créditos se pierden (los Términos ya dicen que no
+  se devuelven). Archivos, después de confirmar la transacción (si uno falla se registra en el log y sigue): públicos
+  (bunny.net o disco local: fotos, historias, videos y portadas, clip, elementos y portadas de destacadas), privados
+  (selfie, frente y dorso del documento, contenidos de pedidos personalizados, comprobantes de pedidos) y temporales de
+  videos en proceso.
+- **Qué queda** (porque ya lo hacía el código, no se agregó nada): los chats del asistente de WhatsApp
+  (`asistente_conversaciones.cuenta_id` pasa a NULL; se limpian solos a los 90 días), el contacto de captación
+  (`cuenta_id` NULL), el registro de acciones del admin (`admin_acciones`, con el id de la cuenta como texto) y los totales
+  diarios del sitio (sin datos personales). Más la fila nueva en `cuentas_eliminadas`.
+- **Registro** — migración `db/260-cuentas-eliminadas.sql`: `cuentas_eliminadas (id, fecha, email, whatsapp, nombre_artistico,
+  nombre_completo, motivo, por)`. `whatsapp` = `+dígitos` del perfil (o NULL); `nombre_completo` = el aprobado o, si no
+  hay, el del último envío; `por` = usuario del admin. Sin fotos ni documentos. Sin vencimiento. No bloquea nada: con el
+  mismo email o WhatsApp se puede volver a registrar (y si se la vuelve a eliminar, queda otra fila).
+- **Email** (Mailgun, `emailBasico`, en español: las cuentas no guardan idioma). Asunto "Tu cuenta de SexyRose fue
+  eliminada". Texto: "Tu cuenta de SexyRose fue eliminada. Tu perfil ya no se ve en el sitio y no vas a poder volver a
+  entrar con esta cuenta." + con número del sitio (el del chip del asistente, `creditos.contacto().whatsapp`): "Si querés
+  saber el motivo, escribinos por WhatsApp al +<número>[, desde el número que tenías en tu perfil]: https://wa.me/<número>";
+  sin número: "Si querés saber el motivo, escribinos a contacto@sexyrose.net." Pie: "Este es un mensaje automático de
+  SexyRose." El motivo no va en el email. Si el email falla, la cuenta queda eliminada igual (`mail: false` + log).
+- **API** (`routes/admin-cuentas-eliminadas.js` bajo `${A}/api`, Basic Auth; escritura con JSON + X-SR-Admin + mismo origen):
+  - `POST /acompanantes/:id/eliminar { motivo }` → `{ ok, registro, mail }`. Motivo de 10 a 500 caracteres (saltos de
+    línea normalizados) → si no, 400 y no se toca nada. Id inválido, inexistente o ya eliminada → 404.
+  - `GET /cuentas-eliminadas?q=` → `{ items: [{ id, fecha, email, whatsapp, nombreArtistico, nombreCompleto, motivo, por }],
+    total }`, la más nueva primero (hasta 500); `q` busca en email y nombres y, con 4 dígitos o más, en el WhatsApp.
+- **Admin** (`mvp/src/prod-admin-eliminadas.js`): en la ficha de la acompañante, tarjeta Cuenta → «Eliminar cuenta» (rojo)
+  → ventana «Eliminar cuenta» con «Motivo» obligatorio (10–500, contador; ayuda "Escribilo como se lo dirías a ella: si
+  pregunta por WhatsApp, el asistente se lo puede leer.") → «Continuar» → «¿Eliminar la cuenta?» (no se puede deshacer,
+  qué se borra, el motivo, «Volver» / «Eliminar definitivamente») → toast «Cuenta eliminada: le avisamos por email» (o
+  «…El email de aviso no salió.») → vuelve a Acompañantes. Menú: Acompañantes → **Cuentas eliminadas** (`#admin.eliminadas`):
+  búsqueda por email, WhatsApp o nombre; tabla (fecha y quién, nombres, contacto, motivo) y tarjetas en el celular.
+- **Asistente**: herramienta `motivo_eliminacion` (arriba). Instrucciones: si pregunta por qué se eliminó su cuenta, usarla;
+  si la encuentra, decir fecha y motivo tal como están escritos, breve y amable, sin opiniones, consejos para apelar ni
+  detalles internos; si no, decir que desde ese chat no se puede ver y `derivar_a_juan`; nunca datos de otra cuenta u otro
+  número. Ayuda `ocultar_o_baja` suma: "Si eliminamos tu cuenta y querés saber el motivo, preguntalo en este chat desde el
+  número de WhatsApp que tenías en tu perfil."
+
+Pruebas: `app/test/eliminar-cuenta.test.js` (todas las filas y archivos en disco local, sesión cerrada, chat del
+asistente queda sin cuenta, contenido exacto del registro, email con y sin número y sin el motivo, email que falla, motivo
+obligatorio y límites, solo admin, 404 al repetir, lista y búsqueda, volver a registrarse con el mismo email);
+`app/test/asistente.test.js` → "motivo de una cuenta eliminada" (mismo número sí; otro número, sin número o con datos
+escritos por la persona no; la más reciente; la IA recibe solo fecha y motivo); `app/test/nombre-completo.test.js` (el
+asistente solo lee `fecha, motivo` de `cuentas_eliminadas`).

@@ -144,6 +144,7 @@ async function limpiar() {
   await db.query('DELETE FROM asistente_salida');
   await db.query('DELETE FROM asistente_auth');
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzasis-%'");
+  await db.query("DELETE FROM cuentas_eliminadas WHERE email LIKE 'zzasis-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('asistente', 'telegram', 'cotizacion')");
   // El número del chip vinculado lo usa el botón de comprar créditos: no queda para las otras pruebas
   await db.query('UPDATE asistente_whatsapp SET numero = NULL WHERE id = 1');
@@ -775,6 +776,78 @@ describe('cuenta en dólares (16/11/2026)', () => {
     await llegaFoto(tel);
     const tg = await hasta(() => TG.archivos.find((x) => x.caption.includes(p.codigo)));
     assert.match(tg.caption, /10 créditos · USD 10 · ARS 14\.500\n/);
+  });
+});
+
+// Cuenta eliminada por el admin (18/11/2026): el asistente puede decir el motivo SOLO al número de WhatsApp que tenía
+// en su perfil (busca por el número del chat; la herramienta no recibe datos) y solo fecha y motivo.
+describe('motivo de una cuenta eliminada (18/11/2026)', () => {
+  const MOTIVO = 'Las fotos de tu perfil no eran tuyas.';
+  const eliminarPorAdmin = async (id, motivo) => {
+    const r = await admJson('POST', `/acompanantes/${id}/eliminar`, { motivo });
+    assert.equal(r.status, 200, await r.clone().text());
+  };
+
+  test('la herramienta no recibe datos y las instrucciones dicen cómo usarla', () => {
+    const h = HERRAMIENTAS.find((x) => x.name === 'motivo_eliminacion');
+    assert.ok(h, 'falta la herramienta');
+    assert.deepEqual(h.input_schema, { type: 'object', properties: {}, additionalProperties: false });
+    for (const captacion of [false, true]) {
+      const p = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion });
+      assert.ok(p.includes('el motivo de una cuenta eliminada'));
+      assert.ok(p.includes('usá "motivo_eliminacion" (busca solo por el número de este chat'));
+      assert.ok(p.includes('decile la fecha y el motivo tal como está escrito, en pocas palabras y con amabilidad, sin agregar opiniones, consejos para apelar ni detalles internos'));
+      assert.ok(p.includes('Si no lo encuentra, decile que desde este chat no podés ver ese dato y usá "derivar_a_juan"'));
+      assert.ok(p.includes('Nunca des datos de otra cuenta ni de otro número.'));
+    }
+    assert.match(textoAyuda('ocultar_o_baja', SITE), /Si eliminamos tu cuenta y querés saber el motivo, preguntalo en este chat desde el número de WhatsApp que tenías en tu perfil\./);
+  });
+
+  test('desde el número de su perfil: fecha y motivo tal cual; desde otro número, nada', async () => {
+    const tel = '5491155550091';
+    const c = await acompanante({ whatsapp: '+54 11 5555-0091', nombre: 'Lola' });
+    await eliminarPorAdmin(c.id, MOTIVO);
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ($1, $2) RETURNING id", [`${tel}@s.whatsapp.net`, tel]);
+    const r = await agente.asistente.herramienta(k.id, 'motivo_eliminacion', {});
+    assert.deepEqual(Object.keys(r.resultado).sort(), ['encontrado', 'fecha', 'motivo'], 'solo fecha y motivo: ni email ni nombres');
+    assert.equal(r.resultado.encontrado, true);
+    assert.equal(r.resultado.motivo, MOTIVO);
+    assert.match(r.resultado.fecha, /^\d{1,2}\/\d{1,2}\/\d{4}$/);
+    // Otro número (aunque escriba el de ella): no encuentra nada ni deja ver el motivo
+    const otro = '5491155550092';
+    const { rows: [k2] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ($1, $2) RETURNING id", [`${otro}@s.whatsapp.net`, otro]);
+    const r2 = await agente.asistente.herramienta(k2.id, 'motivo_eliminacion', { telefono: tel, email: c.email, numero: '+54 11 5555-0091' });
+    assert.equal(r2.resultado.encontrado, false);
+    assert.ok(!JSON.stringify(r2).includes(MOTIVO));
+    assert.match(r2.resultado.instruccion, /derivar_a_juan/);
+    // Un chat sin número (WhatsApp con identificador oculto): tampoco
+    const { rows: [k3] } = await db.query("INSERT INTO asistente_conversaciones (jid) VALUES ('99887766@lid') RETURNING id");
+    assert.equal((await agente.asistente.herramienta(k3.id, 'motivo_eliminacion', {})).resultado.encontrado, false);
+  });
+
+  test('si el mismo número tuvo más de una cuenta eliminada, la más reciente', async () => {
+    const tel = '5491155550093';
+    const a = await acompanante({ whatsapp: '+5491155550093', nombre: 'Uno' });
+    await eliminarPorAdmin(a.id, 'Primer motivo, el más viejo.');
+    const b = await acompanante({ whatsapp: '+54 9 11 5555 0093', nombre: 'Dos' });
+    await eliminarPorAdmin(b.id, 'Segundo motivo, el más nuevo.');
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ($1, $2) RETURNING id", [`${tel}@s.whatsapp.net`, tel]);
+    assert.equal((await agente.asistente.herramienta(k.id, 'motivo_eliminacion', {})).resultado.motivo, 'Segundo motivo, el más nuevo.');
+  });
+
+  test('en una conversación: la IA usa la herramienta y recibe solo fecha y motivo', async () => {
+    const tel = '5491155550094';
+    const c = await acompanante({ whatsapp: '+5491155550094', nombre: 'Mora' });
+    await eliminarPorAdmin(c.id, MOTIVO);
+    const desde = LLM.llamadas.length;
+    LLM.guion = (body, i) => (i === desde + 1 ? usarHerramienta('motivo_eliminacion', {})
+      : { stop_reason: 'end_turn', content: [{ type: 'text', text: `Tu cuenta se eliminó por este motivo: ${MOTIVO}` }] });
+    await llega(tel, '¿por qué eliminaron mi cuenta?');
+    assert.ok(await hasta(() => (ultimoA(tel) || '').includes(MOTIVO)));
+    const enviadoALaIa = JSON.stringify(LLM.llamadas.slice(desde));
+    assert.ok(enviadoALaIa.includes(MOTIVO));
+    assert.ok(!enviadoALaIa.includes(c.email) && !enviadoALaIa.includes('Mora'), 'ni email ni nombre');
+    LLM.guion = null;
   });
 });
 

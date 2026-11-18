@@ -127,7 +127,7 @@
   const tab = (id, label, ic) => ({ id, label, icon: ic, ...(SECCIONES[id] ? { go: goSec(id) } : {}) });
   HH.adminMenu = [
     { grupo: 'General', tabs: [tab('resumen', 'Resumen', 'dashboard')] },
-    { grupo: 'Acompañantes', tabs: [tab('acompanantes', 'Acompañantes', 'users'), tab('reportes', 'Reportes', 'flag'), tab('clientes', 'Interesados', 'user')] },
+    { grupo: 'Acompañantes', tabs: [tab('acompanantes', 'Acompañantes', 'users'), tab('reportes', 'Reportes', 'flag'), tab('clientes', 'Interesados', 'user'), tab('eliminadas', 'Cuentas eliminadas', 'trash')] },
     { grupo: 'Cobros', tabs: [tab('creditos', 'Créditos', 'wallet'), tab('mensajeria', 'Mensajería', 'whatsapp'), tab('planes', 'Planes', 'card'), tab('destacados', 'Destacados', 'trending'), tab('contenido', 'Contenido', 'bag')] },
     { grupo: 'Sitio', tabs: [tab('ubicaciones', 'Ubicaciones', 'pin'), tab('categorias', 'Servicios', 'heart'), tab('textos', 'Textos', 'edit'), tab('seo', 'SEO', 'search')] },
     { grupo: 'Configuración', tabs: [tab('precios', 'Precios', 'dollar'), tab('ajustes', 'Ajustes', 'settings')] },
@@ -443,7 +443,7 @@
   const nombreDe = (list, v) => { const x = list.find((y) => y.id === v); return x ? x.nombre : String(v); };
   const lugar = (ciudad, provincia) => [ubNombre(ciudad), ubNombre(provincia)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ');
 
-  const PATHS = { geo: '/georef', vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos' };
+  const PATHS = { geo: '/georef', vc: '/contenido/resumen', vcv: '/contenido/ventas', ac: '/acompanantes', sus: '/suscripciones?estado=todas', stars: '/stars', aj: '/ajustes', ub: '/ubicaciones', cat: '/categorias', int: '/intereses', ven: '/planes/vencen?dias=7', pau: '/planes/pausadas', dst: '/destacados', dstT: '/destacados?estado=todos', elim: '/cuentas-eliminadas' };
   // Para prod-admin-integraciones.js (Ajustes → cuentas de Mercado Pago)
   HH.adminRecargar = (k) => load(k, PATHS[k], true);
   HH.adminVc = () => S.vc;
@@ -677,6 +677,7 @@
             <div><dt>Mayor de edad (declarado)</dt><dd>${c.mayorEdadDeclarada ? 'Sí' : 'No'}${c.aceptoTerminos ? ' · aceptó los términos el ' + fecha(c.aceptoTerminos) : ''}</dd></div>
             ${p.slug ? `<div><dt>Dirección</dt><dd><code>/perfil/${esc(p.slug)}</code></dd></div>` : ''}
           </dl>
+          <div class="pa-zona-peligro"><span class="tiny muted">Borra la cuenta y todo su contenido. No se puede deshacer.</span><button type="button" class="btn danger sm" data-action="elEliminar" data-id="${esc(c.id)}" data-n="${esc(datos.displayName || '')}" data-e="${esc(c.email || '')}">${icon('trash')} Eliminar cuenta</button></div>
         </section>`;
       body = `<div class="pa-detail">
           <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}${HH.paFichaExtra ? HH.paFichaExtra(id) : ''}</div>

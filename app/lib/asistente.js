@@ -487,6 +487,20 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         log('asistente: pedido de créditos creado por chat');
         return { resultado: { ok: true, codigo: pedido.codigo, nota: r === 'pregunta' ? 'Ya se le preguntó en un mensaje aparte si va a transferir en pesos o en dólares. No repitas la pregunta.' : 'Ya se le mandaron los datos para pagar en un mensaje aparte. No los repitas.' } };
       }
+      case 'motivo_eliminacion': {
+        // Solo por el número de ESTE chat (nunca un dato que escriba la persona) y solo fecha y motivo: ni email ni
+        // nombres. La más reciente si hubo más de una con ese número.
+        const tel = telefonoComparable(conv.telefono);
+        const { rows } = tel.length >= 8
+          ? await pool.query(
+            `SELECT fecha, motivo FROM cuentas_eliminadas
+              WHERE whatsapp IS NOT NULL AND regexp_replace(regexp_replace(whatsapp, '\\D', '', 'g'), '^549', '54') = $1
+              ORDER BY fecha DESC, id DESC LIMIT 1`, [tel])
+          : { rows: [] };
+        if (!rows[0]) return { resultado: { encontrado: false, instruccion: 'Desde este chat no se puede ver ese dato: decíselo y usá derivar_a_juan.' } };
+        log('asistente: se informó el motivo de una cuenta eliminada');
+        return { resultado: { encontrado: true, fecha: fmtFecha(rows[0].fecha), motivo: rows[0].motivo } };
+      }
       case 'derivar_a_juan':
         await derivar(conv, String(input.motivo || 'Pidió hablar con una persona'));
         return { resultado: { ok: true }, detener: true };

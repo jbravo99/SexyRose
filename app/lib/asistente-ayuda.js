@@ -94,7 +94,8 @@ export const AYUDA = Object.freeze({
     + 'Tocando un aviso vas a la sección que corresponde. Los que no leíste se marcan con un punto y podés marcarlos todos como leídos.',
 
   ocultar_o_baja: 'Ocultar tu perfil: con tu perfil publicado, en el resumen de tu panel ({url}/panel) está "Ocultar mi perfil". Lo sacás del sitio cuando quieras, sin perder nada, y lo volvés a mostrar desde el mismo lugar.\n'
-    + 'Dar de baja la cuenta: se pide por email a contacto@sexyrose.net. Si pedís cerrarla, borramos tus datos, salvo lo que la ley obligue a conservar.',
+    + 'Dar de baja la cuenta: se pide por email a contacto@sexyrose.net. Si pedís cerrarla, borramos tus datos, salvo lo que la ley obligue a conservar.\n'
+    + 'Si eliminamos tu cuenta y querés saber el motivo, preguntalo en este chat desde el número de WhatsApp que tenías en tu perfil.',
 
   como_funciona: 'Así te ven los clientes en {url}:\n'
     + '- Inicio: las acompañantes de cada ciudad, las historias del día y las Stars del mes. Se puede filtrar por ciudad, género, tipo (Acompañantes o Virtuales) y servicios. Con un plan más alto aparecés más arriba.\n'

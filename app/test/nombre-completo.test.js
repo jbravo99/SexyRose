@@ -235,6 +235,10 @@ describe('nombre completo: nunca es público', () => {
     for (const f of ['asistente.js', 'asistente-llm.js', 'asistente-ayuda.js', 'asistente-app.js']) {
       const src = await fs.readFile(path.join(HERE, '..', 'lib', f), 'utf8').catch(() => '');
       assert.ok(!/nombre_completo|nombreCompleto/.test(src), f);
+      // Cuentas eliminadas (18/11/2026): el asistente lee solo fecha y motivo (ni email ni nombres)
+      const lecturas = src.match(/SELECT[^`'"]*FROM cuentas_eliminadas/g) || [];
+      for (const q of lecturas) assert.match(q, /^SELECT fecha, motivo FROM cuentas_eliminadas$/, f);
+      if (f === 'asistente.js') assert.equal(lecturas.length, 1, 'la herramienta motivo_eliminacion');
     }
     assert.match(textoAyuda('verificacion', 'https://sexyrose.test'), /nombre completo, como figura en tu documento \(no se publica\)/);
   });

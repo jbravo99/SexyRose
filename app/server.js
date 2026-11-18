@@ -43,6 +43,8 @@ import { createCuentaContenidoRouter } from './routes/cuenta-contenido.js';
 import { createContenidoSitioRouter, createMpWebhookRouter } from './routes/contenido.js';
 import { createAdminContenidoRouter } from './routes/admin-contenido.js';
 import { createAdminModeracionRouter } from './routes/admin-moderacion.js';
+import { createAdminCuentasEliminadasRouter } from './routes/admin-cuentas-eliminadas.js';
+import { createCuentasEliminadas } from './lib/cuentas-eliminadas.js';
 import { createTelegram } from './lib/telegram.js';
 import { createMpCuentas } from './lib/mp-cuentas.js';
 import { createAdminIntegracionesRouter } from './routes/admin-integraciones.js';
@@ -1164,6 +1166,13 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   // Moderación de pedidos personalizados y chats, interesados, créditos de todas y ficha completa (admin, 13/11/2026)
   const moderacionAdmin = createAdminModeracionRouter({ pool, storage, contenido, destacadas, apiPost, adminUser: config.adminUser || 'admin', invalidar: () => invalidarSitio(), log });
   admin.use('/api', moderacionAdmin.router);
+  // Eliminar la cuenta de una acompañante (todo, con sus archivos) + registro de cuentas eliminadas (db/260)
+  const cuentasEliminadas = createCuentasEliminadas({
+    pool, storage, privado, videos, creditos, sendMail: sendMailBase, emailBasico, contactEmail: config.contactEmail,
+    invalidar: () => { invalidarCatalogos(); invalidarSitio(); }, log,
+  });
+  ctx.cuentasEliminadas = cuentasEliminadas;
+  admin.use('/api', createAdminCuentasEliminadasRouter({ eliminadas: cuentasEliminadas, apiPost, adminUser: config.adminUser || 'admin', log }));
   admin.use('/api', createAdminIntegracionesRouter({ telegram, mpCuentas, creditos, apiPost, log })); // Telegram, cuentas de Mercado Pago, WhatsApp
   admin.use('/api', createAdminAsistenteRouter({ pool, privado, apiPost, log })); // Admin → Mensajería (asistente de WhatsApp)
   admin.use('/api', createAdminCaptacionRouter({ pool, apiPost, log })); // Admin → Mensajería → Captación
