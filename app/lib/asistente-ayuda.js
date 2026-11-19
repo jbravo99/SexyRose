@@ -9,6 +9,10 @@
 // "contenido" tiene dos textos: AYUDA.contenido (cómo empezar a vender) solo si la venta de contenido está habilitada
 // en el sitio (lib/contenido.js → ajuste venta_contenido_estado, lo publica el app); si no, CONTENIDO_PROXIMAMENTE
 // (decisión de Juan, 17/11/2026: "próximamente", sin fechas ni motivos).
+//
+// "apertura" tiene dos textos: con la home provisoria prendida (lib/prelanzamiento.js), APERTURA_PRELANZAMIENTO (decisión
+// de Juan, 19/11/2026: "a partir de diciembre", igual que la invitación de captación; es la única fecha que da el
+// asistente); con el sitio abierto, AYUDA.apertura.
 
 export const AYUDA = Object.freeze({
   registro: 'Para publicar tu perfil:\n'
@@ -123,6 +127,8 @@ export const AYUDA = Object.freeze({
     + 'Cuántos packs podés tener a la venta depende de tu plan: lo ves en esa misma sección, junto con tus ventas. '
     + 'Con Oro o Star y Mercado Pago conectado, los clientes también te pueden hacer pedidos personalizados desde tu perfil: los ves en {url}/panel/pedidos.',
 
+  apertura: 'SexyRose ya está abierto: los perfiles publicados se ven en {url}.',
+
   enlaces: 'Enlaces del sitio:\n'
     + '- Crear cuenta: {url}/registro\n'
     + '- Ingresar: {url}/ingresar\n'
@@ -149,10 +155,17 @@ export const AYUDA = Object.freeze({
 // "contenido" mientras la venta de contenido no está habilitada en el sitio.
 export const CONTENIDO_PROXIMAMENTE = 'La venta de contenido todavía no está disponible en SexyRose: va a estar próximamente.';
 
+// "apertura" mientras la home provisoria está prendida (el sitio todavía no muestra perfiles al público).
+export const APERTURA_PRELANZAMIENTO = 'SexyRose abre al público a partir de diciembre. Mientras tanto ya podés crear tu perfil en {url}/registro y dejarlo listo para estar desde el primer día. '
+  + 'Hasta que abramos, los perfiles no se ven en el sitio: vos podés ver cómo queda el tuyo con la vista previa de tu panel.';
+
 export const TEMAS_AYUDA = Object.freeze(Object.keys(AYUDA));
 // contenidoDisponible: solo cuenta para el tema "contenido" (sin el dato, "próximamente").
-export function textoAyuda(tema, siteUrl, { contenidoDisponible = false } = {}) {
+// prelanzamiento: solo cuenta para el tema "apertura" (sin el dato, el texto de la home provisoria).
+export function textoAyuda(tema, siteUrl, { contenidoDisponible = false, prelanzamiento = true } = {}) {
   if (!Object.hasOwn(AYUDA, tema)) return null;
-  const t = tema === 'contenido' && contenidoDisponible !== true ? CONTENIDO_PROXIMAMENTE : AYUDA[tema];
+  let t = AYUDA[tema];
+  if (tema === 'contenido' && contenidoDisponible !== true) t = CONTENIDO_PROXIMAMENTE;
+  if (tema === 'apertura' && prelanzamiento !== false) t = APERTURA_PRELANZAMIENTO;
   return t.replace(/\{url\}/g, String(siteUrl || '').replace(/\/+$/, ''));
 }

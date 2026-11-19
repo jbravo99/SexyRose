@@ -37,7 +37,7 @@
     desconectado: ['Desconectado', 'danger'], apagado: ['Apagado', 'neutral'],
   };
   const ORIGEN = { bot: 'Asistente', juan: 'Vos (desde el teléfono)', captacion: 'Invitación (captación)', usuario: '' };
-  const CAP_ESTADO = { pendiente: 'Pendiente', abierto: 'Abierto', enviado: 'Enviado', respondio: 'Respondió', se_registro: 'Se registró', no_escribir: 'No escribir', revisar: 'Revisar', descartado: 'Descartado', en_sitio: 'Ya está en el sitio' };
+  const CAP_ESTADO = { pendiente: 'Pendiente', abierto: 'Abierto', enviado: 'Enviado', respondio: 'Respondió', se_registro: 'Se registró', no_escribir: 'No escribir', revisar: 'Revisar', descartado: 'Descartado', en_sitio: 'Ya está en el sitio', no_disponible: 'No disponible' };
   const ESTADO_PED = { pendiente: ['Esperando pago', 'warn'], confirmado: ['Acreditado', 'ok'], vencido: ['Vencido', 'neutral'], cancelado: ['Cancelado', 'neutral'], rechazado: ['Rechazado', 'danger'] };
   const estadoChat = (c) => (c.estado === 'humano' ? ['Persona', 'warn'] : c.silenciadoHasta ? ['En silencio', 'info'] : ['Asistente', 'ok']);
   const chip = (c) => { const [l, cls] = estadoChat(c); return `<span class="badge ${cls}">${l}</span>`; };

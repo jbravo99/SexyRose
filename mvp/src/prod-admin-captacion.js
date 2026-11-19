@@ -26,7 +26,7 @@
   const ESTADO = {
     pendiente: ['Pendiente', 'neutral'], abierto: ['Abierto', 'info'], enviado: ['Enviado', 'info'], respondio: ['Respondió', 'warn'],
     se_registro: ['Se registró', 'ok'], no_escribir: ['No escribir', 'danger'], revisar: ['Revisar', 'warn'], descartado: ['Descartado', 'neutral'],
-    en_sitio: ['Ya está en el sitio', 'ok'],
+    en_sitio: ['Ya está en el sitio', 'ok'], no_disponible: ['No disponible', 'neutral'],
   };
   const badgeE = (e) => { const [l, c] = ESTADO[e] || [e, 'neutral']; return `<span class="badge ${c}">${esc(l)}</span>`; };
   const nombre = (c) => (c.nombres && c.nombres.length ? c.nombres.slice(0, 3).join(' · ') + (c.nombres.length > 3 ? ` +${c.nombres.length - 3}` : '') : 'Sin nombre');
@@ -47,6 +47,7 @@
         <div class="row cap-acc" style="gap:6px;flex-wrap:wrap">
           ${c.waUrl ? `<a class="btn sm" href="${esc(c.waUrl)}" target="_blank" rel="noopener noreferrer" data-cap-abrir="${esc(c.id)}">${icon('whatsapp')} Abrir chat</a>` : ''}
           <button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="enviado">${icon('check')} Marcar enviado</button>
+          <button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="no_disponible">${icon('x')} No disponible</button>
         </div>
       </div>`;
   }
@@ -112,6 +113,8 @@
       const b = [];
       if (c.conversacion) b.push(`<a class="btn ghost sm" href="#admin.mensajeria.conversaciones.${esc(c.conversacion)}" data-go="#admin.mensajeria.conversaciones.${esc(c.conversacion)}">${icon('chat')} Chat</a>`);
       if (c.cuenta) b.push(`<a class="btn ghost sm" href="#admin.acompanantes.${esc(c.cuenta.id)}" data-go="#admin.acompanantes.${esc(c.cuenta.id)}">${icon('user')} Perfil</a>`);
+      if (['pendiente', 'abierto', 'enviado'].includes(c.estado)) b.push(`<button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="no_disponible">No disponible</button>`);
+      if (c.estado === 'no_disponible') b.push(`<button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="pendiente">Volver a la cola</button>`);
       if (['pendiente', 'abierto', 'enviado', 'respondio'].includes(c.estado)) b.push(`<button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="no_escribir">No escribir</button>`);
       return b.join('');
     };
@@ -152,7 +155,7 @@
           ${stat('Respondieron', (n.respondieron || 0).toLocaleString('es-AR'), n.tasaRespuesta != null ? `${String(n.tasaRespuesta).replace('.', ',')} % de ${n.contactados} ${HH.plural(n.contactados, 'contactado', 'contactados')}` : 'todavía sin envíos')}
           ${stat('Se registraron', (n.registrados || 0).toLocaleString('es-AR'), `${n.registradosInvitados || 0} después de la invitación`, n.registrados ? 'pa-ok' : '')}
           ${stat('Para revisar', (e.revisar || 0).toLocaleString('es-AR'), e.revisar ? 'no entran en la cola' : 'ninguno', e.revisar ? 'pa-warn' : '')}
-          ${stat('No escribir', (e.no_escribir || 0).toLocaleString('es-AR'), `${e.descartado || 0} ${HH.plural(e.descartado || 0, 'descartado', 'descartados')} · ${e.en_sitio || 0} ya en el sitio`)}
+          ${stat('No escribir', (e.no_escribir || 0).toLocaleString('es-AR'), `${e.descartado || 0} ${HH.plural(e.descartado || 0, 'descartado', 'descartados')} · ${e.no_disponible || 0} no ${HH.plural(e.no_disponible || 0, 'disponible', 'disponibles')} · ${e.en_sitio || 0} ya en el sitio`)}
         </div>`;
       const vaciar = n.total ? `<section class="card stack" style="gap:10px"><div class="card-title">${icon('trash')} Vaciar lista</div>
           <p class="small muted" style="margin:0">Borra todos los contactos que no se registraron (${(n.total - (n.registrados || 0)).toLocaleString('es-AR')}). No se puede deshacer.</p>
@@ -208,7 +211,7 @@
       const hacer = () => {
         el.disabled = true;
         HH.api('POST', '/captacion/' + encodeURIComponent(id) + '/estado', { estado: e })
-          .then(() => { HH.toast({ enviado: 'Marcado como enviado', revisado: 'Revisado: vuelve a la cola', descartado: 'Descartado', no_escribir: 'No se le va a escribir más', pendiente: 'Vuelve a la cola' }[e] || 'Listo', { type: 'ok' }); recargarTodo(); })
+          .then(() => { HH.toast({ enviado: 'Marcado como enviado', revisado: 'Revisado: vuelve a la cola', descartado: 'Descartado', no_escribir: 'No se le va a escribir más', no_disponible: 'Marcado como no disponible', pendiente: 'Vuelve a la cola' }[e] || 'Listo', { type: 'ok' }); recargarTodo(); })
           .catch((x) => { el.disabled = false; fail(x); });
       };
       if (e === 'revisado' && el.dataset.joven) {

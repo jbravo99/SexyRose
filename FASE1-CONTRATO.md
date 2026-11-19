@@ -1040,9 +1040,14 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
   (409) hasta que Juan lo revise uno por uno: "Revisado: es mayor de edad" (pide confirmar; → pendiente, `revisado`)
   o "Descartar". Una planilla nueva que trae esas palabras para un contacto pendiente no revisado lo pasa a revisar.
 - **Estados** (`captacion_contactos.estado`): pendiente, abierto (tocó "Abrir chat"), enviado, respondio, se_registro,
-  no_escribir, revisar, descartado, en_sitio. Cambios a mano (`POST /captacion/:id/estado`): enviado (desde
-  pendiente/abierto), revisado, descartado, no_escribir, pendiente (deshacer abierto/enviado). "No escribir" no vuelve
-  nunca a la cola.
+  no_escribir, revisar, descartado, en_sitio, no_disponible (desde el 19/11/2026, migración 310: el número ya no tiene
+  WhatsApp). Cambios a mano (`POST /captacion/:id/estado`): enviado (desde pendiente/abierto), revisado, descartado,
+  no_escribir, no_disponible (desde pendiente/abierto/enviado, nunca desde revisar; borra abierto y enviado: no cuenta
+  como enviado ni para el cupo del día; botón "No disponible" en la cola y en la lista), pendiente (deshacer
+  abierto/enviado/no_disponible: "Volver a la cola"). "No escribir" no vuelve nunca a la cola.
+- **Invitación por defecto** (19/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
+  contesta lo mismo con el tema de ayuda `apertura` ("a partir de diciembre" mientras la home provisoria está
+  prendida; con el sitio abierto, que ya está abierto).
 - **Los N del día** (`GET /captacion` → `cola`): N = `ajustes.captacion.porDia` (1–200, por defecto 30) menos los enviados
   hoy (hora de Argentina); primero los "abiertos" sin enviar, después más avisos, después ciudad. Cada fila: nombres,
   ciudad, categoría, sitios y avisos, teléfono enmascarado, "Abrir chat" (`https://wa.me/<número>?text=<invitación>` en

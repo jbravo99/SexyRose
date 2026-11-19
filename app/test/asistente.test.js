@@ -14,7 +14,8 @@ import { start } from '../server.js';
 import { startAgente } from '../agente.js';
 import { createAsistente } from '../lib/asistente.js';
 import { createLlm, HERRAMIENTAS, MODELO_DEFAULT, promptSistema } from '../lib/asistente-llm.js';
-import { AYUDA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/asistente-ayuda.js';
+import { APERTURA_PRELANZAMIENTO, AYUDA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/asistente-ayuda.js';
+import { invalidarCatalogos } from '../lib/catalogos.js';
 import { AJUSTE_ESTADO, ventaContenidoDisponible } from '../lib/contenido.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
 import { telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
@@ -1255,7 +1256,7 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
     /claude/i, /haiku/i, /baileys/i, /hetzner/i, /servidor/i, /contenedor/i, /docker/i, /captaci[oó]n/i, /\badmin/i, /alerta/i,
     /aviso a juan/i, /\bjuan\b/i, /\bbot de telegram\b/i, /georef/i, /marketplace/i, /client.?secret/i, /webhook/i, /credencial/i,
     /skokka/i, /simpleescort/i, /argxp/i, /otros sitios/i, /m[eé]tricas/i, /moderador/i, /estrategia/i, /abogad/i];
-  const TODOS = () => [...Object.entries(AYUDA), ['contenido (próximamente)', CONTENIDO_PROXIMAMENTE]];
+  const TODOS = () => [...Object.entries(AYUDA), ['contenido (próximamente)', CONTENIDO_PROXIMAMENTE], ['apertura (home provisoria)', APERTURA_PRELANZAMIENTO]];
 
   test('cada tema devuelve texto, con la dirección del sitio y de un largo de WhatsApp', () => {
     for (const t of TEMAS_NUEVOS) assert.ok(TEMAS_AYUDA.includes(t), `falta el tema ${t}`);
@@ -1334,5 +1335,36 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
     // los demás temas no dependen de esto
     assert.equal((await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'perfil' })).resultado.texto, textoAyuda('perfil', SITE));
     assert.equal((await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'nada' })).resultado.error, 'Tema desconocido.');
+  });
+
+  test('"apertura" (19/11/2026): "a partir de diciembre" con la home provisoria prendida; sitio abierto si no', async () => {
+    assert.match(APERTURA_PRELANZAMIENTO, /a partir de diciembre/);
+    assert.equal(textoAyuda('apertura', SITE), APERTURA_PRELANZAMIENTO.replace('{url}', SITE));
+    assert.ok(textoAyuda('apertura', SITE).includes(`${SITE}/registro`));
+    assert.equal(textoAyuda('apertura', SITE, { prelanzamiento: false }), `SexyRose ya está abierto: los perfiles publicados se ven en ${SITE}.`);
+    // la herramienta lo elige y el modelo sabe cuándo usarlo; la fecha de apertura es la única que puede dar
+    const ayuda = HERRAMIENTAS.find((h) => h.name === 'ayuda');
+    assert.match(ayuda.input_schema.properties.tema.description, /apertura = cuándo abre el sitio/);
+    for (const captacion of [false, true]) {
+      const p = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion });
+      assert.ok(p.includes('La única fecha que podés dar es cuándo abre el sitio, tal como la dice la ayuda (tema "apertura").'));
+      assert.ok(p.includes('cuándo abre el sitio'));
+    }
+    assert.ok(promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion: true }).includes('publicar, apertura, contenido'));
+    // el agente lee el ajuste de la home provisoria en la base (estas pruebas arrancan con el sitio abierto)
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ('5491155550302@s.whatsapp.net', '5491155550302') RETURNING id");
+    const apertura = async () => (await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'apertura' })).resultado.texto;
+    invalidarCatalogos();
+    assert.equal(await apertura(), textoAyuda('apertura', SITE, { prelanzamiento: false }));
+    await db.query(`INSERT INTO ajustes (clave, valor, actualizado) VALUES ('prelanzamiento', '{"activo": true}'::jsonb, now())
+      ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`);
+    invalidarCatalogos();
+    try {
+      assert.equal(await apertura(), textoAyuda('apertura', SITE));
+    } finally {
+      await db.query("DELETE FROM ajustes WHERE clave = 'prelanzamiento'");
+      invalidarCatalogos();
+    }
+    assert.equal(await apertura(), textoAyuda('apertura', SITE, { prelanzamiento: false }));
   });
 });

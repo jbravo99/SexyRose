@@ -9,17 +9,19 @@
 // cola hasta que Juan lo revise uno por uno). Igual para números extranjeros o inválidos.
 import { telefonoComparable } from './asistente-comun.js';
 
-export const ESTADOS = Object.freeze(['pendiente', 'abierto', 'enviado', 'respondio', 'se_registro', 'no_escribir', 'revisar', 'descartado', 'en_sitio']);
+export const ESTADOS = Object.freeze(['pendiente', 'abierto', 'enviado', 'respondio', 'se_registro', 'no_escribir', 'revisar', 'descartado', 'en_sitio', 'no_disponible']);
 export const ESTADO_NOMBRE = Object.freeze({
   pendiente: 'Pendiente', abierto: 'Abierto', enviado: 'Enviado', respondio: 'Respondió', se_registro: 'Se registró',
   no_escribir: 'No escribir', revisar: 'Revisar', descartado: 'Descartado', en_sitio: 'Ya está en el sitio',
+  no_disponible: 'No disponible',
 });
 export const POR_DIA_DEFAULT = 30;
 export const POR_DIA_MAX = 200;
 export const MENSAJE_MAX = 1000;
-// Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya).
+// Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya). 19/11/2026: "abrimos en diciembre" y la venta de
+// contenido "próximamente" (decisión de Juan).
 export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribimos de SexyRose (sexyrose.net). Vimos tu perfil publicado en otro sitio y nos encantaría que formes parte de nuestra plataforma.\n\n'
-  + 'SexyRose es un sitio para crear tu propio perfil con fotos, videos e historias, y vender tu contenido si querés. Crear el perfil *es gratis* con el plan Bronce. Si te interesa, registrate en sexyrose.net.\n\n'
+  + 'SexyRose es un sitio nuevo para crear tu propio perfil con fotos, videos e historias y, próximamente, vender tu contenido. Abrimos en diciembre: si te registrás ahora, tu perfil puede estar publicado desde el primer día. Crear el perfil *es gratis* con el plan Bronce, en sexyrose.net.\n\n'
   + 'Cualquier duda, respondé este mensaje.';
 export const RESPUESTA_NO_ESCRIBIR = 'Perfecto, no te vamos a escribir más. Disculpá la molestia.';
 export const RESPUESTA_ORIGEN = 'Tu número lo vimos en tu aviso publicado en otro sitio.';

@@ -389,6 +389,35 @@ describe('captación: importar, cola y estados', () => {
     assert.equal((await admJson('POST', `/captacion/${dej.id}/estado`, { estado: 'revisado' })).status, 409);
   });
 
+  test('"No disponible" (19/11/2026): el número ya no tiene WhatsApp; sale de la cola, libera el cupo y se puede volver atrás', async () => {
+    const mora = await cap('+5491155550201');
+    assert.equal((await admJson('POST', `/captacion/${mora.id}/abierto`, {})).status, 200);
+    assert.equal((await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'enviado' })).status, 200);
+    let d = await (await adm('/captacion')).json();
+    const hoy = d.cola.enviadosHoy;
+    let r = await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'no_disponible' });
+    assert.equal(r.status, 200);
+    const x = (await r.json()).contacto;
+    assert.equal(x.estado, 'no_disponible');
+    assert.equal(x.enviado, null, 'no le llegó nada: no cuenta como enviado');
+    assert.equal(x.waUrl, null);
+    d = await (await adm('/captacion')).json();
+    assert.equal(d.cola.enviadosHoy, hoy - 1);
+    assert.ok(!d.cola.items.some((c) => c.id === mora.id));
+    assert.equal(d.estados.no_disponible, 1);
+    const l = await (await adm('/captacion/contactos?estado=no_disponible')).json();
+    assert.deepEqual(l.items.map((c) => c.id), [mora.id]);
+    // no se puede abrir; "revisar" nunca pasa a no disponible (no saltea la revisión)
+    assert.equal((await admJson('POST', `/captacion/${mora.id}/abierto`, {})).status, 409);
+    const rev = (await db.query("SELECT id FROM captacion_contactos WHERE estado = 'revisar' LIMIT 1")).rows[0];
+    assert.equal((await admJson('POST', `/captacion/${rev.id}/estado`, { estado: 'no_disponible' })).status, 409);
+    // volver a la cola
+    r = await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'pendiente' });
+    assert.equal((await r.json()).contacto.estado, 'pendiente');
+    d = await (await adm('/captacion')).json();
+    assert.ok(d.cola.items.some((c) => c.id === mora.id));
+  });
+
   test('volver a subir la planilla une sin duplicar, conserva los estados y un pendiente con palabras de menor pasa a revisar', async () => {
     const kiara = await cap('+5491155550204');
     await admJson('POST', `/captacion/${kiara.id}/estado`, { estado: 'enviado' });

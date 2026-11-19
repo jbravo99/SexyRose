@@ -7,7 +7,8 @@
 //   POST /captacion/importar?nombre=x.xlsx → importa la planilla (.xlsx hoja "Contactos" o .csv); une sin duplicar
 //   POST /captacion/:id/abierto            → Juan tocó "Abrir chat" (solo pendiente/abierto)
 //   POST /captacion/:id/estado {estado}    → enviado (marcar a mano) | revisado (es mayor de edad → pendiente) |
-//                                            descartado | no_escribir | pendiente (deshacer abierto/enviado)
+//                                            descartado | no_escribir | no_disponible (el número ya no tiene
+//                                            WhatsApp) | pendiente (deshacer abierto/enviado/no_disponible)
 //   PUT  /captacion/ajustes {mensaje?, porDia?}
 //   POST /captacion/vaciar {confirmar: true} → borra todos los contactos que no se registraron
 import express from 'express';
@@ -148,15 +149,17 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
   const CAMBIOS = {
     enviado: { desde: ['pendiente', 'abierto'], sql: "estado = 'enviado', enviado = COALESCE(enviado, now())" },
     revisado: { desde: ['revisar'], sql: "estado = 'pendiente', revisado = now()" },
-    descartado: { desde: ['pendiente', 'abierto', 'enviado', 'respondio', 'revisar', 'no_escribir', 'en_sitio'], sql: "estado = 'descartado'" },
-    no_escribir: { desde: ['pendiente', 'abierto', 'enviado', 'respondio', 'revisar', 'descartado', 'en_sitio'], sql: "estado = 'no_escribir', no_escribir = now()" },
-    pendiente: { desde: ['abierto', 'enviado'], sql: "estado = 'pendiente', enviado = NULL, abierto = NULL" },
+    descartado: { desde: ['pendiente', 'abierto', 'enviado', 'respondio', 'revisar', 'no_escribir', 'en_sitio', 'no_disponible'], sql: "estado = 'descartado'" },
+    no_escribir: { desde: ['pendiente', 'abierto', 'enviado', 'respondio', 'revisar', 'descartado', 'en_sitio', 'no_disponible'], sql: "estado = 'no_escribir', no_escribir = now()" },
+    // El número ya no tiene WhatsApp: sale de la cola; no cuenta como enviado (no le llegó nada) ni para el cupo del día
+    no_disponible: { desde: ['pendiente', 'abierto', 'enviado'], sql: "estado = 'no_disponible', enviado = NULL, abierto = NULL" },
+    pendiente: { desde: ['abierto', 'enviado', 'no_disponible'], sql: "estado = 'pendiente', enviado = NULL, abierto = NULL" },
   };
   r.post('/captacion/:id/estado', apiPost, ah(async (req, res) => {
     const id = uuid(req.params.id);
     const est = String(body(req).estado || '');
     const c = CAMBIOS[est];
-    if (!c) throw he(400, 'Estado: enviado, revisado, descartado, no_escribir o pendiente.');
+    if (!c) throw he(400, 'Estado: enviado, revisado, descartado, no_escribir, no_disponible o pendiente.');
     const { rows } = await pool.query(
       `UPDATE captacion_contactos SET ${c.sql}, actualizado = now() WHERE id = $1 AND estado = ANY($2::text[]) RETURNING id`, [id, c.desde]);
     if (!rows[0]) {

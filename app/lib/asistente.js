@@ -24,6 +24,7 @@ import { asignarCuenta, cuentaDelPedido, hayCuentaActiva } from './cuentas-trans
 import { arsSugerido, fmtCreditos } from './creditos.js';
 import { PLAN_NOMBRE } from './planes.js';
 import { ventaContenidoDisponible } from './contenido.js';
+import { prelanzamientoEn } from './prelanzamiento.js';
 
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
 const EXT_OK = ['jpg', 'png', 'webp', 'pdf', 'heic'];
@@ -441,7 +442,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         const tema = String(input.tema || '');
         // "contenido": "próximamente" o cómo empezar, según lo que publicó el app en la base (lib/contenido.js)
         const contenidoDisponible = tema === 'contenido' ? await ventaContenidoDisponible(pool) : false;
-        const t = textoAyuda(tema, url, { contenidoDisponible });
+        // "apertura": "a partir de diciembre" mientras la home provisoria está prendida (lib/prelanzamiento.js)
+        const prelanzamiento = tema === 'apertura' ? await prelanzamientoEn(pool) : true;
+        const t = textoAyuda(tema, url, { contenidoDisponible, prelanzamiento });
         return { resultado: t ? { texto: t } : { error: 'Tema desconocido.' } };
       }
       case 'pedido_por_codigo': {
