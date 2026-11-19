@@ -426,13 +426,25 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     switch (nombre) {
       case 'precios': {
         const [pr, pk, dst, cot] = await Promise.all([planes.precios(), creditos.packs({ soloActivos: true }), planes.preciosDestacado(), creditos.cotizacion()]);
+        // Montos en pesos (Juan, 19/11/2026): USD × la cotización en uso (Admin → Precios), redondeado hacia arriba a la
+        // centena como en los pedidos. Sin cotización cargada, null (el asistente da solo USD).
+        const ars = (usd) => {
+          const n = usd ? arsSugerido(usd, cot.arsPorUsd) : null;
+          return n ? '$' + n.toLocaleString('es-AR') : null;
+        };
         return {
           resultado: {
             creditoEnUsd: 1,
-            planes: ['E', 'D', 'C', 'S'].map((k) => ({ nombre: PLAN_NOMBRE[k], mes: pr.mes[k] ?? null, semana: pr.semana[k] ?? null })),
-            packs: pk.map((p) => ({ id: p.id, nombre: p.nombre, pagaUsd: p.pagaUsd, recibeCreditos: p.recibe })),
+            planes: ['E', 'D', 'C', 'S'].map((k) => ({
+              nombre: PLAN_NOMBRE[k], mes: pr.mes[k] ?? null, semana: pr.semana[k] ?? null,
+              mesPesos: ars(pr.mes[k]), semanaPesos: ars(pr.semana[k]),
+            })),
+            packs: pk.map((p) => ({ id: p.id, nombre: p.nombre, pagaUsd: p.pagaUsd, pagaPesos: ars(p.pagaUsd), recibeCreditos: p.recibe })),
             cargaAMedida: { minimo: 10, maximo: 10000 },
-            destacado: ['E', 'D', 'C'].map((k) => ({ plan: PLAN_NOMBRE[k], semana: dst[k] ? dst[k].semana : null, mes: dst[k] ? dst[k].mes : null })),
+            destacado: ['E', 'D', 'C'].map((k) => ({
+              plan: PLAN_NOMBRE[k], semana: dst[k] ? dst[k].semana : null, mes: dst[k] ? dst[k].mes : null,
+              semanaPesos: dst[k] ? ars(dst[k].semana) : null, mesPesos: dst[k] ? ars(dst[k].mes) : null,
+            })),
             destacadoStar: 'Con Star no hace falta: ya aparece arriba.',
             cotizacion: cot.arsPorUsd ? { pesosPorDolar: cot.arsPorUsd, fecha: fmtFecha(cot.fecha) } : null,
           },
@@ -442,8 +454,8 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         const tema = String(input.tema || '');
         // "contenido": "próximamente" o cómo empezar, según lo que publicó el app en la base (lib/contenido.js)
         const contenidoDisponible = tema === 'contenido' ? await ventaContenidoDisponible(pool) : false;
-        // "apertura": "a partir de diciembre" mientras la home provisoria está prendida (lib/prelanzamiento.js)
-        const prelanzamiento = tema === 'apertura' ? await prelanzamientoEn(pool) : true;
+        // "apertura" y "como_funciona": "a partir de diciembre" mientras la home provisoria está prendida (lib/prelanzamiento.js)
+        const prelanzamiento = tema === 'apertura' || tema === 'como_funciona' ? await prelanzamientoEn(pool) : true;
         const t = textoAyuda(tema, url, { contenidoDisponible, prelanzamiento });
         return { resultado: t ? { texto: t } : { error: 'Tema desconocido.' } };
       }

@@ -12,7 +12,8 @@
 //
 // "apertura" tiene dos textos: con la home provisoria prendida (lib/prelanzamiento.js), APERTURA_PRELANZAMIENTO (decisión
 // de Juan, 19/11/2026: "a partir de diciembre", igual que la invitación de captación; es la única fecha que da el
-// asistente); con el sitio abierto, AYUDA.apertura.
+// asistente); con el sitio abierto, AYUDA.apertura. "como_funciona" suma PRELANZAMIENTO_COMO_FUNCIONA al final mientras
+// la home provisoria está prendida (Juan, 19/11/2026: que sepa que abre en diciembre y que igual puede ver su perfil).
 
 export const AYUDA = Object.freeze({
   registro: 'Para publicar tu perfil:\n'
@@ -43,9 +44,10 @@ export const AYUDA = Object.freeze({
 
   planes: 'Hay 4 planes: Bronce (gratis), Plata, Oro y Star. Con un plan más alto aparecés más arriba y podés subir más fotos e historias. '
     + 'Star tiene lugar fijo arriba del inicio en tu provincia (solo 10 por provincia). '
-    + 'Los planes se pagan con créditos desde {url}/panel/plan, por mes (30 días). Con la renovación automática encendida, '
-    + 'el plan se renueva solo al vencer si tenés créditos; si no te alcanzan, tu perfil se pausa hasta que cargues. '
-    + 'La renovación automática se puede apagar desde el mismo lugar. Los precios actuales te los paso si me los pedís.',
+    + 'Los planes se pagan por mes (30 días) con tus créditos, desde {url}/panel/plan: los cargás por transferencia y quedan como saldo en tu cuenta. '
+    + 'Al vencer el mes, si tenés la renovación automática encendida y te alcanzan los créditos, el plan se renueva solo descontándolos del saldo, sin transferir de nuevo. '
+    + 'Si no te alcanzan, te avisamos antes; si al vencer sigue sin alcanzar, tu perfil se pausa hasta que cargues. '
+    + 'La renovación automática se apaga desde {url}/panel/plan. Los precios actuales te los paso si me los pedís.',
 
   creditos: '1 crédito = USD 1. Con los créditos pagás tu plan, las semanas y el Destacado. '
     + 'Se compran desde {url}/panel/creditos: elegís un pack (algunos traen créditos de regalo) o una carga a medida '
@@ -157,15 +159,18 @@ export const CONTENIDO_PROXIMAMENTE = 'La venta de contenido todavía no está d
 
 // "apertura" mientras la home provisoria está prendida (el sitio todavía no muestra perfiles al público).
 export const APERTURA_PRELANZAMIENTO = 'SexyRose abre al público a partir de diciembre. Mientras tanto ya podés crear tu perfil en {url}/registro y dejarlo listo para estar desde el primer día. '
-  + 'Hasta que abramos, los perfiles no se ven en el sitio: vos podés ver cómo queda el tuyo con la vista previa de tu panel.';
+  + 'Hasta que abramos, los perfiles no se ven en el sitio, pero vos podés ver el tuyo en {url}/panel/vista-previa.';
+// Se suma al final de "como_funciona" mientras la home provisoria está prendida.
+export const PRELANZAMIENTO_COMO_FUNCIONA = 'El sitio abre al público a partir de diciembre: hasta entonces los clientes todavía no ven los perfiles, pero vos podés ver el tuyo en {url}/panel/vista-previa.';
 
 export const TEMAS_AYUDA = Object.freeze(Object.keys(AYUDA));
 // contenidoDisponible: solo cuenta para el tema "contenido" (sin el dato, "próximamente").
-// prelanzamiento: solo cuenta para el tema "apertura" (sin el dato, el texto de la home provisoria).
+// prelanzamiento: solo cuenta para "apertura" y "como_funciona" (sin el dato, los textos de la home provisoria).
 export function textoAyuda(tema, siteUrl, { contenidoDisponible = false, prelanzamiento = true } = {}) {
   if (!Object.hasOwn(AYUDA, tema)) return null;
   let t = AYUDA[tema];
   if (tema === 'contenido' && contenidoDisponible !== true) t = CONTENIDO_PROXIMAMENTE;
   if (tema === 'apertura' && prelanzamiento !== false) t = APERTURA_PRELANZAMIENTO;
+  if (tema === 'como_funciona' && prelanzamiento !== false) t = `${t}\n${PRELANZAMIENTO_COMO_FUNCIONA}`;
   return t.replace(/\{url\}/g, String(siteUrl || '').replace(/\/+$/, ''));
 }

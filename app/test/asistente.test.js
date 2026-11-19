@@ -14,7 +14,7 @@ import { start } from '../server.js';
 import { startAgente } from '../agente.js';
 import { createAsistente } from '../lib/asistente.js';
 import { createLlm, HERRAMIENTAS, MODELO_DEFAULT, promptSistema } from '../lib/asistente-llm.js';
-import { APERTURA_PRELANZAMIENTO, AYUDA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/asistente-ayuda.js';
+import { APERTURA_PRELANZAMIENTO, AYUDA, PRELANZAMIENTO_COMO_FUNCIONA, CONTENIDO_PROXIMAMENTE, TEMAS_AYUDA, textoAyuda } from '../lib/asistente-ayuda.js';
 import { invalidarCatalogos } from '../lib/catalogos.js';
 import { AJUSTE_ESTADO, ventaContenidoDisponible } from '../lib/contenido.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
@@ -1256,7 +1256,7 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
     /claude/i, /haiku/i, /baileys/i, /hetzner/i, /servidor/i, /contenedor/i, /docker/i, /captaci[oó]n/i, /\badmin/i, /alerta/i,
     /aviso a juan/i, /\bjuan\b/i, /\bbot de telegram\b/i, /georef/i, /marketplace/i, /client.?secret/i, /webhook/i, /credencial/i,
     /skokka/i, /simpleescort/i, /argxp/i, /otros sitios/i, /m[eé]tricas/i, /moderador/i, /estrategia/i, /abogad/i];
-  const TODOS = () => [...Object.entries(AYUDA), ['contenido (próximamente)', CONTENIDO_PROXIMAMENTE], ['apertura (home provisoria)', APERTURA_PRELANZAMIENTO]];
+  const TODOS = () => [...Object.entries(AYUDA), ['contenido (próximamente)', CONTENIDO_PROXIMAMENTE], ['apertura (home provisoria)', APERTURA_PRELANZAMIENTO], ['como_funciona (home provisoria)', PRELANZAMIENTO_COMO_FUNCIONA]];
 
   test('cada tema devuelve texto, con la dirección del sitio y de un largo de WhatsApp', () => {
     for (const t of TEMAS_NUEVOS) assert.ok(TEMAS_AYUDA.includes(t), `falta el tema ${t}`);
@@ -1339,7 +1339,7 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
 
   test('"apertura" (19/11/2026): "a partir de diciembre" con la home provisoria prendida; sitio abierto si no', async () => {
     assert.match(APERTURA_PRELANZAMIENTO, /a partir de diciembre/);
-    assert.equal(textoAyuda('apertura', SITE), APERTURA_PRELANZAMIENTO.replace('{url}', SITE));
+    assert.equal(textoAyuda('apertura', SITE), APERTURA_PRELANZAMIENTO.replace(/\{url\}/g, SITE));
     assert.ok(textoAyuda('apertura', SITE).includes(`${SITE}/registro`));
     assert.equal(textoAyuda('apertura', SITE, { prelanzamiento: false }), `SexyRose ya está abierto: los perfiles publicados se ven en ${SITE}.`);
     // la herramienta lo elige y el modelo sabe cuándo usarlo; la fecha de apertura es la única que puede dar
@@ -1366,5 +1366,69 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
       invalidarCatalogos();
     }
     assert.equal(await apertura(), textoAyuda('apertura', SITE, { prelanzamiento: false }));
+  });
+
+  test('planes: la renovación automática usa el saldo de créditos (sin transferir de nuevo); como_funciona avisa la apertura y la vista previa', async () => {
+    const pl = textoAyuda('planes', SITE);
+    assert.match(pl, /los cargás por transferencia y quedan como saldo en tu cuenta/);
+    assert.match(pl, /se renueva solo descontándolos del saldo, sin transferir de nuevo/);
+    assert.match(pl, /Si no te alcanzan, te avisamos antes/);
+    assert.ok(promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es' }).includes('la renovación automática solo descuenta créditos que ya tiene de saldo; no le cobra plata ni le debita nada'));
+    const cf = textoAyuda('como_funciona', SITE);
+    assert.ok(cf.startsWith(AYUDA.como_funciona.replace(/\{url\}/g, SITE)));
+    assert.ok(cf.endsWith(`El sitio abre al público a partir de diciembre: hasta entonces los clientes todavía no ven los perfiles, pero vos podés ver el tuyo en ${SITE}/panel/vista-previa.`));
+    assert.ok(cf.length <= 1200);
+    assert.equal(textoAyuda('como_funciona', SITE, { prelanzamiento: false }), AYUDA.como_funciona.replace(/\{url\}/g, SITE));
+    assert.ok(textoAyuda('apertura', SITE).includes(`${SITE}/panel/vista-previa`));
+    // el agente: sitio abierto en estas pruebas → sin la línea; con la home provisoria prendida → con la línea
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ('5491155550303@s.whatsapp.net', '5491155550303') RETURNING id");
+    const cfAgente = async () => (await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'como_funciona' })).resultado.texto;
+    invalidarCatalogos();
+    assert.ok(!(await cfAgente()).includes('diciembre'));
+    await db.query(`INSERT INTO ajustes (clave, valor, actualizado) VALUES ('prelanzamiento', '{"activo": true}'::jsonb, now())
+      ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`);
+    invalidarCatalogos();
+    try {
+      assert.equal(await cfAgente(), cf);
+    } finally {
+      await db.query("DELETE FROM ajustes WHERE clave = 'prelanzamiento'");
+      invalidarCatalogos();
+    }
+  });
+
+  test('precios (19/11/2026): cada monto también en pesos, con la cotización en uso y redondeado hacia arriba a la centena', async () => {
+    const { rows: [k] } = await db.query("INSERT INTO asistente_conversaciones (jid, telefono) VALUES ('5491155550304@s.whatsapp.net', '5491155550304') RETURNING id");
+    const precios = async () => (await agente.asistente.herramienta(k.id, 'precios', {})).resultado;
+    const prev = (await db.query("SELECT valor FROM ajustes WHERE clave = 'cotizacion'")).rows[0];
+    const prevP = (await db.query("SELECT valor FROM ajustes WHERE clave = 'precios'")).rows[0];
+    try {
+      await db.query(`INSERT INTO ajustes (clave, valor) VALUES ('cotizacion', $1) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
+        [JSON.stringify({ arsPorUsd: 1580, fecha: new Date().toISOString(), nota: '' })]);
+      await db.query(`INSERT INTO ajustes (clave, valor) VALUES ('precios', $1) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
+        [JSON.stringify({ mes: { E: 0, D: 25, C: 72, S: 175 }, semana: { C: 20, S: 50 }, semanaAuto: { activo: false, recargo: 20 } })]);
+      invalidarCatalogos();
+      const r = await precios();
+      const pl = Object.fromEntries(r.planes.map((p) => [p.nombre, p]));
+      assert.equal(pl.Plata.mes, 25);
+      assert.equal(pl.Plata.mesPesos, '$39.500');
+      assert.equal(pl.Oro.mesPesos, '$113.800'); // 72 × 1580 = 113.760 → hacia arriba a la centena
+      assert.equal(pl.Oro.semanaPesos, '$31.600');
+      assert.equal(pl.Star.mesPesos, '$276.500');
+      assert.equal(pl.Bronce.mesPesos, null, 'Bronce es gratis');
+      assert.ok(r.packs.every((p) => p.pagaPesos === '$' + (Math.ceil((p.pagaUsd * 1580) / 100) * 100).toLocaleString('es-AR')));
+      assert.ok(r.destacado.every((d) => typeof d.mesPesos === 'string' && d.mesPesos.startsWith('$')));
+      assert.equal(r.cotizacion.pesosPorDolar, 1580);
+      // sin cotización: solo USD
+      await db.query("DELETE FROM ajustes WHERE clave = 'cotizacion'");
+      const r2 = await precios();
+      assert.ok(r2.planes.every((p) => p.mesPesos === null && p.semanaPesos === null));
+      assert.ok(r2.packs.every((p) => p.pagaPesos === null));
+    } finally {
+      await db.query("DELETE FROM ajustes WHERE clave IN ('cotizacion', 'precios')");
+      if (prev) await db.query("INSERT INTO ajustes (clave, valor) VALUES ('cotizacion', $1)", [JSON.stringify(prev.valor)]);
+      if (prevP) await db.query("INSERT INTO ajustes (clave, valor) VALUES ('precios', $1)", [JSON.stringify(prevP.valor)]);
+      invalidarCatalogos();
+    }
+    assert.ok(promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es' }).includes('Plata $39.500 por mes (USD 25)'));
   });
 });
