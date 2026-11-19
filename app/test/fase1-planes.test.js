@@ -539,17 +539,23 @@ describe('admin: acompañantes y verificación', () => {
     assert.ok('verificacionesPendientes' in resumen && 'pedidos' in resumen && 'preregistros' in resumen);
   });
 
-  test('rechazar verificación vuelve a borrador; cambios de estado', async () => {
+  test('rechazar verificación no saca el perfil de revisión; se puede publicar sin verificar (7 días); cambios de estado', async () => {
     const c = await nuevaCuenta({ estado: 'en_revision', verificacion: 'pendiente' });
     await db.query("INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta) VALUES ($1, 'verificaciones/no-existe-s.jpg', 'verificaciones/no-existe-d.jpg')", [c.id]);
     let r = await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'rechazar', motivo: 'La foto del documento no se lee' });
     let j = await r.json();
-    assert.equal(j.perfil.estado, 'borrador');
+    assert.equal(j.perfil.estado, 'en_revision');
     assert.equal(j.perfil.verificacion, 'rechazada');
-    assert.equal(j.perfil.motivo_rechazo, 'La foto del documento no se lee');
+    assert.equal(j.perfil.motivo_rechazo, null);
     assert.match(ultimoMail(c.email).text, /no se lee/);
+    // 19/11/2026: publicar sin la identidad verificada → 7 días para mandarla, y el email lo dice
     r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'publicado' });
-    assert.equal(r.status, 409);
+    assert.equal(r.status, 200);
+    j = await r.json();
+    assert.equal(j.perfil.estado, 'publicado');
+    const dias = (new Date(j.perfil.verificacion_limite) - Date.now()) / 86400000;
+    assert.ok(dias > 6.9 && dias <= 7, 'plazo de 7 días');
+    assert.match(ultimoMail(c.email).text, /para verificar tu identidad desde tu panel\. Si no, tu perfil se pausa hasta que la mandes\./);
     r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'suspendido' });
     assert.equal(r.status, 400);
     r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'borrador' });

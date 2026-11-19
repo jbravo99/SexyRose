@@ -128,7 +128,7 @@ export async function armarEstado(pool, planesInst) {
   const { rows: perfiles } = pre ? { rows: [] } : await pool.query(
     `SELECT p.cuenta_id, p.slug, p.datos, p.actualizado, p.publicado_en
        FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-      WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'
+      WHERE p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'
       ORDER BY p.publicado_en DESC NULLS LAST, p.cuenta_id`,
   );
   const { lista, historias } = await perfilesPublicos(pool, planesInst, perfiles, cat);

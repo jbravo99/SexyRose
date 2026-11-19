@@ -429,7 +429,7 @@ describe('historias', () => {
 });
 
 describe('envío automático a revisión y sitio público', () => {
-  test('completitud, revisión y aparición en /api/sitio/estado solo si está publicado y verificado', async () => {
+  test('completitud, revisión y aparición en /api/sitio/estado si está publicado (verificado o dentro del plazo)', async () => {
     const a = await registrar();
     let yo = (await a.get('/api/cuenta/yo')).body.cuenta;
     assert.equal(yo.perfil.estado, 'borrador'); assert.ok(yo.perfil.faltantes.length >= 4);
@@ -437,8 +437,9 @@ describe('envío automático a revisión y sitio público', () => {
     await a.json('PUT', '/api/cuenta/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567', titular: 'Hola', nacionalidad: 'Argentina', intereses: ['arte', 'vinos'] });
     for (let i = 0; i < 3; i++) await a.subir('/api/cuenta/fotos', { foto: await jpeg() });
     yo = (await a.get('/api/cuenta/yo')).body.cuenta;
-    assert.equal(yo.perfil.estado, 'borrador'); assert.deepEqual(yo.perfil.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
-    // Envío automático (18/11/2026): con lo último que faltaba pasa solo a revisión
+    // Envío automático (18/11/2026) sin la verificación (19/11/2026: se puede publicar antes y tiene 7 días para mandarla);
+    // la verificación sigue en lo que falta
+    assert.equal(yo.perfil.estado, 'en_revision'); assert.deepEqual(yo.perfil.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
     let r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
     assert.equal(r.status, 201); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
 
@@ -456,7 +457,7 @@ describe('envío automático a revisión y sitio público', () => {
     await db.query("UPDATE perfiles SET estado = 'publicado', verificacion = 'pendiente', publicado_en = now() WHERE cuenta_id = $1", [a.yo.id]);
     invalidarSitio();
     e = (await pub.get('/api/sitio/estado')).body;
-    assert.ok(!e.perfiles.some((p) => p.cuentaId === a.yo.id), 'sin verificar no se publica');
+    assert.ok(e.perfiles.some((p) => p.cuentaId === a.yo.id), 'publicado sin verificar se ve (19/11/2026: 7 días para mandarla)');
 
     await db.query("UPDATE perfiles SET verificacion = 'verificada' WHERE cuenta_id = $1", [a.yo.id]);
     await a.subir('/api/cuenta/historias', { foto: await jpeg(), texto: 'Hoy' });

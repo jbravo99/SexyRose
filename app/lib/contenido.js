@@ -305,7 +305,7 @@ export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = ()
   }
 
   // ---------- Público ----------
-  const PERFIL_VISIBLE = `p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'`;
+  const PERFIL_VISIBLE = `p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'`;
   async function vendedoraLista(cuentaId, activa) {
     if (!cuentaCompleta(activa)) return false;
     return !!(await tokenDe(cuentaId, activa.id));

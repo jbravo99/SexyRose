@@ -146,7 +146,7 @@
     const acomp = seccion('mtAco', 'Acompañantes', [
       '<strong>Registros</strong>: cuentas de acompañantes creadas en el período (las cuentas borradas ya no aparecen).',
       '<strong>Verificadas</strong>: cuentas cuya identidad aprobaste por primera vez en el período.',
-      '<strong>Publicadas y verificadas ahora</strong>: foto de hoy. No hay historial exacto de cuándo un perfil dejó de publicarse, así que no se dibuja una curva inventada.',
+      '<strong>Publicadas ahora</strong>: foto de hoy (incluye las publicadas que todavía tienen plazo para verificarse). No hay historial exacto de cuándo un perfil dejó de publicarse, así que no se dibuja una curva inventada.',
       '<strong>Por plan</strong>: plan vigente de cada perfil publicado ahora (sin plan pago = Bronce).',
       '<strong>Cuentas con plan pago</strong>: Plata, Oro o Star vigente al cierre de cada tramo (el último, ahora), según las suscripciones. Las canceladas a mano no cuentan porque no se guarda cuándo se cancelaron.',
     ], tiles([

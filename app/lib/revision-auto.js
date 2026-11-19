@@ -31,7 +31,10 @@ export async function revisionAutomatica(pool, cuentaId, { cambio = false, notif
       && (p.estado === 'borrador' || (p.estado === 'rechazado' && cambio));
     if (puede) {
       const { rows: fs } = await client.query('SELECT count(*)::int AS n FROM fotos WHERE cuenta_id = $1', [cuentaId]);
-      const falta = faltantesItems({ datos: p.datos || {}, fotosN: fs[0].n, emailVerificado: Boolean(p.email_verificado), verificacion: p.verificacion });
+      // La verificación de identidad ya no hace falta para pasar a revisión (19/11/2026, decisión de Juan): se puede
+      // publicar antes y tiene 7 días para mandarla (lib/plazo-verificacion.js). Sigue en la lista de lo que falta.
+      const falta = faltantesItems({ datos: p.datos || {}, fotosN: fs[0].n, emailVerificado: Boolean(p.email_verificado), verificacion: p.verificacion })
+        .filter((x) => x.clave !== 'verificacion');
       if (!falta.length) {
         const r = await client.query(
           "UPDATE perfiles SET estado = 'en_revision', motivo_rechazo = NULL, actualizado = now() WHERE cuenta_id = $1 AND estado = $2",

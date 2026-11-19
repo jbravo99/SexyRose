@@ -19,6 +19,7 @@ import { DestacadaError } from '../lib/destacadas.js';
 import { crearLimitesAuth } from '../lib/seguridad.js';
 import { PERIODOS_CUENTA, numerosCuenta } from '../lib/metricas.js';
 import { revisionAutomatica } from '../lib/revision-auto.js';
+import { reactivarSiPausado } from '../lib/plazo-verificacion.js';
 
 const HOUR = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -138,7 +139,7 @@ export function createCuentaRouter(ctx) {
   const construirYo = async (cuentaId) => {
     const [{ rows: cs }, { rows: ps }, { rows: fs }, { rows: hs }, { rows: vs }] = await Promise.all([
       pool.query('SELECT id, email, email_verificado, estado, creado, nombre_completo, guia_vista FROM cuentas WHERE id = $1', [cuentaId]),
-      pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
+      pool.query('SELECT slug, datos, estado, motivo_rechazo, verificacion, oculto, publicado_en, pausado_por, verificacion_limite FROM perfiles WHERE cuenta_id = $1', [cuentaId]),
       pool.query('SELECT id, url, url_mini, orden, ancho, alto FROM fotos WHERE cuenta_id = $1 ORDER BY orden, creado', [cuentaId]),
       pool.query("SELECT id, tipo, estado, url, url_mini, texto, segundos, ancho, alto, error, creado, expira FROM historias WHERE cuenta_id = $1 AND (expira > now() OR estado <> 'listo') ORDER BY creado DESC", [cuentaId]),
       pool.query('SELECT estado, motivo, creado, revisado, nombre_completo FROM verificaciones WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 1', [cuentaId]),
@@ -172,6 +173,9 @@ export function createCuentaRouter(ctx) {
         slug: p.slug,
         estado: p.estado,
         pausadoPorSaldo: p.estado === 'pausado' && p.pausado_por === 'sin_saldo',
+        // Publicado antes de verificar (19/11/2026): hasta cuándo tiene para mandar la verificación, y si se pausó por eso
+        verificacionLimite: p.estado === 'publicado' && ['sin_enviar', 'rechazada'].includes(p.verificacion) && p.verificacion_limite ? p.verificacion_limite : null,
+        pausadoPorVerificacion: p.estado === 'pausado' && p.pausado_por === 'sin_verificacion',
         motivoRechazo: p.motivo_rechazo || null,
         verificacion: p.verificacion,
         ultimaVerificacion: vs[0] ? { estado: vs[0].estado, motivo: vs[0].motivo || null, creado: vs[0].creado, revisado: vs[0].revisado, nombreCompleto: vs[0].nombre_completo || null } : null,
@@ -419,7 +423,7 @@ export function createCuentaRouter(ctx) {
     if (!p) return fail(res, 404, 'No encontramos tu perfil.');
     const cat = await cargarCatalogos(pool);
     const { lista, historias } = await perfilesPublicos(pool, planes(), [{ ...p, slug: p.slug || 'vista-previa', datos: p.datos || {} }], cat);
-    const publico = p.estado === 'publicado' && p.verificacion === 'verificada' && !p.oculto && p.cuenta_estado === 'activa' && !prelanzamientoActivo(cat.ajustes);
+    const publico = p.estado === 'publicado' && !p.oculto && p.cuenta_estado === 'activa' && !prelanzamientoActivo(cat.ajustes);
     res.json({ ok: true, perfil: lista[0], historias: historias.map(historiaPublica), ubicaciones: ubicacionesUsadas(cat, lista), publico });
   }));
 
@@ -570,6 +574,8 @@ export function createCuentaRouter(ctx) {
       for (const v of viejas.rows) { for (const rel of [v.selfie_ruta, v.documento_ruta, v.dorso_ruta]) if (rel) await storage.borrarPrivado(rel); }
       await pool.query('INSERT INTO verificaciones (cuenta_id, selfie_ruta, documento_ruta, dorso_ruta, formato, consentimiento_at, nombre_completo) VALUES ($1, $2, $3, $4, 2, now(), $5)', [req.cuenta.id, selfie, frente, dorso, nombreCompleto]);
       await pool.query("UPDATE perfiles SET verificacion = 'pendiente', actualizado = now() WHERE cuenta_id = $1", [req.cuenta.id]);
+      // Pausado por no mandarla dentro de los 7 días (lib/plazo-verificacion.js): con la verificación enviada vuelve a verse
+      if (await reactivarSiPausado(pool, req.cuenta.id)) invalidarSitio();
       if (ctx.notify) ctx.notify('Hay una verificación de identidad nueva para revisar en el admin.', 'verificacion');
       await revisarAuto(req.cuenta.id, true);
       res.status(201).json({ ok: true, cuenta: await construirYo(req.cuenta.id) });

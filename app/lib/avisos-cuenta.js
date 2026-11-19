@@ -11,14 +11,23 @@
 // traducen en el panel (mvp/src/prod-sitio.js, "Avisos (textos del servidor)").
 // El link de cada aviso (a qué sección del panel lleva) lo pone el panel según el tipo (NOTIF_LINK en prod-sitio.js) y
 // el email lleva el mismo destino (LINK_EMAIL).
+// Publicar antes de verificar (19/11/2026, decisión de Juan): si el admin publica un perfil sin la identidad verificada,
+// el aviso de publicado suma el plazo de 7 días para mandar la verificación; a 2 días del final, "verificacion_plazo";
+// si vence sin mandarla, "verificacion_vencida" (el perfil se pausa; lib/plazo-verificacion.js).
 import { emailBasico, sendMail as enviarMail, urlSitio } from './mail.js';
 
 export const ABRIMOS_PRONTO = 'Todavía no se ve en el sitio: abrimos muy pronto.';
+export const DIAS_VERIFICACION = 7;
+// Fecha del plazo como en los demás avisos ("26 de noviembre de 2026")
+const fmtPlazo = new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'long', year: 'numeric' });
+export const fechaPlazo = (d) => (d ? fmtPlazo.format(new Date(d)) : '');
+const plazoTxt = (plazo) => `Tenés hasta el ${plazo} para verificar tu identidad desde tu panel. Si no, tu perfil se pausa hasta que la mandes.`;
 const LINK_EMAIL = {
   perfil_en_revision: '/panel', verificacion_aprobada: '/panel/verificacion', perfil_publicado: '/panel/mi-perfil',
   verificacion_rechazada: '/panel/verificacion', perfil_rechazado: '/panel',
+  verificacion_plazo: '/panel/verificacion', verificacion_vencida: '/panel/verificacion',
 };
-const BOTON = { perfil_publicado: 'Ver mi perfil', verificacion_rechazada: 'Ir a mi verificación' };
+const BOTON = { perfil_publicado: 'Ver mi perfil', verificacion_rechazada: 'Ir a mi verificación', verificacion_plazo: 'Verificar mi identidad', verificacion_vencida: 'Verificar mi identidad' };
 
 // Cada aviso: tipo, titulo y texto de la notificación; el email repite el título y los mismos párrafos.
 export const avisos = {
@@ -28,13 +37,19 @@ export const avisos = {
   // estado = estado del perfil después de aprobar (borrador o rechazado: le falta algo; el resto: nada que hacer)
   verificada: ({ estado } = {}) => aviso('verificacion_aprobada', 'Te verificamos',
     ['Tu identidad quedó verificada.', ...(['borrador', 'rechazado'].includes(estado) ? ['Cuando completes lo que falta en tu perfil, pasa solo a revisión.'] : [])]),
-  publicado: ({ prelanzamiento = false, verificada = false } = {}) => aviso('perfil_publicado',
+  // plazo: fecha límite para mandar la verificación (solo si se publica sin haberla mandado)
+  publicado: ({ prelanzamiento = false, verificada = false, plazo = '' } = {}) => aviso('perfil_publicado',
     verificada ? (prelanzamiento ? 'Te verificamos y tu perfil está aprobado' : 'Te verificamos y tu perfil ya está publicado')
       : (prelanzamiento ? 'Tu perfil está aprobado' : 'Tu perfil ya está publicado'),
     [verificada ? 'Revisamos tu verificación y tu perfil.' : 'Revisamos tu perfil.',
-      prelanzamiento ? `Quedó aprobado. ${ABRIMOS_PRONTO}` : 'Ya se ve en el sitio.']),
-  verificacionRechazada: (motivo) => aviso('verificacion_rechazada', 'Tu verificación no fue aprobada',
-    ['No pudimos aprobar tu verificación.', 'Podés volver a enviar las fotos de tu documento y la selfie desde tu panel.'], motivo),
+      prelanzamiento ? `Quedó aprobado. ${ABRIMOS_PRONTO}` : 'Ya se ve en el sitio.', ...(plazo ? [plazoTxt(plazo)] : [])]),
+  // plazo: si su perfil está publicado y todavía corre el plazo para mandarla
+  verificacionRechazada: (motivo, { plazo = '' } = {}) => aviso('verificacion_rechazada', 'Tu verificación no fue aprobada',
+    ['No pudimos aprobar tu verificación.', 'Podés volver a enviar las fotos de tu documento y la selfie desde tu panel.',
+      ...(plazo ? [`Tenés hasta el ${plazo} para mandarla de nuevo. Si no, tu perfil se pausa hasta que la mandes.`] : [])], motivo),
+  plazoVerificacion: (plazo) => aviso('verificacion_plazo', 'Te quedan 2 días para verificarte', [plazoTxt(plazo)]),
+  verificacionVencida: () => aviso('verificacion_vencida', 'Tu perfil quedó pausado',
+    ['No recibimos tu verificación de identidad a tiempo, así que pausamos tu perfil.', 'Mandala desde tu panel y tu perfil vuelve a verse solo.']),
   perfilRechazado: (motivo) => aviso('perfil_rechazado', 'Tu perfil no fue aprobado',
     ['No pudimos aprobar tu perfil.', 'Corregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.'], motivo),
 };

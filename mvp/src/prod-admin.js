@@ -607,13 +607,15 @@
           ${p.motivoRechazo ? `<div class="notice warn">${icon('alert')}<span><strong>Motivo informado:</strong> ${esc(p.motivoRechazo)}</span></div>` : ''}
           <div class="small muted">${p.publicadoEn ? 'Publicado desde el ' + fecha(p.publicadoEn) + ' · ' : ''}Última actualización: ${fecha(p.actualizado)}${p.oculto ? ' · <strong>Ella ocultó su perfil</strong>' : ''}</div>
           <div class="row" style="gap:8px">
-            ${est !== 'publicado' ? btnE('publicado', 'Publicar', 'check', p.verificacion === 'verificada' ? '' : 'secondary') : ''}
+            ${est !== 'publicado' ? btnE('publicado', 'Publicar', 'check', '').replace('data-e="publicado"', `data-e="publicado" data-sinverif="${['sin_enviar', 'rechazada'].includes(p.verificacion) ? '1' : ''}"`) : ''}
             ${est === 'publicado' ? btnE('pausado', 'Pausar', 'clock') : ''}
             ${est !== 'suspendido' ? btnE('suspendido', 'Suspender', 'ban', 'danger') : ''}
             ${est !== 'rechazado' && est !== 'publicado' ? btnE('rechazado', 'Rechazar perfil', 'x', 'ghost') : ''}
             ${est === 'publicado' && p.slug ? `<a class="btn ghost sm" href="/perfil/${esc(p.slug)}" target="_blank" rel="noopener noreferrer">${icon('external')} Ver perfil público</a>` : ''}
           </div>
-          ${p.verificacion !== 'verificada' ? '<p class="tiny muted">Para publicar, primero tiene que estar verificada la identidad.</p>' : ''}
+          ${d.pausadoPorVerificacion ? `<div class="notice warn">${icon('clock')}<span>Pausado solo: no mandó la verificación dentro de los 7 días. Vuelve a publicarse solo cuando la mande.</span></div>` : ''}
+          ${d.verificacionLimite ? `<div class="notice warn">${icon('clock')}<span>Publicado sin verificar: tiene hasta el <strong>${fecha(d.verificacionLimite)}</strong> para mandar la verificación. Si no, se pausa solo.</span></div>` : ''}
+          ${est !== 'publicado' && p.verificacion !== 'verificada' ? `<p class="tiny muted">${['sin_enviar', 'rechazada'].includes(p.verificacion) ? 'Todavía no mandó la verificación: si lo publicás, tiene 7 días para mandarla; si no, se pausa solo.' : 'Mandó la verificación y todavía no la revisaste: podés publicarlo igual.'}</p>` : ''}
         </section>`;
       const fotos = d.fotos || [];
       const fotosCard = `<section class="card stack" style="gap:12px">
@@ -1433,7 +1435,7 @@
       const run = (motivo, reenable) => HH.api('POST', '/acompanantes/' + encodeURIComponent(id) + '/estado', { estado: to, motivo })
         .then(() => { HH.closeModal(); HH.toast({ publicado: 'Perfil publicado', pausado: 'Perfil pausado', suspendido: 'Perfil suspendido', rechazado: 'Perfil rechazado' }[to] + ': le avisamos por email', { type: 'ok' }); after([k, 'ac']); })
         .catch((e) => { if (reenable) reenable(); fail(e); });
-      if (to === 'publicado') HH.confirm({ title: 'Publicar perfil', text: 'El perfil pasa a verse en el sitio.', okLabel: 'Publicar', onOk: () => run('') });
+      if (to === 'publicado') HH.confirm({ title: 'Publicar perfil', text: el.dataset.sinverif ? '<span>El perfil pasa a verse en el sitio.</span> <span>Todavía no mandó la verificación de identidad: tiene 7 días para mandarla; si no, se pausa solo. Le avisamos por email y en su panel.</span>' : 'El perfil pasa a verse en el sitio.', okLabel: 'Publicar', onOk: () => run('') });
       else if (to === 'pausado') pedirMotivo({ title: 'Pausar perfil', intro: 'El perfil deja de verse en el sitio hasta que lo vuelvas a publicar. El motivo es opcional.', motivos: [], okLabel: 'Pausar', requerido: false, onOk: run });
       else if (to === 'suspendido') pedirMotivo({ title: 'Suspender perfil', intro: 'El perfil deja de verse. Usalo ante incumplimientos de las normas.', motivos: MOTIVOS_PERFIL, okLabel: 'Suspender', cls: 'danger', onOk: run });
       else pedirMotivo({ title: 'Rechazar perfil', intro: 'Le mandamos el motivo para que lo corrija y lo vuelva a enviar.', motivos: MOTIVOS_PERFIL, okLabel: 'Rechazar', cls: 'danger', onOk: run });

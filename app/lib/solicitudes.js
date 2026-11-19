@@ -164,7 +164,7 @@ export function createSolicitudes({ pool, storage, contenido, videos = null, log
     if (typeof slug !== 'string' || !/^[a-z0-9-]{1,80}$/.test(slug)) throw he(404, 'Perfil no encontrado.');
     const { rows: [p] } = await pool.query(
       `SELECT p.cuenta_id FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-        WHERE p.slug = $1 AND p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'`, [slug]);
+        WHERE p.slug = $1 AND p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'`, [slug]);
     if (!p) throw he(404, 'Perfil no encontrado.');
     if (!(await contenido.tomaPedidos(p.cuenta_id))) throw he(409, 'Esta acompañante no toma pedidos personalizados.');
     // Un solo pedido sin responder por acompañante

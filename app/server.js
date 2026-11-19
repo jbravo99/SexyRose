@@ -21,6 +21,7 @@ import { createVideos } from './lib/videos.js';
 import { createPlanes } from './lib/planes.js';
 import { createCreditos } from './lib/creditos.js';
 import { createAvisosCuenta } from './lib/avisos-cuenta.js';
+import { createPlazoVerificacion } from './lib/plazo-verificacion.js';
 import { createPrivado } from './lib/privado.js';
 import { createAdminFase1Router } from './routes/admin-fase1.js';
 import { createHistorias } from './lib/historias.js';
@@ -528,7 +529,9 @@ export function createApp(config) {
   configurarDestacadas(destacadas);
   // Avisos a la acompañante sobre su perfil y su verificación (notificación del panel + email, lib/avisos-cuenta.js)
   const avisos = createAvisosCuenta({ pool, sendMail: sendMailBase, log });
-  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth, telegram, asistenteApp, avisos };
+  // Plazo de 7 días para mandar la verificación después de publicar sin ella (lib/plazo-verificacion.js, 19/11/2026)
+  const plazoVerificacion = createPlazoVerificacion({ pool, avisosCuenta: avisos, invalidar: () => invalidarSitio(), log });
+  const ctx = { pool, config, log, rl, ipHash, auth, notify, state, validateDenuncia, planes, creditos, privado, videos, historias, destacadas, dormirAuth: config.dormirAuth, telegram, asistenteApp, avisos, plazoVerificacion };
   // Ubicaciones oficiales (Georef): importa en segundo plano al arrancar si nunca se importó y revisa una vez por
   // semana (lib/georef.js). En los tests no usa la red salvo que inyecten georefFetch.
   const georef = createGeoref({
@@ -1449,6 +1452,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
         await purgeIpHashes();
         await retencionVerif.purgar();
         await historiasVencidas();
+        await plazosVerificacion();
         await pedidosVencidos();
         await purgarAsistente();
         try {
@@ -1471,6 +1475,11 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
   const historiasVencidas = async () => {
     if (!state.dbReady || state.stopping) return;
     try { await historias.borrarVencidas(); } catch (e) { log('borrado de historias vencidas falló:', e.code || e.message); }
+  };
+  // Plazo para mandar la verificación: aviso a 2 días y pausa al vencer. Al arrancar y cada hora.
+  const plazosVerificacion = async () => {
+    if (!state.dbReady || state.stopping) return;
+    try { await plazoVerificacion.ejecutar(); } catch (e) { log('plazo de verificación falló:', e.code || e.message); }
   };
   // Contenido de los pedidos personalizados: se borra a 1 mes del pago (o de enviado, si no se pagó). Cada hora.
   const pedidosVencidos = async () => {
@@ -1497,6 +1506,7 @@ ${partes.join('\n') || '<p class="muted">No hay textos modificados en esta pági
     setInterval(() => { if (state.dbReady && !state.stopping) retencionVerif.purgar(); }, 6 * HOUR),
     setInterval(limpiarSesiones, 6 * HOUR),
     setInterval(historiasVencidas, HOUR),
+    setInterval(plazosVerificacion, HOUR),
     setInterval(pedidosVencidos, HOUR),
     setInterval(purgarAsistente, 6 * HOUR),
     setInterval(() => rl.sweep(HOUR), 10 * 60 * 1000),

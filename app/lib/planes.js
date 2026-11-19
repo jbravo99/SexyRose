@@ -640,7 +640,7 @@ export function createPlanes({ pool, sendMail = null, log = () => {}, siteUrl = 
   async function cupoDestacado(plan, provincia, db = pool) {
     const { rows } = await db.query(
       `SELECT p.cuenta_id FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-       WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'
+       WHERE p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'
          AND lower(btrim(p.datos->>'provincia')) = lower(btrim($1))`, [provincia]);
     const efect = await planesEfectivos(rows.map((r) => r.cuenta_id), db);
     const activos = [...efect.values()].filter((p) => p === plan).length;

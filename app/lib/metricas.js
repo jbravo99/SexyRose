@@ -221,10 +221,10 @@ export async function metricasPeriodo(pool, { periodo = '30d', ahora = null, pla
     const [{ rows: [c] }, { rows: pub }, { rows: [pz] }] = await Promise.all([
       pool.query(`SELECT count(*) FILTER (WHERE c.estado = 'activa')::int AS activas,
                          count(*) FILTER (WHERE c.estado = 'activa' AND p.verificacion = 'verificada')::int AS verificadas,
-                         count(*) FILTER (WHERE c.estado = 'activa' AND p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto)::int AS publicadas
+                         count(*) FILTER (WHERE c.estado = 'activa' AND p.estado = 'publicado' AND NOT p.oculto)::int AS publicadas
                     FROM cuentas c LEFT JOIN perfiles p ON p.cuenta_id = c.id`),
       pool.query(`SELECT p.cuenta_id FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-                   WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'`),
+                   WHERE p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'`),
       pool.query('SELECT count(*)::int AS n FROM renovaciones_pendientes'),
     ]);
     const plan = { E: 0, D: 0, C: 0, S: 0 };

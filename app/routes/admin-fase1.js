@@ -12,7 +12,7 @@ import {
   CONTACTO_DEFAULT, COTIZACION_DEFAULT, COMISION_DEFAULT, MENSAJES_DEFAULT, montoJson,
 } from '../lib/creditos.js';
 import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, prelanzamientoEn, validarPrelanzamiento } from '../lib/prelanzamiento.js';
-import { avisos as AVISOS, guardarAviso, createAvisosCuenta } from '../lib/avisos-cuenta.js';
+import { avisos as AVISOS, guardarAviso, createAvisosCuenta, fechaPlazo, DIAS_VERIFICACION } from '../lib/avisos-cuenta.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/;
@@ -83,7 +83,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     const id = uuid(req);
     const { rows } = await pool.query(
       `SELECT c.id, c.email, c.email_verificado, c.estado AS cuenta_estado, c.creado, c.ultimo_login, c.acepto_terminos, c.mayor_edad_declarada, c.nombre_completo,
-              p.slug, p.datos, p.estado, p.motivo_rechazo, p.verificacion, p.oculto, p.creado AS p_creado, p.actualizado, p.publicado_en, p.pausado_por
+              p.slug, p.datos, p.estado, p.motivo_rechazo, p.verificacion, p.oculto, p.creado AS p_creado, p.actualizado, p.publicado_en, p.pausado_por, p.verificacion_limite
        FROM cuentas c JOIN perfiles p ON p.cuenta_id = c.id WHERE c.id = $1`, [id]);
     const x = rows[0];
     if (!x) throw he(404, 'Acompañante no encontrada.');
@@ -105,6 +105,9 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       saldo: montoJson(await planes.creditos.saldo(id)),
       base: await planes.baseJson(id),
       pausadoPorSaldo: x.estado === 'pausado' && x.pausado_por === 'sin_saldo',
+      // Publicado sin verificar: hasta cuándo tiene para mandarla; y si se pausó por no mandarla (19/11/2026)
+      verificacionLimite: x.estado === 'publicado' && ['sin_enviar', 'rechazada'].includes(x.verificacion) ? x.verificacion_limite || null : null,
+      pausadoPorVerificacion: x.estado === 'pausado' && x.pausado_por === 'sin_verificacion',
     });
   }));
 
@@ -148,20 +151,25 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       await client.query('UPDATE verificaciones SET estado = $2, motivo = $3, revisado = now(), revisado_por = $4 WHERE id = $1',
         [v.rows[0].id, aprobar ? 'aprobada' : 'rechazada', motivo || null, adminUser]);
       const antes = await client.query('SELECT estado FROM perfiles WHERE cuenta_id = $1 FOR UPDATE', [id]);
+      // Desde el 19/11/2026 la verificación va aparte de la revisión del perfil (se puede publicar antes): rechazarla ya
+      // no devuelve el perfil a borrador ni le pone motivo; aprobarla borra el plazo de 7 días.
       const p = await client.query(
         `UPDATE perfiles SET verificacion = $2, actualizado = now(),
-           estado = CASE WHEN $3 AND estado = 'en_revision' THEN 'publicado'
-                         WHEN NOT $3 AND estado = 'en_revision' THEN 'borrador' ELSE estado END,
+           estado = CASE WHEN $3 AND estado = 'en_revision' THEN 'publicado' ELSE estado END,
            publicado_en = CASE WHEN $3 AND estado = 'en_revision' THEN now() ELSE publicado_en END,
-           motivo_rechazo = CASE WHEN $3 THEN NULL ELSE $4 END
-         WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
-        [id, aprobar ? 'verificada' : 'rechazada', aprobar, motivo || null]);
+           motivo_rechazo = CASE WHEN $3 THEN NULL ELSE motivo_rechazo END,
+           verificacion_limite = CASE WHEN $3 THEN NULL ELSE verificacion_limite END,
+           verificacion_aviso2 = CASE WHEN $3 THEN NULL ELSE verificacion_aviso2 END
+         WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en, verificacion_limite`,
+        [id, aprobar ? 'verificada' : 'rechazada', aprobar]);
       perfil = p.rows[0];
       // El nombre completo aprobado queda en la cuenta (sobrevive a la purga de las imágenes) y desde ahí es fijo.
       // Las del formato anterior no traen nombre: no se toca.
       if (aprobar && v.rows[0].nombre_completo) await client.query('UPDATE cuentas SET nombre_completo = $2 WHERE id = $1', [id, v.rows[0].nombre_completo]);
       const publico = perfil && perfil.estado === 'publicado' && (antes.rows[0] || {}).estado !== 'publicado';
-      aviso = !aprobar ? AVISOS.verificacionRechazada(motivo)
+      // Rechazada con el perfil publicado y el plazo corriendo: el aviso dice hasta cuándo tiene para mandarla de nuevo
+      const plazoVivo = perfil && perfil.estado === 'publicado' && perfil.verificacion_limite && new Date(perfil.verificacion_limite) > new Date();
+      aviso = !aprobar ? AVISOS.verificacionRechazada(motivo, { plazo: plazoVivo ? fechaPlazo(perfil.verificacion_limite) : '' })
         : publico ? AVISOS.publicado({ prelanzamiento: pre, verificada: true }) : AVISOS.verificada({ estado: perfil && perfil.estado });
       if (perfil) await guardarAviso(client, id, aviso);
       await client.query('COMMIT');
@@ -185,7 +193,8 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (['rechazado', 'suspendido'].includes(b.estado) && !motivo) throw he(400, 'Escribí el motivo: se lo mandamos a la acompañante.');
     const cur = await pool.query('SELECT estado, verificacion FROM perfiles WHERE cuenta_id = $1', [id]);
     if (!cur.rows[0]) throw he(404, 'Acompañante no encontrada.');
-    if (b.estado === 'publicado' && cur.rows[0].verificacion !== 'verificada') throw he(409, 'No se puede publicar: la identidad no está verificada.');
+    // Publicar sin la identidad verificada (19/11/2026, decisión de Juan): se puede; desde ahí tiene 7 días para mandar
+    // la verificación (lib/plazo-verificacion.js). Si ya tenía un plazo que no venció, sigue ese; si no, uno nuevo.
     // Publicado y rechazado avisan a ella con notificación + email (lib/avisos-cuenta.js); pausado y suspendido, solo email.
     // El estado anterior se lee con la fila bloqueada: dos clics seguidos del admin hacen un solo aviso.
     const pre = b.estado === 'publicado' ? await prelanzamientoEn(pool) : false;
@@ -193,15 +202,27 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     let rows; let antes; let aviso = null;
     try {
       await client.query('BEGIN');
-      const a = await client.query('SELECT estado FROM perfiles WHERE cuenta_id = $1 FOR UPDATE', [id]);
+      const a = await client.query('SELECT estado, verificacion, verificacion_limite FROM perfiles WHERE cuenta_id = $1 FOR UPDATE', [id]);
       antes = a.rows[0] && a.rows[0].estado;
+      const ver = a.rows[0] && a.rows[0].verificacion;
+      const limAntes = a.rows[0] && a.rows[0].verificacion_limite;
+      // Plazo: solo al pasar a publicado sin estar verificada; verificada = sin plazo; los demás cambios no lo tocan
+      let limite = limAntes; let nuevoPlazo = false;
+      if (b.estado === 'publicado' && ver === 'verificada') limite = null;
+      else if (b.estado === 'publicado' && antes !== 'publicado' && !(limAntes && new Date(limAntes) > new Date())) {
+        limite = new Date(Date.now() + DIAS_VERIFICACION * 24 * 60 * 60 * 1000); nuevoPlazo = true;
+      }
       ({ rows } = await client.query(
         `UPDATE perfiles SET estado = $2, motivo_rechazo = $3, actualizado = now(),
            pausado_por = CASE WHEN $2 = 'pausado' THEN 'admin' ELSE NULL END,
-           publicado_en = CASE WHEN $2 = 'publicado' THEN COALESCE(publicado_en, now()) ELSE publicado_en END
-         WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en`,
-        [id, b.estado, b.estado === 'publicado' ? null : (motivo || null)]));
-      if (antes !== b.estado && b.estado === 'publicado') aviso = AVISOS.publicado({ prelanzamiento: pre });
+           publicado_en = CASE WHEN $2 = 'publicado' THEN COALESCE(publicado_en, now()) ELSE publicado_en END,
+           verificacion_limite = $4,
+           verificacion_aviso2 = CASE WHEN $5 OR $4::timestamptz IS NULL THEN NULL ELSE verificacion_aviso2 END
+         WHERE cuenta_id = $1 RETURNING slug, estado, verificacion, motivo_rechazo, publicado_en, verificacion_limite`,
+        [id, b.estado, b.estado === 'publicado' ? null : (motivo || null), limite, nuevoPlazo]));
+      // El aviso de publicado dice el plazo si todavía no la mandó (si ya la mandó, no hace falta que haga nada)
+      const sinMandar = ver === 'sin_enviar' || ver === 'rechazada';
+      if (antes !== b.estado && b.estado === 'publicado') aviso = AVISOS.publicado({ prelanzamiento: pre, plazo: sinMandar && limite ? fechaPlazo(limite) : '' });
       if (antes !== b.estado && b.estado === 'rechazado') aviso = AVISOS.perfilRechazado(motivo);
       if (aviso) await guardarAviso(client, id, aviso);
       await client.query('COMMIT');
@@ -323,7 +344,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     // Perfiles que se verían en el sitio (mismo criterio que routes/sitio.js), para saber cuándo apagar la home provisoria
     const { rows: [pub] } = await pool.query(
       `SELECT count(*)::int AS n FROM perfiles p JOIN cuentas c ON c.id = p.cuenta_id
-        WHERE p.estado = 'publicado' AND p.verificacion = 'verificada' AND NOT p.oculto AND c.estado = 'activa'`);
+        WHERE p.estado = 'publicado' AND NOT p.oculto AND c.estado = 'activa'`);
     return {
       precios,
       packs: await planes.creditos.packs({ precios, crudo: true }),

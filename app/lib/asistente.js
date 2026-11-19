@@ -493,7 +493,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         if (!conv.cuenta_id) return { resultado: NO_IDENTIFICADO };
         const id = conv.cuenta_id;
         const [pf, efectivo, base, saldo, peds] = await Promise.all([
-          pool.query("SELECT estado, verificacion, oculto, pausado_por, motivo_rechazo, datos->>'displayName' AS nombre FROM perfiles WHERE cuenta_id = $1", [id]),
+          pool.query("SELECT estado, verificacion, oculto, pausado_por, motivo_rechazo, verificacion_limite, datos->>'displayName' AS nombre FROM perfiles WHERE cuenta_id = $1", [id]),
           planes.planEfectivo(id), planes.baseJson(id), creditos.saldo(id),
           pool.query('SELECT * FROM pedidos_creditos WHERE cuenta_id = $1 ORDER BY creado DESC LIMIT 5', [id]),
         ]);
@@ -503,6 +503,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
             nombreArtistico: p.nombre || null,
             perfil: ESTADO_PERFIL[p.estado] || p.estado || 'Sin perfil',
             ...(p.estado === 'pausado' && p.pausado_por === 'sin_saldo' ? { pausa: 'Pausado porque no alcanzaron los créditos para renovar el plan.' } : {}),
+            ...(p.estado === 'pausado' && p.pausado_por === 'sin_verificacion' ? { pausa: 'Pausado porque no mandó la verificación de identidad dentro de los 7 días. Vuelve a verse solo apenas la manda.' } : {}),
+            // Publicado sin verificar (19/11/2026): hasta cuándo tiene para mandarla
+            ...(p.estado === 'publicado' && ['sin_enviar', 'rechazada'].includes(p.verificacion) && p.verificacion_limite ? { verificacionHasta: fmtFecha(p.verificacion_limite) } : {}),
             ...(p.estado === 'rechazado' && p.motivo_rechazo ? { motivoRechazo: p.motivo_rechazo } : {}),
             oculto: Boolean(p.oculto),
             verificacion: ESTADO_VERIF[p.verificacion] || p.verificacion || null,

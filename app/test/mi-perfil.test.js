@@ -75,7 +75,11 @@ describe('Mi perfil: ruta, barra inferior, menú y su perfil público (prod-siti
     ctx.S.yo.perfil = { estado: 'borrador', faltantes: ['Subí al menos 3 fotos (tenés 1).'], faltantesClaves: ['fotos'] }; ctx.VP.data.publico = false;
     const conFalta = ctx.aviso();
     assert.ok(conFalta.includes('<li>') && conFalta.includes('Subí al menos 3 fotos (tenés 1).') && conFalta.includes('Completar') && conFalta.includes('Seguir con los pasos'));
-    assert.equal(txt({ estado: 'en_revision' }), 'Estamos revisando tu perfil y tu verificación. Te avisamos por email.');
+    assert.equal(txt({ estado: 'en_revision' }), 'Estamos revisando tu perfil. Te avisamos por email.');
+    // Pausado por no mandar la verificación dentro de los 7 días (19/11/2026)
+    ctx.PAUSA_VERIF = 'pausa-verif';
+    vm.runInContext('var PAUSA_VERIF = this.PAUSA_VERIF;', ctx);
+    assert.equal(txt({ estado: 'pausado', pausadoPorVerificacion: true }), 'pausa-verif');
     assert.equal(txt({ estado: 'publicado', oculto: true }), 'Tu perfil está oculto: nadie lo ve en el sitio.');
     assert.equal(txt({ estado: 'publicado', pausadoPorSaldo: true }), 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.');
     assert.equal(txt({ estado: 'publicado' }), 'Tu perfil no se ve en el sitio por ahora.');

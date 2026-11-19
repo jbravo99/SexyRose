@@ -23,7 +23,7 @@
   const ESTADO_PERFIL = {
     // Envío automático (18/11/2026): ya no hay botón para mandarlo; pasa solo cuando está todo (app/lib/revision-auto.js)
     borrador: ['neutral', 'Borrador', 'Completá lo que falta y tu perfil pasa solo a revisión. Nadie lo ve todavía.'],
-    en_revision: ['warn', 'En revisión', 'Estamos revisando tu perfil y tu verificación. Te avisamos por email.'],
+    en_revision: ['warn', 'En revisión', 'Estamos revisando tu perfil. Te avisamos por email.'],
     publicado: ['ok', 'Publicado', 'Tu perfil se ve en el sitio.'],
     rechazado: ['danger', 'Rechazado', 'Revisá el motivo y corregí lo necesario. Cuando guardes los cambios, tu perfil vuelve solo a revisión.'],
     pausado: ['neutral', 'Pausado', 'Tu perfil no se ve en el sitio por ahora.'],
@@ -800,6 +800,7 @@
     const p = (S.yo && S.yo.perfil) || {};
     const txt = p.estado === 'publicado' && p.oculto ? 'Tu perfil está oculto: nadie lo ve en el sitio.'
       : p.pausadoPorSaldo ? 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.'
+        : p.pausadoPorVerificacion ? PAUSA_VERIF
         : p.estado !== 'publicado' ? (ESTADO_PERFIL[p.estado] || ESTADO_PERFIL.borrador)[2]
           : preOn() ? 'Todavía no se ve en el sitio: abrimos muy pronto.' : ESTADO_PERFIL.pausado[2];
     // Mientras falte algo: qué es, con "Completar" en cada cosa y el atajo a los primeros pasos (18/11/2026)
@@ -808,7 +809,7 @@
     return `<div class="notice info sp-yo-aviso">${icon('info')}<div class="grow stack" style="gap:10px;min-width:0"><span>${txt}</span>${faltaLista(p, true)}${guiaAplica(p) ? `<a class="btn sm sp-guia-cta" href="${GUIA_GO}" data-go="${GUIA_GO}">${icon('arrowRight')} <span>Seguir con los pasos</span></a>` : ''}</div></div>`;
   }
   // Mismo punto de aviso que tenía la barra inferior en "Mi panel" (rechazo, pausa por saldo, avisos o pedidos sin leer)
-  const yoDot = () => { const p = (S.yo && S.yo.perfil) || {}; return !!S.yo && (p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0); };
+  const yoDot = () => { const p = (S.yo && S.yo.perfil) || {}; return !!S.yo && (p.estado === 'rechazado' || p.verificacion === 'rechazada' || !!p.pausadoPorSaldo || !!p.pausadoPorVerificacion || !!p.verificacionLimite || noLeidas() > 0 || (S.yo.pedidosNoLeidos || 0) > 0); };
   function miPerfilView() {
     if (!VP.data || VP.de !== S.yo.id || HH.db !== VP.db) {
       if (!VP.cargando && !VP.err) loadVP();
@@ -1538,6 +1539,22 @@
       fotos: { tab: 'fotos', campo: 'spFotosUp' }, verificacion: { tab: 'verificacion', campo: 'spVNombre' },
     }[clave] || null;
   }
+  /* Publicado antes de verificar (19/11/2026, decisión de Juan): tiene 7 días para mandar la verificación; si no, el
+     perfil se pausa solo y vuelve a verse cuando la manda (app/lib/plazo-verificacion.js). boton = lleva a Verificación. */
+  const PAUSA_VERIF = 'Tu perfil está pausado porque no recibimos tu verificación de identidad a tiempo. Mandala y vuelve a verse solo.';
+  Object.assign(HH.I18N = HH.I18N || {}, {
+    'Estamos revisando tu perfil. Te avisamos por email.': ['We are reviewing your profile. We will let you know by email.', 'Estamos revisando seu perfil. Avisamos por e-mail.'],
+    [PAUSA_VERIF]: ['Your profile is paused because we did not receive your identity verification in time. Send it and it shows again automatically.', 'Seu perfil está pausado porque não recebemos sua verificação de identidade a tempo. Envie e ele volta a aparecer sozinho.'],
+    'Tenés hasta el': ['You have until', 'Você tem até'],
+    'para verificar tu identidad. Si no, tu perfil se pausa hasta que la mandes.': ['to verify your identity. Otherwise, your profile is paused until you send it.', 'para verificar sua identidade. Se não, seu perfil fica pausado até você enviar.'],
+    'Verificar mi identidad': ['Verify my identity', 'Verificar minha identidade'],
+  });
+  function plazoVerif(p, boton) {
+    const btn = boton ? `<a class="btn sm" href="#panel.verificacion" data-go="#panel.verificacion">${icon('shield')} <span>Verificar mi identidad</span></a>` : '';
+    if (p.pausadoPorVerificacion) return `<div class="notice danger">${icon('alert')}<div class="grow stack" style="gap:8px;min-width:0"><span>${PAUSA_VERIF}</span>${btn ? `<div>${btn}</div>` : ''}</div></div>`;
+    if (!p.verificacionLimite) return '';
+    return `<div class="notice warn">${icon('clock')}<div class="grow stack" style="gap:8px;min-width:0"><span><span>Tenés hasta el</span> <strong data-noi18n>${esc(HH.fmtDate(p.verificacionLimite))}</strong> <span>para verificar tu identidad. Si no, tu perfil se pausa hasta que la mandes.</span></span>${btn ? `<div>${btn}</div>` : ''}</div></div>`;
+  }
   // fuera = fuera del panel (Mi perfil): el aviso del email está en el panel, así que lleva al Resumen
   function completarBtn(clave, fuera) {
     let x = completarDestino(clave); if (!x) return '';
@@ -1548,6 +1565,7 @@
   }
   function panelResumen() {
     const p = S.yo.perfil; const [cls, label, txt0] = ESTADO_PERFIL[p.estado] || ESTADO_PERFIL.borrador;
+    // Pausado por la verificación: la línea de estado queda la general; el motivo y el botón van en el aviso de abajo
     const txt = p.pausadoPorSaldo ? 'Tu perfil no se ve porque no alcanzaron los créditos para renovar tu plan.' : txt0;
     const [vcls, vlabel] = VERIF[p.verificacion] || VERIF.sin_enviar;
     const f = p.faltantes || [];
@@ -1558,6 +1576,7 @@
       <div class="card stack" style="gap:12px">
         <div class="row between"><div class="card-title">Estado de tu perfil</div>${badge(cls, label)}</div>
         <p class="small muted" style="margin:0">${txt}</p>
+        ${plazoVerif(p, true)}
         ${motivo && (p.estado === 'rechazado' || p.verificacion === 'rechazada' || p.estado === 'borrador') ? `<div class="notice danger">${icon('alert')}<span><strong>Motivo:</strong> <span data-noi18n>${esc(motivo)}</span></span></div>` : ''}
         <div class="row" style="gap:8px">${badge(vcls, '<span>Verificación:</span> <span>' + vlabel + '</span>')}${badge(S.yo.emailVerificado ? 'ok' : 'warn', S.yo.emailVerificado ? 'Email confirmado' : 'Email sin confirmar')}</div>
         ${p.estado === 'publicado' ? `<div class="switch-row" style="border:0;padding:0"><div><div class="t">Ocultar mi perfil</div><div class="s">${p.oculto ? 'Tu perfil está oculto: nadie lo ve en el sitio.' : 'Lo sacás del sitio cuando quieras, sin perder nada.'}</div></div><button type="button" class="switch" role="switch" aria-checked="${!!p.oculto}" data-action="spOcultar" aria-label="Ocultar mi perfil"></button></div>` : ''}
@@ -2030,6 +2049,7 @@
     return head('Verificación', 'Verificá tu identidad', 'Confirmamos que sos vos y que sos mayor de 18. Las fotos de tu documento y tu selfie nunca se publican ni se comparten.') + `
       <div class="card stack" style="gap:12px">
         <div class="row between"><div class="card-title">Estado</div>${badge(cls, label)}</div>
+        ${plazoVerif(p, false)}
         ${v === 'rechazada' && u && u.motivo ? `<div class="notice danger">${icon('alert')}<span><strong>Motivo:</strong> <span data-noi18n>${esc(u.motivo)}</span></span></div>` : ''}
         ${v === 'pendiente' ? `<p class="small muted" style="margin:0">Recibimos tu verificación. Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo.</p>` : ''}
         ${v === 'verificada' ? `<div class="notice ok">${icon('checkCircle')}<span>Tu identidad está verificada.</span></div>` : ''}
@@ -2563,10 +2583,13 @@
     perfil_en_revision: ['info', 'clock', 'Recibimos tu perfil'], verificacion_aprobada: ['ok', 'shield', 'Te verificamos'],
     perfil_publicado: ['ok', 'checkCircle', 'Tu perfil ya está publicado'], verificacion_rechazada: ['danger', 'alert', 'Tu verificación no fue aprobada'],
     perfil_rechazado: ['danger', 'alert', 'Tu perfil no fue aprobado'],
+    // Plazo para mandar la verificación (19/11/2026, app/lib/plazo-verificacion.js)
+    verificacion_plazo: ['warn', 'clock', 'Te quedan 2 días para verificarte'], verificacion_vencida: ['danger', 'alert', 'Tu perfil quedó pausado'],
   };
   // Adónde lleva cada aviso (sección del panel; 'resumen' = /panel). Lo usan Avisos y la campana del encabezado.
   const NOTIF_LINK = { creditos_acreditados: 'creditos', pedido_rechazado: 'creditos', saldo_insuficiente: 'creditos', perfil_pausado: 'creditos', renovacion_pendiente: 'plan', plan_comprado: 'plan', plan_renovado: 'plan', plan_asignado: 'plan', plan_vence: 'plan', plan_vencio: 'plan', destacado: 'destacado',
-    perfil_en_revision: 'resumen', verificacion_aprobada: 'verificacion', perfil_publicado: 'mi-perfil', verificacion_rechazada: 'verificacion', perfil_rechazado: 'resumen' };
+    perfil_en_revision: 'resumen', verificacion_aprobada: 'verificacion', perfil_publicado: 'mi-perfil', verificacion_rechazada: 'verificacion', perfil_rechazado: 'resumen',
+    verificacion_plazo: 'verificacion', verificacion_vencida: 'verificacion' };
   const notifGo = (x) => { const to = NOTIF_LINK[x && x.tipo]; return !to ? '' : to === 'resumen' ? '#panel' : '#panel.' + to; };
   const notifTit = (x) => (x && x.titulo) || (NOTIF[x && x.tipo] || [0, 0, 'Aviso'])[2];
   // Texto del aviso: el motivo que escribió el admin ("… Motivo: …") va tal cual, sin traducir; el resto se traduce
@@ -3696,6 +3719,14 @@
       ['Revisamos tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto.', 'We reviewed your profile. It is approved. It is not on the site yet: we open very soon.', 'Revisamos seu perfil. Ele foi aprovado. Ainda não aparece no site: abrimos muito em breve.'],
       ['Revisamos tu verificación y tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto.', 'We reviewed your verification and your profile. It is approved. It is not on the site yet: we open very soon.', 'Revisamos sua verificação e seu perfil. Ele foi aprovado. Ainda não aparece no site: abrimos muito em breve.'],
       ['Tu verificación no fue aprobada', 'Your verification was not approved', 'Sua verificação não foi aprovada'],
+      // Plazo de 7 días para mandar la verificación (19/11/2026)
+      ['Te quedan 2 días para verificarte', 'You have 2 days left to verify', 'Faltam 2 dias para você se verificar'],
+      ['Tu perfil quedó pausado', 'Your profile was paused', 'Seu perfil foi pausado'],
+      ['Tenés hasta el {x} para verificar tu identidad desde tu panel. Si no, tu perfil se pausa hasta que la mandes.', 'You have until {x} to verify your identity from your dashboard. Otherwise, your profile is paused until you send it.', 'Você tem até {x} para verificar sua identidade pelo seu painel. Se não, seu perfil fica pausado até você enviar.'],
+      ['No recibimos tu verificación de identidad a tiempo, así que pausamos tu perfil. Mandala desde tu panel y tu perfil vuelve a verse solo.', 'We did not receive your identity verification in time, so we paused your profile. Send it from your dashboard and your profile shows again automatically.', 'Não recebemos sua verificação de identidade a tempo, então pausamos seu perfil. Envie pelo seu painel e seu perfil volta a aparecer sozinho.'],
+      ['Revisamos tu perfil. Ya se ve en el sitio. Tenés hasta el {x} para verificar tu identidad desde tu panel. Si no, tu perfil se pausa hasta que la mandes.', 'We reviewed your profile. It is now shown on the site. You have until {x} to verify your identity from your dashboard. Otherwise, your profile is paused until you send it.', 'Revisamos seu perfil. Ele já aparece no site. Você tem até {x} para verificar sua identidade pelo seu painel. Se não, seu perfil fica pausado até você enviar.'],
+      ['Revisamos tu perfil. Quedó aprobado. Todavía no se ve en el sitio: abrimos muy pronto. Tenés hasta el {x} para verificar tu identidad desde tu panel. Si no, tu perfil se pausa hasta que la mandes.', 'We reviewed your profile. It is approved. It is not on the site yet: we open very soon. You have until {x} to verify your identity from your dashboard. Otherwise, your profile is paused until you send it.', 'Revisamos seu perfil. Ele foi aprovado. Ainda não aparece no site: abrimos muito em breve. Você tem até {x} para verificar sua identidade pelo seu painel. Se não, seu perfil fica pausado até você enviar.'],
+      ['No pudimos aprobar tu verificación. Podés volver a enviar las fotos de tu documento y la selfie desde tu panel. Tenés hasta el {x} para mandarla de nuevo. Si no, tu perfil se pausa hasta que la mandes.', 'We could not approve your verification. You can send the photos of your ID and the selfie again from your dashboard. You have until {x} to send it again. Otherwise, your profile is paused until you send it.', 'Não conseguimos aprovar sua verificação. Você pode enviar de novo as fotos do seu documento e a selfie pelo seu painel. Você tem até {x} para enviar de novo. Se não, seu perfil fica pausado até você enviar.'],
       ['No pudimos aprobar tu verificación. Podés volver a enviar las fotos de tu documento y la selfie desde tu panel.', 'We could not approve your verification. You can send the photos of your ID and the selfie again from your dashboard.', 'Não conseguimos aprovar sua verificação. Você pode enviar de novo as fotos do seu documento e a selfie pelo painel.'],
       ['Tu perfil no fue aprobado', 'Your profile was not approved', 'Seu perfil não foi aprovado'],
       ['No pudimos aprobar tu perfil. Corregí lo necesario desde tu panel: cuando guardes los cambios, tu perfil vuelve solo a revisión.', 'We could not approve your profile. Fix what is needed from your dashboard: when you save the changes, your profile goes back to review automatically.', 'Não conseguimos aprovar seu perfil. Corrija o necessário pelo painel: quando você salvar as mudanças, seu perfil volta sozinho para revisão.'],

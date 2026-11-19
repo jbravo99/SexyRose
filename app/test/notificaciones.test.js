@@ -152,8 +152,9 @@ describe('avisos del perfil y la verificación (lib/avisos-cuenta.js)', () => {
 describe('en revisión, verificación y publicación: notificación + email una sola vez', () => {
   test('en revisión: una notificación y un email por transición (guardar de nuevo no repite)', async () => {
     const c = await cuentaNueva();
+    // 19/11/2026: la verificación ya no hace falta para pasar a revisión (se puede publicar antes; 7 días para mandarla)
     await fotos(c);
-    assert.deepEqual(await notifs(c.id), [], 'sin la verificación todavía no está completo');
+    assert.equal((await c.get('/api/cuenta/yo')).body.cuenta.perfil.estado, 'en_revision');
     const yo = await verificacion(c);
     assert.equal(yo.perfil.estado, 'en_revision');
     let n = await notifs(c.id);
@@ -238,10 +239,10 @@ describe('en revisión, verificación y publicación: notificación + email una 
     assert.equal(m.length, 2);
     assert.equal(m[1].subject, 'Tu verificación no fue aprobada');
     assert.match(m[1].text, /Motivo: La foto del documento salió borrosa/);
-    // Vuelve a mandar la verificación → en revisión otra vez (nueva transición, nuevo aviso)
+    // 19/11/2026: rechazar la verificación ya no saca el perfil de revisión; volver a mandarla no es una transición nueva
+    assert.equal(r.body.perfil.estado, 'en_revision');
     await verificacion(c);
-    await esperarMails(c.email, 3);
-    assert.equal((await notifs(c.id)).filter((x) => x.tipo === 'perfil_en_revision').length, 2);
+    assert.equal((await notifs(c.id)).filter((x) => x.tipo === 'perfil_en_revision').length, 1);
     // El admin aprueba la identidad y después rechaza el perfil
     assert.equal((await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'aprobar' })).status, 200);
     r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'rechazado', motivo: 'Las fotos tienen texto encima' });
@@ -396,5 +397,110 @@ describe('panel (prod-sitio.js): ingreso → Resumen, avisos y campana', () => {
     const css = await fs.readFile(path.join(HERE, '..', '..', 'mvp', 'src', 'sitio.css'), 'utf8');
     assert.match(css, /\.sp-bell-panel\{position:fixed/);
     assert.match(css, /env\(safe-area-inset-bottom,0px\) - 96px/);
+  });
+});
+
+describe('publicar antes de verificar: 7 días para mandar la verificación (19/11/2026)', () => {
+  const plazo = () => instance.ctx.plazoVerificacion.ejecutar();
+  const perfil = async (id) => (await db.query('SELECT estado, verificacion, pausado_por, verificacion_limite, verificacion_aviso2 FROM perfiles WHERE cuenta_id = $1', [id])).rows[0];
+  const visible = async (id) => {
+    const r = await fetch(BASE + '/api/sitio/estado', { headers: { 'cache-control': 'no-cache' } });
+    return (await r.json()).perfiles.some((p) => p.cuentaId === id);
+  };
+
+  test('publicada sin verificar: plazo de 7 días, aviso a 2 días (una vez), pausa al vencer y vuelve sola al mandarla', async () => {
+    const c = await cuentaNueva();
+    await fotos(c);
+    assert.equal((await perfil(c.id)).estado, 'en_revision', 'pasa a revisión sin la verificación');
+    let r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'publicado' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    let p = await perfil(c.id);
+    assert.equal(p.estado, 'publicado');
+    const dias = (new Date(p.verificacion_limite) - Date.now()) / 86400000;
+    assert.ok(dias > 6.9 && dias <= 7);
+    let n = await notifs(c.id);
+    assert.match(n.at(-1).texto, /^Revisamos tu perfil\. Ya se ve en el sitio\. Tenés hasta el \d{1,2} de [a-z]+ de \d{4} para verificar tu identidad desde tu panel\. Si no, tu perfil se pausa hasta que la mandes\.$/);
+    assert.ok(await visible(c.id), 'dentro del plazo se ve');
+    // El panel: hasta cuándo tiene
+    let yo = (await c.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(new Date(yo.perfil.verificacionLimite).getTime(), new Date(p.verificacion_limite).getTime());
+    assert.equal(yo.perfil.pausadoPorVerificacion, false);
+    // Lejos del final: nada
+    assert.deepEqual(await plazo(), { avisos2: 0, pausados: 0 });
+    // Faltan menos de 2 días: un aviso (y no se repite)
+    await db.query("UPDATE perfiles SET verificacion_limite = now() + interval '36 hours' WHERE cuenta_id = $1", [c.id]);
+    assert.equal((await plazo()).avisos2, 1);
+    assert.equal((await plazo()).avisos2, 0);
+    n = await notifs(c.id);
+    assert.deepEqual([n.at(-1).tipo, n.at(-1).titulo], ['verificacion_plazo', 'Te quedan 2 días para verificarte']);
+    const m = await esperarMails(c.email, 3);
+    assert.equal(m.at(-1).subject, 'Te quedan 2 días para verificarte');
+    assert.match(m.at(-1).text, /https:\/\/sexyrose\.net\/panel\/verificacion/);
+    // Vencido: se pausa, con aviso, y deja de verse
+    await db.query("UPDATE perfiles SET verificacion_limite = now() - interval '1 minute' WHERE cuenta_id = $1", [c.id]);
+    assert.equal((await plazo()).pausados, 1);
+    assert.equal((await plazo()).pausados, 0);
+    p = await perfil(c.id);
+    assert.deepEqual([p.estado, p.pausado_por], ['pausado', 'sin_verificacion']);
+    n = await notifs(c.id);
+    assert.deepEqual([n.at(-1).tipo, n.at(-1).titulo], ['verificacion_vencida', 'Tu perfil quedó pausado']);
+    assert.ok(!(await visible(c.id)));
+    yo = (await c.get('/api/cuenta/yo')).body.cuenta;
+    assert.equal(yo.perfil.pausadoPorVerificacion, true);
+    assert.equal(yo.perfil.verificacionLimite, null);
+    // La manda: vuelve a publicarse sola y ya no se pausa aunque el plazo haya pasado
+    yo = await verificacion(c);
+    assert.equal(yo.perfil.estado, 'publicado');
+    assert.equal((await plazo()).pausados, 0);
+    assert.ok(await visible(c.id));
+    // Aprobada: sin plazo
+    assert.equal((await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'aprobar' })).status, 200);
+    p = await perfil(c.id);
+    assert.equal(p.verificacion_limite, null);
+    assert.equal(p.verificacion, 'verificada');
+  });
+
+  test('rechazada dentro del plazo: el aviso dice hasta cuándo; si ya venció, se pausa en la próxima pasada', async () => {
+    const c = await cuentaNueva();
+    await fotos(c); await verificacion(c);
+    assert.equal((await admPost(`/acompanantes/${c.id}/estado`, { estado: 'publicado' })).status, 200);
+    const lim = (await perfil(c.id)).verificacion_limite;
+    assert.ok(lim, 'con la verificación mandada sin revisar también tiene plazo (por si se rechaza)');
+    assert.equal((await plazo()).pausados, 0, 'mandada: no se pausa');
+    let r = await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'rechazar', motivo: 'No se lee el documento' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.perfil.estado, 'publicado', 'rechazar la verificación no despublica');
+    const n = await notifs(c.id);
+    assert.match(n.at(-1).texto, /Tenés hasta el \d{1,2} de [a-z]+ de \d{4} para mandarla de nuevo\. Si no, tu perfil se pausa hasta que la mandes\. Motivo: No se lee el documento$/);
+    await db.query("UPDATE perfiles SET verificacion_limite = now() - interval '1 minute' WHERE cuenta_id = $1", [c.id]);
+    assert.equal((await plazo()).pausados, 1);
+    // El admin la vuelve a publicar: plazo nuevo de 7 días
+    r = await admPost(`/acompanantes/${c.id}/estado`, { estado: 'publicado' });
+    assert.equal(r.status, 200);
+    const p = await perfil(c.id);
+    assert.equal(p.estado, 'publicado');
+    assert.ok((new Date(p.verificacion_limite) - Date.now()) / 86400000 > 6.9);
+    assert.equal(p.verificacion_aviso2, null);
+  });
+
+  test('verificada al publicar: sin plazo ni aviso de plazo', async () => {
+    const c = await cuentaNueva();
+    await fotos(c); await verificacion(c);
+    const r = await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'aprobar' });
+    assert.equal(r.body.perfil.estado, 'publicado');
+    assert.equal((await perfil(c.id)).verificacion_limite, null);
+    assert.doesNotMatch((await notifs(c.id)).at(-1).texto, /Tenés hasta/);
+  });
+
+  test('los textos nuevos se traducen en el panel', async () => {
+    const s = await fs.readFile(SITIO, 'utf8');
+    const fecha = '26 de noviembre de 2026';
+    const textos = [avisos.plazoVerificacion(fecha), avisos.verificacionVencida(),
+      ...[false, true].map((pre) => avisos.publicado({ prelanzamiento: pre, plazo: fecha }))]
+      .flatMap((a) => [a.titulo, a.texto.replaceAll(fecha, '{x}')]);
+    const rech = avisos.verificacionRechazada('x', { plazo: fecha });
+    textos.push(rech.texto.slice(0, rech.texto.indexOf(' Motivo: ')).replaceAll(fecha, '{x}'));
+    for (const t of [...new Set(textos)]) assert.ok(s.includes(`['${t}', '`), 'falta traducción: ' + t);
+    for (const t of ['verificacion_plazo', 'verificacion_vencida']) assert.ok(s.includes(`${t}: 'verificacion'`), 'link: ' + t);
   });
 });
