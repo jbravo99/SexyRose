@@ -97,7 +97,8 @@ export const HERRAMIENTA_NO_CONTACTAR = Object.freeze({
 });
 
 // creditosEn: link al WhatsApp del chip de créditos cuando este chat es de un chip de captación (varios chips, 19/11/2026)
-export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion = false, creditosEn = '' }) {
+// demorado: el mensaje llegó mientras el chip estaba desconectado y se responde horas después (20/11/2026)
+export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion = false, creditosEn = '', demorado = false }) {
   const url = String(siteUrl || '').replace(/\/+$/, '');
   return `Sos el asistente de cuenta de SexyRose (${url}), un sitio de anuncios de acompañantes en Argentina. Sos una IA y atendés por WhatsApp solo a acompañantes (anunciantes) para temas de su cuenta y para comprar créditos.
 
@@ -125,6 +126,8 @@ Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje apa
 ${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le escribió porque vio su perfil publicado en otro sitio y la invitó a crear su perfil en SexyRose. Respondé sus preguntas sobre crear el perfil, el plan Bronce (gratis), los planes, las fotos, la verificación y cómo registrarse (${url}/registro), con la herramienta "ayuda" (temas registro, planes, fotos, verificacion, publicar, apertura, contenido) y "precios". Si pregunta de dónde sacamos su número: de su aviso publicado en otro sitio. No insistas ni la presiones. Si no le interesa, pide que no le escribamos, se enoja o insulta: usá "no_contactar".
 
 ` : ''}${creditosEn ? `En este número no se compran créditos: si quiere comprar créditos, pagar un pedido o mandar un comprobante, pasale este link al WhatsApp de créditos de SexyRose: ${creditosEn}. Todo lo demás lo respondés acá.
+
+` : ''}${demorado ? `Esta persona escribió hace un rato y recién ahora le podés responder: empezá con una disculpa breve por la demora (una frase, sin explicar el motivo) y después respondé lo que preguntó.
 
 ` : ''}Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).

@@ -41,7 +41,9 @@ const MAX_RESPUESTA_MONEDA = 80; // "en pesos", "mejor en dólares": más largo 
 
 export class NoConectado extends Error { constructor() { super('WhatsApp no está conectado'); this.code = 'NO_CONECTADO'; } }
 
-export function createAsistente({ pool, creditos, planes, privado, telegram, llm = null, siteUrl = 'https://sexyrose.net', log = () => {}, enviar = null }) {
+// pausaRecuperar: espera entre un chat y otro al responder lo que llegó sin conexión (para no mandar todo de golpe)
+export function createAsistente({ pool, creditos, planes, privado, telegram, llm = null, siteUrl = 'https://sexyrose.net', log = () => {}, enviar = null,
+  pausaRecuperar = () => new Promise((r) => setTimeout(r, 40000 + Math.floor(Math.random() * 35000))) }) {
   const url = String(siteUrl || 'https://sexyrose.net').replace(/\/+$/, '');
   let enviarWa = enviar;
   const colas = new Map();
@@ -600,7 +602,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     let r;
     try {
       r = await llm.conversar({
-        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion, creditosEn }),
+        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion, creditosEn, demorado: demorados.has(c.id) }),
         mensajes, ejecutar: (nombre, input) => (creditosEn && SOLO_CHIP_CREDITOS.includes(nombre)
           ? { resultado: { error: `En este número no se compran créditos: pasale este link ${creditosEn}` } }
           : herramienta(c.id, nombre, input)),
@@ -669,6 +671,51 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     return enCola(claveChat(ev.chip, ev.jid), () => procesar(ev));
   }
 
+  // ---------- Lo que llegó sin conexión (20/11/2026) ----------
+  // chats = [{ jid, eventos: [ev…] }] (mensajes sin responder de cada chat, en orden; lib/asistente-whatsapp.js →
+  // alHistorial). De a un chat, espaciados: los mensajes anteriores se guardan y el último se procesa como siempre (con
+  // la disculpa por la demora si contesta la IA). Si en ese chat ya hay algo nuestro más nuevo, se saltea.
+  const demorados = new Set();
+  let recuperando = Promise.resolve();
+  function recuperar(chats, chip = 1) {
+    recuperando = recuperando.catch(() => {}).then(async () => {
+      const aj = await leerAjustes(pool);
+      if (!aj.activo) return;
+      let n = 0;
+      for (const ch of chats || []) {
+        const evs = (ch.eventos || []).filter((e) => !e.deMi);
+        if (!evs.length) continue;
+        const ult = evs[evs.length - 1];
+        try {
+          const hecho = await enCola(claveChat(chip, ult.jid), async () => {
+            const conv = await conversacion(ult.jid, ult.telefono, ult.lid || null, chip);
+            if (await mensajeGuardado(conv, ult.waId)) return false; // ya lo vimos (otro pedazo del historial)
+            const { rows } = await pool.query(
+              "SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND dir = 'out' AND creado > $2 LIMIT 1", [conv.id, new Date(ult.ts || 0)]);
+            if (rows[0]) return false; // ya se le respondió después
+            for (const e of evs.slice(0, -1)) {
+              await guardarMensaje(conv, { dir: 'in', origen: 'usuario', tipo: e.tipo, texto: e.texto || null, waId: e.waId });
+            }
+            demorados.add(conv.id);
+            try { await procesar({ ...ult, chip }); } finally { demorados.delete(conv.id); }
+            return true;
+          });
+          if (hecho) {
+            n++;
+            await pool.query('UPDATE asistente_whatsapp SET recuperados = recuperados + 1 WHERE id = $1', [chip]).catch(() => {});
+            await pausaRecuperar();
+          }
+        } catch (e) { log('asistente: no se pudo responder un mensaje recuperado:', e.code || e.message); }
+      }
+      if (n && telegram) {
+        await telegram.enviar({ texto: `Asistente: chip ${letraDe(chip)}: respondí ${n} ${n === 1 ? 'chat que había' : 'chats que habían'} quedado sin respuesta mientras estaba desconectado.`, tipo: 'asistente_alerta' }).catch(() => {});
+      }
+      log(`asistente: chip ${letraDe(chip)}: ${n} chat(s) recuperado(s) respondido(s)`);
+    });
+    return recuperando;
+  }
+  const mensajeGuardado = async (conv, waId) => (waId ? Boolean((await pool.query('SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND wa_id = $2', [conv.id, waId])).rows[0]) : false);
+
   // ---------- Bandeja de salida (avisos que manda el app: créditos acreditados o pedido rechazado) ----------
   async function procesarSalida({ desvincular = async () => {}, conectado = () => true } = {}) {
     const aj = await leerAjustes(pool);
@@ -699,8 +746,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   }
 
   return {
-    recibir, procesarSalida, herramienta, historial,
+    recibir, recuperar, procesarSalida, herramienta, historial,
     setEnviar(fn) { enviarWa = typeof fn === 'function' ? fn : null; },
     async esperar() { await Promise.all([...colas.values()]); },
+    esperarRecuperar: () => recuperando.catch(() => {}),
   };
 }

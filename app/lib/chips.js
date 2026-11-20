@@ -11,7 +11,7 @@ const digitos = (v) => { const d = String(v || '').replace(/\D/g, ''); return d.
 
 export async function listarChips(db) {
   const { rows } = await db.query(
-    `SELECT id, chr(64 + id) AS letra, rol, pausado, por_dia, estado, numero, error, qr, qr_creado, latido, ia, modelo, creado, actualizado
+    `SELECT id, chr(64 + id) AS letra, rol, pausado, por_dia, estado, numero, error, qr, qr_creado, latido, ia, modelo, creado, actualizado, recuperar_desde, recuperar_hasta, recuperados
        FROM asistente_whatsapp ORDER BY id`);
   return rows;
 }

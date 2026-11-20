@@ -15,6 +15,9 @@
 //   POST   /asistente/chips            {rol}                    agrega un chip (letra siguiente); el agente pide su QR
 //   PUT    /asistente/chips/:id        {rol?, pausado?, porDia?}
 //   DELETE /asistente/chips/:id        (no el A): el agente lo cierra y se borra su sesión; sus chats quedan
+//   POST   /asistente/chips/:id/recuperar {desde}  (20/11/2026) responder lo que llegó sin conexión desde esa fecha:
+//                                                    desvincula el chip; al escanear el QR, el historial que manda
+//                                                    WhatsApp se contesta (db/340-recuperar-mensajes.sql)
 //   GET  /asistente/conversaciones?estado=bot|humano|captacion&q= → lista (teléfono enmascarado, cuenta, último mensaje,
 //                                                         estado, captación)
 //   GET  /asistente/conversaciones/:id                  → chat completo + pedidos nombrados
@@ -51,10 +54,17 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       id: Number(w.id), letra: w.letra || String.fromCharCode(64 + Number(w.id)), rol: w.rol || 'captacion', pausado: Boolean(w.pausado), porDia: w.por_dia || 30,
       estado: vivo ? w.estado : 'desconectado', agente: vivo, numero: w.numero ? telefonoOculto(w.numero) : null,
       error: w.error || null, qrSvg, actualizado: w.actualizado || null, latido: w.latido || null,
+      // Responder lo que llegó sin conexión: pedido en curso (o el último) y desde cuándo conviene (lo último que vio)
+      recuperar: w.recuperar_desde ? { desde: w.recuperar_desde, hasta: w.recuperar_hasta, vigente: Boolean(w.recuperar_hasta && new Date(w.recuperar_hasta) > new Date()), respondidos: w.recuperados || 0 } : null,
+      ultimoVisto: w.ultimo_visto || null,
     };
   }
   async function estado() {
-    const [aj, filas, cuentas] = await Promise.all([leerAjustes(pool), listarChips(pool), listarCuentas(pool)]);
+    const [aj, filas0, cuentas, vistos] = await Promise.all([leerAjustes(pool), listarChips(pool), listarCuentas(pool),
+      pool.query(`SELECT c.chip, max(m.creado) AS visto FROM asistente_mensajes m JOIN asistente_conversaciones c ON c.id = m.conversacion_id
+        WHERE m.dir = 'in' GROUP BY c.chip`)]);
+    const vistoDe = new Map(vistos.rows.map((x) => [Number(x.chip), x.visto]));
+    const filas = filas0.map((x) => ({ ...x, ultimo_visto: vistoDe.get(Number(x.id)) || null }));
     const chips = await Promise.all(filas.map(chipJson));
     const w = filas.find((x) => Number(x.id) === 1) || { estado: 'desconectado' };
     const uno = chips.find((x) => x.id === 1) || { estado: 'desconectado', agente: false, numero: null, error: null, qrSvg: null };
@@ -166,6 +176,19 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       `UPDATE asistente_whatsapp SET rol = COALESCE($2, rol), pausado = COALESCE($3, pausado), por_dia = COALESCE($4, por_dia), actualizado = now()
         WHERE id = $1`, [id, v.rol ?? null, v.pausado ?? null, v.porDia ?? null]);
     if (!rowCount) throw he(404, 'Ese chip no existe.');
+    res.json(await estado());
+  }));
+  r.post('/asistente/chips/:id/recuperar', apiPost, ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const desde = new Date(String(body(req).desde || ''));
+    if (Number.isNaN(desde.getTime())) throw he(400, 'Elegí desde cuándo.');
+    if (desde > new Date()) throw he(400, 'La fecha no puede ser futura.');
+    if (Date.now() - desde.getTime() > 7 * 24 * 3600 * 1000) throw he(400, 'Como mucho, los últimos 7 días.');
+    const { rowCount } = await pool.query(
+      "UPDATE asistente_whatsapp SET recuperar_desde = $2, recuperar_hasta = now() + interval '2 hours', recuperados = 0, actualizado = now() WHERE id = $1", [id, desde]);
+    if (!rowCount) throw he(404, 'Ese chip no existe.');
+    await pool.query("INSERT INTO asistente_salida (destino, tipo, datos) VALUES ('whatsapp', 'desvincular', $1)", [JSON.stringify({ chip: id })]);
+    log(`asistente: recuperar mensajes del chip ${String.fromCharCode(64 + id)} desde ${desde.toISOString()} (se desvincula para volver a escanear)`);
     res.json(await estado());
   }));
   r.delete('/asistente/chips/:id', apiPost, ah(async (req, res) => {

@@ -601,8 +601,7 @@ describe('varios chips (19/11/2026): una sesión por chip', () => {
       const f = fabrica(); const recibidos = [];
       const wa = nuevoWa({ chip: 2, makeSocket: f.makeSocket, alMensaje: async (ev) => { recibidos.push(ev); } });
       await wa.iniciar(); await conectado(wa, f);
-      const { rows } = await db.query('SELECT id, estado FROM asistente_whatsapp WHERE id IN (1, 2) ORDER BY id');
-      assert.equal(rows.find((r) => r.id === 2).estado, 'conectado');
+      assert.ok(await hasta(async () => (await db.query('SELECT estado FROM asistente_whatsapp WHERE id = 2')).rows[0].estado === 'conectado'), 'estado en la fila del chip B');
       assert.equal(wa.chip, 2);
       await wa._alLlegar({ type: 'notify', messages: [{ key: { remoteJid: '5491155550777@s.whatsapp.net', id: 'X1', fromMe: false }, messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: 'hola' } }] });
       assert.ok(await hasta(() => recibidos.length === 1));

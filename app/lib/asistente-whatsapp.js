@@ -247,6 +247,8 @@ export function createWhatsApp({
   crearAuth = null,      // pruebas: ({ B }) => auth (con socket falso, por defecto no hay sesión)
   esperaCandadoMs = 3000,
   avisar = async () => {}, // aviso a Juan por Telegram (agente.js: telegram.notify(…, 'asistente_alerta'))
+  // Recuperar lo que llegó sin conexión (20/11/2026): chats con mensajes sin responder que vienen en el historial
+  alRecuperar = async () => {},
 }) {
   chip = Number(chip) || 1;
   const log = chip === 1 ? logBase : (...a) => logBase(`[chip ${String.fromCharCode(64 + chip)}]`, ...a);
@@ -373,6 +375,7 @@ export function createWhatsApp({
     s.ev.on('creds.update', () => { auth.guardarCreds().catch((e) => log('asistente: no se pudo guardar la sesión:', e.code || e.message)); });
     s.ev.on('connection.update', (u) => { if (gen === generacion) alActualizar(u, s, auth).catch((e) => log('asistente: estado de conexión:', e.message)); });
     s.ev.on('messages.upsert', (ev) => { if (gen === generacion) alLlegar(ev).catch((e) => log('asistente: mensaje entrante falló:', e.code || e.message)); });
+    s.ev.on('messaging-history.set', (h) => { if (gen === generacion) alHistorial(h).catch((e) => log('asistente: historial falló:', e.code || e.message)); });
     s.ev.on('messages.update', (ups) => {
       for (const u of ups || []) {
         const k = (u && u.key) || {};
@@ -464,40 +467,82 @@ export function createWhatsApp({
     return (j.endsWith(SERVIDOR_PN) || j.endsWith(SERVIDOR_LID)) && !j.startsWith('status@') && !j.includes('broadcast');
   }
 
+  // Mensaje de WhatsApp → evento para el asistente (o null si no es de un chat de una persona). historial = viene de
+  // la sincronización del historial: no se toca la dirección de respuesta ni se avisa de los no descifrados.
+  async function aEvento(m, { historial = false } = {}) {
+    const k = m.key || {};
+    let jid = String(k.remoteJid || '');
+    if (!esChat(jid)) return null; // grupos (@g.us), estados, difusiones, canales (@newsletter)
+    if (Number(m.messageStubType) === STUB_CIPHERTEXT) {
+      if (historial) return null;
+      // No se pudo descifrar: Baileys ya le pidió al remitente que lo reenvíe (si lo reenvía, llega de nuevo).
+      const motivo = Array.isArray(m.messageStubParameters) && m.messageStubParameters[0] ? sinDatos(m.messageStubParameters[0]) : '?';
+      log(`asistente: whatsapp: llegó un mensaje que no se pudo descifrar (${idCorto(k.id)}: ${motivo}); se pidió reenvío`);
+      return null;
+    }
+    // El chat se guarda con su teléfono si se conoce (así se identifica el perfil y siguen los chats de antes); se
+    // responde por la dirección por la que escribió (LID o teléfono), como recomienda Baileys 7.
+    const direccion = sinDispositivo(jid);
+    if (esPropio(direccion)) return null; // chat con uno mismo
+    let lid = null;
+    if (esLid(direccion)) { lid = direccion; jid = (await telefonoDeLid(k, direccion)) || direccion; } else jid = direccion;
+    const tel = esPn(jid) ? usuario(jid) : null;
+    if (tel && propio && tel === propio) return null;
+    const t0 = m.messageTimestamp;
+    const ts = (t0 && typeof t0 === 'object' && typeof t0.toNumber === 'function' ? t0.toNumber() : Number(t0)) * 1000;
+    const c = leerContenido(m.message);
+    if (!c) return null;
+    return {
+      jid, direccion, ts: ts || 0, lid: lid && lid !== jid ? lid : null, telefono: tel, waId: k.id || null, deMi: Boolean(k.fromMe), porBot: Boolean(k.fromMe && k.id && enviados.has(k.id)),
+      tipo: c.tipo, texto: c.texto || '',
+      media: c.media ? { ...c.media, descargar: () => bajar(m) } : null,
+    };
+  }
+  const recordarDireccion = (jid, direccion) => {
+    direcciones.delete(jid); direcciones.set(jid, direccion);
+    if (direcciones.size > 5000) direcciones.delete(direcciones.keys().next().value);
+  };
+
   async function alLlegar({ messages, type }) {
     if (type !== 'notify' && type !== 'append') return;
     for (const m of messages || []) {
-      const k = m.key || {};
-      let jid = String(k.remoteJid || '');
-      if (!esChat(jid)) continue; // grupos (@g.us), estados, difusiones, canales (@newsletter)
-      if (Number(m.messageStubType) === STUB_CIPHERTEXT) {
-        // No se pudo descifrar: Baileys ya le pidió al remitente que lo reenvíe (si lo reenvía, llega de nuevo).
-        const motivo = Array.isArray(m.messageStubParameters) && m.messageStubParameters[0] ? sinDatos(m.messageStubParameters[0]) : '?';
-        log(`asistente: whatsapp: llegó un mensaje que no se pudo descifrar (${idCorto(k.id)}: ${motivo}); se pidió reenvío`);
-        continue;
-      }
-      // El chat se guarda con su teléfono si se conoce (así se identifica el perfil y siguen los chats de antes); se
-      // responde por la dirección por la que escribió (LID o teléfono), como recomienda Baileys 7.
-      const direccion = sinDispositivo(jid);
-      if (esPropio(direccion)) continue; // chat con uno mismo
-      let lid = null;
-      if (esLid(direccion)) { lid = direccion; jid = (await telefonoDeLid(k, direccion)) || direccion; } else jid = direccion;
-      const tel = esPn(jid) ? usuario(jid) : null;
-      if (tel && propio && tel === propio) continue;
-      direcciones.delete(jid); direcciones.set(jid, direccion);
-      if (direcciones.size > 5000) direcciones.delete(direcciones.keys().next().value);
-      const t0 = m.messageTimestamp;
-      const ts = (t0 && typeof t0 === 'object' && typeof t0.toNumber === 'function' ? t0.toNumber() : Number(t0)) * 1000;
-      if (ts && Date.now() - ts > VIEJO_MS) continue;
-      const c = leerContenido(m.message);
-      if (!c) continue;
-      const ev = {
-        jid, lid: lid && lid !== jid ? lid : null, telefono: tel, waId: k.id || null, deMi: Boolean(k.fromMe), porBot: Boolean(k.fromMe && k.id && enviados.has(k.id)),
-        tipo: c.tipo, texto: c.texto || '',
-        media: c.media ? { ...c.media, descargar: () => bajar(m) } : null,
-      };
+      const e = await aEvento(m);
+      if (!e) continue;
+      recordarDireccion(e.jid, e.direccion);
+      if (e.ts && Date.now() - e.ts > VIEJO_MS) continue;
+      const { direccion, ts, ...ev } = e;
       await alMensaje({ ...ev, chip });
     }
+  }
+
+  // Sincronización del historial (llega al vincular el chip): si Juan pidió recuperar desde una fecha (admin →
+  // asistente_whatsapp.recuperar_desde, vigente hasta recuperar_hasta), arma los chats cuyo último mensaje es de la
+  // otra persona y llegó después de esa fecha, con los mensajes sin responder en orden, y se los pasa al asistente.
+  async function alHistorial({ messages }) {
+    const { rows } = await pool.query('SELECT recuperar_desde, recuperar_hasta FROM asistente_whatsapp WHERE id = $1', [chip]);
+    const r = rows[0];
+    if (!r || !r.recuperar_desde || !r.recuperar_hasta || new Date(r.recuperar_hasta) < new Date()) return;
+    const desde = new Date(r.recuperar_desde).getTime();
+    const porChat = new Map();
+    for (const m of messages || []) {
+      const e = await aEvento(m, { historial: true });
+      if (!e || !e.ts || e.ts < desde) continue;
+      if (!porChat.has(e.jid)) porChat.set(e.jid, []);
+      porChat.get(e.jid).push(e);
+    }
+    const chats = [];
+    for (const [jid, evs] of porChat) {
+      evs.sort((a, b) => a.ts - b.ts);
+      const ult = evs[evs.length - 1];
+      if (ult.deMi) continue; // ya se le respondió
+      let i = evs.length - 1;
+      while (i > 0 && !evs[i - 1].deMi) i--;
+      recordarDireccion(jid, ult.direccion);
+      chats.push({ jid, eventos: evs.slice(i).map(({ direccion, ...ev }) => ({ ...ev, chip })) });
+    }
+    if (!chats.length) return;
+    log(`asistente: whatsapp: historial con ${chats.length} chat(s) sin responder desde el ${new Date(desde).toISOString()}`);
+    await alRecuperar(chats, chip);
   }
 
   async function bajar(m) {
@@ -612,6 +657,7 @@ export function createWhatsApp({
     get estado() { return estado; },
     conectado: () => estado === 'conectado' && Boolean(sock),
     _alLlegar: alLlegar,
+    _alHistorial: alHistorial,
     _paraReenviar: paraReenviar,
     _direccionPara: direccionPara,
   };

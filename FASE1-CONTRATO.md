@@ -1036,6 +1036,15 @@ el número que tenías cargado: …".
   más cupo libre hoy. Lo enviado antes de los chips cuenta para el A. Versiones del mensaje (`ajustes.captacion.mensajes`,
   hasta 5): cada contacto recibe siempre la misma; el asistente reconoce cualquiera.
 
+- **Responder lo que llegó sin conexión** (20/11/2026, migración 340): lo que llega mientras ningún dispositivo está
+  vinculado nunca le llega al asistente; WhatsApp lo manda en la sincronización del historial al vincular de nuevo.
+  Botón por chip → `POST /asistente/chips/:id/recuperar {desde}` (hasta 7 días atrás; sugerido: el último mensaje que
+  vio el asistente en ese chip): guarda `recuperar_desde` y `recuperar_hasta` (2 h) y desvincula el chip. Con el
+  historial (`messaging-history.set`), el asistente contesta los chats cuyo último mensaje es de la otra persona y es
+  posterior a la fecha: los mensajes anteriores sin respuesta se guardan y el último se procesa como siempre, con una
+  disculpa breve por la demora si contesta la IA. De a un chat, con 40–75 s entre uno y otro. Se saltean los chats ya
+  respondidos (en el historial o en la base) y los grupos. Al terminar, aviso por Telegram con la cantidad.
+
 ### Captación (semiautomática: Juan toca Enviar)
 
 Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-contactos.xlsx` de Juan, hoja "Contactos").

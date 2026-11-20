@@ -47,7 +47,7 @@
   function vigilar() {
     // Varios chips (19/11/2026): mientras alguno espera el QR o se conecta
     const chs = (S.asis && S.asis.chips) || [];
-    const hace = S.asis && S.asis.ajustes && S.asis.ajustes.activo && chs.some((c) => ['esperando_qr', 'conectando', 'desconectado'].includes(c.estado));
+    const hace = S.asis && S.asis.ajustes && S.asis.ajustes.activo && chs.some((c) => ['esperando_qr', 'conectando', 'desconectado'].includes(c.estado) || (c.recuperar && c.recuperar.vigente));
     if (hace && !poll) {
       poll = setInterval(() => {
         if (!enVista()) { clearInterval(poll); poll = null; return; }
@@ -90,17 +90,23 @@
       cuerpo = `<div class="small">Conectado${c.numero ? ` con <strong data-noi18n>${esc(c.numero)}</strong>` : ''}. Abrí WhatsApp en ese teléfono al menos cada 14 días para que no se desvincule.</div>`;
     }
     const cap = c.rol === 'captacion';
+    // Responder lo que llegó sin conexión (20/11/2026): estado del pedido
+    const rc = c.recuperar;
+    const recTxt = rc && rc.vigente ? `<div class="notice info">${icon('refresh')}<span>${c.estado === 'conectado' ? `Respondiendo lo que llegó desde el ${esc(fecha(rc.desde))}: <strong>${rc.respondidos}</strong> ${HH.plural(rc.respondidos, 'chat respondido', 'chats respondidos')}. Va de a uno, espaciados.` : `Para responder lo que llegó desde el ${esc(fecha(rc.desde))}, escaneá el QR del chip ${esc(c.letra)}.`}</span></div>`
+      : rc && rc.respondidos ? `<p class="small muted" style="margin:0">Última recuperación: ${rc.respondidos} ${HH.plural(rc.respondidos, 'chat respondido', 'chats respondidos')} (desde el ${esc(fecha(rc.desde))}).</p>` : '';
     return `<section class="card stack asis-chip${c.pausado ? ' pausado' : ''}" style="gap:12px" id="asisChip${esc(c.letra)}">
         <div class="row between" style="gap:10px;flex-wrap:wrap"><div class="row" style="gap:8px;align-items:center"><span class="asis-letra" aria-hidden="true">${esc(c.letra)}</span><div><div class="card-title">Chip ${esc(c.letra)}</div><div class="small muted">${ROL_TXT[c.rol] || c.rol} · ${badgeHtml(lb, cls)}${c.pausado ? ' · <span class="badge neutral">Pausado</span>' : ''}</div></div></div>
           <label class="row small" style="gap:8px;align-items:center">Activo <button type="button" class="switch" role="switch" aria-checked="${!c.pausado}" aria-label="Chip ${esc(c.letra)} activo" data-action="asisChipPausa" data-id="${c.id}"></button></label></div>
         ${c.pausado ? `<p class="small muted" style="margin:0">${cap ? 'No aparece para mandar invitaciones.' : 'El botón de comprar créditos usa otro chip.'} El asistente igual contesta si está vinculado.</p>` : ''}
         ${c.error ? `<div class="notice warn">${icon('alert')}<span>${esc(c.error)}</span></div>` : ''}
+        ${recTxt}
         ${cuerpo}
         <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
           <div class="field" style="margin:0"><label for="asisRol${c.id}">Rol</label><select class="select" id="asisRol${c.id}" data-change="asisChipRol" data-id="${c.id}"><option value="captacion"${cap ? ' selected' : ''}>Captación</option><option value="creditos"${cap ? '' : ' selected'}>Créditos</option></select></div>
           ${cap ? `<div class="field" style="margin:0"><label for="asisPd${c.id}">Invitaciones por día</label><div class="row" style="gap:6px"><input class="input pa-num" id="asisPd${c.id}" type="number" min="1" max="200" step="1" value="${esc(c.porDia)}" style="width:80px"><button type="button" class="btn ghost sm" data-action="asisChipPorDia" data-id="${c.id}">Guardar</button></div></div>` : ''}
         </div>
         <div class="row" style="gap:8px;flex-wrap:wrap">
+          ${aj.activo ? `<button type="button" class="btn secondary sm" data-action="asisRecuperar" data-id="${c.id}" data-l="${esc(c.letra)}" data-v="${esc(c.ultimoVisto || '')}">${icon('refresh')} Responder lo que llegó sin conexión</button>` : ''}
           ${c.estado === 'conectado' || c.estado === 'esperando_qr' ? `<button type="button" class="btn ghost sm pa-danger" data-action="asisDesvincular" data-id="${c.id}" data-l="${esc(c.letra)}">${icon('x')} Desvincular</button>` : ''}
           ${c.id !== 1 ? `<button type="button" class="btn ghost sm pa-danger" data-action="asisChipQuitar" data-id="${c.id}" data-l="${esc(c.letra)}">${icon('trash')} Quitar chip</button>` : ''}
         </div>
@@ -397,6 +403,26 @@
       HH.confirm({ title: `Desvincular el chip ${l}`, text: `<span>Se cierra la sesión del asistente en el teléfono del chip ${l}.</span> <span>Para volver a conectarlo hay que escanear el QR de nuevo.</span>`, okLabel: 'Desvincular', cls: 'danger', onOk: () => {
         HH.api('POST', '/asistente/desvincular', { chip }).then((d) => { S.asis = d; HH.toast('Desvinculando…', { type: 'ok' }); rerender(); vigilar(); }).catch(fail);
       } });
+    },
+    // Responder lo que llegó sin conexión (20/11/2026): elige desde cuándo; se desvincula y al escanear el QR responde
+    asisRecuperar(el) {
+      const id = el.dataset.id; const l = el.dataset.l;
+      const local = (d) => { const x = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return x.toISOString().slice(0, 16); };
+      const base = el.dataset.v ? new Date(el.dataset.v) : new Date(Date.now() - 24 * 3600 * 1000);
+      HH.modal({ title: `Responder lo que llegó sin conexión · chip ${l}`, body: `<div class="stack" style="gap:12px">
+          <p class="small" style="margin:0">Los mensajes que llegaron mientras el chip no estaba vinculado no le llegan al asistente. WhatsApp los manda cuando se vincula de nuevo: por eso <strong>se desvincula el chip ${esc(l)}</strong> y tenés que <strong>escanear el QR otra vez</strong>.</p>
+          <p class="small muted" style="margin:0">Después, el asistente contesta los chats cuyo último mensaje es de la otra persona y llegó desde la fecha que elijas, de a uno y espaciados (alrededor de un minuto entre chat y chat), con una disculpa breve por la demora. Los chats que ya respondiste vos se saltean. Puede que WhatsApp no mande todos los mensajes viejos.</p>
+          <div class="field"><label for="asisRecDesde">Desde</label><input class="input" id="asisRecDesde" type="datetime-local" value="${esc(local(base))}" max="${esc(local(new Date()))}"></div>
+          <p class="tiny muted" style="margin:0">Sugerido: el último mensaje que vio el asistente en este chip.</p>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Desvincular y responder', onClick: (btn) => {
+          const v = (document.getElementById('asisRecDesde') || {}).value;
+          const d = v ? new Date(v) : null;
+          if (!d || Number.isNaN(d.getTime())) { HH.toast('Elegí desde cuándo.', { type: 'warn' }); return; }
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/asistente/chips/' + encodeURIComponent(id) + '/recuperar', { desde: d.toISOString() })
+            .then((r) => { S.asis = r; HH.closeModal(); HH.toast(`Chip ${l} desvinculado: escaneá el QR`, { type: 'ok' }); rerender(); vigilar(); })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+        } }] });
     },
     // Chips (19/11/2026)
     asisChipNuevo(el) {

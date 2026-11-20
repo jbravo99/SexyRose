@@ -66,13 +66,15 @@ export async function startAgente(overrides = {}) {
   const privado = createPrivado({ dataDir: config.dataDir });
   const llm = createLlm({ apiKey: config.anthropicKey, modelo: config.anthropicModel, fetchImpl: config.llmFetch !== undefined ? config.llmFetch : globalThis.fetch, log });
   if (!llm.disponible) log('agente: sin ANTHROPIC_API_KEY: responde solo lo automático (pedidos y comprobantes) y deriva lo demás.');
-  const asistente = createAsistente({ pool, creditos, planes, privado, telegram, llm, siteUrl: config.siteUrl, log });
+  const asistente = createAsistente({ pool, creditos, planes, privado, telegram, llm, siteUrl: config.siteUrl, log,
+    ...(config.pausaRecuperar ? { pausaRecuperar: config.pausaRecuperar } : {}) });
   // Varios chips (19/11/2026, lib/chips.js): una conexión de WhatsApp por fila de asistente_whatsapp. Los chips que
   // agrega o quita Juan desde el admin se toman en la próxima supervisión.
   const chips = new Map(); // id → conexión
   const crearChip = (id) => createWhatsApp({
     chip: id, pool, secretsKey: config.secretsKey, log, makeSocket: config.makeSocket || null, descargar: config.descargar || null,
-    alMensaje: (ev) => asistente.recibir(ev), ia: { configurada: llm.disponible, modelo: llm.modelo },
+    alMensaje: (ev) => asistente.recibir(ev), alRecuperar: (lista, chip) => asistente.recuperar(lista, chip),
+    ia: { configurada: llm.disponible, modelo: llm.modelo },
     avisar: (texto) => telegram.notify(id === 1 ? texto : `Chip ${letraDe(id)}: ${texto}`, 'asistente_alerta'),
     ...(config.demora ? { demora: config.demora } : {}), ...(config.dormir ? { dormir: config.dormir } : {}),
   });

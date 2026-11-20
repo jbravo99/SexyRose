@@ -157,7 +157,7 @@ async function limpiar() {
   await db.query('DELETE FROM captacion_contactos');
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzmsj-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('asistente', 'telegram', 'captacion', 'contacto')");
-  await db.query('UPDATE asistente_whatsapp SET numero = NULL, por_dia = 30, pausado = false, rol = \'captacion\' WHERE id = 1');
+  await db.query('UPDATE asistente_whatsapp SET numero = NULL, por_dia = 30, pausado = false, rol = \'captacion\', recuperar_desde = NULL, recuperar_hasta = NULL, recuperados = 0 WHERE id = 1');
   await db.query('DELETE FROM asistente_whatsapp WHERE id > 1');
 }
 
@@ -175,7 +175,7 @@ before(async () => {
   await db.query("INSERT INTO ajustes (clave, valor) VALUES ('telegram', $1)", [JSON.stringify({ chatId: '777', chatNombre: 'Juan', chatUsuario: 'juan', vinculado: new Date().toISOString(), avisos: {} })]);
   agente = await startAgente({
     pool: dbAgente, databaseUrl: DATABASE_URL, makeSocket, llmFetch, telegramFetch: tgFetch, anthropicKey: 'sk-prueba',
-    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
+    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, pausaRecuperar: async () => {}, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
   });
 });
 after(async () => {
@@ -792,6 +792,71 @@ describe('varios chips (19/11/2026)', () => {
     const d = await (await admJson('POST', '/asistente/chips', { rol: 'captacion' })).json();
     assert.deepEqual(d.chips.map((c) => c.letra), ['A', 'C', 'D']);
     await admJson('DELETE', '/asistente/chips/3', {}); await admJson('DELETE', '/asistente/chips/4', {});
+  });
+});
+
+describe('responder lo que llegó sin conexión (20/11/2026)', () => {
+  const ts = (ms) => Math.floor(ms / 1000);
+  const msj = (tel, id, texto, ms, fromMe = false) => ({ key: { remoteJid: `${tel}@s.whatsapp.net`, fromMe, id }, messageTimestamp: ts(ms), message: { conversation: texto } });
+
+  test('pedirlo desvincula el chip; con el historial, contesta solo los chats sin responder desde la fecha (con disculpa) y avisa', async () => {
+    assert.equal((await admJson('POST', '/asistente/chips/1/recuperar', { desde: 'x' })).status, 400);
+    assert.equal((await admJson('POST', '/asistente/chips/1/recuperar', { desde: new Date(Date.now() + 3600e3).toISOString() })).status, 400);
+    assert.equal((await admJson('POST', '/asistente/chips/1/recuperar', { desde: new Date(Date.now() - 9 * 864e5).toISOString() })).status, 400);
+    const ayer = Date.now() - 26 * 3600e3; const hoy = Date.now() - 3 * 3600e3;
+    // Sin pedido: el historial no hace nada
+    await agente.chips.get(1)._alHistorial({ messages: [msj('5491155550961', 'H0', 'hola?', hoy)] });
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM asistente_conversaciones WHERE telefono = '5491155550961'")).rows[0].n, 0);
+    const desde = new Date(ayer - 3600e3).toISOString();
+    const viejo = SOCK;
+    let r = await admJson('POST', '/asistente/chips/1/recuperar', { desde });
+    assert.equal(r.status, 200);
+    let d = await r.json();
+    const a = d.chips.find((c) => c.letra === 'A');
+    assert.ok(a.recuperar && a.recuperar.vigente && a.recuperar.respondidos === 0);
+    const sal = (await db.query("SELECT datos FROM asistente_salida WHERE tipo = 'desvincular' ORDER BY id DESC LIMIT 1")).rows[0];
+    assert.deepEqual(sal.datos, { chip: 1 });
+    // El agente desvincula el chip A y pide QR nuevo; Juan lo escanea
+    assert.ok(await hasta(() => SOCK !== viejo), 'socket nuevo después de desvincular');
+    SOCK.ev.emit('connection.update', { connection: 'open' });
+    assert.ok(await hasta(() => agente.chips.get(1).conectado()), 'conectado de nuevo');
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Perdón por la demora. Crear tu perfil es gratis.' }] });
+    const n0 = LLM.llamadas.length; const antes = SOCK.enviados.length; const tg0 = TG.enviados.length;
+    await agente.chips.get(1)._alHistorial({ messages: [
+      // 1) escribió dos veces sin respuesta → se contesta una vez, con las dos en el historial de la IA
+      msj('5491155550961', 'H1', 'Hola, ¿cómo me registro?', ayer + 1000), msj('5491155550961', 'H2', '¿Es gratis?', ayer + 2000),
+      // 2) Juan ya le respondió desde el teléfono → nada
+      msj('5491155550962', 'H3', 'Hola', ayer + 3000), msj('5491155550962', 'H4', 'Hola! Te cuento…', ayer + 4000, true),
+      // 3) antes de la fecha → nada
+      msj('5491155550963', 'H5', 'Viejo', ayer - 5 * 3600e3),
+      // 4) un grupo → nada
+      { key: { remoteJid: '123-456@g.us', fromMe: false, id: 'H6' }, messageTimestamp: ts(hoy), message: { conversation: 'grupo' } },
+    ] });
+    await agente.asistente.esperarRecuperar();
+    const k = (await db.query("SELECT * FROM asistente_conversaciones WHERE telefono = '5491155550961'")).rows[0];
+    const ms = (await db.query('SELECT dir, origen, texto FROM asistente_mensajes WHERE conversacion_id = $1 ORDER BY id', [k.id])).rows;
+    assert.deepEqual(ms.map((x) => [x.dir, x.origen]), [['in', 'usuario'], ['in', 'usuario'], ['out', 'bot']]);
+    assert.equal(SOCK.enviados.length, antes + 1, 'un solo mensaje');
+    assert.equal(SOCK.enviados.at(-1).jid, '5491155550961@s.whatsapp.net');
+    assert.equal(LLM.llamadas.length, n0 + 1);
+    const sys = JSON.stringify(LLM.llamadas[n0].system);
+    assert.ok(sys.includes('empezá con una disculpa breve por la demora'));
+    assert.ok(JSON.stringify(LLM.llamadas[n0].messages).includes('¿cómo me registro?') && JSON.stringify(LLM.llamadas[n0].messages).includes('¿Es gratis?'));
+    assert.equal((await db.query("SELECT count(*)::int AS n FROM asistente_conversaciones WHERE telefono IN ('5491155550962', '5491155550963')")).rows[0].n, 0);
+    assert.ok(TG.enviados.slice(tg0).some((x) => /respondí 1 chat que había quedado sin respuesta/.test(x.text)), 'aviso por Telegram');
+    d = await (await adm('/asistente')).json();
+    assert.equal(d.chips.find((c) => c.letra === 'A').recuperar.respondidos, 1);
+    // El mismo historial otra vez (llega en pedazos): no repite
+    await agente.chips.get(1)._alHistorial({ messages: [msj('5491155550961', 'H2', '¿Es gratis?', ayer + 2000)] });
+    await agente.asistente.esperarRecuperar();
+    assert.equal(SOCK.enviados.length, antes + 1);
+    // La disculpa no queda para los mensajes de siempre
+    const n1 = LLM.llamadas.length;
+    await llega('5491155550961', 'Otra pregunta');
+    assert.ok(!JSON.stringify(LLM.llamadas[n1].system).includes('disculpa breve por la demora'));
+    LLM.guion = null;
+    await db.query('UPDATE asistente_whatsapp SET recuperar_desde = NULL, recuperar_hasta = NULL, recuperados = 0 WHERE id = 1');
+    await db.query("DELETE FROM asistente_salida WHERE tipo = 'desvincular'");
   });
 });
 
