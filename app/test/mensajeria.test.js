@@ -157,7 +157,8 @@ async function limpiar() {
   await db.query('DELETE FROM captacion_contactos');
   await db.query("DELETE FROM cuentas WHERE email LIKE 'zzmsj-%'");
   await db.query("DELETE FROM ajustes WHERE clave IN ('asistente', 'telegram', 'captacion', 'contacto')");
-  await db.query('UPDATE asistente_whatsapp SET numero = NULL WHERE id = 1');
+  await db.query('UPDATE asistente_whatsapp SET numero = NULL, por_dia = 30, pausado = false, rol = \'captacion\' WHERE id = 1');
+  await db.query('DELETE FROM asistente_whatsapp WHERE id > 1');
 }
 
 before(async () => {
@@ -351,9 +352,11 @@ describe('captación: importar, cola y estados', () => {
   test('cola: N por día (configurable) y en orden; se descuenta lo enviado hoy', async () => {
     let r = await admJson('PUT', '/captacion/ajustes', { porDia: 0 });
     assert.equal(r.status, 400);
-    r = await admJson('PUT', '/captacion/ajustes', { porDia: 2 });
+    // Varios chips (19/11/2026): el cupo es por chip (Admin → Mensajería → WhatsApp)
+    r = await admJson('PUT', '/asistente/chips/1', { porDia: 2 });
     assert.equal(r.status, 200);
-    let d = await r.json();
+    let d = await (await adm('/captacion')).json();
+    assert.deepEqual(d.cola.chip, { id: 1, letra: 'A', conectado: false });
     assert.deepEqual(d.cola.items.map((x) => x.nombres[0]), ['Luna', 'Mora']);
     const kiara = await cap('+5491155550204');
     r = await admJson('POST', `/captacion/${kiara.id}/estado`, { estado: 'enviado' });
@@ -364,7 +367,7 @@ describe('captación: importar, cola y estados', () => {
     assert.equal(d.numeros.enviadosSemana, 1);
     // deshacer (vuelve a pendiente) y volver a 30 por día
     assert.equal((await admJson('POST', `/captacion/${kiara.id}/estado`, { estado: 'pendiente' })).status, 200);
-    assert.equal((await admJson('PUT', '/captacion/ajustes', { porDia: 30 })).status, 200);
+    assert.equal((await admJson('PUT', '/asistente/chips/1', { porDia: 30 })).status, 200);
   });
 
   test('"revisar" nunca entra en la cola ni se puede abrir; "Revisado: es mayor de edad" lo devuelve; "Descartar"', async () => {
@@ -671,3 +674,124 @@ describe('lo que se movió de Ajustes', () => {
     assert.equal((await r.json()).ajustes.mensaje, MENSAJE_DEFAULT);
   });
 });
+
+describe('varios chips (19/11/2026)', () => {
+  const decodificar = (u) => decodeURIComponent(new URL(u).searchParams.get('text'));
+  const V = [
+    'Hola, ¿qué tal? Somos SexyRose (sexyrose.net), versión uno del mensaje de invitación para probar.',
+    'Buenas, ¿cómo andás? Te escribe SexyRose (sexyrose.net), versión dos del mensaje de invitación para probar.',
+    'Hola, ¿cómo va? Desde SexyRose (sexyrose.net) te escribimos: versión tres del mensaje de invitación para probar.',
+  ];
+  let sockB = null;
+
+  test('agregar chips (letras, rol, cupo, pausa); el agente los toma; el A no se quita', async () => {
+    const antes = SOCK;
+    let r = await admJson('POST', '/asistente/chips', { rol: 'captacion', porDia: 3 });
+    assert.equal(r.status, 201);
+    let d = await r.json();
+    assert.deepEqual(d.chips.map((c) => [c.letra, c.rol, c.porDia]), [['A', 'captacion', 30], ['B', 'captacion', 3]]);
+    assert.ok(await hasta(() => agente.chips.has(2)), 'el agente toma el chip B');
+    assert.ok(await hasta(() => SOCK !== antes), 'socket del chip B');
+    sockB = SOCK;
+    sockB.ev.emit('connection.update', { connection: 'open' });
+    assert.ok(await hasta(async () => (await (await adm('/asistente')).json()).chips.find((c) => c.letra === 'B').estado === 'conectado'));
+    r = await admJson('POST', '/asistente/chips', { rol: 'creditos' });
+    d = await r.json();
+    assert.deepEqual(d.chips.map((c) => c.letra), ['A', 'B', 'C']);
+    assert.equal((await admJson('POST', '/asistente/chips', { rol: 'otro' })).status, 400);
+    assert.equal((await admJson('PUT', '/asistente/chips/2', { porDia: 0 })).status, 400);
+    assert.equal((await admJson('DELETE', '/asistente/chips/1', {})).status, 409);
+    // desvincular uno solo: la salida lleva el chip
+    assert.equal((await admJson('POST', '/asistente/desvincular', { chip: 9 })).status, 404);
+  });
+
+  test('captación: la cola rota al chip con más cupo, se puede elegir otro, y cada envío cuenta para su chip', async () => {
+    const csv = 'Nombres;Teléfono;Ciudad;Sitios;Cantidad de avisos\n'
+      + 'Uno;+5491155550901;Rosario;skokka;9\nDos;+5491155550902;Rosario;skokka;8\nTres;+5491155550903;Rosario;skokka;7\nCuatro;+5491155550904;Rosario;skokka;6\n';
+    assert.equal((await subir(Buffer.from(csv, 'utf8'), 'chips.csv')).status, 200);
+    let d = await (await adm('/captacion')).json();
+    // A ya mandó hoy (pruebas de arriba) → le queda menos que su cupo; B tiene 3 libres
+    const a = d.chips.find((c) => c.letra === 'A'); const b = d.chips.find((c) => c.letra === 'B');
+    assert.equal(b.cupo, 3);
+    assert.ok(!d.chips.some((c) => c.letra === 'C'), 'el chip de créditos no manda invitaciones');
+    const esperado = a.cupo > b.cupo ? 'A' : 'B';
+    assert.equal(d.cola.chip.letra, esperado);
+    d = await (await adm('/captacion?chip=2')).json();
+    assert.equal(d.cola.chip.letra, 'B');
+    assert.equal(d.cola.items.length, 3, 'cupo del chip B');
+    // Abrir chat con el B y que salga desde el B
+    const c = d.cola.items.find((x) => x.nombres[0] === 'Uno');
+    assert.equal((await admJson('POST', `/captacion/${c.id}/abierto`, { chip: 2 })).status, 200);
+    assert.equal((await cap('+5491155550901')).chip, 2);
+    await agente.chips.get(2)._alLlegar({ type: 'notify', messages: [{ key: { remoteJid: '5491155550901@s.whatsapp.net', fromMe: true, id: 'CHIPB1' }, messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: MENSAJE_DEFAULT } }] });
+    const x = await cap('+5491155550901');
+    assert.deepEqual([x.estado, x.chip], ['enviado', 2]);
+    const k = (await db.query('SELECT * FROM asistente_conversaciones WHERE telefono = $1', ['5491155550901'])).rows;
+    assert.deepEqual(k.map((y) => y.chip), [2], 'el chat es del chip B');
+    d = await (await adm('/captacion?chip=2')).json();
+    assert.equal(d.chips.find((y) => y.letra === 'B').enviadosHoy, 1);
+    assert.equal(d.cola.items.length, 2);
+    // Pausado: no aparece para mandar
+    await admJson('PUT', '/asistente/chips/2', { pausado: true });
+    d = await (await adm('/captacion?chip=2')).json();
+    assert.ok(!d.chips.some((y) => y.letra === 'B'));
+    assert.equal(d.cola.chip.letra, 'A');
+    await admJson('PUT', '/asistente/chips/2', { pausado: false });
+  });
+
+  test('cuando responde en el chip B, el asistente contesta por el B; si hay chip de créditos, las compras se derivan allá', async () => {
+    await db.query("UPDATE asistente_whatsapp SET numero = '5491100007777' WHERE id = 3");
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Te paso el link de créditos.' }] });
+    const n0 = LLM.llamadas.length; const enA = SOCK === sockB ? 0 : null;
+    const antesB = sockB.enviados.length;
+    await agente.chips.get(2)._alLlegar({ type: 'notify', messages: [{ key: { remoteJid: '5491155550901@s.whatsapp.net', fromMe: false, id: 'CHIPB2' }, messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: 'Hola, quiero comprar créditos' } }] });
+    assert.ok(await hasta(() => sockB.enviados.length > antesB), 'responde por el chip B');
+    assert.equal(sockB.enviados.at(-1).jid, '5491155550901@s.whatsapp.net');
+    const llamada = LLM.llamadas[n0];
+    assert.ok(JSON.stringify(llamada.system).includes('https://wa.me/5491100007777'));
+    const nombres = (llamada.tools || []).map((t) => t.name);
+    assert.ok(!nombres.includes('crear_pedido') && !nombres.includes('datos_transferencia'), nombres.join(','));
+    assert.equal((await cap('+5491155550901')).estado, 'respondio');
+    void enA;
+    // "Cargar créditos": el chip de créditos; pausado, vuelve al A
+    let a = await (await adm('/asistente')).json();
+    assert.equal(a.botonCreditos.vinculado, '+5491100007777');
+    await admJson('PUT', '/asistente/chips/3', { pausado: true });
+    a = await (await adm('/asistente')).json();
+    assert.notEqual(a.botonCreditos.vinculado, '+5491100007777');
+    LLM.guion = null;
+  });
+
+  test('versiones del mensaje: cada contacto recibe siempre la misma y el asistente reconoce cualquiera', async () => {
+    let r = await admJson('PUT', '/captacion/ajustes', { mensajes: [V[0], V[1], V[2]] });
+    assert.equal(r.status, 200);
+    assert.equal((await admJson('PUT', '/captacion/ajustes', { mensajes: ['corto'] })).status, 400);
+    assert.equal((await admJson('PUT', '/captacion/ajustes', { mensajes: Array(6).fill(V[0]) })).status, 400);
+    const d = await (await adm('/captacion?chip=1')).json();
+    assert.deepEqual(d.ajustes.mensajes, V);
+    const textos = d.cola.items.map((x) => decodificar(x.waUrl));
+    assert.ok(textos.every((t) => V.includes(t)));
+    const otra = await (await adm('/captacion?chip=1')).json();
+    assert.deepEqual(otra.cola.items.map((x) => decodificar(x.waUrl)), textos, 'siempre la misma versión');
+    // Un envío con la versión dos se reconoce como invitación
+    const c = d.cola.items.find((x) => x.nombres[0] === 'Dos');
+    await admJson('POST', `/captacion/${c.id}/abierto`, { chip: 1 });
+    await llega('5491155550902', V[1], { fromMe: true });
+    assert.equal((await cap('+5491155550902')).estado, 'enviado');
+    // Vacío: vuelve al texto aprobado
+    r = await admJson('PUT', '/captacion/ajustes', { mensajes: [] });
+    assert.deepEqual((await r.json()).ajustes.mensajes, [MENSAJE_DEFAULT]);
+  });
+
+  test('quitar un chip: el agente lo cierra y sus chats quedan', async () => {
+    const r = await admJson('DELETE', '/asistente/chips/2', {});
+    assert.equal(r.status, 200);
+    assert.ok(await hasta(() => !agente.chips.has(2)), 'el agente lo cierra');
+    assert.equal((await db.query('SELECT count(*)::int AS n FROM asistente_conversaciones WHERE chip = 2')).rows[0].n, 1);
+    // uno nuevo no reusa la letra B (tiene chats)
+    const d = await (await admJson('POST', '/asistente/chips', { rol: 'captacion' })).json();
+    assert.deepEqual(d.chips.map((c) => c.letra), ['A', 'C', 'D']);
+    await admJson('DELETE', '/asistente/chips/3', {}); await admJson('DELETE', '/asistente/chips/4', {});
+  });
+});
+

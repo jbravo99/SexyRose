@@ -45,14 +45,15 @@
   // Mientras se espera el QR o la conexión, el estado se consulta cada 3 s.
   let poll = null;
   function vigilar() {
-    const e = S.asis && S.asis.whatsapp && S.asis.whatsapp.estado;
-    const hace = S.asis && S.asis.ajustes && S.asis.ajustes.activo && (e === 'esperando_qr' || e === 'conectando' || e === 'desconectado');
+    // Varios chips (19/11/2026): mientras alguno espera el QR o se conecta
+    const chs = (S.asis && S.asis.chips) || [];
+    const hace = S.asis && S.asis.ajustes && S.asis.ajustes.activo && chs.some((c) => ['esperando_qr', 'conectando', 'desconectado'].includes(c.estado));
     if (hace && !poll) {
       poll = setInterval(() => {
         if (!enVista()) { clearInterval(poll); poll = null; return; }
         HH.api('GET', '/asistente').then((d) => {
-          const antes = S.asis && S.asis.whatsapp.estado; S.asis = d;
-          if (antes !== 'conectado' && d.whatsapp.estado === 'conectado') HH.toast('WhatsApp conectado', { type: 'ok' });
+          const antes = new Map(((S.asis && S.asis.chips) || []).map((c) => [c.id, c.estado])); S.asis = d;
+          (d.chips || []).forEach((c) => { if (antes.get(c.id) && antes.get(c.id) !== 'conectado' && c.estado === 'conectado') HH.toast(`Chip ${c.letra} conectado`, { type: 'ok' }); });
           if (/^admin\.mensajeria\.(whatsapp|conversaciones)$/.test(HH.current.path)) rerender();
           vigilar();
         }).catch(() => {});
@@ -61,30 +62,57 @@
   }
 
   /* ---------- Estado y ajustes ---------- */
+  // Prendido/apagado (para todos los chips) e IA
   function cardEstado(d) {
-    const w = d.whatsapp || {}; const aj = d.ajustes || {};
-    const [lb, cls] = ESTADO_WA[w.estado] || ESTADO_WA.desconectado;
-    let cuerpo = '';
-    if (aj.activo && !w.agente) {
-      cuerpo = `<div class="notice danger">${icon('alert')}<span>El asistente no está corriendo en el servidor (contenedor <code>agente</code>). Revisá el deploy y los logs.</span></div>`;
-    } else if (w.estado === 'esperando_qr' && w.qrSvg) {
-      cuerpo = `<div class="asis-qr-wrap"><img class="asis-qr" src="${esc(w.qrSvg)}" alt="Código QR para vincular WhatsApp" width="240" height="240">
-          <ol class="small asis-pasos"><li>Abrí WhatsApp en el teléfono del chip del asistente.</li><li>Tocá <strong>Dispositivos vinculados</strong> → <strong>Vincular un dispositivo</strong>.</li><li>Escaneá este código. Se renueva solo cada pocos segundos.</li></ol></div>`;
-    } else if (w.estado === 'esperando_qr' || w.estado === 'conectando') {
-      cuerpo = `<p class="small muted" style="margin:0">Preparando la conexión… esta pantalla se actualiza sola.</p>`;
-    } else if (w.estado === 'conectado') {
-      cuerpo = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Conectado${w.numero ? ` con <span data-noi18n>${esc(w.numero)}</span>` : ''}</div><div class="sub">Responde los chats de las acompañantes. Abrí WhatsApp en ese teléfono al menos cada 14 días para que no se desvincule.</div></div></div>`;
-    } else if (!aj.activo) {
-      cuerpo = `<p class="small muted" style="margin:0">Apagado: no se conecta a WhatsApp y no responde. Al prenderlo aparece el QR para vincular el chip (si no estaba vinculado).</p>`;
-    }
-    const ia = d.ia || {};
+    const aj = d.ajustes || {}; const ia = d.ia || {};
+    const chs = d.chips || [];
+    const sinAgente = aj.activo && chs.length && !chs.some((c) => c.agente);
     return `<section class="card stack" style="gap:12px" id="asisEstado">
-        <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div class="card-title">${icon('whatsapp')} Asistente de cuenta</div><div class="small muted">${aj.activo ? 'Prendido' : 'Apagado'} · ${badgeHtml(lb, cls)}</div></div>
+        <div class="row between" style="gap:12px;flex-wrap:nowrap"><div class="grow"><div class="card-title">${icon('whatsapp')} Asistente de cuenta</div><div class="small muted">${aj.activo ? 'Prendido en todos los chips' : 'Apagado: no se conecta a WhatsApp y no responde'}</div></div>
           <button type="button" class="switch" role="switch" aria-checked="${!!aj.activo}" aria-label="Asistente prendido" data-action="asisActivo"></button></div>
-        ${w.error ? `<div class="notice warn">${icon('alert')}<span>${esc(w.error)}</span></div>` : ''}
-        ${cuerpo}
+        ${sinAgente ? `<div class="notice danger">${icon('alert')}<span>El asistente no está corriendo en el servidor (contenedor <code>agente</code>). Revisá el deploy y los logs.</span></div>` : ''}
         <div class="small muted">IA: ${ia.configurada ? `activa (<code>${esc(ia.modelo || '')}</code>)` : 'sin <code>ANTHROPIC_API_KEY</code>: responde solo los pedidos y comprobantes; lo demás te lo pasa a vos.'}</div>
-        ${w.estado === 'conectado' || w.estado === 'esperando_qr' ? `<div class="row"><button type="button" class="btn ghost sm pa-danger" data-action="asisDesvincular">${icon('x')} Desvincular</button></div>` : ''}
+      </section>`;
+  }
+  /* Varios chips (19/11/2026): cada uno con su letra, su rol (captación o créditos), su cupo de invitaciones por día,
+     pausa a mano (restringido o bloqueado) y su QR. API: /asistente/chips. */
+  const ROL_TXT = { captacion: 'Captación', creditos: 'Créditos' };
+  function chipCard(c, aj) {
+    const [lb, cls] = ESTADO_WA[c.estado] || ESTADO_WA.desconectado;
+    let cuerpo = '';
+    if (!aj.activo) cuerpo = '';
+    else if (c.estado === 'esperando_qr' && c.qrSvg) {
+      cuerpo = `<div class="asis-qr-wrap"><img class="asis-qr" src="${esc(c.qrSvg)}" alt="Código QR para vincular el chip ${esc(c.letra)}" width="240" height="240">
+          <ol class="small asis-pasos"><li>Abrí WhatsApp en el teléfono del <strong>chip ${esc(c.letra)}</strong>.</li><li>Tocá <strong>Dispositivos vinculados</strong> → <strong>Vincular un dispositivo</strong>.</li><li>Escaneá este código. Se renueva solo cada pocos segundos.</li></ol></div>`;
+    } else if (c.estado === 'esperando_qr' || c.estado === 'conectando') {
+      cuerpo = '<p class="small muted" style="margin:0">Preparando la conexión… esta pantalla se actualiza sola.</p>';
+    } else if (c.estado === 'conectado') {
+      cuerpo = `<div class="small">Conectado${c.numero ? ` con <strong data-noi18n>${esc(c.numero)}</strong>` : ''}. Abrí WhatsApp en ese teléfono al menos cada 14 días para que no se desvincule.</div>`;
+    }
+    const cap = c.rol === 'captacion';
+    return `<section class="card stack asis-chip${c.pausado ? ' pausado' : ''}" style="gap:12px" id="asisChip${esc(c.letra)}">
+        <div class="row between" style="gap:10px;flex-wrap:wrap"><div class="row" style="gap:8px;align-items:center"><span class="asis-letra" aria-hidden="true">${esc(c.letra)}</span><div><div class="card-title">Chip ${esc(c.letra)}</div><div class="small muted">${ROL_TXT[c.rol] || c.rol} · ${badgeHtml(lb, cls)}${c.pausado ? ' · <span class="badge neutral">Pausado</span>' : ''}</div></div></div>
+          <label class="row small" style="gap:8px;align-items:center">Activo <button type="button" class="switch" role="switch" aria-checked="${!c.pausado}" aria-label="Chip ${esc(c.letra)} activo" data-action="asisChipPausa" data-id="${c.id}"></button></label></div>
+        ${c.pausado ? `<p class="small muted" style="margin:0">${cap ? 'No aparece para mandar invitaciones.' : 'El botón de comprar créditos usa otro chip.'} El asistente igual contesta si está vinculado.</p>` : ''}
+        ${c.error ? `<div class="notice warn">${icon('alert')}<span>${esc(c.error)}</span></div>` : ''}
+        ${cuerpo}
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field" style="margin:0"><label for="asisRol${c.id}">Rol</label><select class="select" id="asisRol${c.id}" data-change="asisChipRol" data-id="${c.id}"><option value="captacion"${cap ? ' selected' : ''}>Captación</option><option value="creditos"${cap ? '' : ' selected'}>Créditos</option></select></div>
+          ${cap ? `<div class="field" style="margin:0"><label for="asisPd${c.id}">Invitaciones por día</label><div class="row" style="gap:6px"><input class="input pa-num" id="asisPd${c.id}" type="number" min="1" max="200" step="1" value="${esc(c.porDia)}" style="width:80px"><button type="button" class="btn ghost sm" data-action="asisChipPorDia" data-id="${c.id}">Guardar</button></div></div>` : ''}
+        </div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          ${c.estado === 'conectado' || c.estado === 'esperando_qr' ? `<button type="button" class="btn ghost sm pa-danger" data-action="asisDesvincular" data-id="${c.id}" data-l="${esc(c.letra)}">${icon('x')} Desvincular</button>` : ''}
+          ${c.id !== 1 ? `<button type="button" class="btn ghost sm pa-danger" data-action="asisChipQuitar" data-id="${c.id}" data-l="${esc(c.letra)}">${icon('trash')} Quitar chip</button>` : ''}
+        </div>
+      </section>`;
+  }
+  function cardChips(d) {
+    const aj = d.ajustes || {}; const chs = d.chips || [];
+    return `<section class="stack" style="gap:12px" id="asisChips">
+        <div class="row between" style="gap:8px;flex-wrap:wrap"><div class="card-title">${icon('phone')} Chips</div>
+          <div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn secondary sm" data-action="asisChipNuevo" data-rol="captacion">${icon('plus')} Chip de captación</button><button type="button" class="btn ghost sm" data-action="asisChipNuevo" data-rol="creditos">${icon('plus')} Chip de créditos</button></div></div>
+        <p class="small muted" style="margin:0">Cada chip se vincula con su QR y el asistente atiende todos. Los de <strong>captación</strong> mandan invitaciones (cada uno con su cupo por día) y atienden las respuestas; si hay un chip de <strong>créditos</strong> activo, el botón de comprar créditos usa ese y en los de captación el asistente pasa el link para comprar. Si un chip queda restringido o bloqueado, pausalo.</p>
+        <div class="asis-chips">${chs.map((c) => chipCard(c, aj)).join('')}</div>
       </section>`;
   }
   const badgeHtml = (l, cls) => `<span class="badge ${cls}">${l}</span>`;
@@ -93,7 +121,7 @@
   function cardBoton(d) {
     const b = d.botonCreditos || {};
     let txt;
-    if (b.usa === 'vinculado') txt = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Usa el número vinculado: <span data-noi18n>${esc(b.vinculado)}</span></div><div class="sub">Se toma solo del chip del asistente. Si vinculás otro chip, el botón cambia solo.</div></div></div>`;
+    if (b.usa === 'vinculado') txt = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Usa el número vinculado: <span data-noi18n>${esc(b.vinculado)}</span></div><div class="sub">El del chip de créditos activo; si no hay, el del chip A. Cambia solo.</div></div></div>`;
     else if (b.usa === 'guardado') txt = `<div class="notice info">${icon('info')}<span>Hasta que vincules el chip, el botón usa el número que tenías cargado: <strong data-noi18n>${esc(b.guardado)}</strong>.</span></div>`;
     else txt = `<div class="notice warn">${icon('alert')}<span>Todavía no hay número: vinculá el chip del asistente para que el botón de comprar créditos abra WhatsApp.</span></div>`;
     return `<section class="card stack" style="gap:12px" id="asisBoton">
@@ -215,11 +243,12 @@
     }
     const go = (c) => `#admin.mensajeria.conversaciones.${esc(c.id)}`;
     const capB = (c) => (c.captacion ? ` <span class="badge info" title="${esc(CAP_ESTADO[c.captacion.estado] || '')}">Captación</span>` : '');
+    const chipB = (c) => (c.chip ? `<span class="asis-letra sm" title="Chip ${esc(c.chip)}">${esc(c.chip)}</span> ` : '');
     const tabla = `<div class="table-wrap pa-table"><table class="table"><thead><tr><th>Teléfono</th><th>Cuenta</th><th>Último mensaje</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>
-      ${items.map((c) => `<tr class="asis-fila" data-go="${go(c)}"><td class="nowrap"><a href="${go(c)}" data-go="${go(c)}" data-noi18n>${esc(c.telefono)}</a></td><td>${cuentaHtml(c)}</td><td class="small">${ultimoHtml(c.ultimo)}</td><td class="nowrap">${chip(c)}${capB(c)}</td><td class="small muted nowrap">${fecha(c.ultimoMensaje || c.creado)}</td></tr>`).join('')}
+      ${items.map((c) => `<tr class="asis-fila" data-go="${go(c)}"><td class="nowrap">${chipB(c)}<a href="${go(c)}" data-go="${go(c)}" data-noi18n>${esc(c.telefono)}</a></td><td>${cuentaHtml(c)}</td><td class="small">${ultimoHtml(c.ultimo)}</td><td class="nowrap">${chip(c)}${capB(c)}</td><td class="small muted nowrap">${fecha(c.ultimoMensaje || c.creado)}</td></tr>`).join('')}
       </tbody></table></div>`;
     const tarjetas = `<div class="pa-cards">${items.map((c) => `<a class="card stack asis-card" style="gap:6px" href="${go(c)}" data-go="${go(c)}">
-        <div class="row between nowrap"><strong data-noi18n>${esc(c.telefono)}</strong><span class="nowrap">${chip(c)}${capB(c)}</span></div>
+        <div class="row between nowrap"><strong data-noi18n>${chipB(c)}${esc(c.telefono)}</strong><span class="nowrap">${chip(c)}${capB(c)}</span></div>
         <div class="small">${cuentaHtml(c)}</div>
         <div class="small">${ultimoHtml(c.ultimo)}</div>
         <div class="tiny muted">${fecha(c.ultimoMensaje || c.creado)}</div></a>`).join('')}</div>`;
@@ -230,7 +259,7 @@
   const vista = (sub, inner) => layout('mensajeria', `${head('Mensajería', RIGHT(sub === 'conversaciones' || sub === 'whatsapp' ? 'todo' : sub), SUBTITULO[sub])}<div class="stack" style="gap:16px">${inner}</div>`);
   const SUBTITULO = {
     conversaciones: 'Chats del asistente de WhatsApp con las acompañantes: pedidos de créditos, comprobantes, preguntas y respuestas a las invitaciones',
-    whatsapp: 'El número del asistente (un solo chip para todo): conexión, prendido o apagado y botón de comprar créditos',
+    whatsapp: 'Los chips del asistente: captación y créditos, conexión, cupos, prendido o apagado y botón de comprar créditos',
     telegram: 'Tus avisos por Telegram y el usuario de Telegram para comprar créditos',
     mensajes: 'El mensaje del pedido de créditos y el de la invitación de captación',
   };
@@ -248,7 +277,7 @@
       const f = (k, l, n) => `<button type="button" class="chip${S.asf === k ? ' active' : ''}" data-action="asisFiltro" data-f="${k}" aria-pressed="${S.asf === k}">${l}${n != null ? ` <span class="badge" style="padding:0 6px">${n}</span>` : ''}</button>`;
       const w = d.whatsapp || {}; const aj = d.ajustes || {};
       const aviso = !aj.activo ? `<div class="notice warn">${icon('alert')}<span>El asistente está apagado: no responde los chats. Prendelo en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>`
-        : w.estado !== 'conectado' ? `<div class="notice warn">${icon('alert')}<span>WhatsApp no está conectado. Revisalo en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>` : '';
+        : (d.chips || []).some((c) => c.estado !== 'conectado') ? `<div class="notice warn">${icon('alert')}<span>${(d.chips || []).filter((c) => c.estado !== 'conectado').map((c) => 'Chip ' + esc(c.letra)).join(', ')}: sin conectar. Revisalo en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>` : '';
       const conv = !S.asc && S.err.asc ? errorCard(S.err.asc, 'asc') : !S.asc ? loadingCard(2) : `<div class="adm-filters">
             <label class="sr-only" for="asisQ">Buscar conversación</label><input class="input" id="asisQ" type="search" placeholder="Buscar por nombre o últimos números" value="${esc(S.asq)}" data-input="asisBuscar" autocomplete="off">
             <div class="chips scroll" style="flex:1 1 auto;min-width:0">${f('todas', 'Todas', items.length)}${f('humano', 'Con una persona', nH)}${f('bot', 'Con el asistente', items.length - nH)}${f('captacion', 'Captación', nC)}</div>
@@ -266,7 +295,7 @@
     let body;
     if (!d && S.err.asis) body = errorCard(S.err.asis, 'asis');
     else if (!d) body = loadingCard(3);
-    else body = `<div class="asis-top">${cardEstado(d)}${cardBoton(d)}</div>${lineaCuenta(d)}`;
+    else body = `<div class="asis-top">${cardEstado(d)}${cardBoton(d)}</div>${cardChips(d)}${lineaCuenta(d)}`;
     setTimeout(vigilar, 0);
     return vista('whatsapp', body);
   }
@@ -363,9 +392,37 @@
         cuentaApi('DELETE', c.id, '', {}, 'Cuenta borrada');
       } });
     },
-    asisDesvincular() {
-      HH.confirm({ title: 'Desvincular WhatsApp', text: '<span>Se cierra la sesión del asistente en el teléfono del chip.</span> <span>Para volver a conectarlo hay que escanear el QR de nuevo.</span>', okLabel: 'Desvincular', cls: 'danger', onOk: () => {
-        HH.api('POST', '/asistente/desvincular', {}).then((d) => { S.asis = d; HH.toast('Desvinculando…', { type: 'ok' }); rerender(); vigilar(); }).catch(fail);
+    asisDesvincular(el) {
+      const chip = Number(el.dataset.id) || 1; const l = el.dataset.l || 'A';
+      HH.confirm({ title: `Desvincular el chip ${l}`, text: `<span>Se cierra la sesión del asistente en el teléfono del chip ${l}.</span> <span>Para volver a conectarlo hay que escanear el QR de nuevo.</span>`, okLabel: 'Desvincular', cls: 'danger', onOk: () => {
+        HH.api('POST', '/asistente/desvincular', { chip }).then((d) => { S.asis = d; HH.toast('Desvinculando…', { type: 'ok' }); rerender(); vigilar(); }).catch(fail);
+      } });
+    },
+    // Chips (19/11/2026)
+    asisChipNuevo(el) {
+      const rol = el.dataset.rol === 'creditos' ? 'creditos' : 'captacion';
+      HH.confirm({ title: rol === 'creditos' ? 'Agregar chip de créditos' : 'Agregar chip de captación', text: '<span>Se agrega con la letra siguiente y aparece su QR para vincularlo.</span> <span>Antes de usarlo para invitar, conviene usarlo unos días de forma normal.</span>', okLabel: 'Agregar', onOk: () => {
+        HH.api('POST', '/asistente/chips', { rol }).then((d) => { S.asis = d; const c = (d.chips || []).slice(-1)[0]; HH.toast(`Chip ${c ? c.letra : ''} agregado`, { type: 'ok' }); rerender(); vigilar(); }).catch(fail);
+      } });
+    },
+    asisChipPausa(el) {
+      const id = el.dataset.id; const pausar = el.getAttribute('aria-checked') === 'true';
+      el.disabled = true;
+      HH.api('PUT', '/asistente/chips/' + encodeURIComponent(id), { pausado: pausar }).then((d) => { S.asis = d; HH.toast(pausar ? 'Chip pausado' : 'Chip activo', { type: 'ok' }); rerender(); }).catch(fail).finally(() => { el.disabled = false; });
+    },
+    asisChipPorDia(el) {
+      const id = el.dataset.id; const n = Number((document.getElementById('asisPd' + id) || {}).value);
+      if (!Number.isInteger(n) || n < 1 || n > 200) { HH.toast('Por día: un número entero de 1 a 200.', { type: 'warn' }); return; }
+      HH.api('PUT', '/asistente/chips/' + encodeURIComponent(id), { porDia: n }).then((d) => { S.asis = d; HH.toast(`${n} invitaciones por día`, { type: 'ok' }); rerender(); }).catch(fail);
+    },
+    asisChipRol(el) {
+      const id = el.dataset.id;
+      HH.api('PUT', '/asistente/chips/' + encodeURIComponent(id), { rol: el.value }).then((d) => { S.asis = d; HH.toast('Rol guardado', { type: 'ok' }); rerender(); }).catch(fail);
+    },
+    asisChipQuitar(el) {
+      const id = el.dataset.id; const l = el.dataset.l;
+      HH.confirm({ title: `Quitar el chip ${l}`, text: '<span>El asistente se desconecta de ese chip y se borra su sesión.</span> <span>Sus chats quedan en Conversaciones. La letra no se vuelve a usar.</span>', okLabel: 'Quitar chip', cls: 'danger', onOk: () => {
+        HH.api('DELETE', '/asistente/chips/' + encodeURIComponent(id), {}).then((d) => { S.asis = d; HH.toast(`Chip ${l} quitado`, { type: 'ok' }); rerender(); }).catch(fail);
       } });
     },
     asisHumano(el) {
@@ -384,6 +441,11 @@
 .asis-top{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 @media(min-width:1100px){.asis-top{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
 .asis-qr-wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.asis-chips{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:1100px){.asis-chips{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
+.asis-chip.pausado{opacity:.75}
+.asis-letra{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent-soft,rgba(255,92,138,.15));color:var(--accent,#ff5c8a);font-weight:800;font-size:16px;flex:0 0 auto}
+.asis-letra.sm{width:22px;height:22px;border-radius:6px;font-size:12px;vertical-align:middle}
 .asis-qr{width:240px;height:240px;max-width:100%;background:#fff;border-radius:12px;padding:8px;box-sizing:border-box}
 .asis-pasos{margin:0;padding-left:18px;display:grid;gap:6px;flex:1 1 200px}
 .asis-ult{display:inline-block;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}

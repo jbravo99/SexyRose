@@ -31,10 +31,12 @@
   const badgeE = (e) => { const [l, c] = ESTADO[e] || [e, 'neutral']; return `<span class="badge ${c}">${esc(l)}</span>`; };
   const nombre = (c) => (c.nombres && c.nombres.length ? c.nombres.slice(0, 3).join(' · ') + (c.nombres.length > 3 ? ` +${c.nombres.length - 3}` : '') : 'Sin nombre');
   const donde = (c) => [c.ciudades && c.ciudades.length ? c.ciudades.slice(0, 2).join(', ') : '', c.categorias && c.categorias.length ? c.categorias.join(', ') : ''].filter(Boolean).join(' · ');
-  const sitios = (c) => `${c.sitios && c.sitios.length ? esc(c.sitios.join(', ')) : 'Sin sitio'} · ${c.avisos} ${HH.plural(c.avisos, 'aviso', 'avisos')}`;
+  const sitios = (c) => `${c.sitios && c.sitios.length ? esc(c.sitios.join(', ')) : 'Sin sitio'} · ${c.avisos} ${HH.plural(c.avisos, 'aviso', 'avisos')}${c.chip ? ` · chip ${esc(c.chip)}` : ''}`;
   const listaPath = () => `/captacion/contactos?estado=${encodeURIComponent(S.capf)}${S.capq ? '&q=' + encodeURIComponent(S.capq) : ''}`;
   const listaKey = () => 'capl:' + S.capf + ':' + S.capq;
-  const recargarTodo = () => { load('cap', '/captacion', true); load(listaKey(), listaPath(), true); };
+  // Varios chips (19/11/2026): la cola es del chip elegido (S.capChip); sin elegir, el servidor rota al de más cupo libre
+  const capPath = () => '/captacion' + (S.capChip ? '?chip=' + encodeURIComponent(S.capChip) : '');
+  const recargarTodo = () => { load('cap', capPath(), true); load(listaKey(), listaPath(), true); };
 
   /* ---------- Los N del día ---------- */
   function filaCola(c) {
@@ -54,15 +56,20 @@
   function cardCola(d) {
     const k = d.cola || { items: [] };
     const hay = (d.numeros && d.numeros.total) || 0;
+    const chs = d.chips || [];
+    const ch = k.chip;
+    const selector = chs.length ? `<div class="chips scroll cap-chips" role="group" aria-label="Chip con el que mandás">${chs.map((c) => `<button type="button" class="chip${ch && ch.id === c.id ? ' active' : ''}" data-action="capChip" data-id="${c.id}" aria-pressed="${!!(ch && ch.id === c.id)}"><span class="cap-letra">${esc(c.letra)}</span> <span class="num">${c.enviadosHoy}/${c.porDia}</span>${c.conectado ? '' : ' <span class="tiny muted">sin conectar</span>'}</button>`).join('')}</div>` : '';
     let cuerpo;
     if (!hay) cuerpo = `<div class="empty">${icon('upload')}<h4>Todavía no hay contactos</h4><p class="small">Importá tu planilla abajo para armar la cola del día.</p></div>`;
-    else if (!k.cupo) cuerpo = `<div class="notice ok">${icon('checkCircle')}<span>Listo por hoy: ya enviaste ${k.enviadosHoy} de ${k.porDia}. Mañana se arma la cola nueva.</span></div>`;
+    else if (!chs.length) cuerpo = `<div class="notice warn">${icon('alert')}<span>No hay chips de captación activos. Agregá uno o sacale la pausa en <a href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">WhatsApp</a>.</span></div>`;
+    else if (!k.cupo) cuerpo = `<div class="notice ok">${icon('checkCircle')}<span>${chs.some((c) => c.cupo > 0) ? `El chip ${esc(ch.letra)} ya mandó sus ${k.porDia} de hoy. Elegí otro chip arriba.` : 'Listo por hoy: todos los chips mandaron su cupo. Mañana se arma la cola nueva.'}</span></div>`;
     else if (!k.items.length) cuerpo = `<div class="notice">${icon('info')}<span>No quedan contactos pendientes. Revisá los de "Para revisar" o importá una planilla nueva.</span></div>`;
     else cuerpo = `<div class="list">${k.items.map(filaCola).join('')}</div>`;
     return `<section class="card stack" style="gap:12px" id="capCola">
-        <div class="row between" style="gap:10px;flex-wrap:wrap"><div class="card-title">${icon('send')} Los ${k.porDia} del día</div>
-          <div class="row" style="gap:6px;align-items:center"><label class="small muted" for="capPorDia">Por día</label><input class="input pa-num" id="capPorDia" type="number" min="1" max="200" step="1" value="${esc(k.porDia)}" style="width:76px"><button type="button" class="btn ghost sm" data-action="capPorDia">Guardar</button></div></div>
-        <p class="small muted" style="margin:0">Abrí WhatsApp Web con el chip del asistente. "Abrir chat" abre la conversación con el mensaje listo: solo tocás Enviar. Cuando el asistente ve el mensaje, pasa a Enviado; si te responde, contesta el asistente. Hoy: <strong>${k.enviadosHoy}</strong> de ${k.porDia} enviados.</p>
+        <div class="row between" style="gap:10px;flex-wrap:wrap"><div class="card-title">${icon('send')} ${ch ? `Cola del chip ${esc(ch.letra)}` : 'Los del día'}</div>
+          <a class="small" href="#admin.mensajeria.whatsapp" data-go="#admin.mensajeria.whatsapp">Cupos por chip</a></div>
+        ${selector}
+        ${ch ? `<p class="small muted" style="margin:0">Mandá desde la ventana de Chrome con WhatsApp Web del <strong>chip ${esc(ch.letra)}</strong>: "Abrir chat" abre la conversación ahí con el mensaje listo y solo tocás Enviar. La cola elige sola el chip con más cupo libre; tocá otro para cambiar. Hoy el chip ${esc(ch.letra)} lleva <strong>${k.enviadosHoy}</strong> de ${k.porDia}.</p>` : ''}
         ${cuerpo}
       </section>`;
   }
@@ -142,7 +149,7 @@
   }
 
   function vCaptacion() {
-    load('cap', '/captacion'); load(listaKey(), listaPath());
+    load('cap', capPath()); load(listaKey(), listaPath());
     const d = S.cap;
     let body;
     if (!d && S.err.cap) body = errorCard(S.err.cap, 'cap');
@@ -150,7 +157,7 @@
     else {
       const n = d.numeros || {}; const e = d.estados || {};
       const stats = `<div class="adm-stats">
-          ${stat('Enviados hoy', `${n.enviadosHoy || 0}<span class="cap-de"> / ${(d.cola && d.cola.porDia) || 0}</span>`, `${n.enviadosSemana || 0} esta semana`, 'accent')}
+          ${stat('Enviados hoy', `${n.enviadosHoy || 0}<span class="cap-de"> / ${(d.chips || []).reduce((t, c) => t + c.porDia, 0)}</span>`, `${n.enviadosSemana || 0} esta semana · ${(d.chips || []).length} ${HH.plural((d.chips || []).length, 'chip', 'chips')}`, 'accent')}
           ${stat('Pendientes', ((e.pendiente || 0) + (e.abierto || 0)).toLocaleString('es-AR'), `${e.abierto || 0} ${HH.plural(e.abierto || 0, 'abierto', 'abiertos')} sin enviar`)}
           ${stat('Respondieron', (n.respondieron || 0).toLocaleString('es-AR'), n.tasaRespuesta != null ? `${String(n.tasaRespuesta).replace('.', ',')} % de ${n.contactados} ${HH.plural(n.contactados, 'contactado', 'contactados')}` : 'todavía sin envíos')}
           ${stat('Se registraron', (n.registrados || 0).toLocaleString('es-AR'), `${n.registradosInvitados || 0} después de la invitación`, n.registrados ? 'pa-ok' : '')}
@@ -175,12 +182,15 @@
     if (!d && S.err.cap) return errorCard(S.err.cap, 'cap');
     if (!d) return loadingCard(1);
     const aj = d.ajustes || {};
-    const esDefault = aj.mensaje === aj.mensajeDefault;
+    // Varias versiones (19/11/2026): cada contacto recibe siempre la misma (la elige su número en la lista)
+    const vs = S.capVers || (aj.mensajes && aj.mensajes.length ? aj.mensajes : [aj.mensaje || '']);
+    const esDefault = vs.length === 1 && vs[0] === aj.mensajeDefault;
     return `<section class="card stack" style="gap:12px" id="capMensaje">
-        <div class="row between"><div class="card-title">${icon('send')} Invitación de captación</div>${esDefault ? '<span class="badge ok">Texto aprobado</span>' : '<span class="badge info">Editado</span>'}</div>
-        <p class="small muted" style="margin:0">Es el mensaje que se abre con "Abrir chat" en Captación. En WhatsApp, lo que va entre *asteriscos* se ve en negrita. Si lo cambiás, el asistente reconoce igual los envíos que ya hiciste.</p>
-        <div class="field"><label for="capMsg">Mensaje</label><textarea class="textarea" id="capMsg" rows="9" maxlength="1000" data-noi18n>${esc(aj.mensaje || '')}</textarea></div>
+        <div class="row between"><div class="card-title">${icon('send')} Invitación de captación</div>${esDefault ? '<span class="badge ok">Texto aprobado</span>' : `<span class="badge info">${vs.length} ${HH.plural(vs.length, 'versión', 'versiones')}</span>`}</div>
+        <p class="small muted" style="margin:0">Es el mensaje que se abre con "Abrir chat" en Captación. Con varias versiones, cada contacto recibe una (siempre la misma), así no sale el mismo texto en todos los chats. En WhatsApp, lo que va entre *asteriscos* se ve en negrita. El asistente reconoce cualquiera de las versiones.</p>
+        ${vs.map((m, i) => `<div class="field"><div class="row between"><label for="capMsg${i}">Versión ${i + 1}</label>${vs.length > 1 ? `<button type="button" class="btn ghost sm" data-action="capMsgQuitar" data-i="${i}">${icon('x')} Quitar</button>` : ''}</div><textarea class="textarea" id="capMsg${i}" rows="8" maxlength="1000" data-noi18n>${esc(m)}</textarea></div>`).join('')}
         <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" data-action="capMsgGuardar">${icon('check')} Guardar invitación</button>
+          ${vs.length < 5 ? `<button type="button" class="btn secondary sm" data-action="capMsgAgregar">${icon('plus')} Agregar versión</button>` : ''}
           ${esDefault ? '' : `<button type="button" class="btn ghost sm" data-action="capMsgDefault">${icon('refresh')} Volver al texto aprobado</button>`}</div>
       </section>`;
   }
@@ -189,8 +199,10 @@
   P.subvistas['mensajeria.captacion'] = vCaptacion;
   HH.adminCap = { mensajeCard };
 
-  const guardarAj = (cambios, ok) => HH.api('PUT', '/captacion/ajustes', cambios).then((r) => { S.cap = r; HH.toast(ok, { type: 'ok' }); load(listaKey(), listaPath(), true); rerender(); }).catch(fail);
+  const guardarAj = (cambios, ok) => HH.api('PUT', '/captacion/ajustes', cambios).then((r) => { S.cap = r; HH.toast(ok, { type: 'ok' }); load('cap', capPath(), true); load(listaKey(), listaPath(), true); rerender(); }).catch(fail);
   let tBuscar = null;
+  // Lo que está escrito en las versiones (sin guardar todavía)
+  const leerVersiones = () => [...document.querySelectorAll('#capMensaje textarea[id^="capMsg"]')].map((t) => t.value);
   Object.assign(HH.actions, {
     capRecargar(el) {
       const k = el.dataset.k;
@@ -220,18 +232,18 @@
         HH.confirm({ title: 'No escribirle más', text: 'Sale de la cola y no se le vuelve a invitar.', okLabel: 'No escribir', cls: 'danger', onOk: hacer });
       } else hacer();
     },
-    capPorDia() {
-      const n = Number((document.getElementById('capPorDia') || {}).value);
-      if (!Number.isInteger(n) || n < 1 || n > 200) { HH.toast('Por día: un número entero de 1 a 200.', { type: 'warn' }); return; }
-      guardarAj({ porDia: n }, `Cola de ${n} por día`);
-    },
+    capChip(el) { S.capChip = Number(el.dataset.id) || null; load('cap', capPath(), true); HH.refresh(); },
     capMsgGuardar() {
-      const t = String((document.getElementById('capMsg') || {}).value || '').trim();
-      if (t && t.length < 20) { HH.toast('El mensaje es muy corto.', { type: 'warn' }); return; }
-      guardarAj({ mensaje: t }, 'Invitación guardada');
+      const vs = leerVersiones().map((t) => t.trim()).filter(Boolean);
+      const corta = vs.findIndex((t) => t.length < 20);
+      if (corta >= 0) { HH.toast(`La versión ${corta + 1} es muy corta.`, { type: 'warn' }); return; }
+      S.capVers = null;
+      guardarAj({ mensajes: vs }, vs.length > 1 ? `Invitación guardada: ${vs.length} versiones` : 'Invitación guardada');
     },
+    capMsgAgregar() { const vs = leerVersiones(); if (vs.length >= 5) return; S.capVers = [...vs, '']; HH.refresh(); },
+    capMsgQuitar(el) { const vs = leerVersiones(); vs.splice(Number(el.dataset.i), 1); S.capVers = vs.length ? vs : ['']; HH.refresh(); },
     capMsgDefault() {
-      HH.confirm({ title: 'Volver al texto aprobado', text: 'Se reemplaza el mensaje por el texto que aprobaste.', okLabel: 'Volver al aprobado', onOk: () => guardarAj({ mensaje: '' }, 'Volvió el texto aprobado') });
+      HH.confirm({ title: 'Volver al texto aprobado', text: 'Se reemplazan las versiones por el texto que aprobaste.', okLabel: 'Volver al aprobado', onOk: () => { S.capVers = null; guardarAj({ mensajes: [] }, 'Volvió el texto aprobado'); } });
     },
     capImportar(el) {
       const inp = document.getElementById('capArchivo');
@@ -266,7 +278,8 @@
     const id = a.getAttribute('data-cap-abrir');
     const it = S.cap && S.cap.cola && (S.cap.cola.items || []).find((x) => x.id === id);
     if (it) it.estado = 'abierto';
-    HH.api('POST', '/captacion/' + encodeURIComponent(id) + '/abierto', {}).then(() => { setTimeout(() => { if (enVista()) recargarTodo(); }, 400); }).catch(() => {});
+    const chip = S.cap && S.cap.cola && S.cap.cola.chip ? S.cap.cola.chip.id : null;
+    HH.api('POST', '/captacion/' + encodeURIComponent(id) + '/abierto', chip ? { chip } : {}).then(() => { setTimeout(() => { if (enVista()) recargarTodo(); }, 400); }).catch(() => {});
   });
 
   const st = document.createElement('style');
@@ -275,6 +288,8 @@
 .cap-urls a{margin-right:8px;overflow-wrap:anywhere}
 .cap-acc-td{min-width:150px}
 .cap-de{font-size:.55em;color:var(--muted);font-weight:700}
+.chip.active .cap-letra{background:rgba(255,255,255,.25);color:#fff}
+.cap-letra{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--accent-soft,rgba(255,92,138,.15));color:var(--accent,#ff5c8a);font-weight:800;font-size:12px}
 @media(max-width:560px){.cap-acc{margin-left:0;width:100%}.cap-acc .btn{flex:1 1 auto;justify-content:center}}
 `;
   document.head.appendChild(st);

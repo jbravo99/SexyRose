@@ -96,7 +96,8 @@ export const HERRAMIENTA_NO_CONTACTAR = Object.freeze({
   input_schema: { type: 'object', properties: { motivo: { type: 'string', description: 'Motivo breve, sin datos de contacto' } }, required: ['motivo'], additionalProperties: false },
 });
 
-export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion = false }) {
+// creditosEn: link al WhatsApp del chip de créditos cuando este chat es de un chip de captación (varios chips, 19/11/2026)
+export function promptSistema({ siteUrl, identificado, nombre, idioma, captacion = false, creditosEn = '' }) {
   const url = String(siteUrl || '').replace(/\/+$/, '');
   return `Sos el asistente de cuenta de SexyRose (${url}), un sitio de anuncios de acompañantes en Argentina. Sos una IA y atendés por WhatsApp solo a acompañantes (anunciantes) para temas de su cuenta y para comprar créditos.
 
@@ -122,6 +123,8 @@ Si pregunta por qué se eliminó su cuenta: usá "motivo_eliminacion" (busca sol
 Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje aparte (con "moneda" ARS o USD si dijo en qué moneda va a transferir); no los repitas. Los comprobantes de pago se mandan como foto o PDF en este chat.
 
 ${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le escribió porque vio su perfil publicado en otro sitio y la invitó a crear su perfil en SexyRose. Respondé sus preguntas sobre crear el perfil, el plan Bronce (gratis), los planes, las fotos, la verificación y cómo registrarse (${url}/registro), con la herramienta "ayuda" (temas registro, planes, fotos, verificacion, publicar, apertura, contenido) y "precios". Si pregunta de dónde sacamos su número: de su aviso publicado en otro sitio. No insistas ni la presiones. Si no le interesa, pide que no le escribamos, se enoja o insulta: usá "no_contactar".
+
+` : ''}${creditosEn ? `En este número no se compran créditos: si quiere comprar créditos, pagar un pedido o mandar un comprobante, pasale este link al WhatsApp de créditos de SexyRose: ${creditosEn}. Todo lo demás lo respondés acá.
 
 ` : ''}Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).

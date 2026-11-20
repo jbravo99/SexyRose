@@ -50,11 +50,20 @@ export const AVISO_REVINCULAR = 'Se actualizó la conexión de WhatsApp del asis
 // - descartar(): ignora lo que llegue después (sesión desvinculada: no se vuelve a crear la fila borrada).
 // - Baileys 7 agrega categorías (`lid-mapping`, `device-list`, `tctoken`, `identity-key`): se guardan igual que las demás.
 // - formatoViejo: hay credenciales de un dispositivo ya vinculado pero sin la marca FORMATO_SESION (sesión de Baileys 6).
-export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, proto }) {
+// Varios chips (19/11/2026): cada chip guarda su sesión con su prefijo (prefijoAuth); el chip 1 (el de siempre) sin
+// prefijo, así su sesión guardada sigue sirviendo.
+export const prefijoAuth = (chip = 1) => (Number(chip) === 1 ? '' : `c${Number(chip)}:`);
+// Borra la sesión guardada de UN chip (nunca la de los demás).
+export function borrarAuth(pool, chip = 1) {
+  return Number(chip) === 1
+    ? pool.query("DELETE FROM asistente_auth WHERE clave !~ '^c[0-9]+:'")
+    : pool.query('DELETE FROM asistente_auth WHERE clave LIKE $1', [`c${Number(chip)}:%`]);
+}
+export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, proto, prefijo = '' }) {
   const enc = (v) => cifrarSecreto(secretsKey, JSON.stringify(v, BufferJSON.replacer));
   const dec = (s) => { const t = descifrarSecreto(secretsKey, s); return t === null ? null : JSON.parse(t, BufferJSON.reviver); };
-  const clave = (tipo, id) => `${tipo}-${String(id).replace(/\//g, '__').replace(/:/g, '-')}`;
-  const leer = async (k) => { const { rows } = await pool.query('SELECT valor FROM asistente_auth WHERE clave = $1', [k]); return rows[0] ? dec(rows[0].valor) : null; };
+  const clave = (tipo, id) => `${prefijo}${tipo}-${String(id).replace(/\//g, '__').replace(/:/g, '-')}`;
+  const leer = async (k) => { const { rows } = await pool.query('SELECT valor FROM asistente_auth WHERE clave = $1', [prefijo + k]); return rows[0] ? dec(rows[0].valor) : null; };
   let cola = Promise.resolve();
   let descartada = false;
   const encolar = (fn) => {
@@ -106,7 +115,7 @@ export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, 
         },
       },
     },
-    guardarCreds: () => escribir(new Map([['creds', enc(creds)], ['formato', enc(FORMATO_SESION)]])),
+    guardarCreds: () => escribir(new Map([[prefijo + 'creds', enc(creds)], [prefijo + 'formato', enc(FORMATO_SESION)]])),
     async vaciar() { let c; do { c = cola; await c; } while (c !== cola); },
     descartar() { descartada = true; },
   };
@@ -118,6 +127,8 @@ export async function authEnBase({ pool, secretsKey, BufferJSON, initAuthCreds, 
 // mensajes salen cifrados con claves repetidas y el otro teléfono no los puede leer. Candado de Postgres
 // (pg_try_advisory_lock) en una conexión propia: lo tiene quien está conectado; si el proceso muere, Postgres lo suelta.
 export const CANDADO_WHATSAPP = 7262701;
+// Un candado por chip: el chip 1 conserva el de siempre (un agente viejo durante el deploy usa ese mismo)
+export const candadoDeChip = (chip = 1) => (Number(chip) === 1 ? CANDADO_WHATSAPP : CANDADO_WHATSAPP * 100 + Number(chip));
 export function crearCandado(pool, { id = CANDADO_WHATSAPP, log = () => {} } = {}) {
   let cliente = null; let onErr = null; let alPerder = () => {};
   function perder(c, motivo) {
@@ -228,7 +239,8 @@ export function leerContenido(message) {
 }
 
 export function createWhatsApp({
-  pool, secretsKey = '', log = () => {}, makeSocket = null, descargar = null, alMensaje = async () => {},
+  chip = 1,              // id del chip (asistente_whatsapp.id); 1 = el de siempre
+  pool, secretsKey = '', log: logBase = () => {}, makeSocket = null, descargar = null, alMensaje = async () => {},
   demora = (t) => Math.min(4000, 900 + String(t || '').length * 20), dormir = (ms) => new Promise((r) => setTimeout(r, ms)),
   ia = { configurada: false, modelo: null },
   candado = undefined,   // undefined = candado de Postgres (crearCandado); null = sin candado
@@ -236,6 +248,9 @@ export function createWhatsApp({
   esperaCandadoMs = 3000,
   avisar = async () => {}, // aviso a Juan por Telegram (agente.js: telegram.notify(…, 'asistente_alerta'))
 }) {
+  chip = Number(chip) || 1;
+  const log = chip === 1 ? logBase : (...a) => logBase(`[chip ${String.fromCharCode(64 + chip)}]`, ...a);
+  const prefijo = prefijoAuth(chip);
   let sock = null;
   let estado = 'apagado';
   let activo = false;
@@ -254,7 +269,7 @@ export function createWhatsApp({
   // Dirección por la que escribió cada chat (clave del chat → `…@lid` o `…@s.whatsapp.net`): se responde por ahí.
   const direcciones = new Map();
   const contadorReintentos = cacheConVencimiento(); // msgRetryCounterCache: uno por proceso
-  if (candado === undefined) candado = pool && typeof pool.connect === 'function' ? crearCandado(pool, { log }) : null;
+  if (candado === undefined) candado = pool && typeof pool.connect === 'function' ? crearCandado(pool, { id: candadoDeChip(chip), log }) : null;
   if (candado) candado.alPerder(() => { perderCandado().catch(() => {}); });
 
   async function guardarEstado(e, extra = {}) {
@@ -263,11 +278,11 @@ export function createWhatsApp({
     if (!extra.error && avisoRevincular && e !== 'conectado' && e !== 'apagado') extra = { ...extra, error: avisoRevincular };
     await pool.query(
       `UPDATE asistente_whatsapp SET estado = $1, qr = $2, qr_creado = CASE WHEN $2::text IS NULL THEN NULL ELSE now() END,
-         numero = COALESCE($3, numero), error = $4, ia = $5, modelo = $6, latido = now(), actualizado = now() WHERE id = 1`,
-      [e, qr, extra.numero || null, extra.error || null, Boolean(ia.configurada), ia.modelo || null]).catch((err) => log('asistente: no se pudo guardar el estado:', err.code || err.message));
+         numero = COALESCE($3, numero), error = $4, ia = $5, modelo = $6, latido = now(), actualizado = now() WHERE id = $7`,
+      [e, qr, extra.numero || null, extra.error || null, Boolean(ia.configurada), ia.modelo || null, chip]).catch((err) => log('asistente: no se pudo guardar el estado:', err.code || err.message));
   }
   async function latido() {
-    await pool.query('UPDATE asistente_whatsapp SET latido = now(), ia = $1, modelo = $2 WHERE id = 1', [Boolean(ia.configurada), ia.modelo || null]).catch(() => {});
+    await pool.query('UPDATE asistente_whatsapp SET latido = now(), ia = $1, modelo = $2 WHERE id = $3', [Boolean(ia.configurada), ia.modelo || null, chip]).catch(() => {});
     if (candado && candado.tomado) await candado.verificar();
     if (Date.now() - ultimaLimpieza > 60 * 60 * 1000) {
       ultimaLimpieza = Date.now();
@@ -317,17 +332,17 @@ export function createWhatsApp({
     let auth;
     if (crearAuth) auth = await crearAuth({ B });
     else if (makeSocket) auth = { state: { creds: {}, keys: {} }, guardarCreds: async () => {} }; // pruebas: socket falso, sin sesión
-    else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto });
+    else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto, prefijo });
     if (auth.formatoViejo) {
       // Sesión de Baileys 6: no se usa (sus sesiones de Signal quedaron partidas entre teléfono y LID). Se borra y se
       // pide QR nuevo. Si no se puede borrar, se reintenta más tarde (nunca se conecta con la vieja).
       log('asistente: la sesión de WhatsApp guardada es de la versión anterior (Baileys 6): se borra y hay que vincular el chip de nuevo');
-      await pool.query('DELETE FROM asistente_auth');
+      await borrarAuth(pool, chip);
       avisoRevincular = AVISO_REVINCULAR;
       Promise.resolve().then(() => avisar('Asistente de WhatsApp: se actualizó la conexión y hay que vincular el chip de nuevo. '
         + 'Admin → Mensajería → WhatsApp: escaneá el QR con el teléfono del chip (Dispositivos vinculados).')).catch(() => {});
       if (crearAuth) auth = await crearAuth({ B, nueva: true });
-      else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto });
+      else auth = await authEnBase({ pool, secretsKey, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto, prefijo });
       if (auth.formatoViejo) throw new Error('la sesión vieja de WhatsApp no se pudo borrar');
     }
     authActual = auth;
@@ -394,7 +409,7 @@ export function createWhatsApp({
       sock = null;
       if (code === 401) { // loggedOut: el teléfono desvinculó el dispositivo (o WhatsApp lo hizo)
         if (authActual === auth) await vaciarAuth({ descartar: true });
-        await pool.query('DELETE FROM asistente_auth');
+        await borrarAuth(pool, chip);
         await guardarEstado('desconectado', { error: 'WhatsApp desvinculó este dispositivo. Escaneá el QR de nuevo.' });
         log('asistente: WhatsApp desvinculado; se pide QR nuevo');
         espera = 1000;
@@ -481,7 +496,7 @@ export function createWhatsApp({
         tipo: c.tipo, texto: c.texto || '',
         media: c.media ? { ...c.media, descargar: () => bajar(m) } : null,
       };
-      await alMensaje(ev);
+      await alMensaje({ ...ev, chip });
     }
   }
 
@@ -585,14 +600,14 @@ export function createWhatsApp({
     if (s) { try { await s.logout('desvinculado desde el admin'); } catch { /* ya cerrado */ } }
     generacion++; sock = null;
     await vaciarAuth({ descartar: true });
-    await pool.query('DELETE FROM asistente_auth');
+    await borrarAuth(pool, chip);
     await guardarEstado('desconectado', { error: null });
     log('asistente: WhatsApp desvinculado desde el admin');
     if (activo) { espera = 1000; await conectar().catch((e) => { log('asistente: conexión falló:', e.message); programar(); }); }
   }
 
   return {
-    iniciar, detener, desvincular, enviar, latido,
+    chip, iniciar, detener, desvincular, enviar, latido,
     get activo() { return activo; },
     get estado() { return estado; },
     conectado: () => estado === 'conectado' && Boolean(sock),

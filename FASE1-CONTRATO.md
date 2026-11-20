@@ -1017,6 +1017,25 @@ créditos y `canales.whatsapp`) y "Probar". `PUT /ajustes/contacto` sin `whatsap
 guardado como estaba. La pestaña WhatsApp dice "Usa el número vinculado: …" o "Hasta que vincules el chip, el botón usa
 el número que tenías cargado: …".
 
+### Varios chips de WhatsApp (19/11/2026, migración 330)
+
+`lib/chips.js`, `lib/asistente-whatsapp.js` (una conexión por chip), `agente.js`, `routes/admin-asistente.js`.
+
+- Una fila por chip en `asistente_whatsapp` (id 1 = el de siempre, letra A; letra = `chr(64 + id)`, una letra quitada
+  no se reusa): `rol` (`captacion` | `creditos`), `pausado` (a mano: no aparece para invitar ni para comprar créditos;
+  el asistente igual contesta si está vinculado), `por_dia` (cupo de invitaciones, 1–200, por defecto 30).
+- Sesión por chip en `asistente_auth`: el chip 1 sin prefijo (su sesión sigue sirviendo), los demás con `c<id>:`.
+  Candado de Postgres por chip. El agente toma los chips que se agregan o quitan en la próxima supervisión.
+- Conversaciones por chip (`asistente_conversaciones.chip`, único `(chip, jid)`): se responde por el chip del chat.
+  Avisos a Juan por Telegram dicen el chip.
+- "Cargar créditos" del panel: el chip de créditos activo con número; si no hay, el chip A. En un chip de captación,
+  si hay chip de créditos, el asistente no arma pedidos: pasa el link `wa.me` del chip de créditos.
+- Admin → Mensajería → WhatsApp: una tarjeta por chip (QR, rol, invitaciones por día, Activo, Desvincular, Quitar) y
+  "Chip de captación" / "Chip de créditos" para agregar.
+- Captación: `captacion_contactos.chip` (con qué chip se abrió/mandó). La cola es del chip elegido; sin elegir, el de
+  más cupo libre hoy. Lo enviado antes de los chips cuenta para el A. Versiones del mensaje (`ajustes.captacion.mensajes`,
+  hasta 5): cada contacto recibe siempre la misma; el asistente reconoce cualquiera.
+
 ### Captación (semiautomática: Juan toca Enviar)
 
 Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-contactos.xlsx` de Juan, hoja "Contactos").

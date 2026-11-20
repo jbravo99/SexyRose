@@ -19,6 +19,7 @@ import { createAsistente } from './lib/asistente.js';
 import { createWhatsApp } from './lib/asistente-whatsapp.js';
 import { escucharSalida, leerAjustes } from './lib/asistente-comun.js';
 import { instalarConsolaSegura } from './lib/consola-segura.js';
+import { letraDe } from './lib/chips.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -66,27 +67,52 @@ export async function startAgente(overrides = {}) {
   const llm = createLlm({ apiKey: config.anthropicKey, modelo: config.anthropicModel, fetchImpl: config.llmFetch !== undefined ? config.llmFetch : globalThis.fetch, log });
   if (!llm.disponible) log('agente: sin ANTHROPIC_API_KEY: responde solo lo automático (pedidos y comprobantes) y deriva lo demás.');
   const asistente = createAsistente({ pool, creditos, planes, privado, telegram, llm, siteUrl: config.siteUrl, log });
-  const wa = createWhatsApp({
-    pool, secretsKey: config.secretsKey, log, makeSocket: config.makeSocket || null, descargar: config.descargar || null,
+  // Varios chips (19/11/2026, lib/chips.js): una conexión de WhatsApp por fila de asistente_whatsapp. Los chips que
+  // agrega o quita Juan desde el admin se toman en la próxima supervisión.
+  const chips = new Map(); // id → conexión
+  const crearChip = (id) => createWhatsApp({
+    chip: id, pool, secretsKey: config.secretsKey, log, makeSocket: config.makeSocket || null, descargar: config.descargar || null,
     alMensaje: (ev) => asistente.recibir(ev), ia: { configurada: llm.disponible, modelo: llm.modelo },
-    avisar: (texto) => telegram.notify(texto, 'asistente_alerta'),
+    avisar: (texto) => telegram.notify(id === 1 ? texto : `Chip ${letraDe(id)}: ${texto}`, 'asistente_alerta'),
     ...(config.demora ? { demora: config.demora } : {}), ...(config.dormir ? { dormir: config.dormir } : {}),
   });
-  asistente.setEnviar((jid, texto) => wa.enviar(jid, texto));
+  chips.set(1, crearChip(1));
+  asistente.setEnviar((jid, texto, chip = 1) => {
+    const w = chips.get(Number(chip) || 1);
+    if (!w) { const e = new Error('WhatsApp no está conectado'); e.code = 'NO_CONECTADO'; throw e; }
+    return w.enviar(jid, texto);
+  });
 
-  const procesarSalida = () => asistente.procesarSalida({ desvincular: () => wa.desvincular(), conectado: () => wa.conectado() });
+  const procesarSalida = () => asistente.procesarSalida({
+    desvincular: async (chip = 1) => { const w = chips.get(Number(chip) || 1); if (w) await w.desvincular(); },
+    conectado: (chip = 1) => { const w = chips.get(Number(chip) || 1); return Boolean(w && w.conectado()); },
+  });
 
-  // Prendido/apagado desde el admin (ajustes.asistente.activo): se revisa cada pocos segundos.
+  // Prendido/apagado desde el admin (ajustes.asistente.activo): se revisa cada pocos segundos, para todos los chips.
   async function supervisar() {
     if (parado) return;
     try {
       const aj = await leerAjustes(pool);
-      if (aj.activo && !wa.activo) { log('agente: asistente prendido'); await wa.iniciar(); }
-      else if (!aj.activo && wa.activo) { log('agente: asistente apagado'); await wa.detener('apagado'); }
-      else if (!aj.activo) await pool.query("UPDATE asistente_whatsapp SET estado = 'apagado', qr = NULL, latido = now(), ia = $1, modelo = $2 WHERE id = 1", [llm.disponible, llm.modelo]);
-      await wa.latido();
+      const { rows } = await pool.query('SELECT id FROM asistente_whatsapp ORDER BY id');
+      const ids = new Set(rows.map((r) => Number(r.id)));
+      for (const id of ids) if (!chips.has(id)) { chips.set(id, crearChip(id)); log(`agente: chip ${letraDe(id)} agregado`); }
+      for (const [id, w] of chips) {
+        if (ids.has(id) || id === 1) continue;
+        chips.delete(id);
+        await w.detener('apagado').catch(() => {});
+        log(`agente: chip ${letraDe(id)} quitado`);
+      }
+      let alguno = false;
+      for (const [id, w] of chips) {
+        if (!ids.has(id)) continue;
+        if (aj.activo && !w.activo) { log(`agente: asistente prendido (chip ${letraDe(id)})`); await w.iniciar(); }
+        else if (!aj.activo && w.activo) { log(`agente: asistente apagado (chip ${letraDe(id)})`); await w.detener('apagado'); }
+        else if (!aj.activo) await pool.query("UPDATE asistente_whatsapp SET estado = 'apagado', qr = NULL, latido = now(), ia = $1, modelo = $2 WHERE id = $3", [llm.disponible, llm.modelo, id]);
+        await w.latido();
+        if (w.conectado()) alguno = true;
+      }
       await fs.writeFile(config.latidoArchivo, String(Date.now())).catch(() => {});
-      if (wa.conectado()) await procesarSalida();
+      if (alguno) await procesarSalida();
     } catch (e) { log('agente: supervisión falló:', e.code || e.message); }
   }
   await supervisar();
@@ -104,11 +130,12 @@ export async function startAgente(overrides = {}) {
     let t;
     await Promise.race([asistente.esperar().catch(() => {}), new Promise((r) => { t = setTimeout(r, esperaMs); if (t.unref) t.unref(); })]);
     clearTimeout(t);
-    await wa.detener('apagado').catch((e) => log('agente: al cerrar WhatsApp:', e.code || e.message));
+    for (const w of chips.values()) await w.detener('apagado').catch((e) => log('agente: al cerrar WhatsApp:', e.code || e.message));
     if (!config.pool) await pool.end().catch(() => {});
     log('agente: cerrado');
   }
-  return { pool, asistente, wa, telegram, llm, procesarSalida, supervisar, cerrar };
+  // wa: el chip 1 (las pruebas de siempre); chips: todas las conexiones
+  return { pool, asistente, get wa() { return chips.get(1); }, chips, telegram, llm, procesarSalida, supervisar, cerrar };
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

@@ -12,7 +12,7 @@ import pg from 'pg';
 import * as B from '@whiskeysockets/baileys';
 import { start } from '../server.js';
 import { createRequire } from 'node:module';
-import { authEnBase, crearCandado, createWhatsApp, sinDatos, cacheConVencimiento, loggerMudo, AVISO_REVINCULAR, FORMATO_SESION } from '../lib/asistente-whatsapp.js';
+import { authEnBase, crearCandado, createWhatsApp, sinDatos, cacheConVencimiento, loggerMudo, AVISO_REVINCULAR, FORMATO_SESION, borrarAuth, prefijoAuth, candadoDeChip, CANDADO_WHATSAPP } from '../lib/asistente-whatsapp.js';
 import { crearConsolaSegura, instalarConsolaSegura } from '../lib/consola-segura.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -468,7 +468,7 @@ describe('sesión guardada por Baileys 6', () => {
   test('si no se puede borrar la sesión vieja, no se conecta con ella ni se cae: reintenta', async () => {
     await sesionVieja();
     const f = fabrica(); const logs = []; let fallar = true;
-    const pool = { query: (q, p) => (fallar && /^DELETE FROM asistente_auth$/.test(q) ? Promise.reject(Object.assign(new Error('x'), { code: '57P01' })) : db.query(q, p)) };
+    const pool = { query: (q, p) => (fallar && /^DELETE FROM asistente_auth WHERE/.test(q) ? Promise.reject(Object.assign(new Error('x'), { code: '57P01' })) : db.query(q, p)) };
     const wa = createWhatsApp({ pool, secretsKey: KEY, demora: () => 0, dormir: async () => {}, candado: null, makeSocket: f.makeSocket, crearAuth: () => nuevaAuth(), log: (...a) => logs.push(a.join(' ')) });
     await wa.iniciar();
     assert.ok(await hasta(() => logs.some((l) => /conexión falló/.test(l))));
@@ -568,3 +568,50 @@ describe('logs sin claves', () => {
     assert.equal(FORMATO_SESION, 'baileys7-lid');
   });
 });
+
+describe('varios chips (19/11/2026): una sesión por chip', () => {
+  test('cada chip guarda su sesión con su prefijo; borrar la de uno no toca la de los otros; candado propio', async () => {
+    await db.query('DELETE FROM asistente_auth');
+    assert.equal(prefijoAuth(1), ''); assert.equal(prefijoAuth(2), 'c2:'); assert.equal(prefijoAuth(12), 'c12:');
+    assert.equal(candadoDeChip(1), CANDADO_WHATSAPP); assert.notEqual(candadoDeChip(2), CANDADO_WHATSAPP);
+    const uno = await authEnBase({ pool: db, secretsKey: KEY, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto });
+    const dos = await authEnBase({ pool: db, secretsKey: KEY, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto, prefijo: 'c2:' });
+    await uno.state.keys.set({ session: { 'a.0': Buffer.from('s1') } }); await uno.guardarCreds();
+    await dos.state.keys.set({ session: { 'a.0': Buffer.from('s2') } }); await dos.guardarCreds();
+    await uno.vaciar(); await dos.vaciar();
+    let { rows } = await db.query('SELECT clave FROM asistente_auth ORDER BY clave');
+    assert.deepEqual(rows.map((r) => r.clave), ['c2:creds', 'c2:formato', 'c2:session-a.0', 'creds', 'formato', 'session-a.0']);
+    // Cada uno lee lo suyo
+    const dos2 = await authEnBase({ pool: db, secretsKey: KEY, BufferJSON: B.BufferJSON, initAuthCreds: B.initAuthCreds, proto: B.proto, prefijo: 'c2:' });
+    assert.equal(Buffer.from((await dos2.state.keys.get('session', ['a.0']))['a.0']).toString(), 's2');
+    // Borrar el chip 1 deja el 2; borrar el 2 deja el 1
+    await borrarAuth(db, 1);
+    ({ rows } = await db.query('SELECT clave FROM asistente_auth ORDER BY clave'));
+    assert.deepEqual(rows.map((r) => r.clave), ['c2:creds', 'c2:formato', 'c2:session-a.0']);
+    await uno.state.keys.set({ session: { 'a.0': Buffer.from('s1') } }); await uno.vaciar();
+    await borrarAuth(db, 2);
+    ({ rows } = await db.query('SELECT clave FROM asistente_auth ORDER BY clave'));
+    assert.deepEqual(rows.map((r) => r.clave), ['session-a.0']);
+    await db.query('DELETE FROM asistente_auth');
+  });
+
+  test('el estado de cada chip va a su fila y los mensajes llegan con el chip', async () => {
+    await db.query("INSERT INTO asistente_whatsapp (id, rol) VALUES (2, 'captacion') ON CONFLICT (id) DO NOTHING");
+    try {
+      const f = fabrica(); const recibidos = [];
+      const wa = nuevoWa({ chip: 2, makeSocket: f.makeSocket, alMensaje: async (ev) => { recibidos.push(ev); } });
+      await wa.iniciar(); await conectado(wa, f);
+      const { rows } = await db.query('SELECT id, estado FROM asistente_whatsapp WHERE id IN (1, 2) ORDER BY id');
+      assert.equal(rows.find((r) => r.id === 2).estado, 'conectado');
+      assert.equal(wa.chip, 2);
+      await wa._alLlegar({ type: 'notify', messages: [{ key: { remoteJid: '5491155550777@s.whatsapp.net', id: 'X1', fromMe: false }, messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: 'hola' } }] });
+      assert.ok(await hasta(() => recibidos.length === 1));
+      assert.equal(recibidos[0].chip, 2);
+      await wa.detener();
+    } finally {
+      await db.query('DELETE FROM asistente_whatsapp WHERE id = 2');
+      await db.query('DELETE FROM asistente_auth');
+    }
+  });
+});
+

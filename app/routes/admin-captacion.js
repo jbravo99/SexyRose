@@ -1,11 +1,13 @@
 // Admin → Mensajería → Captación (16/11/2026, decisión de Juan). Se monta bajo `${A}/api` (Basic Auth del admin; lo
 // que modifica, con apiPost: JSON + X-SR-Admin: 1 + mismo origen; la planilla, con las mismas cabeceras y el archivo
 // como application/octet-stream). Ver lib/captacion.js y FASE1-CONTRATO.md → "Mensajería" → "Captación".
-//   GET  /captacion                        → números (por estado, enviados hoy y esta semana, respuestas, registros),
-//                                            ajustes {mensaje, porDia}, la cola de hoy ("los N del día") y los de "revisar"
+//   GET  /captacion?chip=<id>              → números (por estado, enviados hoy y esta semana, respuestas, registros),
+//                                            ajustes {mensaje, mensajes, porDia}, los chips de captación (cupo de cada
+//                                            uno hoy), la cola de hoy del chip elegido y los de "revisar". Varios chips
+//                                            (19/11/2026): sin chip (o uno pausado), el que tiene más cupo libre (rota).
 //   GET  /captacion/contactos?estado=&q=   → toda la lista (hasta 200, teléfono enmascarado)
 //   POST /captacion/importar?nombre=x.xlsx → importa la planilla (.xlsx hoja "Contactos" o .csv); une sin duplicar
-//   POST /captacion/:id/abierto            → Juan tocó "Abrir chat" (solo pendiente/abierto)
+//   POST /captacion/:id/abierto {chip?}    → Juan tocó "Abrir chat" (solo pendiente/abierto), con el chip elegido
 //   POST /captacion/:id/estado {estado}    → enviado (marcar a mano) | revisado (es mayor de edad → pendiente) |
 //                                            descartado | no_escribir | no_disponible (el número ya no tiene
 //                                            WhatsApp) | pendiente (deshacer abierto/enviado/no_disponible)
@@ -18,6 +20,9 @@ import {
   ESTADOS, MENSAJE_DEFAULT, POR_DIA_DEFAULT, contactosDeFilas, importarContactos, leerAjustesCaptacion, validarAjustesCaptacion,
 } from '../lib/captacion.js';
 import { MAX_ARCHIVO, leerPlanilla } from '../lib/xlsx-lector.js';
+import { listarChips } from '../lib/chips.js';
+import { mensajeParaContacto } from '../lib/captacion.js';
+import { LATIDO_VIVO_MS } from '../lib/asistente-comun.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TZ = 'America/Argentina/Buenos_Aires';
@@ -48,19 +53,41 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     avisos: x.avisos, fecha: x.fecha_aviso || null, nota: x.nota || null,
     estado: x.estado, motivo: x.estado === 'revisar' ? (x.motivo || 'Revisar') : null, tipoMotivo: x.estado === 'revisar' ? (x.tipo_motivo || null) : null, revisado: x.revisado || null,
     abierto: x.abierto, enviado: x.enviado, respondio: x.respondio, registrado: x.registrado, noEscribir: x.no_escribir,
+    chip: x.chip ? String.fromCharCode(64 + Number(x.chip)) : null,
     cuenta: x.cuenta_id ? nombresDe({ id: x.cuenta_id, cuenta_nombre: x.cuenta_nombre }) : null,
     conversacion: x.conv_id || null,
     // El enlace con el número completo solo para lo que se puede invitar (nunca "revisar", "no escribir", etc.)
+    // mensaje: las versiones; cada contacto recibe siempre la misma
     waUrl: mensaje && (x.estado === 'pendiente' || x.estado === 'abierto')
-      ? `https://wa.me/${String(x.telefono).replace(/\D/g, '')}?text=${encodeURIComponent(mensaje)}` : null,
+      ? `https://wa.me/${String(x.telefono).replace(/\D/g, '')}?text=${encodeURIComponent(mensajeParaContacto(mensaje, x.id))}` : null,
   });
   const SELECT = `SELECT cc.*, p.datos->>'displayName' AS cuenta_nombre,
       (SELECT c.id FROM asistente_conversaciones c WHERE c.captacion_id = cc.id ORDER BY c.ultimo_mensaje DESC NULLS LAST LIMIT 1) AS conv_id
     FROM captacion_contactos cc LEFT JOIN perfiles p ON p.cuenta_id = cc.cuenta_id`;
   const ORDEN_COLA = "(cc.estado = 'abierto') DESC, cc.avisos DESC, lower(COALESCE(cc.ciudades[1], 'zzz')), cc.telefono";
 
-  async function resumen() {
+  // Chips de captación activos (no pausados), con lo que mandó cada uno hoy (lo de antes de los chips cuenta para el 1)
+  async function chipsCaptacion() {
+    const [todos, hoy] = await Promise.all([
+      listarChips(pool),
+      pool.query(`SELECT COALESCE(chip, 1) AS chip, count(*)::int AS n FROM captacion_contactos
+        WHERE enviado >= (date_trunc('day', now() AT TIME ZONE '${TZ}') AT TIME ZONE '${TZ}') GROUP BY 1`),
+    ]);
+    const n = new Map(hoy.rows.map((r) => [Number(r.chip), r.n]));
+    return todos.filter((c) => c.rol === 'captacion' && !c.pausado).map((c) => {
+      const vivo = Boolean(c.latido && Date.now() - new Date(c.latido).getTime() < LATIDO_VIVO_MS);
+      const enviadosHoy = n.get(Number(c.id)) || 0;
+      return { id: Number(c.id), letra: c.letra, porDia: c.por_dia, enviadosHoy, cupo: Math.max(0, c.por_dia - enviadosHoy), conectado: vivo && c.estado === 'conectado' };
+    });
+  }
+  // El chip pedido (si es de captación y está activo) o el que tiene más cupo libre hoy (empate: la letra más baja)
+  const elegirChip = (chips, pedido) => chips.find((c) => c.id === Number(pedido))
+    || [...chips].sort((a, b) => b.cupo - a.cupo || a.id - b.id)[0] || null;
+
+  async function resumen(chipPedido = null) {
     const aj = await leerAjustesCaptacion(pool);
+    const chips = await chipsCaptacion();
+    const elegido = elegirChip(chips, chipPedido);
     const [porEstado, n] = await Promise.all([
       pool.query('SELECT estado, count(*)::int AS n FROM captacion_contactos GROUP BY estado'),
       pool.query(`SELECT
@@ -76,7 +103,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     const estados = Object.fromEntries(ESTADOS.map((e) => [e, 0]));
     for (const x of porEstado.rows) estados[x.estado] = x.n;
     const s = n.rows[0];
-    const cupo = Math.max(0, aj.porDia - s.hoy);
+    const cupo = elegido ? elegido.cupo : 0;
     const [cola, revisar] = await Promise.all([
       cupo ? pool.query(`${SELECT} WHERE cc.estado IN ('pendiente', 'abierto') ORDER BY ${ORDEN_COLA} LIMIT $1`, [cupo]) : { rows: [] },
       pool.query(`${SELECT} WHERE cc.estado = 'revisar' ORDER BY cc.tipo_motivo = 'joven' DESC, cc.avisos DESC, cc.telefono LIMIT 200`),
@@ -89,12 +116,17 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
         registrados: s.registrados, registradosInvitados: s.registradosInvitados,
       },
       ajustes: { ...aj, mensajeDefault: MENSAJE_DEFAULT, porDiaDefault: POR_DIA_DEFAULT },
-      cola: { porDia: aj.porDia, enviadosHoy: s.hoy, cupo, items: cola.rows.map((x) => contactoJson(x, aj.mensaje)) },
+      chips,
+      cola: {
+        chip: elegido ? { id: elegido.id, letra: elegido.letra, conectado: elegido.conectado } : null,
+        porDia: elegido ? elegido.porDia : 0, enviadosHoy: elegido ? elegido.enviadosHoy : 0, cupo,
+        items: cola.rows.map((x) => contactoJson(x, aj.mensajes)),
+      },
       revisar: revisar.rows.map((x) => contactoJson(x)),
     };
   }
 
-  r.get('/captacion', ah(async (req, res) => res.json(await resumen())));
+  r.get('/captacion', ah(async (req, res) => res.json(await resumen(req.query.chip || null))));
 
   r.get('/captacion/contactos', ah(async (req, res) => {
     const args = []; const conds = [];
@@ -118,7 +150,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
       pool.query(`${SELECT} ${where} ORDER BY cc.actualizado DESC, ${ORDEN_COLA} LIMIT 200`, args),
       pool.query(`SELECT count(*)::int AS n FROM captacion_contactos cc ${where}`, args),
     ]);
-    res.json({ items: rows.map((x) => contactoJson(x, aj.mensaje)), total: tot.rows[0].n });
+    res.json({ items: rows.map((x) => contactoJson(x, aj.mensajes)), total: tot.rows[0].n });
   }));
 
   r.post('/captacion/importar', subir, ah(async (req, res) => {
@@ -139,8 +171,12 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
 
   r.post('/captacion/:id/abierto', apiPost, ah(async (req, res) => {
     const id = uuid(req.params.id);
+    // Con qué chip se abrió (si es uno de captación activo); el asistente lo confirma cuando ve el envío
+    const chips = await chipsCaptacion();
+    const pedido = Number(body(req).chip);
+    const chip = chips.some((c) => c.id === pedido) ? pedido : null;
     const { rows } = await pool.query(
-      "UPDATE captacion_contactos SET estado = 'abierto', abierto = now(), actualizado = now() WHERE id = $1 AND estado IN ('pendiente', 'abierto') RETURNING id", [id]);
+      "UPDATE captacion_contactos SET estado = 'abierto', abierto = now(), chip = COALESCE($2, chip), actualizado = now() WHERE id = $1 AND estado IN ('pendiente', 'abierto') RETURNING id", [id, chip]);
     if (!rows[0]) throw he(409, 'Este contacto ya no está para invitar.');
     res.json({ ok: true });
   }));
@@ -169,7 +205,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     }
     const aj = await leerAjustesCaptacion(pool);
     const x = await pool.query(`${SELECT} WHERE cc.id = $1`, [id]);
-    res.json({ ok: true, contacto: contactoJson(x.rows[0], aj.mensaje) });
+    res.json({ ok: true, contacto: contactoJson(x.rows[0], aj.mensajes) });
   }));
 
   r.put('/captacion/ajustes', apiPost, ah(async (req, res) => {

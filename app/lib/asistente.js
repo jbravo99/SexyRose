@@ -16,6 +16,9 @@ import {
 import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
 import { promptSistema, limpiarRespuesta, HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR } from './asistente-llm.js';
+import { creditosEnOtroChip, letraDe } from './chips.js';
+// Herramientas de la compra de créditos: en un chip de captación, si hay chip de créditos, no se ofrecen
+const SOLO_CHIP_CREDITOS = ['crear_pedido', 'datos_transferencia'];
 import {
   RESPUESTA_NO_ESCRIBIR, RESPUESTA_ORIGEN, contactoPorTelefono, esMensajeCaptacion, leerAjustesCaptacion, respuestaInvitada,
 } from './captacion.js';
@@ -55,18 +58,20 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   // ---------- Conversaciones y mensajes ----------
   // lid: dirección `…@lid` del mismo chat cuando ya se sabe su teléfono. Si el chat empezó cuando WhatsApp todavía no
   // daba el teléfono (quedó guardado con el LID), pasa a guardarse con el teléfono: mismo historial, y se identifica.
-  async function conversacion(jid, telefono, lid = null) {
+  // Varios chips (19/11/2026): cada conversación es de un chip (chip + jid); el mismo teléfono puede tener un chat con cada uno.
+  async function conversacion(jid, telefono, lid = null, chip = 1) {
     if (lid && lid !== jid) {
       await pool.query(
         `UPDATE asistente_conversaciones SET jid = $1, telefono = COALESCE(telefono, $3), actualizado = now()
-          WHERE jid = $2 AND NOT EXISTS (SELECT 1 FROM asistente_conversaciones WHERE jid = $1)`, [jid, lid, telefono || null]);
+          WHERE chip = $4 AND jid = $2 AND NOT EXISTS (SELECT 1 FROM asistente_conversaciones WHERE chip = $4 AND jid = $1)`, [jid, lid, telefono || null, chip]);
     }
     const { rows } = await pool.query(
-      `INSERT INTO asistente_conversaciones (jid, telefono) VALUES ($1, $2)
-       ON CONFLICT (jid) DO UPDATE SET telefono = COALESCE(asistente_conversaciones.telefono, EXCLUDED.telefono)
-       RETURNING *`, [jid, telefono || null]);
+      `INSERT INTO asistente_conversaciones (jid, telefono, chip) VALUES ($1, $2, $3)
+       ON CONFLICT (chip, jid) DO UPDATE SET telefono = COALESCE(asistente_conversaciones.telefono, EXCLUDED.telefono)
+       RETURNING *`, [jid, telefono || null, chip]);
     return rows[0];
   }
+  const claveChat = (chip, jid) => `${Number(chip) || 1}:${jid}`;
   const releer = async (id) => (await pool.query('SELECT * FROM asistente_conversaciones WHERE id = $1', [id])).rows[0] || null;
   async function guardarMensaje(conv, { dir, origen, tipo = 'texto', texto: t = null, mediaRuta = null, waId = null }) {
     const { rows } = await pool.query(
@@ -93,7 +98,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     const { rows } = await pool.query(
       "SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND origen = 'bot' AND creado > now() - interval '24 hours' LIMIT 1", [c.id]);
     const final = rows[0] ? String(t) : `${presentacion(c.idioma)}\n\n${t}`;
-    const waId = await enviarWa(c.jid, final);
+    const waId = await enviarWa(c.jid, final, Number(c.chip) || 1);
     await guardarMensaje(c, { dir: 'out', origen: 'bot', texto: final, waId: waId || null });
     return true;
   }
@@ -103,7 +108,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   async function avisarJuan(conv, titulo, motivo, tipo) {
     const nombre = await nombreCuenta(conv.cuenta_id);
     const t = `${titulo}\n${motivo ? `Motivo: ${sinContacto(motivo).slice(0, 300)}\n` : ''}Cuenta: ${nombre || (conv.cuenta_id ? 'sin nombre artístico' : 'sin identificar')}\n`
-      + 'Respondé desde el teléfono del asistente. Para devolver el chat al asistente: Admin → Mensajería.';
+      + `Chip ${letraDe(conv.chip)}. Respondé desde el teléfono de ese chip. Para devolver el chat al asistente: Admin → Mensajería.`;
     if (telegram) await telegram.enviar({ texto: t, tipo });
   }
   async function derivar(conv, motivo) {
@@ -373,7 +378,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   // (se aplica el silencio de 12 h de siempre).
   async function salienteCaptacion(conv, ev) {
     const aj = await leerAjustesCaptacion(pool);
-    const esInvitacion = ev.tipo === 'texto' && esMensajeCaptacion(ev.texto, aj.mensaje);
+    const esInvitacion = ev.tipo === 'texto' && esMensajeCaptacion(ev.texto, aj.mensajes);
     let c = await capPorId(conv.captacion_id);
     if (!c && conv.telefono) c = await contactoPorTelefono(pool, conv.telefono);
     if (!c && esInvitacion && !conv.telefono) {
@@ -386,7 +391,8 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (!enCola && !reenvio && !(esInvitacion && !c)) return null;
     if (c) {
       if (enCola) {
-        await pool.query("UPDATE captacion_contactos SET estado = 'enviado', enviado = COALESCE(enviado, now()), actualizado = now() WHERE id = $1", [c.id]);
+        // El chip que la mandó (varios chips, 19/11/2026): cuenta para el cupo del día de ese chip
+        await pool.query("UPDATE captacion_contactos SET estado = 'enviado', enviado = COALESCE(enviado, now()), chip = $2, actualizado = now() WHERE id = $1", [c.id, Number(conv.chip) || 1]);
         log('asistente: invitación de captación enviada');
       }
       await pool.query('UPDATE asistente_conversaciones SET captacion_id = $2, actualizado = now() WHERE id = $1', [conv.id, c.id]);
@@ -585,12 +591,20 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (!mensajes.length || mensajes[mensajes.length - 1].role !== 'user') return;
     const c = await releer(conv.id);
     const captacion = Boolean(await capDe(c));
+    // Varios chips (19/11/2026): en un chip de captación, si hay un chip de créditos, las compras se hacen allá
+    const { rows: rc } = await pool.query('SELECT rol FROM asistente_whatsapp WHERE id = $1', [Number(c.chip) || 1]);
+    const numCred = rc[0] && rc[0].rol === 'captacion' ? await creditosEnOtroChip(pool, c.chip) : '';
+    const creditosEn = numCred ? `https://wa.me/${numCred}` : '';
+    let herrs = captacion ? [...HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR] : HERRAMIENTAS;
+    if (creditosEn) herrs = herrs.filter((h) => !SOLO_CHIP_CREDITOS.includes(h.name));
     let r;
     try {
       r = await llm.conversar({
-        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion }),
-        mensajes, ejecutar: (nombre, input) => herramienta(c.id, nombre, input),
-        herramientas: captacion ? [...HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR] : HERRAMIENTAS,
+        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion, creditosEn }),
+        mensajes, ejecutar: (nombre, input) => (creditosEn && SOLO_CHIP_CREDITOS.includes(nombre)
+          ? { resultado: { error: `En este número no se compran créditos: pasale este link ${creditosEn}` } }
+          : herramienta(c.id, nombre, input)),
+        herramientas: herrs,
       });
     } catch (e) {
       log('asistente: la IA no respondió:', e.message);
@@ -604,7 +618,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   // ---------- Entrada ----------
   // ev = { jid (teléfono@s.whatsapp.net o, si no se sabe, …@lid), lid (…@lid si jid es el teléfono), telefono, waId, deMi, porBot, tipo: texto|imagen|documento|audio|video|otro, texto, media: { mime, tamano, descargar } }
   async function procesar(ev) {
-    let conv = await conversacion(ev.jid, ev.telefono, ev.lid || null);
+    let conv = await conversacion(ev.jid, ev.telefono, ev.lid || null, Number(ev.chip) || 1);
     if (ev.deMi) {
       if (ev.porBot) return { ignorado: 'bot' };
       // La invitación de captación (o un mensaje a un contacto de la cola) no silencia al bot: marca "enviado".
@@ -652,7 +666,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   async function recibir(ev) {
     const aj = await leerAjustes(pool);
     if (!aj.activo) return { ignorado: 'apagado' };
-    return enCola(ev.jid, () => procesar(ev));
+    return enCola(claveChat(ev.chip, ev.jid), () => procesar(ev));
   }
 
   // ---------- Bandeja de salida (avisos que manda el app: créditos acreditados o pedido rechazado) ----------
@@ -662,17 +676,18 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     for (const r of rows) {
       const marcar = (error = null) => pool.query('UPDATE asistente_salida SET procesado = now(), error = $2 WHERE id = $1', [r.id, error]);
       if (r.tipo === 'desvincular') {
-        try { await desvincular(); await marcar(); } catch (e) { log('asistente: desvincular falló:', e.message); await marcar('falló: ' + e.message); }
+        try { await desvincular(Number(r.datos && r.datos.chip) || 1); await marcar(); } catch (e) { log('asistente: desvincular falló:', e.message); await marcar('falló: ' + e.message); }
         continue;
       }
       if (r.tipo !== 'mensaje') { await marcar('tipo desconocido'); continue; }
       if (Date.now() - new Date(r.creado).getTime() > 24 * 3600 * 1000) { await marcar('vencido'); continue; }
-      if (!aj.activo || !conectado()) continue; // queda para cuando se conecte
+      if (!aj.activo) continue; // queda para cuando se prenda
       const conv = r.conversacion_id ? await releer(r.conversacion_id) : null;
       if (!conv) { await marcar('sin chat'); continue; }
+      if (!conectado(Number(conv.chip) || 1)) continue; // queda para cuando ese chip se conecte
       if (silenciado(conv)) { await marcar('chat atendido por una persona'); continue; }
       try {
-        await enCola(conv.jid, () => responder(conv, String((r.datos && r.datos.texto) || '')));
+        await enCola(claveChat(conv.chip, conv.jid), () => responder(conv, String((r.datos && r.datos.texto) || '')));
         await marcar();
       } catch (e) {
         if (e.code === 'NO_CONECTADO') continue;

@@ -6,6 +6,7 @@
 // Saldo = SUM(creditos_movimientos.centavos). creditos_cuentas tiene el mismo número y se bloquea con FOR UPDATE en
 // cada movimiento (dos débitos simultáneos no se pasan del saldo).
 // Los créditos no vencen, no se devuelven en dinero y no se transfieren entre cuentas (no hay endpoint para eso).
+import { numeroCreditos } from './chips.js';
 import crypto from 'node:crypto';
 import { cuentasDePedidos } from './cuentas-transferencia.js';
 
@@ -201,12 +202,9 @@ export function createCreditos({ pool, log = () => {}, sendMail = null, siteUrl 
   // WhatsApp para comprar créditos (16/11/2026, decisión de Juan): el número del chip VINCULADO al asistente (lo
   // guarda el agente al conectar, asistente_whatsapp.numero). Hasta que se vincule, el que estaba cargado a mano en el
   // ajuste 'contacto' (que no se borra). whatsappOrigen: 'asistente' | 'guardado' | null.
+  // Varios chips (19/11/2026): el del chip de créditos activo; si no hay, el chip 1 (lib/chips.js → numeroCreditos).
   async function numeroAsistente() {
-    try {
-      const { rows } = await pool.query('SELECT numero FROM asistente_whatsapp WHERE id = 1');
-      const d = String((rows[0] && rows[0].numero) || '').replace(/\D/g, '');
-      return d.length >= 8 && d.length <= 15 ? d : '';
-    } catch { return ''; }
+    try { return await numeroCreditos(pool); } catch { return ''; }
   }
   async function contacto() {
     const c = { ...CONTACTO_DEFAULT, ...((await leerAjuste('contacto', {})) || {}) };

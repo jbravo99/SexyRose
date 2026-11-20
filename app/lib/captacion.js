@@ -18,6 +18,9 @@ export const ESTADO_NOMBRE = Object.freeze({
 export const POR_DIA_DEFAULT = 30;
 export const POR_DIA_MAX = 200;
 export const MENSAJE_MAX = 1000;
+// Varias versiones del mensaje (19/11/2026, Juan: "variar el mensaje entre chats"): cada contacto recibe siempre la
+// misma versión (la elige su id), así "Abrir chat" de nuevo no cambia el texto.
+export const MAX_VERSIONES = 5;
 // Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya). 19/11/2026: "abrimos en diciembre" y la venta de
 // contenido "próximamente" (decisión de Juan).
 export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribimos de SexyRose (sexyrose.net). Vimos tu perfil publicado en otro sitio y nos encantaría que formes parte de nuestra plataforma.\n\n'
@@ -35,20 +38,44 @@ export const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').
 export function mezclarAjustesCaptacion(v) {
   const o = esObj(v) ? v : {};
   const n = Number(o.porDia);
+  const vs = Array.isArray(o.mensajes) ? o.mensajes.filter((x) => typeof x === 'string' && x.trim()).slice(0, MAX_VERSIONES) : [];
+  const mensajes = vs.length ? vs : [typeof o.mensaje === 'string' && o.mensaje.trim() ? o.mensaje : MENSAJE_DEFAULT];
   return {
-    mensaje: typeof o.mensaje === 'string' && o.mensaje.trim() ? o.mensaje : MENSAJE_DEFAULT,
+    mensaje: mensajes[0], // la primera versión (compatibilidad)
+    mensajes,
     porDia: Number.isInteger(n) && n >= 1 && n <= POR_DIA_MAX ? n : POR_DIA_DEFAULT,
   };
+}
+// La versión del mensaje para un contacto (siempre la misma para el mismo contacto)
+export function mensajeParaContacto(mensajes, id) {
+  const lista = Array.isArray(mensajes) && mensajes.length ? mensajes : [String(mensajes || MENSAJE_DEFAULT)];
+  const h = Number.parseInt(String(id || '').replace(/[^0-9a-f]/gi, '').slice(-6) || '0', 16) || 0;
+  return lista[h % lista.length];
 }
 export function validarAjustesCaptacion(v, actual = {}) {
   if (!esObj(v)) return { error: 'Formato inválido: {mensaje, porDia}.' };
   const out = mezclarAjustesCaptacion(actual);
-  if (v.mensaje !== undefined) {
+  if (v.mensajes !== undefined) {
+    if (!Array.isArray(v.mensajes)) return { error: 'Las versiones del mensaje tienen que ser una lista.' };
+    if (v.mensajes.length > MAX_VERSIONES) return { error: `Hasta ${MAX_VERSIONES} versiones del mensaje.` };
+    const ts = [];
+    for (const [i, m] of v.mensajes.entries()) {
+      if (typeof m !== 'string') return { error: 'El mensaje tiene que ser texto.' };
+      const t = m.replace(/\r\n?/g, '\n').trim();
+      if (!t) continue;
+      if (t.length > MENSAJE_MAX) return { error: `La versión ${i + 1} admite hasta ${MENSAJE_MAX} caracteres.` };
+      if (t.length < 20) return { error: `La versión ${i + 1} es muy corta.` };
+      ts.push(t);
+    }
+    out.mensajes = ts.length ? ts : [MENSAJE_DEFAULT]; // ninguna = el texto aprobado
+    out.mensaje = out.mensajes[0];
+  } else if (v.mensaje !== undefined) {
     if (typeof v.mensaje !== 'string') return { error: 'El mensaje tiene que ser texto.' };
     const t = v.mensaje.replace(/\r\n?/g, '\n').trim();
     if (t.length > MENSAJE_MAX) return { error: `El mensaje admite hasta ${MENSAJE_MAX} caracteres.` };
     if (t && t.length < 20) return { error: 'El mensaje es muy corto.' };
     out.mensaje = t || MENSAJE_DEFAULT; // vacío = el texto aprobado
+    out.mensajes = [out.mensaje];
   }
   if (v.porDia !== undefined) {
     const n = Number(v.porDia);
@@ -111,7 +138,9 @@ export function motivoJoven(texto) {
 // ---------- Mensajes del chat ----------
 // ¿El texto saliente es el mensaje de captación? (mismo texto, sin importar espacios, mayúsculas ni asteriscos)
 const compacto = (s) => normalizar(String(s || '').replace(/\*/g, '')).replace(/\s+/g, ' ');
+// mensaje: el texto o la lista de versiones (cualquiera cuenta)
 export function esMensajeCaptacion(texto, mensaje) {
+  if (Array.isArray(mensaje)) return (mensaje.length ? mensaje : [MENSAJE_DEFAULT]).some((m) => esMensajeCaptacion(texto, m));
   const a = compacto(texto); const b = compacto(mensaje || MENSAJE_DEFAULT);
   if (!a || !b) return false;
   return a === b || (b.length >= 60 && a.includes(b.slice(0, 80))) || (a.length >= 60 && b.includes(a.slice(0, 80)));
