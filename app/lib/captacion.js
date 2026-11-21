@@ -23,9 +23,14 @@ export const MENSAJE_MAX = 1000;
 export const MAX_VERSIONES = 5;
 // Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya). 19/11/2026: "abrimos en diciembre" y la venta de
 // contenido "próximamente" (decisión de Juan).
-export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribimos de SexyRose (sexyrose.net). Vimos tu perfil publicado en otro sitio y nos encantaría que formes parte de nuestra plataforma.\n\n'
-  + 'SexyRose es un sitio nuevo para crear tu propio perfil con fotos, videos e historias y, próximamente, vender tu contenido. Abrimos en diciembre: si te registrás ahora, tu perfil puede estar publicado desde el primer día. Crear el perfil *es gratis* con el plan Bronce, en sexyrose.net.\n\n'
-  + 'Cualquier duda, respondé este mensaje.';
+// 21/11/2026 (Juan: "los mensajes deben ser más breves"): versión corta que termina en pregunta, sin línea de baja.
+export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribo de SexyRose (sexyrose.net), un sitio nuevo de anuncios. Vi tu aviso y me gustaría invitarte: crear tu perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
+// Las tres versiones cortas aprobadas por Juan (21/11/2026); se cargan en Admin → Mensajería → Mensajes.
+export const MENSAJES_CORTOS = Object.freeze([
+  MENSAJE_DEFAULT,
+  '¡Hola! Soy de SexyRose (sexyrose.net), una página nueva de anuncios. Encontré tu aviso y quería invitarte a sumarte: el perfil es *gratis* y arrancamos en diciembre. ¿Te cuento más?',
+  'Hola, ¿qué tal? Te contacto de SexyRose (sexyrose.net). Vimos tu anuncio y nos gustaría que estés en el sitio: publicar es *gratis* y abrimos en diciembre. ¿Te interesa?',
+]);
 export const RESPUESTA_NO_ESCRIBIR = 'Perfecto, no te vamos a escribir más. Disculpá la molestia.';
 export const RESPUESTA_ORIGEN = 'Tu número lo vimos en tu aviso publicado en otro sitio.';
 

@@ -1045,6 +1045,13 @@ el número que tenías cargado: …".
   disculpa breve por la demora si contesta la IA. De a un chat, con 40–75 s entre uno y otro. Se saltean los chats ya
   respondidos (en el historial o en la base) y los grupos. Al terminar, aviso por Telegram con la cantidad.
 
+- **Mensajes breves y cierre de la charla** (21/11/2026): las instrucciones del asistente piden 2 o 3 renglones, una
+  idea por mensaje y ofrecer lo siguiente con una pregunta corta; los mensajes fijos largos se acortaron. Un mensaje
+  que solo agradece, confirma o se despide (`esCierre` en lib/asistente-textos.js: "listo", "dale", "gracias",
+  "igualmente", "te hablo", emojis) no se contesta si nuestro último mensaje no era una pregunta; la primera respuesta
+  a una invitación de captación siempre se contesta. Invitación por defecto corta, terminada en pregunta y sin línea
+  de baja (`MENSAJES_CORTOS`: las tres versiones aprobadas).
+
 ### Captación (semiautomática: Juan toca Enviar)
 
 Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-contactos.xlsx` de Juan, hoja "Contactos").

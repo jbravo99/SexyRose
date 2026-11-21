@@ -343,7 +343,7 @@ describe('captación: importar, cola y estados', () => {
     // Cola: los de más avisos primero; nunca los de "revisar", "no escribir" ni los que ya están en el sitio
     const ids = d.resumen.cola.items.map((x) => x.nombres[0]);
     assert.deepEqual(ids, ['Luna', 'Mora', 'Kiara', 'Sol']);
-    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('Te escribimos de SexyRose'))));
+    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('Te escribo de SexyRose'))));
     assert.ok(d.resumen.cola.items.every((x) => /\*{4}/.test(x.telefono)), 'teléfono enmascarado');
     assert.ok(d.resumen.revisar.every((x) => !x.waUrl && x.motivo));
     assert.equal(d.resumen.revisar[0].tipoMotivo, 'joven');

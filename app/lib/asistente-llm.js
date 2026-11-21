@@ -131,7 +131,7 @@ ${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le e
 
 ` : ''}Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).
-Estilo: mensajes cortos de WhatsApp, claros y amables, sin saludar de nuevo (el sistema ya se presenta), sin markdown, sin tablas, sin asteriscos ni títulos. Usá listas simples con guiones solo si hace falta.`;
+Estilo (21/11/2026, Juan: "estas personas no leen mucho"): mensajes MUY cortos de WhatsApp, como los escribiría una persona: como máximo 2 o 3 renglones (unos 300 caracteres), una sola idea por mensaje. Respondé solo lo que preguntó: de los textos de ayuda tomá únicamente la parte que responde la pregunta, no los copies enteros. Si hay más para contar, ofrecelo con una pregunta corta al final ("¿Te paso los precios?") en vez de mandarlo todo. No repitas lo que ya dijiste en el chat. Sin listas salvo que pida varias cosas a la vez (y entonces cortas). Sin saludar de nuevo (el sistema ya se presenta), sin markdown, sin tablas, sin asteriscos ni títulos. Si solo agradece o se despide, contestá con muy pocas palabras o nada más que una despedida corta, una sola vez.`;
 }
 
 export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = () => {}, timeoutMs = 30000, maxTokens = 700 } = {}) {

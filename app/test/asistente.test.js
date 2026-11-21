@@ -20,7 +20,8 @@ import { AJUSTE_ESTADO, ventaContenidoDisponible } from '../lib/contenido.js';
 import { authEnBase, leerContenido } from '../lib/asistente-whatsapp.js';
 import { telefonoOculto, validarAjustes } from '../lib/asistente-comun.js';
 import { asignarCuenta, validarCuenta } from '../lib/cuentas-transferencia.js';
-import { detectarIdioma, codigoEnTexto, monedaEnTexto } from '../lib/asistente-textos.js';
+import { detectarIdioma, codigoEnTexto, monedaEnTexto, esCierre } from '../lib/asistente-textos.js';
+import { MENSAJE_DEFAULT as INVITACION, MENSAJES_CORTOS } from '../lib/captacion.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('Falta DATABASE_URL.'); process.exit(1); }
@@ -295,7 +296,7 @@ describe('pedidos y comprobantes', () => {
     assert.match(t, /Alias: sexyrose\.pagos/);
     assert.match(t, /Titular: Juan Pérez/);
     assert.match(t, new RegExp(`poné ${p1.codigo} como referencia`));
-    assert.match(t, /Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta\. Mandame el comprobante por acá\./);
+    assert.match(t, /Después mandame el comprobante por acá\.$/);
     assert.equal(LLM.llamadas.length, llamadas, 'no usó la IA');
     // "escribiendo…" antes de responder
     assert.ok(SOCK.presencias.some((x) => x.t === 'composing' && x.jid === `${TEL}@s.whatsapp.net`));
@@ -561,10 +562,44 @@ describe('IA, persona y límites', () => {
     LLM.guion = null;
   });
 
+  test('cierre de la charla (21/11/2026): no contesta "listo", "gracias", "❤" si no le había preguntado nada; sí si le había preguntado', async () => {
+    for (const t of ['listo', 'Sii dale , listo te hablo', 'Si ❤', 'Igualmente', '👍', 'Muchas gracias amor', 'Perfecto, después te escribo', 'ok']) assert.equal(esCierre(t), true, t);
+    for (const t of ['Hola', 'Hola buenas tardes', 'buenas tardes', '¿Cuánto sale?', 'Si pasame los planes', 'Me súper interesa', 'Como hacemos ???', 'No', 'listo ya me registré', '']) assert.equal(esCierre(t), false, t);
+    const tel = '5491155550033';
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Perfecto. Cuando quieras, escribime por acá.' }] });
+    await llega(tel, 'quería saber cómo me registro');
+    const n = enviadosA(tel).length; const ll = LLM.llamadas.length;
+    for (const t of ['listo', 'Sii dale , listo te hablo', 'Si ❤', 'Igualmente']) await llega(tel, t);
+    assert.equal(enviadosA(tel).length, n, 'no contesta las despedidas');
+    assert.equal(LLM.llamadas.length, ll, 'ni llama a la IA');
+    // Si el asistente había preguntado algo, "dale" es la respuesta
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Hay 4 planes, Bronce es gratis. ¿Te paso los precios?' }] });
+    await llega(tel, '¿y los planes?');
+    const n2 = enviadosA(tel).length;
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'Plata sale USD 25 por mes.' }] });
+    await llega(tel, 'dale');
+    assert.equal(enviadosA(tel).length, n2 + 1);
+    LLM.guion = null;
+  });
+
+  test('respuestas breves e invitación corta (21/11/2026)', async () => {
+    const p = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es' });
+    assert.ok(p.includes('como máximo 2 o 3 renglones'));
+    assert.ok(p.includes('de los textos de ayuda tomá únicamente la parte que responde la pregunta'));
+    assert.equal(MENSAJES_CORTOS[0], INVITACION);
+    assert.equal(MENSAJES_CORTOS.length, 3);
+    for (const m of MENSAJES_CORTOS) {
+      assert.ok(m.length <= 220, `corta (${m.length})`);
+      assert.ok(m.endsWith('?'), 'termina en pregunta');
+      assert.ok(m.includes('sexyrose.net') && m.includes('*gratis*') && /diciembre/.test(m));
+      assert.ok(!/no te (escribo|escribimos) más/i.test(m), 'sin línea de baja');
+    }
+  });
+
   test('"¿sos un bot?": dice que es una IA y ofrece pasar con una persona', async () => {
     const llamadas = LLM.llamadas.length;
     await llega('5491155550011', '¿sos un bot?');
-    assert.match(ultimoA('5491155550011'), /Soy un asistente de IA \(inteligencia artificial\), no una persona\. Si preferís hablar con alguien del equipo, decime y te paso\./);
+    assert.match(ultimoA('5491155550011'), /Soy un asistente de IA, no una persona\. Si preferís hablar con alguien del equipo, decime\./);
     assert.equal(LLM.llamadas.length, llamadas);
   });
 
@@ -722,8 +757,8 @@ describe('cuenta en dólares (16/11/2026)', () => {
     await llega(tel, 'En DÓLARES');
     t = ultimoA(tel);
     assert.match(t, new RegExp(`^Pedido ${p.codigo}: Trimestre Plata, 105 créditos\\.\\nMonto a transferir: USD 95\\.\\nAlias: sexyrose\\.usd\\nTitular: Juan Pérez USD\\n`));
-    assert.match(t, new RegExp(`fijate que el titular de la cuenta sea ese\\. Si tu banco te deja, poné ${p.codigo} como referencia\\.`));
-    assert.match(t, /Una vez que transfieras y se verifique el pago, se acreditan los créditos en tu cuenta\. Mandame el comprobante por acá\.$/);
+    assert.match(t, new RegExp(`Fijate que el titular sea ese y, si podés, poné ${p.codigo} como referencia\\.`));
+    assert.match(t, /Después mandame el comprobante por acá\.$/);
     assert.doesNotMatch(t, /ARS|sexyrose\.pagos/);
     assert.equal(LLM.llamadas.length, llamadas, 'sin IA');
     assert.equal((await estadoPedido(p.id)).moneda_asistente, 'USD');

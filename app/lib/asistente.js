@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import {
   CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, leerAjustes, sinContacto, telefonoComparable,
 } from './asistente-comun.js';
-import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto } from './asistente-textos.js';
+import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto, esCierre } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
 import { promptSistema, limpiarRespuesta, HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR } from './asistente-llm.js';
 import { creditosEnOtroChip, letraDe } from './chips.js';
@@ -661,6 +661,14 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (codigo) { await manejarCodigo(conv, codigo); return { pedido: codigo }; }
     if (await respuestaMoneda(conv, txt)) return { moneda: true };
     if (preguntaSiEsBot(txt)) { await decir(conv, 'botOPersona'); return { bot: true }; }
+    // Cierre de la charla (21/11/2026): "listo", "gracias", "igualmente", "❤"… no se contesta si nuestro último mensaje
+    // no era una pregunta. Si era una pregunta ("¿Te paso los precios?"), un "sí" o un "dale" es la respuesta. La
+    // primera respuesta a una invitación de captación siempre se contesta.
+    if (esCierre(txt)) {
+      const { rows: u } = await pool.query("SELECT texto, origen FROM asistente_mensajes WHERE conversacion_id = $1 AND dir = 'out' ORDER BY id DESC LIMIT 1", [conv.id]);
+      const ult = u[0];
+      if (ult && ult.origen !== 'captacion' && !/[?¿]/.test(String(ult.texto || ''))) return { ignorado: 'cierre' };
+    }
     await turnoIa(conv);
     return { ia: true };
   }
