@@ -396,6 +396,12 @@ describe('captación: importar, cola y estados', () => {
     const mora = await cap('+5491155550201');
     assert.equal((await admJson('POST', `/captacion/${mora.id}/abierto`, {})).status, 200);
     assert.equal((await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'enviado' })).status, 200);
+    // 22/11/2026: tocar "Marcar enviado" otra vez (pantalla vieja: el asistente ya lo había marcado) no da error
+    let ya = await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'enviado' });
+    assert.equal(ya.status, 200);
+    ya = await ya.json();
+    assert.equal(ya.yaEstaba, true);
+    assert.equal(ya.contacto.estado, 'enviado');
     let d = await (await adm('/captacion')).json();
     const hoy = d.cola.enviadosHoy;
     let r = await admJson('POST', `/captacion/${mora.id}/estado`, { estado: 'no_disponible' });

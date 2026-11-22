@@ -199,14 +199,18 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     if (!c) throw he(400, 'Estado: enviado, revisado, descartado, no_escribir, no_disponible o pendiente.');
     const { rows } = await pool.query(
       `UPDATE captacion_contactos SET ${c.sql}, actualizado = now() WHERE id = $1 AND estado = ANY($2::text[]) RETURNING id`, [id, c.desde]);
+    let yaEstaba = false;
     if (!rows[0]) {
       const ex = await pool.query('SELECT estado FROM captacion_contactos WHERE id = $1', [id]);
       if (!ex.rows[0]) throw he(404, 'Contacto no encontrado.');
-      throw he(409, 'Ese cambio no se puede hacer desde el estado actual.');
+      // "Marcar enviado" cuando el asistente ya lo marcó (vio la invitación salir) o ella ya respondió: está hecho
+      // (22/11/2026: la pantalla seguía mostrando "Abierto" y daba error)
+      if (est === 'enviado' && ['enviado', 'respondio'].includes(ex.rows[0].estado)) yaEstaba = true;
+      else throw he(409, 'Ese cambio no se puede hacer desde el estado actual.');
     }
     const aj = await leerAjustesCaptacion(pool);
     const x = await pool.query(`${SELECT} WHERE cc.id = $1`, [id]);
-    res.json({ ok: true, contacto: contactoJson(x.rows[0], aj) });
+    res.json({ ok: true, yaEstaba, contacto: contactoJson(x.rows[0], aj) });
   }));
 
   r.put('/captacion/ajustes', apiPost, ah(async (req, res) => {

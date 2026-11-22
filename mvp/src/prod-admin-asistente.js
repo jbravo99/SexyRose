@@ -344,6 +344,10 @@
             ${c.captacion ? `<div><dt>Captación</dt><dd><a href="#admin.mensajeria.captacion" data-go="#admin.mensajeria.captacion">${esc(CAP_ESTADO[c.captacion.estado] || c.captacion.estado)}</a> <span class="tiny muted">(la invitaste desde Captación)</span></dd></div>` : ''}
             ${c.silenciadoHasta ? `<div><dt>En silencio hasta</dt><dd>${fecha(c.silenciadoHasta)} <span class="tiny muted">(escribiste desde el teléfono)</span></dd></div>` : ''}
           </dl>
+          ${(() => { const ms = d.mensajes || []; const ult = ms[ms.length - 1]; return ult && ult.dir === 'in'
+            ? `<div class="row" style="gap:8px"><button type="button" class="btn sm" data-action="asisResponder" data-id="${esc(c.id)}">${icon('refresh')} Agente responda último mensaje</button></div>
+               <p class="tiny muted">El agente contesta ahora el último mensaje, leyendo todo el chat (también lo que escribiste vos), y sigue él con este chat.</p>`
+            : ''; })()}
           <div class="row" style="gap:8px">${humano || c.silenciadoHasta
             ? `<button type="button" class="btn sm" data-action="asisHumano" data-id="${esc(c.id)}" data-v="0">${icon('refresh')} Devolver al asistente</button>`
             : `<button type="button" class="btn secondary sm" data-action="asisHumano" data-id="${esc(c.id)}" data-v="1">${icon('user')} Pasar a humano</button>`}</div>
@@ -450,6 +454,18 @@
       HH.confirm({ title: `Quitar el chip ${l}`, text: '<span>El asistente se desconecta de ese chip y se borra su sesión.</span> <span>Sus chats quedan en Conversaciones. La letra no se vuelve a usar.</span>', okLabel: 'Quitar chip', cls: 'danger', onOk: () => {
         HH.api('DELETE', '/asistente/chips/' + encodeURIComponent(id), {}).then((d) => { S.asis = d; HH.toast(`Chip ${l} quitado`, { type: 'ok' }); rerender(); }).catch(fail);
       } });
+    },
+    asisResponder(el) {
+      const id = el.dataset.id;
+      const recargar = () => { load('asd:' + id, '/asistente/conversaciones/' + encodeURIComponent(id), true); load('asc', '/asistente/conversaciones', true); };
+      el.disabled = true;
+      HH.api('POST', '/asistente/conversaciones/' + encodeURIComponent(id) + '/responder', {})
+        .then(() => {
+          HH.toast('El agente está respondiendo este chat', { type: 'ok' });
+          recargar();
+          // La respuesta tarda unos segundos (escribiendo… + la IA): se vuelve a mirar
+          setTimeout(recargar, 6000); setTimeout(recargar, 15000);
+        }).catch((x) => { el.disabled = false; fail(x); });
     },
     asisHumano(el) {
       const id = el.dataset.id; const humano = el.dataset.v === '1';

@@ -914,6 +914,11 @@ persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 12 h en ese chat (`silenciado_hasta`). En silencio no se procesa nada (ni comprobantes): el mensaje solo queda guardado.
 Excepción (16/11/2026): la invitación de captación (o cualquier mensaje propio a un contacto de captación "pendiente" o
 "abierto") **no** silencia: marca el contacto "enviado" y queda en el chat con origen `captacion`.
+**"Agente responda último mensaje"** (22/11/2026): botón en la conversación del admin, visible si el último mensaje es
+de la otra persona. `POST /asistente/conversaciones/:id/responder`: 409 si el último mensaje es nuestro, si el asistente
+está apagado o si el chip de esa conversación no está conectado. Devuelve el chat al asistente (sin silencio) y deja en
+`asistente_salida` un `tipo = 'responder'` (clave por chat y mensaje: dos toques responden una vez, vence a los 30 min).
+El agente contesta con la IA leyendo todo el chat (también lo de Juan), aunque sea una despedida, y sigue con el chat.
 
 **Datos** — migración `db/180-asistente.sql`: `asistente_conversaciones`, `asistente_mensajes` (dir in/out, origen
 bot|juan|usuario|captacion (desde la 220), tipo, texto, archivo), `asistente_conv_pedidos`, `asistente_codigos_email`, `asistente_tg_acciones`,
@@ -1088,7 +1093,9 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
   WhatsApp). Cambios a mano (`POST /captacion/:id/estado`): enviado (desde pendiente/abierto), revisado, descartado,
   no_escribir, no_disponible (desde pendiente/abierto/enviado, nunca desde revisar; borra abierto y enviado: no cuenta
   como enviado ni para el cupo del día; botón "No disponible" en la cola y en la lista), pendiente (deshacer
-  abierto/enviado/no_disponible: "Volver a la cola"). "No escribir" no vuelve nunca a la cola.
+  abierto/enviado/no_disponible: "Volver a la cola"). "No escribir" no vuelve nunca a la cola. "Marcar enviado" sobre
+  un contacto que ya está enviado o respondió (el asistente lo marcó al ver salir la invitación) devuelve 200 con
+  `yaEstaba: true` (22/11/2026); si un cambio falla, la lista del admin se recarga.
 - **Invitación por defecto** (19/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
   contesta lo mismo con el tema de ayuda `apertura` ("a partir de diciembre" mientras la home provisoria está
   prendida; con el sitio abierto, que ya está abierto).

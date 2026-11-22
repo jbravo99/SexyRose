@@ -729,6 +729,18 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   }
   const mensajeGuardado = async (conv, waId) => (waId ? Boolean((await pool.query('SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND wa_id = $2', [conv.id, waId])).rows[0]) : false);
 
+  // Respuesta forzada desde el admin. Devuelve null si contestó (o lo intentó la IA) o el motivo por el que no.
+  async function responderForzado(convId) {
+    const conv = await releer(convId);
+    if (!conv) return 'sin chat';
+    // Entre el toque y ahora Juan volvió a escribir desde el teléfono o lo pasó a una persona: se respeta
+    if (silenciado(conv)) return 'chat atendido por una persona';
+    const { rows } = await pool.query('SELECT dir FROM asistente_mensajes WHERE conversacion_id = $1 ORDER BY id DESC LIMIT 1', [conv.id]);
+    if (!rows[0] || rows[0].dir !== 'in') return 'ya respondido';
+    await turnoIa(conv);
+    return null;
+  }
+
   // ---------- Bandeja de salida (avisos que manda el app: créditos acreditados o pedido rechazado) ----------
   async function procesarSalida({ desvincular = async () => {}, conectado = () => true } = {}) {
     const aj = await leerAjustes(pool);
@@ -737,6 +749,23 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       const marcar = (error = null) => pool.query('UPDATE asistente_salida SET procesado = now(), error = $2 WHERE id = $1', [r.id, error]);
       if (r.tipo === 'desvincular') {
         try { await desvincular(Number(r.datos && r.datos.chip) || 1); await marcar(); } catch (e) { log('asistente: desvincular falló:', e.message); await marcar('falló: ' + e.message); }
+        continue;
+      }
+      if (r.tipo === 'responder') {
+        // "Agente responda último mensaje" (admin, 22/11/2026): la IA contesta ya ese chat, aunque sea una despedida
+        if (Date.now() - new Date(r.creado).getTime() > 30 * 60 * 1000) { await marcar('vencido'); continue; }
+        if (!aj.activo) continue;
+        const conv = r.conversacion_id ? await releer(r.conversacion_id) : null;
+        if (!conv) { await marcar('sin chat'); continue; }
+        if (!conectado(Number(conv.chip) || 1)) continue; // queda para cuando ese chip se conecte (hasta 30 min)
+        try {
+          const nota = await enCola(claveChat(conv.chip, conv.jid), () => responderForzado(conv.id));
+          await marcar(nota || null);
+        } catch (e) {
+          if (e.code === 'NO_CONECTADO') continue;
+          log('asistente: responder a pedido del admin falló:', e.code || e.message);
+          await marcar('falló: ' + String(e.message).slice(0, 150));
+        }
         continue;
       }
       if (r.tipo !== 'mensaje') { await marcar('tipo desconocido'); continue; }

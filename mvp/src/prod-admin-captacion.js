@@ -224,8 +224,9 @@
       const hacer = () => {
         el.disabled = true;
         HH.api('POST', '/captacion/' + encodeURIComponent(id) + '/estado', { estado: e })
-          .then(() => { HH.toast({ enviado: 'Marcado como enviado', revisado: 'Revisado: vuelve a la cola', descartado: 'Descartado', no_escribir: 'No se le va a escribir más', no_disponible: 'Marcado como no disponible', pendiente: 'Vuelve a la cola' }[e] || 'Listo', { type: 'ok' }); recargarTodo(); })
-          .catch((x) => { el.disabled = false; fail(x); });
+          .then((r) => { if (r && r.yaEstaba) { HH.toast('Ya estaba marcado como enviado', { type: 'ok' }); recargarTodo(); return; } HH.toast({ enviado: 'Marcado como enviado', revisado: 'Revisado: vuelve a la cola', descartado: 'Descartado', no_escribir: 'No se le va a escribir más', no_disponible: 'Marcado como no disponible', pendiente: 'Vuelve a la cola' }[e] || 'Listo', { type: 'ok' }); recargarTodo(); })
+          // Si falla (la pantalla estaba vieja), se recarga para mostrar el estado real
+          .catch((x) => { el.disabled = false; fail(x); recargarTodo(); });
       };
       if (e === 'revisado' && el.dataset.joven) {
         HH.confirm({ title: 'Confirmar que es mayor de edad', text: '<span>Revisaste el aviso y es una persona mayor de edad.</span> <span>Vuelve a la cola de invitaciones. Ante cualquier duda, descartalo.</span>', okLabel: 'Sí, es mayor de edad', onOk: hacer });

@@ -288,6 +288,32 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
     res.json({ ok: true, conversacion: conversacionJson(c.rows[0]) });
   }));
 
+  // "Agente responda último mensaje" (22/11/2026, pedido de Juan): para retomar un chat que contestó él (o que quedó con
+  // una persona). Vuelve al asistente (sin silencio) y el agente contesta YA el último mensaje de la otra persona,
+  // leyendo todo el chat (también lo que escribió Juan) y aunque parezca una despedida. Se le pide por la base
+  // (asistente_salida, tipo 'responder'). Solo si el último mensaje es de la otra persona y el chip está conectado.
+  r.post('/asistente/conversaciones/:id/responder', apiPost, ah(async (req, res) => {
+    const id = uuid(req.params.id);
+    const { rows } = await pool.query('SELECT id, chip FROM asistente_conversaciones WHERE id = $1', [id]);
+    if (!rows[0]) throw he(404, 'Conversación no encontrada.');
+    const chip = Number(rows[0].chip) || 1;
+    const letra = String.fromCharCode(64 + chip);
+    const u = await pool.query('SELECT id, dir FROM asistente_mensajes WHERE conversacion_id = $1 ORDER BY id DESC LIMIT 1', [id]);
+    if (!u.rows[0] || u.rows[0].dir !== 'in') throw he(409, 'El último mensaje del chat es nuestro: no hay nada para responder.');
+    if (!(await leerAjustes(pool)).activo) throw he(409, 'El asistente está apagado (Mensajería → WhatsApp).');
+    const w = (await pool.query('SELECT estado, latido FROM asistente_whatsapp WHERE id = $1', [chip])).rows[0];
+    const vivo = w && w.latido && Date.now() - new Date(w.latido).getTime() < LATIDO_VIVO_MS;
+    if (!vivo || w.estado !== 'conectado') throw he(409, `El chip ${letra} no está conectado.`);
+    await pool.query("UPDATE asistente_conversaciones SET estado = 'bot', motivo_humano = NULL, silenciado_hasta = NULL, actualizado = now() WHERE id = $1", [id]);
+    // Una sola vez por mensaje (dos toques seguidos no responden dos veces)
+    await pool.query(
+      "INSERT INTO asistente_salida (destino, tipo, conversacion_id, clave) VALUES ('whatsapp', 'responder', $1, $2) ON CONFLICT (clave) DO NOTHING",
+      [id, `responder:${id}:${u.rows[0].id}`]);
+    log(`asistente: chip ${letra}: el admin pidió que el agente responda un chat`);
+    const c = await pool.query(`${SELECT_CONV} WHERE c.id = $1`, [id]);
+    res.json({ ok: true, conversacion: conversacionJson(c.rows[0]) });
+  }));
+
   r.use('/asistente', (e, req, res, next) => {
     if (e.type === 'entity.parse.failed') return res.status(400).json({ error: 'Formato de datos inválido.' });
     if (e.expose) return res.status(e.status || 400).json({ error: e.message });

@@ -653,6 +653,43 @@ describe('IA, persona y límites', () => {
     assert.ok((await r.json()).items.some((x) => x.id === k.id));
   });
 
+  test('"Agente responda último mensaje" (22/11/2026): retoma un chat que contestó Juan, aunque sea una despedida', async () => {
+    const tel = '5491155550016';
+    await llega(tel, 'hola');
+    const k = await conv(tel);
+    await llega(tel, 'Te dejo el link por si te interesa: sexyrose.net', { fromMe: true });
+    let antes = enviadosA(tel).length;
+    await llega(tel, 'Gracias si podés dar info');
+    assert.equal(enviadosA(tel).length, antes, 'en silencio: no contesta solo');
+    const llamadas = LLM.llamadas.length;
+    let r = await admJson('POST', `/asistente/conversaciones/${k.id}/responder`, {});
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.conversacion.estado, 'bot');
+    assert.equal(j.conversacion.silenciadoHasta, null);
+    assert.ok(await hasta(() => enviadosA(tel).length === antes + 1), 'contesta el agente');
+    // La IA leyó lo que escribió Juan
+    const ll = LLM.llamadas.slice(llamadas);
+    assert.ok(ll.some((x) => JSON.stringify(x.messages || x.mensajes || x).includes('(Escribió una persona del equipo) Te dejo el link')));
+    // Ya contestado: el último mensaje es nuestro
+    r = await admJson('POST', `/asistente/conversaciones/${k.id}/responder`, {});
+    assert.equal(r.status, 409);
+    assert.match((await r.json()).error, /es nuestro/);
+    // Sigue el asistente con el chat
+    antes = enviadosA(tel).length;
+    await llega(tel, '¿cuánto sale el plan Plata?');
+    assert.equal(enviadosA(tel).length, antes + 1);
+    // Dos toques seguidos: responde una sola vez
+    await llega(tel, 'Hola, soy Juan', { fromMe: true });
+    await llega(tel, 'ok, ¿y el Oro?');
+    antes = enviadosA(tel).length;
+    await Promise.all([admJson('POST', `/asistente/conversaciones/${k.id}/responder`, {}), admJson('POST', `/asistente/conversaciones/${k.id}/responder`, {})]);
+    assert.ok(await hasta(() => enviadosA(tel).length === antes + 1));
+    await new Promise((res) => setTimeout(res, 400));
+    assert.equal(enviadosA(tel).length, antes + 1, 'una sola respuesta');
+    assert.equal((await admJson('POST', '/asistente/conversaciones/00000000-0000-0000-0000-000000000000/responder', {})).status, 404);
+  });
+
   test('límite de 20 mensajes por hora: pasa a una persona', async () => {
     const tel = '5491155550015';
     await llega(tel, 'hola');
