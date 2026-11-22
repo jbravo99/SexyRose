@@ -20,6 +20,7 @@ import { createWhatsApp } from './lib/asistente-whatsapp.js';
 import { escucharSalida, leerAjustes } from './lib/asistente-comun.js';
 import { instalarConsolaSegura } from './lib/consola-segura.js';
 import { letraDe } from './lib/chips.js';
+import { createInvitacionesIa } from './lib/invitaciones-ia.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +40,7 @@ export function configAgente(env = process.env) {
   };
 }
 
-// overrides (pruebas): pool, makeSocket, descargar, llmFetch, telegramFetch, demora, dormir, supervisarMs, escuchar
+// overrides (pruebas): pool, makeSocket, descargar, llmFetch, telegramFetch, demora, dormir, supervisarMs, escuchar, invitacionesIa (false: no se escriben solas)
 export async function startAgente(overrides = {}) {
   const config = { ...configAgente(), ...overrides };
   const log = config.log;
@@ -79,6 +80,8 @@ export async function startAgente(overrides = {}) {
     ...(config.demora ? { demora: config.demora } : {}), ...(config.dormir ? { dormir: config.dormir } : {}),
   });
   chips.set(1, crearChip(1));
+  // Invitaciones de captación escritas por la IA (22/11/2026): se adelantan en cada supervisión
+  const invitaciones = createInvitacionesIa({ pool, llm, log });
   asistente.setEnviar((jid, texto, chip = 1) => {
     const w = chips.get(Number(chip) || 1);
     if (!w) { const e = new Error('WhatsApp no está conectado'); e.code = 'NO_CONECTADO'; throw e; }
@@ -115,6 +118,7 @@ export async function startAgente(overrides = {}) {
       }
       await fs.writeFile(config.latidoArchivo, String(Date.now())).catch(() => {});
       if (alguno) await procesarSalida();
+      if (aj.activo && config.invitacionesIa !== false) invitaciones.completar().catch((e) => log('agente: invitaciones con IA:', e.code || e.message));
     } catch (e) { log('agente: supervisión falló:', e.code || e.message); }
   }
   await supervisar();
@@ -137,7 +141,7 @@ export async function startAgente(overrides = {}) {
     log('agente: cerrado');
   }
   // wa: el chip 1 (las pruebas de siempre); chips: todas las conexiones
-  return { pool, asistente, get wa() { return chips.get(1); }, chips, telegram, llm, procesarSalida, supervisar, cerrar };
+  return { pool, asistente, get wa() { return chips.get(1); }, chips, telegram, llm, invitaciones, procesarSalida, supervisar, cerrar };
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

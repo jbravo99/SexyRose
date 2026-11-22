@@ -188,7 +188,7 @@ before(async () => {
   await db.query("INSERT INTO ajustes (clave, valor) VALUES ('cotizacion', $1)", [JSON.stringify({ arsPorUsd: 1450, fecha: new Date().toISOString(), nota: '' })]);
   agente = await startAgente({
     pool: dbAgente, databaseUrl: DATABASE_URL, makeSocket, descargar, llmFetch, telegramFetch: tgFetch, anthropicKey: 'sk-prueba',
-    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
+    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, invitacionesIa: false, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
   });
 });
 after(async () => {
@@ -589,9 +589,10 @@ describe('IA, persona y límites', () => {
     assert.equal(MENSAJES_CORTOS[0], INVITACION);
     assert.equal(MENSAJES_CORTOS.length, 3);
     for (const m of MENSAJES_CORTOS) {
-      assert.ok(m.length <= 220, `corta (${m.length})`);
+      assert.ok(m.length <= 160, `corta (${m.length})`);
       assert.ok(m.endsWith('?'), 'termina en pregunta');
-      assert.ok(m.includes('sexyrose.net') && m.includes('*gratis*') && /diciembre/.test(m));
+      // 22/11/2026: sin link en el primer mensaje (el asistente lo pasa cuando responde)
+      assert.ok(m.includes('SexyRose') && !/sexyrose\.net/i.test(m) && m.includes('*gratis*') && /diciembre/.test(m));
       assert.ok(!/no te (escribo|escribimos) más/i.test(m), 'sin línea de baja');
     }
   });

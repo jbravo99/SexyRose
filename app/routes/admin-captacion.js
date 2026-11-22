@@ -21,7 +21,7 @@ import {
 } from '../lib/captacion.js';
 import { MAX_ARCHIVO, leerPlanilla } from '../lib/xlsx-lector.js';
 import { listarChips } from '../lib/chips.js';
-import { mensajeParaContacto } from '../lib/captacion.js';
+import { invitacionDe } from '../lib/captacion.js';
 import { LATIDO_VIVO_MS } from '../lib/asistente-comun.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,9 +57,10 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     cuenta: x.cuenta_id ? nombresDe({ id: x.cuenta_id, cuenta_nombre: x.cuenta_nombre }) : null,
     conversacion: x.conv_id || null,
     // El enlace con el número completo solo para lo que se puede invitar (nunca "revisar", "no escribir", etc.)
-    // mensaje: las versiones; cada contacto recibe siempre la misma
+    // mensaje = ajustes de captación: la invitación que escribió la IA para este contacto, o una versión fija (sin link)
     waUrl: mensaje && (x.estado === 'pendiente' || x.estado === 'abierto')
-      ? `https://wa.me/${String(x.telefono).replace(/\D/g, '')}?text=${encodeURIComponent(mensajeParaContacto(mensaje, x.id))}` : null,
+      ? `https://wa.me/${String(x.telefono).replace(/\D/g, '')}?text=${encodeURIComponent(invitacionDe(x, mensaje))}` : null,
+    invitacionIa: Boolean(mensaje && mensaje.ia !== false && x.mensaje),
   });
   const SELECT = `SELECT cc.*, p.datos->>'displayName' AS cuenta_nombre,
       (SELECT c.id FROM asistente_conversaciones c WHERE c.captacion_id = cc.id ORDER BY c.ultimo_mensaje DESC NULLS LAST LIMIT 1) AS conv_id
@@ -120,7 +121,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
       cola: {
         chip: elegido ? { id: elegido.id, letra: elegido.letra, conectado: elegido.conectado } : null,
         porDia: elegido ? elegido.porDia : 0, enviadosHoy: elegido ? elegido.enviadosHoy : 0, cupo,
-        items: cola.rows.map((x) => contactoJson(x, aj.mensajes)),
+        items: cola.rows.map((x) => contactoJson(x, aj)),
       },
       revisar: revisar.rows.map((x) => contactoJson(x)),
     };
@@ -150,7 +151,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
       pool.query(`${SELECT} ${where} ORDER BY cc.actualizado DESC, ${ORDEN_COLA} LIMIT 200`, args),
       pool.query(`SELECT count(*)::int AS n FROM captacion_contactos cc ${where}`, args),
     ]);
-    res.json({ items: rows.map((x) => contactoJson(x, aj.mensajes)), total: tot.rows[0].n });
+    res.json({ items: rows.map((x) => contactoJson(x, aj)), total: tot.rows[0].n });
   }));
 
   r.post('/captacion/importar', subir, ah(async (req, res) => {
@@ -205,7 +206,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     }
     const aj = await leerAjustesCaptacion(pool);
     const x = await pool.query(`${SELECT} WHERE cc.id = $1`, [id]);
-    res.json({ ok: true, contacto: contactoJson(x.rows[0], aj.mensajes) });
+    res.json({ ok: true, contacto: contactoJson(x.rows[0], aj) });
   }));
 
   r.put('/captacion/ajustes', apiPost, ah(async (req, res) => {

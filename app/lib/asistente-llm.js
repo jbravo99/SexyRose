@@ -184,7 +184,14 @@ export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = ()
     return { texto: '', usadas, detenido: false };
   }
 
-  return { disponible, modelo: model, conversar };
+  // Un pedido simple, sin herramientas (invitaciones de captación, 22/11/2026). Devuelve el texto.
+  async function completar({ system, prompt, maxTokens: mt = 200, temperatura = 1 }) {
+    if (!disponible) throw new LlmError('falta ANTHROPIC_API_KEY');
+    const d = await llamar({ model, max_tokens: mt, temperature: temperatura, system, messages: [{ role: 'user', content: String(prompt) }] });
+    return (Array.isArray(d.content) ? d.content : []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+  }
+
+  return { disponible, modelo: model, conversar, completar };
 }
 
 // Texto de WhatsApp: sin markdown (negritas, títulos, tablas) y con un largo razonable.

@@ -1052,6 +1052,15 @@ el número que tenías cargado: …".
   a una invitación de captación siempre se contesta. Invitación por defecto corta, terminada en pregunta y sin línea
   de baja (`MENSAJES_CORTOS`: las tres versiones aprobadas).
 
+- **Invitación distinta para cada contacto** (22/11/2026, migración 350, `lib/invitaciones-ia.js`): el agente (que
+  tiene la clave de Anthropic) escribe de antemano, con `llm.completar` (sin herramientas), la invitación de los
+  próximos 12 contactos de la cola (3 por pasada) y la guarda en `captacion_contactos.mensaje`. Reglas
+  (`validarInvitacion`): hasta 180 caracteres (se le piden 160), termina en pregunta, menciona SexyRose, *gratis* y
+  diciembre; sin links, emojis, servicios ni línea de baja; distinta de las últimas 8. Si falla dos veces, queda sin
+  mensaje y "Abrir chat" usa una versión fija sin link (`invitacionDe` + `quitarLink`). Interruptor en Mensajería →
+  Mensajes (`ajustes.captacion.ia`, prendido por defecto). El asistente reconoce como invitación la del contacto, las
+  versiones fijas (con o sin link) y las anteriores. El primer mensaje ya no lleva el link: lo pasa el asistente.
+
 ### Captación (semiautomática: Juan toca Enviar)
 
 Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-contactos.xlsx` de Juan, hoja "Contactos").

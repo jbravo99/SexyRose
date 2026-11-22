@@ -23,14 +23,66 @@ export const MENSAJE_MAX = 1000;
 export const MAX_VERSIONES = 5;
 // Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya). 19/11/2026: "abrimos en diciembre" y la venta de
 // contenido "próximamente" (decisión de Juan).
-// 21/11/2026 (Juan: "los mensajes deben ser más breves"): versión corta que termina en pregunta, sin línea de baja.
-export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribo de SexyRose (sexyrose.net), un sitio nuevo de anuncios. Vi tu aviso y me gustaría invitarte: crear tu perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
-// Las tres versiones cortas aprobadas por Juan (21/11/2026); se cargan en Admin → Mensajería → Mensajes.
+// 22/11/2026 (Juan: "debe ser incluso más corto"; sin link en el primer mensaje: el link lo pasa el asistente cuando
+// responde). Versiones fijas de respaldo: se usan si la IA no escribió la de ese contacto o está apagada.
+export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Vi tu aviso. Soy de SexyRose, una página nueva de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
 export const MENSAJES_CORTOS = Object.freeze([
   MENSAJE_DEFAULT,
+  '¡Hola! Te escribo de SexyRose, un sitio nuevo de anuncios. Vi tu aviso: publicar es *gratis* y arrancamos en diciembre. ¿Te cuento?',
+  'Hola, ¿qué tal? Soy de SexyRose y vi tu aviso. Estamos lanzando una página de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
+]);
+// Invitaciones viejas (con link), para seguir reconociéndolas si llegan respuestas
+export const MENSAJES_ANTERIORES = Object.freeze([
+  'Hola, ¿cómo estás? Te escribo de SexyRose (sexyrose.net), un sitio nuevo de anuncios. Vi tu aviso y me gustaría invitarte: crear tu perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
   '¡Hola! Soy de SexyRose (sexyrose.net), una página nueva de anuncios. Encontré tu aviso y quería invitarte a sumarte: el perfil es *gratis* y arrancamos en diciembre. ¿Te cuento más?',
   'Hola, ¿qué tal? Te contacto de SexyRose (sexyrose.net). Vimos tu anuncio y nos gustaría que estés en el sitio: publicar es *gratis* y abrimos en diciembre. ¿Te interesa?',
 ]);
+
+// Sin link en el primer mensaje (22/11/2026): a las versiones fijas se les saca el link si lo tienen
+export function quitarLink(t) {
+  return String(t || '').replace(/\s*\((?:https?:\/\/)?(?:www\.)?sexyrose\.net\/?\)/gi, '').replace(/(?:https?:\/\/)?(?:www\.)?sexyrose\.net\/?/gi, 'SexyRose')
+    .replace(/https?:\/\/\S+/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.:;?])/g, '$1').trim();
+}
+// El texto de la invitación de un contacto: la que escribió la IA para él, o una versión fija (siempre la misma para
+// ese contacto), sin link.
+export function invitacionDe(contacto, ajustes) {
+  const aj = ajustes || {};
+  if (aj.ia !== false && contacto && contacto.mensaje) return contacto.mensaje;
+  return quitarLink(mensajeParaContacto(aj.mensajes && aj.mensajes.length ? aj.mensajes : [MENSAJE_DEFAULT], contacto && contacto.id));
+}
+
+// ---------- Invitación escrita por la IA (22/11/2026) ----------
+export const INVITACION_MAX = 180;
+// Reglas que tiene que cumplir cada invitación generada (si no, se descarta y va la de respaldo). Devuelve el texto
+// limpio o null.
+export function validarInvitacion(t) {
+  let s = String(t || '').replace(/\r/g, '').trim().replace(/^["“'«]+|["”'»]+$/g, '').trim();
+  s = s.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ');
+  if (s.length < 60 || s.length > INVITACION_MAX) return null;
+  if (!/\?$/.test(s)) return null;
+  if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.|t\.me|wa\.me|@/i.test(s)) return null; // sin links ni usuarios
+  if (!/sexyrose/i.test(s) || !/gratis/i.test(s) || !/diciembre/i.test(s)) return null;
+  if (/\p{Extended_Pictographic}/u.test(s)) return null; // sin emojis
+  if (/(sex(o|ual)|servicio|encuentro|cita|tarifa|cobr|garant|seguro que|no te (escribo|escribimos)|baja|desuscrib|whatsapp)/i.test(s)) return null;
+  return s;
+}
+// Estilos para pedirle a la IA que varíe (uno al azar por mensaje)
+const ESTILOS = ['empezá con "Hola" y una pregunta de cortesía', 'empezá con "¡Hola!" y andá directo', 'empezá con "Buenas" o "Buen día"',
+  'empezá contando que viste su aviso', 'empezá presentándote como de SexyRose', 'usá un tono cálido y simple', 'usá un tono profesional y breve'];
+export function pedidoInvitacion(anteriores = [], azar = Math.random) {
+  const estilo = ESTILOS[Math.floor(azar() * ESTILOS.length)];
+  return {
+    system: 'Escribís invitaciones de WhatsApp para SexyRose, una página nueva de anuncios en Argentina. Le escribís a alguien que publica avisos en '
+      + 'otros sitios. Español rioplatense, con "vos". Reglas: UN solo mensaje de una o dos frases, de no más de 160 caracteres; decí que '
+      + 'sos (o te escribís) de SexyRose, una página nueva de anuncios; que viste su aviso; que crear el perfil o publicar es gratis (la palabra '
+      + 'gratis entre asteriscos: *gratis*); que abrimos (o arrancamos) en diciembre; y terminá con una pregunta corta (por ejemplo "¿Te interesa?" '
+      + 'o "¿Te cuento?"). PROHIBIDO: links o direcciones (ni sexyrose.net ni www), emojis, nombres de personas, hablar de servicios, encuentros, '
+      + 'tarifas o contenido sexual, prometer cosas, y frases para darse de baja. Respondé solo con el mensaje, sin comillas.',
+    prompt: `Escribí una invitación nueva. Esta vez ${estilo}. Tiene que ser distinta de estas (otras palabras y otro orden):\n`
+      + (anteriores.length ? anteriores.map((m) => '- ' + m).join('\n') : '- ' + MENSAJE_DEFAULT),
+  };
+}
+
 export const RESPUESTA_NO_ESCRIBIR = 'Perfecto, no te vamos a escribir más. Disculpá la molestia.';
 export const RESPUESTA_ORIGEN = 'Tu número lo vimos en tu aviso publicado en otro sitio.';
 
@@ -48,6 +100,7 @@ export function mezclarAjustesCaptacion(v) {
   return {
     mensaje: mensajes[0], // la primera versión (compatibilidad)
     mensajes,
+    ia: o.ia !== false, // 22/11/2026: cada invitación la escribe la IA (si está apagado, las versiones fijas)
     porDia: Number.isInteger(n) && n >= 1 && n <= POR_DIA_MAX ? n : POR_DIA_DEFAULT,
   };
 }
@@ -81,6 +134,10 @@ export function validarAjustesCaptacion(v, actual = {}) {
     if (t && t.length < 20) return { error: 'El mensaje es muy corto.' };
     out.mensaje = t || MENSAJE_DEFAULT; // vacío = el texto aprobado
     out.mensajes = [out.mensaje];
+  }
+  if (v.ia !== undefined) {
+    if (typeof v.ia !== 'boolean') return { error: 'IA: true o false.' };
+    out.ia = v.ia;
   }
   if (v.porDia !== undefined) {
     const n = Number(v.porDia);

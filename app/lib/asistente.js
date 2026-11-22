@@ -21,6 +21,7 @@ import { creditosEnOtroChip, letraDe } from './chips.js';
 const SOLO_CHIP_CREDITOS = ['crear_pedido', 'datos_transferencia'];
 import {
   RESPUESTA_NO_ESCRIBIR, RESPUESTA_ORIGEN, contactoPorTelefono, esMensajeCaptacion, leerAjustesCaptacion, respuestaInvitada,
+  MENSAJES_CORTOS, MENSAJES_ANTERIORES, quitarLink,
 } from './captacion.js';
 import { tipoPorFirma } from './privado.js';
 import { asignarCuenta, cuentaDelPedido, hayCuentaActiva } from './cuentas-transferencia.js';
@@ -380,14 +381,18 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   // (se aplica el silencio de 12 h de siempre).
   async function salienteCaptacion(conv, ev) {
     const aj = await leerAjustesCaptacion(pool);
-    const esInvitacion = ev.tipo === 'texto' && esMensajeCaptacion(ev.texto, aj.mensajes);
+    // Es la invitación si coincide con alguna versión fija (con o sin link, también las anteriores) o con la que la IA
+    // escribió para ese contacto (22/11/2026)
+    const versiones = [...aj.mensajes, ...aj.mensajes.map(quitarLink), ...MENSAJES_CORTOS, ...MENSAJES_ANTERIORES];
+    const coincide = (c0) => ev.tipo === 'texto' && esMensajeCaptacion(ev.texto, c0 && c0.mensaje ? [...versiones, c0.mensaje] : versiones);
     let c = await capPorId(conv.captacion_id);
     if (!c && conv.telefono) c = await contactoPorTelefono(pool, conv.telefono);
-    if (!c && esInvitacion && !conv.telefono) {
-      // Chat @lid (WhatsApp no informa el número): el único "Abrir chat" de los últimos 20 minutos
+    if (!c && !conv.telefono) {
+      // Chat @lid (WhatsApp no informa el número): el único "Abrir chat" de los últimos 20 minutos, si el texto es la invitación
       const { rows } = await pool.query("SELECT * FROM captacion_contactos WHERE estado = 'abierto' AND abierto > now() - interval '20 minutes' LIMIT 2");
-      if (rows.length === 1) c = rows[0];
+      if (rows.length === 1 && coincide(rows[0])) c = rows[0];
     }
+    const esInvitacion = coincide(c);
     const enCola = c && (c.estado === 'pendiente' || c.estado === 'abierto');
     const reenvio = c && esInvitacion && (c.estado === 'enviado' || c.estado === 'respondio');
     if (!enCola && !reenvio && !(esInvitacion && !c)) return null;

@@ -47,7 +47,7 @@
           <div class="tiny muted" data-noi18n>${sitios(c)} · ${esc(c.telefono)}</div>
         </div>
         <div class="row cap-acc" style="gap:6px;flex-wrap:wrap">
-          ${c.waUrl ? `<a class="btn sm" href="${esc(c.waUrl)}" target="_blank" rel="noopener noreferrer" data-cap-abrir="${esc(c.id)}">${icon('whatsapp')} Abrir chat</a>` : ''}
+          ${c.waUrl ? `<a class="btn sm" href="${esc(c.waUrl)}" target="_blank" rel="noopener noreferrer" data-cap-abrir="${esc(c.id)}" title="${c.invitacionIa ? 'Invitación escrita por la IA para este contacto' : 'Invitación fija'}">${icon('whatsapp')} Abrir chat</a>` : ''}
           <button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="enviado">${icon('check')} Marcar enviado</button>
           <button type="button" class="btn ghost sm" data-action="capEstado" data-id="${esc(c.id)}" data-e="no_disponible">${icon('x')} No disponible</button>
         </div>
@@ -187,7 +187,8 @@
     const esDefault = vs.length === 1 && vs[0] === aj.mensajeDefault;
     return `<section class="card stack" style="gap:12px" id="capMensaje">
         <div class="row between"><div class="card-title">${icon('send')} Invitación de captación</div>${esDefault ? '<span class="badge ok">Texto aprobado</span>' : `<span class="badge info">${vs.length} ${HH.plural(vs.length, 'versión', 'versiones')}</span>`}</div>
-        <p class="small muted" style="margin:0">Es el mensaje que se abre con "Abrir chat" en Captación. Con varias versiones, cada contacto recibe una (siempre la misma), así no sale el mismo texto en todos los chats. En WhatsApp, lo que va entre *asteriscos* se ve en negrita. El asistente reconoce cualquiera de las versiones.</p>
+        <div class="switch-row" style="border:0;padding:0"><div><div class="t">Cada invitación la escribe la IA</div><div class="s">${aj.ia !== false ? 'Prendido: el asistente escribe de antemano un mensaje distinto para cada contacto de la cola (corto, sin link, con lo acordado). Si no llegó a escribirlo, va una de las versiones de abajo.' : 'Apagado: se usan las versiones de abajo.'}</div></div><button type="button" class="switch" role="switch" aria-checked="${aj.ia !== false}" aria-label="La IA escribe cada invitación" data-action="capIa"></button></div>
+        <p class="small muted" style="margin:0">Versiones fijas: cada contacto recibe una (siempre la misma). El primer mensaje nunca lleva el link: si una versión lo tiene, se saca solo. En WhatsApp, lo que va entre *asteriscos* se ve en negrita. El asistente reconoce cualquiera de las versiones y las que escribe la IA.</p>
         ${vs.map((m, i) => `<div class="field"><div class="row between"><label for="capMsg${i}">Versión ${i + 1}</label>${vs.length > 1 ? `<button type="button" class="btn ghost sm" data-action="capMsgQuitar" data-i="${i}">${icon('x')} Quitar</button>` : ''}</div><textarea class="textarea" id="capMsg${i}" rows="8" maxlength="1000" data-noi18n>${esc(m)}</textarea></div>`).join('')}
         <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" data-action="capMsgGuardar">${icon('check')} Guardar invitación</button>
           ${vs.length < 5 ? `<button type="button" class="btn secondary sm" data-action="capMsgAgregar">${icon('plus')} Agregar versión</button>` : ''}
@@ -239,6 +240,11 @@
       if (corta >= 0) { HH.toast(`La versión ${corta + 1} es muy corta.`, { type: 'warn' }); return; }
       S.capVers = null;
       guardarAj({ mensajes: vs }, vs.length > 1 ? `Invitación guardada: ${vs.length} versiones` : 'Invitación guardada');
+    },
+    capIa(el) {
+      const prender = el.getAttribute('aria-checked') !== 'true';
+      el.disabled = true;
+      guardarAj({ ia: prender }, prender ? 'La IA escribe cada invitación' : 'Se usan las versiones fijas');
     },
     capMsgAgregar() { const vs = leerVersiones(); if (vs.length >= 5) return; S.capVers = [...vs, '']; HH.refresh(); },
     capMsgQuitar(el) { const vs = leerVersiones(); vs.splice(Number(el.dataset.i), 1); S.capVers = vs.length ? vs : ['']; HH.refresh(); },
