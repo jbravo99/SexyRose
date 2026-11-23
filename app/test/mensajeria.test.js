@@ -13,6 +13,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import pg from 'pg';
 import { start } from '../server.js';
+import { elegirNumeroCreditos } from '../lib/chips.js';
 import { startAgente } from '../agente.js';
 import { crearXlsx } from '../lib/xlsx.js';
 import { leerCsv, leerPlanilla, leerXlsx } from '../lib/xlsx-lector.js';
@@ -620,6 +621,24 @@ describe('captación en el agente', () => {
   });
 });
 
+describe('número para comprar créditos con chips desvinculados (23/11/2026)', () => {
+  test('el elegido si está conectado; si no, otro conectado (primero los activos); sin ninguno, como antes', () => {
+    const vivo = new Date().toISOString();
+    const A = { id: 1, rol: 'captacion', pausado: true, numero: '5491100000001', estado: 'conectado', latido: vivo };
+    const B = { id: 2, rol: 'captacion', pausado: false, numero: '5491100000002', estado: 'conectado', latido: vivo };
+    const C = { id: 3, rol: 'captacion', pausado: false, numero: '5491100000003', estado: 'conectado', latido: vivo };
+    assert.equal(elegirNumeroCreditos([A, B, C]), '5491100000001', 'el A conectado');
+    const Adesv = { ...A, estado: 'esperando_qr' };
+    assert.equal(elegirNumeroCreditos([Adesv, B, C]), '5491100000002', 'A desvinculado: el B');
+    assert.equal(elegirNumeroCreditos([{ ...A, latido: '2026-01-01T00:00:00Z' }, { ...B, pausado: true }, C]), '5491100000003', 'sin latido: otro, primero los activos');
+    assert.equal(elegirNumeroCreditos([Adesv, { ...B, estado: 'desconectado' }]), '5491100000001', 'ninguno conectado: como antes');
+    const Cred = { ...C, rol: 'creditos' };
+    assert.equal(elegirNumeroCreditos([A, B, Cred]), '5491100000003', 'el de créditos activo');
+    assert.equal(elegirNumeroCreditos([A, B, { ...Cred, estado: 'esperando_qr' }]), '5491100000001', 'créditos desvinculado: el A conectado');
+    assert.equal(elegirNumeroCreditos([]), '');
+  });
+});
+
 describe('lo que se movió de Ajustes', () => {
   test('el botón de comprar créditos usa el número vinculado al asistente; sin chip, el que estaba guardado', async () => {
     await db.query('UPDATE asistente_whatsapp SET numero = NULL WHERE id = 1');
@@ -759,7 +778,8 @@ describe('varios chips (19/11/2026)', () => {
     assert.ok(!nombres.includes('crear_pedido') && !nombres.includes('datos_transferencia'), nombres.join(','));
     assert.equal((await cap('+5491155550901')).estado, 'respondio');
     void enA;
-    // "Cargar créditos": el chip de créditos; pausado, vuelve al A
+    // "Cargar créditos": el chip de créditos (conectado); pausado, vuelve al A. 23/11/2026: desvinculado, otro conectado
+    await db.query("UPDATE asistente_whatsapp SET estado = 'conectado', latido = now() WHERE id = 3");
     let a = await (await adm('/asistente')).json();
     assert.equal(a.botonCreditos.vinculado, '+5491100007777');
     await admJson('PUT', '/asistente/chips/3', { pausado: true });
@@ -961,6 +981,42 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
     const a = await cap('+5491155550985');
     assert.equal(a.mensaje, viejaA, 'la abierta no se reescribe');
     await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = ANY($1)", [['+5491155550984', '+5491155550985']]);
+  });
+
+  test('si se pasa de largo, el reintento le pide acortarla diciendo cuánto le sobra (23/11/2026)', async () => {
+    await admJson('PUT', '/asistente/ajustes', { activo: true });
+    const csv = 'Nombres;Teléfono;Ciudad;Sitios;Cantidad de avisos\nLarga;+5491155550961;Rosario;skokka;900\n';
+    assert.equal((await subir(Buffer.from(csv, 'utf8'), 'larga.csv')).status, 200);
+    const larga = ok1.replace('Vimos tu perfil en otro sitio.', 'Vimos tu perfil en otro sitio y nos gustó muchísimo cómo lo armaste.');
+    const corta = ok1.replace('¡Hola!', '¡Buenas!');
+    const respuestas = [larga, corta];
+    let i = 0;
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: respuestas[Math.min(i++, 1)] }] });
+    const n0 = LLM.llamadas.length;
+    await agente.invitaciones.completar({ porPasada: 1 });
+    LLM.guion = null;
+    const segunda = LLM.llamadas[n0 + 1];
+    assert.match(JSON.stringify(segunda.messages), /quedó de \d+ caracteres y el máximo es 250/);
+    assert.match(LLM.llamadas[n0].system, /Ejemplo del formato y el largo/);
+    assert.match(String((await cap('+5491155550961')).mensaje), /^¡Buenas!/);
+    await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = '+5491155550961'");
+  });
+
+  test('con 12 o más abiertos, los pendientes igual reciben su invitación (23/11/2026)', async () => {
+    await admJson('PUT', '/asistente/ajustes', { activo: true });
+    let csv = 'Nombres;Teléfono;Ciudad;Sitios;Cantidad de avisos\nPendTop;+5491155550960;Rosario;skokka;500\n';
+    for (let i = 0; i < 13; i++) csv += `Ab${i};+54911555509${String(40 + i)};Rosario;skokka;600\n`;
+    assert.equal((await subir(Buffer.from(csv, 'utf8'), 'ab.csv')).status, 200);
+    const tels = Array.from({ length: 13 }, (_, i) => `+54911555509${String(40 + i)}`);
+    await db.query("UPDATE captacion_contactos SET estado = 'abierto', abierto = now(), mensaje = 'vieja', mensaje_reglas = NULL WHERE telefono = ANY($1)", [tels]);
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: ok1.replace('¡Hola!', 'Buenas.') }] });
+    await agente.invitaciones.completar({ porPasada: 3 });
+    LLM.guion = null;
+    const p = await cap('+5491155550960');
+    assert.match(String(p.mensaje), /^Buenas\./, 'el pendiente tiene la suya');
+    assert.equal(Number(p.mensaje_reglas), 2);
+    assert.equal((await cap(tels[0])).mensaje, 'vieja', 'los abiertos no se tocan');
+    await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = ANY($1)", [[...tels, '+5491155550960']]);
   });
 
   test('resultados de las invitaciones: por chip, por día y por horario, con las respuestas de 48 h', async () => {

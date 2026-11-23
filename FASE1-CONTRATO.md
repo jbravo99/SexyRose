@@ -1115,6 +1115,13 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
   franja horaria de Argentina (0–8, 8–12, 12–15, 15–19, 19–24): enviadas, contestaron dentro de las 48 h, se registraron,
   no escribir y "en espera" (menos de 48 h sin respuesta, fuera del porcentaje). Tarjeta "Resultados de las invitaciones"
   en Captación.
+- **Generación** (23/11/2026): hasta 3 intentos por contacto; si una no cumple, el siguiente le pide a la IA corregirla
+  diciendo qué regla falló (si es el largo, cuántos caracteres tiene); cada descarte queda en el log del agente
+  ("captación: invitación descartada (intento N): motivo"). El pedido lleva la versión fija como ejemplo de formato y
+  largo. Los contactos "abierto" ya no ocupan el lugar de los pendientes en los 12 que se escriben de antemano.
+- **Número para comprar créditos** (23/11/2026, `lib/chips.js → numeroCreditos`): el chip de créditos activo o, si no
+  hay, el chip 1, siempre que esté conectado; si está desvinculado (por ejemplo, WhatsApp lo desvinculó al
+  restringirlo), el de otro chip conectado (primero los activos) hasta que vuelva. Sin ninguno conectado, como antes.
 - **Invitación por defecto** (19/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
   contesta lo mismo con el tema de ayuda `apertura` ("a partir de diciembre" mientras la home provisoria está
   prendida; con el sitio abierto, que ya está abierto).

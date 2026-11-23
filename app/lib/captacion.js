@@ -76,24 +76,30 @@ export const REGLAS_INVITACION = 2;
 function enParrafos(t) {
   return String(t || '').replace(/\r/g, '').split(/\n+/).map((p) => p.replace(/[ \t]+/g, ' ').trim()).filter(Boolean);
 }
-// Reglas que tiene que cumplir cada invitación generada (si no, se descarta y va la de respaldo). Devuelve el texto
-// limpio (párrafos separados por una línea en blanco) o null.
-export function validarInvitacion(t) {
+// Reglas que tiene que cumplir cada invitación generada (si no, se descarta y va la de respaldo). Devuelve
+// { texto } (limpio, párrafos separados por una línea en blanco) o { motivo } (23/11/2026: para el log y para el
+// reintento con la corrección).
+export function revisarInvitacion(t) {
   const ps = enParrafos(String(t || '').trim().replace(/^["“'«]+|["”'»]+$/g, ''));
-  if (ps.length < 2 || ps.length > 3) return null;
   const s = ps.join('\n\n');
-  if (s.length < 120 || s.length > INVITACION_MAX) return null;
-  if (!/\?$/.test(s)) return null;
-  if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.[a-z]|t\.me|wa\.me|@/i.test(s)) return null; // sin links ni usuarios
-  if (!/sexyrose/i.test(s) || !/gratis/i.test(s) || !/diciembre/i.test(s)) return null;
-  if (!/contenido/i.test(s)) return null; // más adelante vender su contenido
-  if (!/primer d[ií]a|desde el (inicio|arranque|lanzamiento|comienzo)|desde que abr/i.test(s)) return null; // ventaja de sumarse ahora
-  if (!/\b(escribimos|vimos|somos|contactamos|queremos|invitamos|nos encantar)/i.test(s)) return null; // en plural, como equipo
-  if (/(p[aá]gina|sitio|web) (nueva |nuevo )?de anuncios/i.test(s)) return null;
-  if (/\p{Extended_Pictographic}/u.test(s)) return null; // sin emojis
-  if (/(sex(o|ual)|servicio|encuentro|cita|tarifa|cobr|garant|seguro que|no te (escribo|escribimos)|baja|desuscrib|whatsapp)/i.test(s)) return null;
-  return s;
+  if (ps.length < 2 || ps.length > 3) return { motivo: `${ps.length} párrafo(s), tienen que ser 2 o 3` };
+  if (s.length > INVITACION_MAX) return { motivo: `larga: ${s.length} caracteres`, largo: s.length };
+  if (s.length < 120) return { motivo: `corta: ${s.length} caracteres` };
+  if (!/\?$/.test(s)) return { motivo: 'no termina en pregunta' };
+  if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.[a-z]|t\.me|wa\.me|@/i.test(s)) return { motivo: 'tiene un link' };
+  if (!/sexyrose/i.test(s)) return { motivo: 'no dice SexyRose' };
+  if (!/gratis/i.test(s)) return { motivo: 'no dice gratis' };
+  if (!/diciembre/i.test(s)) return { motivo: 'no dice diciembre' };
+  if (!/contenido/i.test(s)) return { motivo: 'no dice vender su contenido' };
+  if (!/primer d[ií]a|desde el (inicio|arranque|lanzamiento|comienzo)|desde que abr/i.test(s)) return { motivo: 'no dice desde el primer día' };
+  if (!/\b(escribimos|vimos|somos|contactamos|queremos|invitamos|nos encantar)/i.test(s)) return { motivo: 'no está en plural' };
+  if (/(p[aá]gina|sitio|web) (nueva |nuevo )?de anuncios/i.test(s)) return { motivo: 'dice página de anuncios' };
+  if (/\p{Extended_Pictographic}/u.test(s)) return { motivo: 'tiene emojis' };
+  const p = /(sex(o|ual)|servicio|encuentro|cita|tarifa|cobr|garant|seguro que|no te (escribo|escribimos)|baja|desuscrib|whatsapp)/i.exec(s);
+  if (p) return { motivo: `palabra no permitida: ${p[0]}` };
+  return { texto: s };
 }
+export const validarInvitacion = (t) => revisarInvitacion(t).texto || null;
 // Estilos para pedirle a la IA que varíe (uno al azar por mensaje)
 const ESTILOS = ['empezá con "Hola" y una pregunta de cortesía', 'empezá con "¡Hola!" y andá directo', 'empezá con "Buenas" o "Buen día"',
   'empezá contando que vimos su perfil en otro sitio', 'empezá presentándote como el equipo de SexyRose', 'usá un tono cálido y simple', 'usá un tono profesional y breve'];
@@ -109,10 +115,18 @@ export function pedidoInvitacion(anteriores = [], azar = Math.random) {
       + 'que si se suma ahora sale desde el primer día. Terminá con una pregunta corta ("¿Te interesa?", "¿Te cuento?").\n'
       + 'PROHIBIDO: links o direcciones (ni sexyrose.net ni www), emojis, nombres de personas, presentarlo como "página de anuncios", hablar '
       + 'de servicios, encuentros, tarifas o contenido sexual, prometer ganancias, y frases para darse de baja. Respondé solo con el mensaje, '
-      + 'sin comillas.',
+      + 'sin comillas.\n'
+      + `Ejemplo del formato y el largo (${MENSAJE_DEFAULT.length} caracteres; no lo copies, escribí otra con otras palabras):\n${MENSAJE_DEFAULT}`,
     prompt: `Escribí una invitación nueva. Esta vez ${estilo}. Tiene que ser distinta de estas (otras palabras y otro orden):\n`
       + (anteriores.length ? anteriores.map((m) => '- ' + m.replace(/\n+/g, ' / ')).join('\n') : '- ' + MENSAJE_DEFAULT.replace(/\n+/g, ' / ')),
   };
+}
+// Reintento (23/11/2026): la anterior no cumplió una regla; se le dice cuál para que la corrija.
+export function correccionInvitacion(anterior, r) {
+  const que = r && r.largo
+    ? `quedó de ${r.largo} caracteres y el máximo es ${INVITACION_MAX}: acortala a menos de 230 (frases más cortas), sin sacar nada de lo que tiene que decir`
+    : `no cumple esta regla: ${(r && r.motivo) || 'formato'}. Corregila`;
+  return `Esta invitación ${que}. Respondé solo con la invitación corregida, en 2 o 3 párrafos separados por una línea en blanco:\n${String(anterior || '').slice(0, 600)}`;
 }
 
 export const RESPUESTA_NO_ESCRIBIR = 'Perfecto, no te vamos a escribir más. Disculpá la molestia.';

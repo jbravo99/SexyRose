@@ -127,7 +127,7 @@
   function cardBoton(d) {
     const b = d.botonCreditos || {};
     let txt;
-    if (b.usa === 'vinculado') txt = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Usa el número vinculado: <span data-noi18n>${esc(b.vinculado)}</span></div><div class="sub">El del chip de créditos activo; si no hay, el del chip A. Cambia solo.</div></div></div>`;
+    if (b.usa === 'vinculado') txt = `<div class="list-item">${icon('check')}<div class="grow"><div class="title">Usa el número vinculado: <span data-noi18n>${esc(b.vinculado)}</span></div><div class="sub">El del chip de créditos activo; si no hay, el del chip A. Si ese está desvinculado, el de otro chip conectado hasta que vuelva. Cambia solo.</div></div></div>`;
     else if (b.usa === 'guardado') txt = `<div class="notice info">${icon('info')}<span>Hasta que vincules el chip, el botón usa el número que tenías cargado: <strong data-noi18n>${esc(b.guardado)}</strong>.</span></div>`;
     else txt = `<div class="notice warn">${icon('alert')}<span>Todavía no hay número: vinculá el chip del asistente para que el botón de comprar créditos abra WhatsApp.</span></div>`;
     return `<section class="card stack" style="gap:12px" id="asisBoton">
