@@ -5,7 +5,7 @@
 export const LANGS = ['es', 'en', 'pt'];
 const T = {
   es: {
-    presentacion: 'Hola, soy el asistente de cuenta AI de SexyRose.',
+    presentacion: 'Hola, soy el asistente virtual de SexyRose.',
     datosPedido: ({ codigo, pack, creditos, ars, usd, alias, titular }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\n`
       + `Monto a transferir: ARS ${ars} (USD ${usd}).\n`
       + `Alias: ${alias}\nTitular: ${titular}\n`
@@ -45,7 +45,7 @@ const T = {
     cargaMedida: 'Carga a medida',
   },
   en: {
-    presentacion: "Hi, I'm SexyRose's AI account assistant.",
+    presentacion: "Hi, I'm SexyRose's virtual assistant.",
     datosPedido: ({ codigo, pack, creditos, ars, usd, alias, titular }) => `Order ${codigo}: ${pack}, ${creditos} credits.\n`
       + `Amount to transfer: ARS ${ars} (USD ${usd}).\n`
       + `Alias: ${alias}\nAccount holder: ${titular}\n`
@@ -85,7 +85,7 @@ const T = {
     cargaMedida: 'Custom top-up',
   },
   pt: {
-    presentacion: 'Olá, sou o assistente de conta AI da SexyRose.',
+    presentacion: 'Olá, sou o assistente virtual da SexyRose.',
     datosPedido: ({ codigo, pack, creditos, ars, usd, alias, titular }) => `Pedido ${codigo}: ${pack}, ${creditos} créditos.\n`
       + `Valor a transferir: ARS ${ars} (USD ${usd}).\n`
       + `Alias: ${alias}\nTitular: ${titular}\n`

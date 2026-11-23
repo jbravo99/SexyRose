@@ -43,8 +43,12 @@ const MAX_RESPUESTA_MONEDA = 80; // "en pesos", "mejor en dólares": más largo 
 export class NoConectado extends Error { constructor() { super('WhatsApp no está conectado'); this.code = 'NO_CONECTADO'; } }
 
 // pausaRecuperar: espera entre un chat y otro al responder lo que llegó sin conexión (para no mandar todo de golpe)
+// esperaAgrupar (23/11/2026, Juan: "esperar hasta 15 segundos, por si mandan otra cosa"): antes de que conteste la IA se
+// espera ese tiempo desde el último mensaje de la persona; si manda otro, se vuelve a esperar y se contesta una sola vez,
+// leyendo todos. 0 = enseguida (las pruebas).
+export const ESPERA_AGRUPAR_MS = 15000;
 export function createAsistente({ pool, creditos, planes, privado, telegram, llm = null, siteUrl = 'https://sexyrose.net', log = () => {}, enviar = null,
-  pausaRecuperar = () => new Promise((r) => setTimeout(r, 40000 + Math.floor(Math.random() * 35000))) }) {
+  pausaRecuperar = () => new Promise((r) => setTimeout(r, 40000 + Math.floor(Math.random() * 35000))), esperaAgrupar = ESPERA_AGRUPAR_MS }) {
   const url = String(siteUrl || 'https://sexyrose.net').replace(/\/+$/, '');
   let enviarWa = enviar;
   const colas = new Map();
@@ -622,9 +626,34 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (t) await responder(c, t);
   }
 
+  // ---------- Agrupar mensajes seguidos (23/11/2026) ----------
+  // Un turno de la IA por chat, esperando `esperaAgrupar` ms desde el último mensaje que va a la IA. Al vencer, contesta
+  // solo si nadie le respondió desde ese mensaje (ni el bot, ni Juan, ni una respuesta fija) y el chat no está en silencio.
+  const esperas = new Map(); // clave del chat → { t, fin }
+  const pendientesIa = new Set();
+  function turnoAgrupado(conv, msgId) {
+    const clave = claveChat(conv.chip, conv.jid);
+    const prev = esperas.get(clave);
+    if (prev) { clearTimeout(prev.t); prev.fin(); }
+    let fin;
+    const p = new Promise((res) => { fin = res; });
+    const t = setTimeout(() => {
+      if (esperas.get(clave) && esperas.get(clave).t === t) esperas.delete(clave);
+      enCola(clave, async () => {
+        const c = await releer(conv.id);
+        if (!c || silenciado(c)) return;
+        const { rows } = await pool.query("SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND dir = 'out' AND id > $2 LIMIT 1", [c.id, msgId]);
+        if (rows[0]) return; // ya se le respondió después
+        await turnoIa(c);
+      }).catch((e) => log('asistente: turno agrupado falló:', e.code || e.message)).finally(fin);
+    }, esperaAgrupar);
+    esperas.set(clave, { t, fin });
+    pendientesIa.add(p); p.finally(() => pendientesIa.delete(p));
+  }
+
   // ---------- Entrada ----------
   // ev = { jid (teléfono@s.whatsapp.net o, si no se sabe, …@lid), lid (…@lid si jid es el teléfono), telefono, waId, deMi, porBot, tipo: texto|imagen|documento|audio|video|otro, texto, media: { mime, tamano, descargar } }
-  async function procesar(ev) {
+  async function procesar(ev, { inmediato = false } = {}) {
     let conv = await conversacion(ev.jid, ev.telefono, ev.lid || null, Number(ev.chip) || 1);
     if (ev.deMi) {
       if (ev.porBot) return { ignorado: 'bot' };
@@ -674,6 +703,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       const ult = u[0];
       if (ult && ult.origen !== 'captacion' && !/[?¿]/.test(String(ult.texto || ''))) return { ignorado: 'cierre' };
     }
+    if (esperaAgrupar > 0 && !inmediato) { turnoAgrupado(conv, msg.id); return { ia: 'en espera' }; }
     await turnoIa(conv);
     return { ia: true };
   }
@@ -710,7 +740,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
               await guardarMensaje(conv, { dir: 'in', origen: 'usuario', tipo: e.tipo, texto: e.texto || null, waId: e.waId });
             }
             demorados.add(conv.id);
-            try { await procesar({ ...ult, chip }); } finally { demorados.delete(conv.id); }
+            try { await procesar({ ...ult, chip }, { inmediato: true }); } finally { demorados.delete(conv.id); }
             return true;
           });
           if (hecho) {
@@ -790,7 +820,7 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
   return {
     recibir, recuperar, procesarSalida, herramienta, historial,
     setEnviar(fn) { enviarWa = typeof fn === 'function' ? fn : null; },
-    async esperar() { await Promise.all([...colas.values()]); },
+    async esperar() { await Promise.all([...colas.values()]); await Promise.all([...pendientesIa]); await Promise.all([...colas.values()]); },
     esperarRecuperar: () => recuperando.catch(() => {}),
   };
 }

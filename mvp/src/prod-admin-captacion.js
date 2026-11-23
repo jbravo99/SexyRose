@@ -36,7 +36,7 @@
   const listaKey = () => 'capl:' + S.capf + ':' + S.capq;
   // Varios chips (19/11/2026): la cola es del chip elegido (S.capChip); sin elegir, el servidor rota al de más cupo libre
   const capPath = () => '/captacion' + (S.capChip ? '?chip=' + encodeURIComponent(S.capChip) : '');
-  const recargarTodo = () => { load('cap', capPath(), true); load(listaKey(), listaPath(), true); };
+  const recargarTodo = () => { load('cap', capPath(), true); load(listaKey(), listaPath(), true); load('capResultados', '/captacion/resultados?dias=14', true); };
 
   /* ---------- Los N del día ---------- */
   function filaCola(c) {
@@ -148,8 +148,28 @@
       </section>`;
   }
 
+  /* ---------- Resultados de las invitaciones (23/11/2026) ---------- */
+  S.capRes = S.capRes || 'chip';
+  function cardResultados() {
+    const r = S.capResultados;
+    if (!r) return S.err.capResultados ? '' : `<section class="card">${loadingCard(1)}</section>`;
+    if (!r.total) return '';
+    const vistas = { chip: ['Por chip', r.porChip, (k) => `Chip ${esc(k)}`], dia: ['Por día', r.porDia, (k) => esc(k.split('-').reverse().slice(0, 2).join('/'))], franja: ['Por horario', r.porFranja, (k) => esc(k)] };
+    const [, filas, etiqueta] = vistas[S.capRes] || vistas.chip;
+    const pct = (g) => (g.tasa == null ? '—' : `${String(g.tasa).replace('.', ',')} %`);
+    const fila = (g, nom) => `<tr><td>${nom}</td><td>${g.enviadas}</td><td>${g.contestaron}</td><td><strong>${pct(g)}</strong></td><td>${g.registradas}</td><td>${g.noEscribir}</td><td>${g.enEspera || '—'}</td></tr>`;
+    return `<section class="card stack" style="gap:12px" id="capResultados">
+        <div class="row between" style="gap:10px;flex-wrap:wrap"><div class="card-title">${icon('activity')} Resultados de las invitaciones</div>
+          <div class="chips scroll" role="group" aria-label="Agrupar resultados">${Object.entries(vistas).map(([k, v]) => `<button type="button" class="chip${S.capRes === k ? ' active' : ''}" data-action="capRes" data-v="${k}" aria-pressed="${S.capRes === k}">${v[0]}</button>`).join('')}</div></div>
+        <p class="small muted" style="margin:0">Últimos ${r.dias} días. Cuenta como "contestó" si respondió dentro de las 48 h (también las respuestas automáticas). "En espera": enviadas hace menos de 48 h que todavía no contestaron; no entran en el porcentaje.</p>
+        <div class="table-wrap pa-table"><table class="table"><thead><tr><th></th><th>Enviadas</th><th>Contestaron</th><th>%</th><th>Se registraron</th><th>No escribir</th><th>En espera</th></tr></thead><tbody>
+          ${filas.map((g) => fila(g, etiqueta(g.clave))).join('')}${filas.length > 1 ? fila(r.total, '<strong>Total</strong>') : ''}
+        </tbody></table></div>
+      </section>`;
+  }
+
   function vCaptacion() {
-    load('cap', capPath()); load(listaKey(), listaPath());
+    load('cap', capPath()); load(listaKey(), listaPath()); load('capResultados', '/captacion/resultados?dias=14');
     const d = S.cap;
     let body;
     if (!d && S.err.cap) body = errorCard(S.err.cap, 'cap');
@@ -168,7 +188,7 @@
           <p class="small muted" style="margin:0">Borra todos los contactos que no se registraron (${(n.total - (n.registrados || 0)).toLocaleString('es-AR')}). No se puede deshacer.</p>
           <div class="row"><button type="button" class="btn ghost sm pa-danger" data-action="capVaciar">${icon('trash')} Vaciar lista</button></div></section>` : '';
       body = n.total
-        ? `${stats}${cardCola(d)}${cardRevisar(d)}${cardImportar()}${cardLista(d)}${vaciar}`
+        ? `${stats}${cardCola(d)}${cardResultados()}${cardRevisar(d)}${cardImportar()}${cardLista(d)}${vaciar}`
         : `${stats}${cardImportar()}${cardCola(d)}`;
     }
     const right = `<div class="row" style="gap:8px"><button type="button" class="btn ghost sm" data-action="capRecargar" data-k="todo">${icon('refresh')} Actualizar</button></div>`;
@@ -187,7 +207,7 @@
     const esDefault = vs.length === 1 && vs[0] === aj.mensajeDefault;
     return `<section class="card stack" style="gap:12px" id="capMensaje">
         <div class="row between"><div class="card-title">${icon('send')} Invitación de captación</div>${esDefault ? '<span class="badge ok">Texto aprobado</span>' : `<span class="badge info">${vs.length} ${HH.plural(vs.length, 'versión', 'versiones')}</span>`}</div>
-        <div class="switch-row" style="border:0;padding:0"><div><div class="t">Cada invitación la escribe la IA</div><div class="s">${aj.ia !== false ? 'Prendido: el asistente escribe de antemano un mensaje distinto para cada contacto de la cola (corto, sin link, con lo acordado). Si no llegó a escribirlo, va una de las versiones de abajo.' : 'Apagado: se usan las versiones de abajo.'}</div></div><button type="button" class="switch" role="switch" aria-checked="${aj.ia !== false}" aria-label="La IA escribe cada invitación" data-action="capIa"></button></div>
+        <div class="switch-row" style="border:0;padding:0"><div><div class="t">Cada invitación la escribe la IA</div><div class="s">${aj.ia !== false ? 'Prendido: el asistente escribe de antemano un mensaje distinto para cada contacto de la cola (hasta 250 caracteres, en párrafos separados, sin link, con lo acordado). Si no llegó a escribirlo, va una de las versiones de abajo.' : 'Apagado: se usan las versiones de abajo.'}</div></div><button type="button" class="switch" role="switch" aria-checked="${aj.ia !== false}" aria-label="La IA escribe cada invitación" data-action="capIa"></button></div>
         <p class="small muted" style="margin:0">Versiones fijas: cada contacto recibe una (siempre la misma). El primer mensaje nunca lleva el link: si una versión lo tiene, se saca solo. En WhatsApp, lo que va entre *asteriscos* se ve en negrita. El asistente reconoce cualquiera de las versiones y las que escribe la IA.</p>
         ${vs.map((m, i) => `<div class="field"><div class="row between"><label for="capMsg${i}">Versión ${i + 1}</label>${vs.length > 1 ? `<button type="button" class="btn ghost sm" data-action="capMsgQuitar" data-i="${i}">${icon('x')} Quitar</button>` : ''}</div><textarea class="textarea" id="capMsg${i}" rows="8" maxlength="1000" data-noi18n>${esc(m)}</textarea></div>`).join('')}
         <div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" data-action="capMsgGuardar">${icon('check')} Guardar invitación</button>
@@ -210,6 +230,7 @@
       if (k === 'lista') load(listaKey(), listaPath(), true);
       else recargarTodo();
     },
+    capRes(el) { S.capRes = el.dataset.v; HH.refresh(); },
     capFiltro(el) { S.capf = el.dataset.f; load(listaKey(), listaPath()); HH.refresh(); },
     capBuscar(el) {
       S.capq = el.value.trim().slice(0, 60);

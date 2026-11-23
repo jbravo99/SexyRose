@@ -32,7 +32,7 @@ const USER = 'admin-asis'; const PASS = 'clave-de-prueba-larga-789';
 const SITE = 'https://sexyrose.test';
 const KEY = 'clave-maestra-de-prueba-asistente-0123456789';
 const TOKEN = '999999:TEST-ASISTENTE';
-const PRESENTA = 'Hola, soy el asistente de cuenta AI de SexyRose.';
+const PRESENTA = 'Hola, soy el asistente virtual de SexyRose.';
 let instance; let agente; let BASE; let tmpData;
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -188,7 +188,7 @@ before(async () => {
   await db.query("INSERT INTO ajustes (clave, valor) VALUES ('cotizacion', $1)", [JSON.stringify({ arsPorUsd: 1450, fecha: new Date().toISOString(), nota: '' })]);
   agente = await startAgente({
     pool: dbAgente, databaseUrl: DATABASE_URL, makeSocket, descargar, llmFetch, telegramFetch: tgFetch, anthropicKey: 'sk-prueba',
-    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, invitacionesIa: false, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
+    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, invitacionesIa: false, esperaAgrupar: 0, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
   });
 });
 after(async () => {
@@ -553,7 +553,7 @@ describe('IA, persona y límites', () => {
     assert.ok(ultima.tools.some((x) => x.name === 'derivar_a_juan'));
     assert.match(ultima.system, /NO identificado/);
     await llega('447700900123', 'Hi, how can I change my password please?');
-    assert.ok(ultimoA('447700900123').startsWith("Hi, I'm SexyRose's AI account assistant."));
+    assert.ok(ultimoA('447700900123').startsWith("Hi, I'm SexyRose's virtual assistant."));
     // pasadas 24 h sin respuestas del bot, se presenta de nuevo
     const k = await conv('5491155550010');
     await db.query("UPDATE asistente_mensajes SET creado = now() - interval '25 hours' WHERE conversacion_id = $1", [k.id]);
@@ -584,12 +584,20 @@ describe('IA, persona y límites', () => {
 
   test('respuestas breves e invitación corta (21/11/2026)', async () => {
     const p = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es' });
-    assert.ok(p.includes('como máximo 2 o 3 renglones'));
-    assert.ok(p.includes('de los textos de ayuda tomá únicamente la parte que responde la pregunta'));
+    assert.ok(p.includes('contestá solo eso en 2 o 3 renglones'));
+    assert.ok(p.includes('de los textos de ayuda tomá la parte que responde la pregunta'));
+    // 23/11/2026: completo cuando lo piden, con lista "• "; sin hacerla responder "sí" varias veces; verificación después
+    assert.ok(p.includes('dáselo completo en UN mensaje') && p.includes('"• "'));
+    assert.ok(p.includes('Nunca la hagas responder "sí" varias veces'));
+    assert.ok(p.includes('primero se publica el perfil y después tiene 7 días'));
+    const pc = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion: true });
+    assert.ok(pc.includes('NO le preguntes "¿en qué te puedo ayudar?"') && pc.includes(`Cerrá con el link de registro`));
+    assert.ok(pc.includes('Los planes pagos y Destacado, solo si los pregunta.'));
     assert.equal(MENSAJES_CORTOS[0], INVITACION);
     assert.equal(MENSAJES_CORTOS.length, 3);
     for (const m of MENSAJES_CORTOS) {
-      assert.ok(m.length <= 160, `corta (${m.length})`);
+      assert.ok(m.length <= 250, `corta (${m.length})`);
+      assert.ok(m.split('\n\n').length >= 2, 'en párrafos separados (23/11/2026)');
       assert.ok(m.endsWith('?'), 'termina en pregunta');
       // 22/11/2026: sin link en el primer mensaje (el asistente lo pasa cuando responde)
       assert.ok(m.includes('SexyRose') && !/sexyrose\.net/i.test(m) && m.includes('*gratis*') && /diciembre/.test(m));
@@ -722,11 +730,43 @@ describe('IA, persona y límites', () => {
     LLM.guion = null;
   });
 
+  test('mensajes seguidos (23/11/2026): espera y contesta una sola vez leyendo todos; un "gracias" seguido no pierde la respuesta', async () => {
+    const enviados = []; const llamadas = [];
+    const llmFalso = { disponible: true, conversar: async ({ mensajes }) => { llamadas.push(mensajes); return { texto: 'Te cuento todo.' }; } };
+    const ag = createAsistente({
+      pool: db, creditos: cred(), planes: instance.ctx.planes, privado: instance.ctx.privado, telegram: agente.telegram,
+      llm: llmFalso, siteUrl: SITE, esperaAgrupar: 150, enviar: async (jid, t) => { enviados.push({ jid, t }); return 'G' + enviados.length; },
+    });
+    const jid = '5491155550018@s.whatsapp.net';
+    const r1 = await ag.recibir({ jid, telefono: '5491155550018', waId: 'g1', tipo: 'texto', texto: 'Hola buenas noches si' });
+    assert.deepEqual(r1, { ia: 'en espera' });
+    await new Promise((r) => setTimeout(r, 60));
+    await ag.recibir({ jid, telefono: '5491155550018', waId: 'g2', tipo: 'texto', texto: 'Contame' });
+    assert.equal(enviados.length, 0, 'todavía esperando');
+    await ag.esperar();
+    assert.equal(llamadas.length, 1, 'una sola vez');
+    assert.equal(enviados.length, 1);
+    const ult = llamadas[0][llamadas[0].length - 1];
+    assert.equal(ult.role, 'user');
+    assert.ok(ult.content.includes('Hola buenas noches si') && ult.content.includes('Contame'), 'lee los dos');
+    // Pregunta y enseguida "gracias" (que solo no se contesta): la pregunta se contesta igual, una vez
+    await ag.recibir({ jid, telefono: '5491155550018', waId: 'g3', tipo: 'texto', texto: '¿cuánto sale el plan Plata?' });
+    await ag.recibir({ jid, telefono: '5491155550018', waId: 'g4', tipo: 'texto', texto: 'gracias' });
+    await ag.esperar();
+    assert.equal(llamadas.length, 2);
+    assert.equal(enviados.length, 2);
+    // Si en la espera escribe Juan desde el teléfono, el bot no contesta
+    await ag.recibir({ jid, telefono: '5491155550018', waId: 'g5', tipo: 'texto', texto: '¿y el Oro?' });
+    await ag.recibir({ jid, telefono: '5491155550018', waId: 'g6', tipo: 'texto', texto: 'Te contesto yo', deMi: true });
+    await ag.esperar();
+    assert.equal(llamadas.length, 2, 'Juan respondió: la IA no');
+  });
+
   test('sin ANTHROPIC_API_KEY: lo libre va a una persona, lo automático funciona', async () => {
     const enviados = [];
     const sinClave = createAsistente({
       pool: db, creditos: cred(), planes: instance.ctx.planes, privado: instance.ctx.privado, telegram: agente.telegram,
-      llm: createLlm({ apiKey: '' }), siteUrl: SITE, enviar: async (jid, t) => { enviados.push({ jid, t }); return 'X' + enviados.length; },
+      llm: createLlm({ apiKey: '' }), siteUrl: SITE, esperaAgrupar: 0, enviar: async (jid, t) => { enviados.push({ jid, t }); return 'X' + enviados.length; },
     });
     const jid = '5491155550017@s.whatsapp.net';
     await sinClave.recibir({ jid, telefono: '5491155550017', waId: 'k1', tipo: 'texto', texto: '¿qué es el Destacado?' });

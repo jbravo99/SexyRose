@@ -68,7 +68,8 @@ export async function startAgente(overrides = {}) {
   const llm = createLlm({ apiKey: config.anthropicKey, modelo: config.anthropicModel, fetchImpl: config.llmFetch !== undefined ? config.llmFetch : globalThis.fetch, log });
   if (!llm.disponible) log('agente: sin ANTHROPIC_API_KEY: responde solo lo automático (pedidos y comprobantes) y deriva lo demás.');
   const asistente = createAsistente({ pool, creditos, planes, privado, telegram, llm, siteUrl: config.siteUrl, log,
-    ...(config.pausaRecuperar ? { pausaRecuperar: config.pausaRecuperar } : {}) });
+    ...(config.pausaRecuperar ? { pausaRecuperar: config.pausaRecuperar } : {}),
+    ...(config.esperaAgrupar !== undefined ? { esperaAgrupar: config.esperaAgrupar } : {}) });
   // Varios chips (19/11/2026, lib/chips.js): una conexión de WhatsApp por fila de asistente_whatsapp. Los chips que
   // agrega o quita Juan desde el admin se toman en la próxima supervisión.
   const chips = new Map(); // id → conexión

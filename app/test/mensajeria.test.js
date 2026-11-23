@@ -29,7 +29,7 @@ const USER = 'admin-msj'; const PASS = 'clave-de-prueba-larga-456';
 const SITE = 'https://sexyrose.test';
 const KEY = 'clave-maestra-de-prueba-mensajeria-0123456789';
 const TOKEN = '888888:TEST-MENSAJERIA';
-const PRESENTA = 'Hola, soy el asistente de cuenta AI de SexyRose.';
+const PRESENTA = 'Hola, soy el asistente virtual de SexyRose.';
 let instance; let agente; let BASE; let tmpData;
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -175,7 +175,7 @@ before(async () => {
   await db.query("INSERT INTO ajustes (clave, valor) VALUES ('telegram', $1)", [JSON.stringify({ chatId: '777', chatNombre: 'Juan', chatUsuario: 'juan', vinculado: new Date().toISOString(), avisos: {} })]);
   agente = await startAgente({
     pool: dbAgente, databaseUrl: DATABASE_URL, makeSocket, llmFetch, telegramFetch: tgFetch, anthropicKey: 'sk-prueba',
-    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, invitacionesIa: false, pausaRecuperar: async () => {}, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
+    telegramToken: TOKEN, telegramChatId: '', demora: () => 0, dormir: async () => {}, invitacionesIa: false, esperaAgrupar: 0, pausaRecuperar: async () => {}, supervisarMs: 40, dataDir: tmpData, secretsKey: KEY, siteUrl: SITE, log: () => {},
   });
 });
 after(async () => {
@@ -343,7 +343,7 @@ describe('captación: importar, cola y estados', () => {
     // Cola: los de más avisos primero; nunca los de "revisar", "no escribir" ni los que ya están en el sitio
     const ids = d.resumen.cola.items.map((x) => x.nombres[0]);
     assert.deepEqual(ids, ['Luna', 'Mora', 'Kiara', 'Sol']);
-    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('Soy de SexyRose'))));
+    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('Te escribimos de SexyRose'))));
     assert.ok(d.resumen.cola.items.every((x) => /\*{4}/.test(x.telefono)), 'teléfono enmascarado');
     assert.ok(d.resumen.revisar.every((x) => !x.waUrl && x.motivo));
     assert.equal(d.resumen.revisar[0].tipoMotivo, 'joven');
@@ -866,23 +866,32 @@ describe('responder lo que llegó sin conexión (20/11/2026)', () => {
   });
 });
 
-describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026)', () => {
-  const ok1 = 'Hola, ¿cómo estás? Soy de SexyRose, una página nueva de anuncios. Vi tu aviso: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
+describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026; v2 el 23/11/2026)', () => {
+  const ok1 = '¡Hola! Te escribimos de SexyRose. Vimos tu perfil en otro sitio.\n\nAcá tu perfil es *gratis*, con fotos, videos e historias, y más adelante podés vender tu contenido.\n\nAbrimos en diciembre: si te sumás ahora, salís desde el primer día. ¿Te interesa?';
+  const ok2 = 'Buenas, ¿qué tal? Somos de SexyRose y vimos tu perfil en otro sitio.\n\nTenés tu perfil *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\nAbrimos en diciembre y sumándote ya salís desde el primer día. ¿Te cuento?';
   const decodificar = (u) => decodeURIComponent(new URL(u).searchParams.get('text'));
 
-  test('reglas: corta, sin link, con lo acordado y terminada en pregunta; las fijas, sin link', () => {
+  test('reglas v2: hasta 250, en párrafos separados, en plural, con contenido y primer día, sin link; las fijas también', () => {
     assert.equal(validarInvitacion(ok1), ok1);
     assert.equal(validarInvitacion(`"${ok1}"`), ok1, 'saca comillas');
-    assert.equal(validarInvitacion(ok1.replace('SexyRose', 'SexyRose (sexyrose.net)')), null, 'con link');
-    assert.equal(validarInvitacion('Hola! Visitá www.algo.com.ar, es *gratis*, SexyRose abre en diciembre. ¿Te interesa?'), null);
-    assert.equal(validarInvitacion(ok1.replace('¿Te interesa?', 'Escribime.')), null, 'sin pregunta al final');
-    assert.equal(validarInvitacion(ok1 + ' ' + 'x'.repeat(60) + '?'), null, 'larga');
+    assert.equal(validarInvitacion(ok1.replace(/\n\n/g, '\n')), ok1, 'un salto simple pasa a párrafo separado');
+    assert.equal(validarInvitacion(ok1.replace(/\n+/g, ' ')), null, 'todo en un párrafo: choclo');
+    assert.equal(validarInvitacion(ok1.replace('SexyRose.', 'SexyRose (sexyrose.net).')), null, 'con link');
+    assert.equal(validarInvitacion(ok1.replace('¿Te interesa?', 'Escribinos.')), null, 'sin pregunta al final');
+    assert.equal(validarInvitacion(ok1.replace('Vimos tu perfil', 'Vimos tu perfil ' + 'x'.repeat(10))), null, 'más de 250');
     assert.equal(validarInvitacion(ok1.replace('*gratis*', 'barato')), null, 'sin gratis');
-    assert.equal(validarInvitacion(ok1.replace('Hola,', 'Hola 😊,')), null, 'emoji');
-    assert.equal(validarInvitacion(ok1.replace('una página nueva de anuncios', 'tus servicios en una página nueva')), null, 'servicios');
-    assert.equal(validarInvitacion(ok1.replace('¿Te interesa?', 'Si no, no te escribo más. ¿Ok?')), null, 'línea de baja');
-    for (const m of MENSAJES_CORTOS) { assert.ok(m.length <= 160 && !/sexyrose\.net/i.test(m) && m.endsWith('?'), m); }
+    assert.equal(validarInvitacion(ok1.replace(', y más adelante podés vender tu contenido', '')), null, 'sin vender contenido');
+    assert.equal(validarInvitacion(ok1.replace(', salís desde el primer día', ', te esperamos')), null, 'sin primer día');
+    assert.equal(validarInvitacion(ok1.replace('Te escribimos de SexyRose. Vimos', 'Te escribo de SexyRose. Vi')), null, 'en singular');
+    assert.equal(validarInvitacion(ok1.replace('Te escribimos de SexyRose.', 'Te escribimos de SexyRose, una página nueva de anuncios.')), null, 'página de anuncios');
+    assert.equal(validarInvitacion(ok1.replace('¡Hola!', '¡Hola! 😊')), null, 'emoji');
+    assert.equal(validarInvitacion(ok1.replace('con fotos', 'con tus servicios, fotos')), null, 'servicios');
+    for (const m of MENSAJES_CORTOS) {
+      assert.equal(validarInvitacion(m), m, m);
+      assert.ok(m.length <= 250 && !/sexyrose\.net/i.test(m) && m.split('\n\n').length >= 2);
+    }
     assert.equal(quitarLink('¡Hola! Soy de SexyRose (sexyrose.net), una página nueva. ¿Te cuento?'), '¡Hola! Soy de SexyRose, una página nueva. ¿Te cuento?');
+    assert.equal(quitarLink('Hola, somos de SexyRose (sexyrose.net).\n\n¿Te cuento?'), 'Hola, somos de SexyRose.\n\n¿Te cuento?', 'conserva los párrafos');
   });
 
   test('el agente escribe de antemano las de la cola; "Abrir chat" usa la de cada uno; si la IA no cumple, va una fija sin link', async () => {
@@ -892,29 +901,30 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
       + 'IaUno;+5491155550981;Rosario;skokka;99\nIaDos;+5491155550982;Rosario;skokka;98\nIaTres;+5491155550983;Rosario;skokka;97\n';
     assert.equal((await subir(Buffer.from(csv, 'utf8'), 'ia.csv')).status, 200);
     let k = 0;
-    const textos = [ok1, '¡Hola! Te escribo de SexyRose: vi tu aviso y estamos lanzando una página de anuncios. Publicar es *gratis* y arrancamos en diciembre. ¿Te cuento?', 'Hola, mirá www.sexyrose.net: es *gratis*, abrimos en diciembre. ¿Te interesa?'];
+    const textos = [ok1, ok2, 'Hola, mirá www.sexyrose.net: es *gratis*, abrimos en diciembre. ¿Te interesa?'];
     LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: textos[Math.min(k++, 2)] }] });
     const n0 = LLM.llamadas.length;
     const n = await agente.invitaciones.completar({ porPasada: 3 });
     assert.equal(n, 2, 'dos válidas; la tercera (con link, dos intentos) queda sin mensaje');
     const pedido = LLM.llamadas[n0];
     assert.ok(!pedido.tools, 'sin herramientas');
-    assert.match(pedido.system, /no más de 160 caracteres/);
+    assert.match(pedido.system, /no más de 230 caracteres/);
+    assert.match(pedido.system, /separados por una línea en blanco/);
     assert.match(JSON.stringify(pedido.messages), /distinta de estas/);
     const d = await (await adm('/captacion?chip=1')).json();
     const porNombre = (nom) => d.cola.items.find((x) => x.nombres[0] === nom);
-    assert.equal(decodificar(porNombre('IaUno').waUrl), ok1);
+    assert.equal(decodificar(porNombre('IaUno').waUrl), ok1, 'con los párrafos');
     assert.equal(porNombre('IaUno').invitacionIa, true);
-    assert.equal(decodificar(porNombre('IaDos').waUrl), textos[1]);
+    assert.equal(decodificar(porNombre('IaDos').waUrl), ok2);
     const tres = decodificar(porNombre('IaTres').waUrl);
     assert.equal(porNombre('IaTres').invitacionIa, false);
     assert.ok(!/sexyrose\.net/i.test(tres) && /SexyRose/.test(tres), 'la fija, sin link: ' + tres);
     // No se vuelven a escribir
-    assert.equal(await agente.invitaciones.completar({ porPasada: 3 }), 0 + (LLM.llamadas.length > n0 ? 0 : 0));
-    // El asistente la reconoce como invitación de ese contacto: "enviado", sin silenciar
+    assert.equal(await agente.invitaciones.completar({ porPasada: 3 }), 0);
+    // El asistente la reconoce como invitación de ese contacto (con párrafos): "enviado", sin silenciar
     const c = await cap('+5491155550982');
     await admJson('POST', `/captacion/${c.id}/abierto`, { chip: 1 });
-    await llega('5491155550982', textos[1], { fromMe: true });
+    await llega('5491155550982', ok2, { fromMe: true });
     const x = await cap('+5491155550982');
     assert.equal(x.estado, 'enviado');
     assert.equal((await conv('5491155550982')).silenciado_hasta, null);
@@ -926,6 +936,55 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
     assert.ok(!/sexyrose\.net/i.test(decodificar(uno.waUrl)));
     await admJson('PUT', '/captacion/ajustes', { ia: true, mensajes: [] });
     LLM.guion = null;
+  });
+
+  test('las escritas con las reglas anteriores: "pendiente" se reescribe (mientras tanto va la fija); "abierto" se respeta', async () => {
+    await admJson('PUT', '/asistente/ajustes', { activo: true });
+    const viejaP = 'Hola, ¿cómo estás? Soy de SexyRose, una página nueva de anuncios. Vi tu aviso: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
+    const viejaA = '¡Hola! Te escribo de SexyRose: vi tu aviso. Publicar es *gratis* y arrancamos en diciembre. ¿Te cuento?';
+    const csv = 'Nombres;Teléfono;Ciudad;Sitios;Cantidad de avisos\nViejaP;+5491155550984;Rosario;skokka;200\nViejaA;+5491155550985;Rosario;skokka;199\n';
+    assert.equal((await subir(Buffer.from(csv, 'utf8'), 'v1.csv')).status, 200);
+    await db.query("UPDATE captacion_contactos SET mensaje = $2, mensaje_creado = now(), mensaje_reglas = NULL WHERE telefono = $1", ['+5491155550984', viejaP]);
+    await db.query("UPDATE captacion_contactos SET mensaje = $2, mensaje_creado = now(), mensaje_reglas = NULL, estado = 'abierto', abierto = now() WHERE telefono = $1", ['+5491155550985', viejaA]);
+    let d = await (await adm('/captacion?chip=1')).json();
+    let p = d.cola.items.find((x) => x.nombres[0] === 'ViejaP');
+    assert.equal(p.invitacionIa, false, 'la vieja no se usa');
+    assert.ok(MENSAJES_CORTOS.includes(decodificar(p.waUrl)), 'va una fija v2');
+    assert.equal(decodificar(d.cola.items.find((x) => x.nombres[0] === 'ViejaA').waUrl), viejaA, 'abierta: la misma');
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: ok2.replace('Buenas, ¿qué tal?', 'Hola, buen día.') }] });
+    await agente.invitaciones.completar({ porPasada: 12 });
+    LLM.guion = null;
+    d = await (await adm('/captacion?chip=1')).json();
+    p = d.cola.items.find((x) => x.nombres[0] === 'ViejaP');
+    assert.equal(p.invitacionIa, true);
+    assert.match(decodificar(p.waUrl), /^Hola, buen día\./);
+    const a = await cap('+5491155550985');
+    assert.equal(a.mensaje, viejaA, 'la abierta no se reescribe');
+    await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = ANY($1)", [['+5491155550984', '+5491155550985']]);
+  });
+
+  test('resultados de las invitaciones: por chip, por día y por horario, con las respuestas de 48 h', async () => {
+    const csv = 'Nombres;Teléfono;Ciudad;Sitios;Cantidad de avisos\nResA;+5491155550986;Rosario;skokka;1\nResB;+5491155550987;Rosario;skokka;1\nResC;+5491155550988;Rosario;skokka;1\n';
+    assert.equal((await subir(Buffer.from(csv, 'utf8'), 'res.csv')).status, 200);
+    // A las 13 h de Argentina hace 3 días: una contestó a las 2 h y se registró, otra a los 3 días (no cuenta), otra nada
+    const base = "date_trunc('day', now() AT TIME ZONE 'America/Argentina/Buenos_Aires' - interval '3 days') + interval '13 hours'";
+    await db.query(`UPDATE captacion_contactos SET chip = 9, estado = 'se_registro', enviado = (${base}) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      respondio = (${base} + interval '2 hours') AT TIME ZONE 'America/Argentina/Buenos_Aires', registrado = now() WHERE telefono = '+5491155550986'`);
+    await db.query(`UPDATE captacion_contactos SET chip = 9, estado = 'respondio', enviado = (${base}) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+      respondio = (${base} + interval '3 days') AT TIME ZONE 'America/Argentina/Buenos_Aires' WHERE telefono = '+5491155550987'`);
+    // Otra recién enviada (en espera)
+    await db.query("UPDATE captacion_contactos SET chip = 10, estado = 'enviado', enviado = now() - interval '1 hour' WHERE telefono = '+5491155550988'");
+    const r = await (await adm('/captacion/resultados?dias=5')).json();
+    const b = r.porChip.find((x) => x.clave === 'I');
+    assert.deepEqual({ e: b.enviadas, c: b.contestaron, r: b.registradas, t: b.tasa }, { e: 2, c: 1, r: 1, t: 50 });
+    const c = r.porChip.find((x) => x.clave === 'J');
+    assert.equal(c.enEspera, 1);
+    assert.equal(c.tasa, null, 'en espera: no entra en el porcentaje');
+    const f = r.porFranja.find((x) => x.clave === '12 a 15 h');
+    assert.ok(f && f.enviadas >= 2);
+    assert.ok(r.porDia.length >= 1 && r.total.enviadas >= 3);
+    assert.equal((await adm('/captacion/resultados?dias=abc')).status, 200);
+    await db.query("UPDATE captacion_contactos SET estado = 'descartado', enviado = NULL WHERE telefono = ANY($1)", [['+5491155550986', '+5491155550987', '+5491155550988']]);
   });
 });
 

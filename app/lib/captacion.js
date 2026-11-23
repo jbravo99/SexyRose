@@ -24,15 +24,29 @@ export const MAX_VERSIONES = 5;
 // Texto aprobado por Juan (13/11/2026; sin línea de baja, decisión suya). 19/11/2026: "abrimos en diciembre" y la venta de
 // contenido "próximamente" (decisión de Juan).
 // 22/11/2026 (Juan: "debe ser incluso más corto"; sin link en el primer mensaje: el link lo pasa el asistente cuando
-// responde). Versiones fijas de respaldo: se usan si la IA no escribió la de ese contacto o está apagada.
-export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Vi tu aviso. Soy de SexyRose, una página nueva de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?';
+// responde).
+// 23/11/2026, invitación v2 (Juan, tras analizar las respuestas: hasta 250 caracteres y "los párrafos deben estar
+// separados, si no parece un único choclo de texto"): en plural como equipo, "vimos tu perfil en otro sitio", tu propio
+// perfil gratis con fotos, videos e historias y más adelante vender tu contenido, abrimos en diciembre y sumándote ahora
+// salís desde el primer día; pregunta corta al final; sin link; no se presenta como "página de anuncios".
+// Versiones fijas de respaldo: se usan si la IA no escribió la de ese contacto o está apagada.
+export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
+  + 'Tu perfil es *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
+  + 'Abrimos en diciembre: sumándote ahora salís desde el primer día. ¿Te interesa?';
 export const MENSAJES_CORTOS = Object.freeze([
   MENSAJE_DEFAULT,
+  '¡Hola! Somos de SexyRose, un sitio nuevo. Vimos tu perfil en otro lado.\n\n'
+    + 'Tu perfil es *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
+    + 'Abrimos en diciembre: sumándote ahora salís desde el primer día. ¿Te cuento?',
+  'Hola, ¿qué tal? Te escribimos de SexyRose. Vimos tu perfil en otro sitio.\n\n'
+    + 'Acá tenés tu perfil *gratis*, con fotos, videos e historias, y después vendés tu contenido.\n\n'
+    + 'Abrimos en diciembre: si te sumás ya, salís desde el primer día. ¿Te interesa?',
+]);
+// Invitaciones anteriores, para seguir reconociéndolas si llegan respuestas: las cortas del 22/11 y las de antes (con link)
+export const MENSAJES_ANTERIORES = Object.freeze([
+  'Hola, ¿cómo estás? Vi tu aviso. Soy de SexyRose, una página nueva de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
   '¡Hola! Te escribo de SexyRose, un sitio nuevo de anuncios. Vi tu aviso: publicar es *gratis* y arrancamos en diciembre. ¿Te cuento?',
   'Hola, ¿qué tal? Soy de SexyRose y vi tu aviso. Estamos lanzando una página de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
-]);
-// Invitaciones viejas (con link), para seguir reconociéndolas si llegan respuestas
-export const MENSAJES_ANTERIORES = Object.freeze([
   'Hola, ¿cómo estás? Te escribo de SexyRose (sexyrose.net), un sitio nuevo de anuncios. Vi tu aviso y me gustaría invitarte: crear tu perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
   '¡Hola! Soy de SexyRose (sexyrose.net), una página nueva de anuncios. Encontré tu aviso y quería invitarte a sumarte: el perfil es *gratis* y arrancamos en diciembre. ¿Te cuento más?',
   'Hola, ¿qué tal? Te contacto de SexyRose (sexyrose.net). Vimos tu anuncio y nos gustaría que estés en el sitio: publicar es *gratis* y abrimos en diciembre. ¿Te interesa?',
@@ -41,45 +55,63 @@ export const MENSAJES_ANTERIORES = Object.freeze([
 // Sin link en el primer mensaje (22/11/2026): a las versiones fijas se les saca el link si lo tienen
 export function quitarLink(t) {
   return String(t || '').replace(/\s*\((?:https?:\/\/)?(?:www\.)?sexyrose\.net\/?\)/gi, '').replace(/(?:https?:\/\/)?(?:www\.)?sexyrose\.net\/?/gi, 'SexyRose')
-    .replace(/https?:\/\/\S+/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.:;?])/g, '$1').trim();
+    .replace(/https?:\/\/\S+/gi, '').replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+([,.:;?])/g, '$1').replace(/[ \t]*\n[ \t]*/g, '\n').trim();
 }
 // El texto de la invitación de un contacto: la que escribió la IA para él, o una versión fija (siempre la misma para
 // ese contacto), sin link.
+// 23/11/2026: la de la IA solo si se escribió con las reglas vigentes (o si ya se abrió el chat con ella).
+export const invitacionIaVigente = (c) => Boolean(c && c.mensaje
+  && (c.estado === 'abierto' || Number(c.mensaje_reglas || 1) >= REGLAS_INVITACION));
 export function invitacionDe(contacto, ajustes) {
   const aj = ajustes || {};
-  if (aj.ia !== false && contacto && contacto.mensaje) return contacto.mensaje;
+  if (aj.ia !== false && invitacionIaVigente(contacto)) return contacto.mensaje;
   return quitarLink(mensajeParaContacto(aj.mensajes && aj.mensajes.length ? aj.mensajes : [MENSAJE_DEFAULT], contacto && contacto.id));
 }
 
-// ---------- Invitación escrita por la IA (22/11/2026) ----------
-export const INVITACION_MAX = 180;
+// ---------- Invitación escrita por la IA (22/11/2026; v2 el 23/11/2026) ----------
+export const INVITACION_MAX = 250;
+// Versión de las reglas: las invitaciones guardadas con reglas anteriores se vuelven a escribir (solo las "pendiente")
+export const REGLAS_INVITACION = 2;
+// Párrafos separados por una línea en blanco (Juan: "sino parece un único choclo de texto")
+function enParrafos(t) {
+  return String(t || '').replace(/\r/g, '').split(/\n+/).map((p) => p.replace(/[ \t]+/g, ' ').trim()).filter(Boolean);
+}
 // Reglas que tiene que cumplir cada invitación generada (si no, se descarta y va la de respaldo). Devuelve el texto
-// limpio o null.
+// limpio (párrafos separados por una línea en blanco) o null.
 export function validarInvitacion(t) {
-  let s = String(t || '').replace(/\r/g, '').trim().replace(/^["“'«]+|["”'»]+$/g, '').trim();
-  s = s.replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ');
-  if (s.length < 60 || s.length > INVITACION_MAX) return null;
+  const ps = enParrafos(String(t || '').trim().replace(/^["“'«]+|["”'»]+$/g, ''));
+  if (ps.length < 2 || ps.length > 3) return null;
+  const s = ps.join('\n\n');
+  if (s.length < 120 || s.length > INVITACION_MAX) return null;
   if (!/\?$/.test(s)) return null;
-  if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.|t\.me|wa\.me|@/i.test(s)) return null; // sin links ni usuarios
+  if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.[a-z]|t\.me|wa\.me|@/i.test(s)) return null; // sin links ni usuarios
   if (!/sexyrose/i.test(s) || !/gratis/i.test(s) || !/diciembre/i.test(s)) return null;
+  if (!/contenido/i.test(s)) return null; // más adelante vender su contenido
+  if (!/primer d[ií]a|desde el (inicio|arranque|lanzamiento|comienzo)|desde que abr/i.test(s)) return null; // ventaja de sumarse ahora
+  if (!/\b(escribimos|vimos|somos|contactamos|queremos|invitamos|nos encantar)/i.test(s)) return null; // en plural, como equipo
+  if (/(p[aá]gina|sitio|web) (nueva |nuevo )?de anuncios/i.test(s)) return null;
   if (/\p{Extended_Pictographic}/u.test(s)) return null; // sin emojis
   if (/(sex(o|ual)|servicio|encuentro|cita|tarifa|cobr|garant|seguro que|no te (escribo|escribimos)|baja|desuscrib|whatsapp)/i.test(s)) return null;
   return s;
 }
 // Estilos para pedirle a la IA que varíe (uno al azar por mensaje)
 const ESTILOS = ['empezá con "Hola" y una pregunta de cortesía', 'empezá con "¡Hola!" y andá directo', 'empezá con "Buenas" o "Buen día"',
-  'empezá contando que viste su aviso', 'empezá presentándote como de SexyRose', 'usá un tono cálido y simple', 'usá un tono profesional y breve'];
+  'empezá contando que vimos su perfil en otro sitio', 'empezá presentándote como el equipo de SexyRose', 'usá un tono cálido y simple', 'usá un tono profesional y breve'];
 export function pedidoInvitacion(anteriores = [], azar = Math.random) {
   const estilo = ESTILOS[Math.floor(azar() * ESTILOS.length)];
   return {
-    system: 'Escribís invitaciones de WhatsApp para SexyRose, una página nueva de anuncios en Argentina. Le escribís a alguien que publica avisos en '
-      + 'otros sitios. Español rioplatense, con "vos". Reglas: UN solo mensaje de una o dos frases, de no más de 160 caracteres; decí que '
-      + 'sos (o te escribís) de SexyRose, una página nueva de anuncios; que viste su aviso; que crear el perfil o publicar es gratis (la palabra '
-      + 'gratis entre asteriscos: *gratis*); que abrimos (o arrancamos) en diciembre; y terminá con una pregunta corta (por ejemplo "¿Te interesa?" '
-      + 'o "¿Te cuento?"). PROHIBIDO: links o direcciones (ni sexyrose.net ni www), emojis, nombres de personas, hablar de servicios, encuentros, '
-      + 'tarifas o contenido sexual, prometer cosas, y frases para darse de baja. Respondé solo con el mensaje, sin comillas.',
+    system: 'Escribís la primera invitación por WhatsApp del equipo de SexyRose, un sitio nuevo en Argentina donde cada una tiene su propio '
+      + 'perfil con fotos, videos e historias, y más adelante va a poder vender su contenido. Le escribís a alguien que publica su perfil en '
+      + 'otros sitios. Español rioplatense, con "vos", hablando en plural como equipo ("te escribimos", "vimos").\n'
+      + 'Formato: 2 o 3 párrafos MUY cortos, separados por una línea en blanco; en total no más de 230 caracteres.\n'
+      + 'Tiene que decir: que vimos su perfil en otro sitio; que en SexyRose tiene su propio perfil gratis (la palabra gratis entre '
+      + 'asteriscos: *gratis*) con fotos, videos e historias, y que más adelante va a poder vender su contenido; que abrimos en diciembre y '
+      + 'que si se suma ahora sale desde el primer día. Terminá con una pregunta corta ("¿Te interesa?", "¿Te cuento?").\n'
+      + 'PROHIBIDO: links o direcciones (ni sexyrose.net ni www), emojis, nombres de personas, presentarlo como "página de anuncios", hablar '
+      + 'de servicios, encuentros, tarifas o contenido sexual, prometer ganancias, y frases para darse de baja. Respondé solo con el mensaje, '
+      + 'sin comillas.',
     prompt: `Escribí una invitación nueva. Esta vez ${estilo}. Tiene que ser distinta de estas (otras palabras y otro orden):\n`
-      + (anteriores.length ? anteriores.map((m) => '- ' + m).join('\n') : '- ' + MENSAJE_DEFAULT),
+      + (anteriores.length ? anteriores.map((m) => '- ' + m.replace(/\n+/g, ' / ')).join('\n') : '- ' + MENSAJE_DEFAULT.replace(/\n+/g, ' / ')),
   };
 }
 

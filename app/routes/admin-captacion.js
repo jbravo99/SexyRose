@@ -21,7 +21,7 @@ import {
 } from '../lib/captacion.js';
 import { MAX_ARCHIVO, leerPlanilla } from '../lib/xlsx-lector.js';
 import { listarChips } from '../lib/chips.js';
-import { invitacionDe } from '../lib/captacion.js';
+import { invitacionDe, invitacionIaVigente } from '../lib/captacion.js';
 import { LATIDO_VIVO_MS } from '../lib/asistente-comun.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -60,7 +60,7 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
     // mensaje = ajustes de captación: la invitación que escribió la IA para este contacto, o una versión fija (sin link)
     waUrl: mensaje && (x.estado === 'pendiente' || x.estado === 'abierto')
       ? `https://wa.me/${String(x.telefono).replace(/\D/g, '')}?text=${encodeURIComponent(invitacionDe(x, mensaje))}` : null,
-    invitacionIa: Boolean(mensaje && mensaje.ia !== false && x.mensaje),
+    invitacionIa: Boolean(mensaje && mensaje.ia !== false && invitacionIaVigente(x)),
   });
   const SELECT = `SELECT cc.*, p.datos->>'displayName' AS cuenta_nombre,
       (SELECT c.id FROM asistente_conversaciones c WHERE c.captacion_id = cc.id ORDER BY c.ultimo_mensaje DESC NULLS LAST LIMIT 1) AS conv_id
@@ -128,6 +128,42 @@ export function createAdminCaptacionRouter({ pool, apiPost, log = () => {} }) {
   }
 
   r.get('/captacion', ah(async (req, res) => res.json(await resumen(req.query.chip || null))));
+
+  // Resultados de las invitaciones (23/11/2026, pedido de Juan: medir qué funciona): de las invitaciones enviadas en los
+  // últimos `dias` días, cuántas contestaron dentro de las 48 h y cuántas se registraron, por chip, por día y por franja
+  // horaria (hora de Argentina). "En espera": enviadas hace menos de 48 h que todavía no contestaron (pueden contestar).
+  // Cuentan todas las respuestas, también las automáticas de WhatsApp Business.
+  const FRANJAS = [[0, 8, '0 a 8 h'], [8, 12, '8 a 12 h'], [12, 15, '12 a 15 h'], [15, 19, '15 a 19 h'], [19, 24, '19 a 24 h']];
+  r.get('/captacion/resultados', ah(async (req, res) => {
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 14, 1), 90);
+    const { rows } = await pool.query(
+      `SELECT chip,
+              to_char(enviado AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD') AS dia,
+              extract(hour FROM enviado AT TIME ZONE 'America/Argentina/Buenos_Aires')::int AS hora,
+              (respondio IS NOT NULL AND respondio <= enviado + interval '48 hours') AS contesto,
+              (registrado IS NOT NULL OR estado = 'se_registro') AS registro,
+              (estado = 'no_escribir') AS no_escribir,
+              (respondio IS NULL AND enviado > now() - interval '48 hours') AS en_espera
+         FROM captacion_contactos WHERE enviado IS NOT NULL AND enviado > now() - make_interval(days => $1)`, [dias]);
+    const sumar = (clave) => {
+      const m = new Map();
+      for (const x of rows) {
+        const k = clave(x);
+        const g = m.get(k) || { clave: k, enviadas: 0, contestaron: 0, registradas: 0, noEscribir: 0, enEspera: 0 };
+        g.enviadas++; if (x.contesto) g.contestaron++; if (x.registro) g.registradas++; if (x.no_escribir) g.noEscribir++; if (x.en_espera) g.enEspera++;
+        m.set(k, g);
+      }
+      return [...m.values()].map((g) => ({ ...g, tasa: g.enviadas - g.enEspera > 0 ? Math.round((g.contestaron / (g.enviadas - g.enEspera)) * 1000) / 10 : null }));
+    };
+    const franja = (h) => (FRANJAS.find(([a, b]) => h >= a && h < b) || FRANJAS[0])[2];
+    res.json({
+      dias,
+      total: sumar(() => 'Total')[0] || null,
+      porChip: sumar((x) => (x.chip ? String.fromCharCode(64 + Number(x.chip)) : '?')).sort((a, b) => a.clave.localeCompare(b.clave)),
+      porDia: sumar((x) => x.dia).sort((a, b) => b.clave.localeCompare(a.clave)),
+      porFranja: sumar((x) => franja(x.hora)).sort((a, b) => FRANJAS.findIndex((f) => f[2] === a.clave) - FRANJAS.findIndex((f) => f[2] === b.clave)),
+    });
+  }));
 
   r.get('/captacion/contactos', ah(async (req, res) => {
     const args = []; const conds = [];

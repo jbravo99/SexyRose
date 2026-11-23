@@ -909,6 +909,15 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Mensajes seguidos** (23/11/2026, Juan: "esperar hasta 15 segundos, por si mandan otra cosa"): antes de un turno de la IA
+se esperan 15 s desde el último mensaje de la persona que va a la IA (`esperaAgrupar`); si manda otro, se vuelve a esperar
+y se contesta una sola vez leyendo todos. Al vencer contesta solo si nadie le respondió desde ese mensaje y el chat no está
+en silencio. Lo automático (códigos, comprobantes, "¿sos un bot?") sigue siendo inmediato; "responder lo que llegó sin
+conexión" no espera. Presentación (23/11/2026): "Hola, soy el asistente virtual de SexyRose." Estilo: breve si pregunta
+algo puntual; completo en un solo mensaje (párrafos y lista con "• ") si pide todo o dice que sí; en captación, ante un
+"sí, contame", cuenta todo (Bronce gratis, registro, publicar, 7 días para verificar después, diciembre) y cierra con el
+link de registro; planes pagos y Destacado solo si los pregunta.
+
 **Silencio** — `estado = 'humano'` (botón "Pasar a humano" del admin, `derivar_a_juan`, `alerta`, límite) hasta
 "Devolver al asistente". Si Juan escribe desde el teléfono en un chat (mensaje propio que no mandó el bot), el bot calla
 12 h en ese chat (`silenciado_hasta`). En silencio no se procesa nada (ni comprobantes): el mensaje solo queda guardado.
@@ -1096,6 +1105,16 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
   abierto/enviado/no_disponible: "Volver a la cola"). "No escribir" no vuelve nunca a la cola. "Marcar enviado" sobre
   un contacto que ya está enviado o respondió (el asistente lo marcó al ver salir la invitación) devuelve 200 con
   `yaEstaba: true` (22/11/2026); si un cambio falla, la lista del admin se recarga.
+- **Invitación v2** (23/11/2026, migración 360): la que escribe la IA (y las 3 fijas de respaldo) tiene hasta 250
+  caracteres en 2 o 3 párrafos separados por una línea en blanco; en plural como equipo ("te escribimos", "vimos tu perfil
+  en otro sitio"); perfil *gratis* con fotos, videos e historias y más adelante vender su contenido; abrimos en diciembre
+  y sumándose ahora sale desde el primer día; pregunta corta al final; sin link, sin emojis, sin "página de anuncios".
+  `captacion_contactos.mensaje_reglas` = versión de las reglas (`REGLAS_INVITACION`); las de reglas anteriores que siguen
+  "pendiente" se reescriben y mientras tanto va una fija; las "abierto" se respetan. `quitarLink` conserva los párrafos.
+- **Resultados** (`GET /captacion/resultados?dias=14`, 1 a 90): de las enviadas en esos días, por chip, por día y por
+  franja horaria de Argentina (0–8, 8–12, 12–15, 15–19, 19–24): enviadas, contestaron dentro de las 48 h, se registraron,
+  no escribir y "en espera" (menos de 48 h sin respuesta, fuera del porcentaje). Tarjeta "Resultados de las invitaciones"
+  en Captación.
 - **Invitación por defecto** (19/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
   contesta lo mismo con el tema de ayuda `apertura` ("a partir de diciembre" mientras la home provisoria está
   prendida; con el sitio abierto, que ya está abierto).
