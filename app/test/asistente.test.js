@@ -290,7 +290,7 @@ describe('pedidos y comprobantes', () => {
     const llamadas = LLM.llamadas.length;
     await llega(TEL, p1.mensaje);
     const t = ultimoA(TEL);
-    assert.ok(t.startsWith(PRESENTA), t);
+    assert.ok(!t.startsWith('Hola, soy'), 'sin presentación (23/11/2026): ' + t);
     assert.match(t, new RegExp(`Pedido ${p1.codigo}: Trimestre Plata, 105 créditos`));
     assert.match(t, /ARS 137\.800 \(USD 95\)/);
     assert.match(t, /Alias: sexyrose\.pagos/);
@@ -300,7 +300,7 @@ describe('pedidos y comprobantes', () => {
     assert.equal(LLM.llamadas.length, llamadas, 'no usó la IA');
     // "escribiendo…" antes de responder
     assert.ok(SOCK.presencias.some((x) => x.t === 'composing' && x.jid === `${TEL}@s.whatsapp.net`));
-    // la segunda respuesta de la sesión no repite la presentación
+    // 23/11/2026: ninguna respuesta empieza con la presentación
     await llega(TEL, 'mi pedido es ' + p1.codigo);
     assert.ok(!ultimoA(TEL).startsWith(PRESENTA));
     // un mensaje del propio bot que vuelve como fromMe no silencia el chat
@@ -405,9 +405,7 @@ describe('pedidos y comprobantes', () => {
     // sin pedidos en el chat
     await llegaFoto('5491155550004');
     assert.match(ultimoA('5491155550004'), /no encuentro un pedido pendiente/);
-    // un audio o un PDF falso no se aceptan
-    await llega('5491155550004', { audioMessage: { mimetype: 'audio/ogg' } });
-    assert.match(ultimoA('5491155550004'), /comprobantes en foto o PDF/);
+    // un PDF falso no se acepta (los audios pasan a Juan: ver "audios")
     await llega('5491155550004', { documentMessage: { mimetype: 'application/zip', fileLength: 10 } });
     assert.match(ultimoA('5491155550004'), /comprobantes en foto o PDF/);
     await llega('5491155550004', { documentMessage: { mimetype: 'application/pdf', fileLength: 11 * 1024 * 1024 } });
@@ -543,22 +541,22 @@ describe('identificación y permisos', () => {
 });
 
 describe('IA, persona y límites', () => {
-  test('presentación como IA al empezar cada sesión, también en inglés', async () => {
+  test('sin presentación al empezar (23/11/2026), también en inglés; markdown limpio', async () => {
     LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: '**Los planes** se pagan con créditos.' }] });
     await llega('5491155550010', '¿cómo funcionan los planes?');
     const t = ultimoA('5491155550010');
-    assert.equal(t, `${PRESENTA}\n\nLos planes se pagan con créditos.`);
+    assert.equal(t, 'Los planes se pagan con créditos.');
     const ultima = LLM.llamadas[LLM.llamadas.length - 1];
     assert.equal(ultima.model, 'claude-haiku-5-5');
     assert.ok(ultima.tools.some((x) => x.name === 'derivar_a_juan'));
     assert.match(ultima.system, /NO identificado/);
     await llega('447700900123', 'Hi, how can I change my password please?');
-    assert.ok(ultimoA('447700900123').startsWith("Hi, I'm SexyRose's virtual assistant."));
-    // pasadas 24 h sin respuestas del bot, se presenta de nuevo
+    assert.ok(!ultimoA('447700900123').startsWith("Hi, I'm"), 'sin presentación también en inglés');
+    // 23/11/2026: tampoco pasadas 24 h
     const k = await conv('5491155550010');
     await db.query("UPDATE asistente_mensajes SET creado = now() - interval '25 hours' WHERE conversacion_id = $1", [k.id]);
     await llega('5491155550010', 'otra pregunta');
-    assert.ok(ultimoA('5491155550010').startsWith(PRESENTA));
+    assert.ok(!ultimoA('5491155550010').startsWith(PRESENTA));
     LLM.guion = null;
   });
 
@@ -698,6 +696,60 @@ describe('IA, persona y límites', () => {
     assert.equal((await admJson('POST', '/asistente/conversaciones/00000000-0000-0000-0000-000000000000/responder', {})).status, 404);
   });
 
+  test('audios (23/11/2026): el chat pasa a Juan sin contestar; Juan escribe lo que dijo y el agente responde con eso', async () => {
+    const tel = '5491155550019';
+    await llega(tel, 'hola');
+    const antes = enviadosA(tel).length; const tg0 = TG.enviados.length;
+    await llega(tel, { audioMessage: { mimetype: 'audio/ogg' } });
+    assert.equal(enviadosA(tel).length, antes, 'no le contesta nada');
+    let k = await conv(tel);
+    assert.equal(k.estado, 'humano');
+    assert.match(k.motivo_humano, /audio/);
+    assert.ok(await hasta(() => TG.enviados.slice(tg0).find((m) => /llegó un audio/.test(m.text))), 'aviso por Telegram');
+    // Un texto después del audio tampoco se contesta (lo atiende Juan)
+    await llega(tel, '¿me escuchaste?');
+    assert.equal(enviadosA(tel).length, antes);
+    // En el admin: Juan escribe lo que dijo debajo del audio
+    let d = await (await adm('/asistente/conversaciones/' + k.id)).json();
+    const audio = d.mensajes.find((m) => m.tipo === 'audio');
+    assert.ok(audio && !audio.texto);
+    const n0 = LLM.llamadas.length;
+    LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: 'El plan Bronce es gratis.' }] });
+    let r = await admJson('POST', `/asistente/conversaciones/${k.id}/mensajes/${audio.id}/audio`, { texto: 'Quiero saber cuánto cuesta publicar' });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.equal(j.responde, true);
+    assert.equal(j.conversacion.estado, 'bot');
+    assert.ok(await hasta(() => enviadosA(tel).length === antes + 1), 'responde el agente');
+    assert.equal(ultimoA(tel), 'El plan Bronce es gratis.');
+    assert.match(JSON.stringify(LLM.llamadas[n0].messages), /Mandó un audio; lo que dijo, escrito por el equipo:\) Quiero saber cuánto cuesta publicar/);
+    LLM.guion = null;
+    d = await (await adm('/asistente/conversaciones/' + k.id)).json();
+    assert.equal(d.mensajes.find((m) => m.id === audio.id).texto, 'Quiero saber cuánto cuesta publicar');
+    // Validaciones
+    assert.equal((await admJson('POST', `/asistente/conversaciones/${k.id}/mensajes/${audio.id}/audio`, { texto: ' ' })).status, 400);
+    const txt = d.mensajes.find((m) => m.tipo === 'texto' && m.dir === 'in');
+    assert.equal((await admJson('POST', `/asistente/conversaciones/${k.id}/mensajes/${txt.id}/audio`, { texto: 'x' })).status, 404, 'solo audios');
+    // Ya respondido: se guarda igual pero no pide otra respuesta
+    r = await (await admJson('POST', `/asistente/conversaciones/${k.id}/mensajes/${audio.id}/audio`, { texto: 'Corrijo: cuánto cuesta' })).json();
+    assert.equal(r.responde, false);
+    assert.match(r.aviso, /es nuestro/);
+  });
+
+  test('respuesta vacía de la IA (23/11/2026): un reintento; si vuelve vacía, pasa a una persona con aviso', async () => {
+    const tel = '5491155550020';
+    let n = 0;
+    LLM.guion = () => { n++; return n === 1 ? { stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '...' }] } : { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Segunda vez sí.' }] }; };
+    await llega(tel, '¿qué es el Destacado?');
+    assert.equal(ultimoA(tel), 'Segunda vez sí.');
+    LLM.guion = () => ({ stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '...' }] });
+    const tg0 = TG.enviados.length;
+    await llega(tel, '¿y cuánto sale?');
+    assert.match(ultimoA(tel), /Te va a responder una persona del equipo/);
+    assert.ok(await hasta(() => TG.enviados.slice(tg0).find((m) => /respuesta vacía/.test(m.text))));
+    LLM.guion = null;
+  });
+
   test('límite de 20 mensajes por hora: pasa a una persona', async () => {
     const tel = '5491155550015';
     await llega(tel, 'hola');
@@ -770,7 +822,7 @@ describe('IA, persona y límites', () => {
     });
     const jid = '5491155550017@s.whatsapp.net';
     await sinClave.recibir({ jid, telefono: '5491155550017', waId: 'k1', tipo: 'texto', texto: '¿qué es el Destacado?' });
-    assert.equal(enviados.at(-1).t, `${PRESENTA}\n\nTe va a responder una persona del equipo.`);
+    assert.equal(enviados.at(-1).t, 'Te va a responder una persona del equipo.');
     const g = await acompanante({ nombre: 'Gala' });
     const p = await pedido(g.id, 'inicial');
     await sinClave.recibir({ jid, telefono: '5491155550017', waId: 'k2', tipo: 'texto', texto: `Pedido ${p.codigo}` });
@@ -828,7 +880,7 @@ describe('cuenta en dólares (16/11/2026)', () => {
     const llamadas = LLM.llamadas.length;
     await llega(tel, p.mensaje);
     let t = ultimoA(tel);
-    assert.ok(t.startsWith(PRESENTA + '\n\n'), t);
+    assert.ok(t.startsWith('Pedido '), t);
     assert.match(t, new RegExp(`Pedido ${p.codigo}: Trimestre Plata, 105 créditos\\.\\n¿Vas a transferir en pesos o en dólares\\?$`));
     assert.doesNotMatch(t, /Alias|ARS/);
     assert.equal((await conv(tel)).pago_esperando_moneda, true);
@@ -1301,7 +1353,7 @@ describe('admin: conversaciones, desvincular y limpieza', () => {
     assert.ok((await r.json()).items.some((i) => i.id === x.id));
     r = await adm('/asistente/conversaciones/' + x.id);
     const d = await r.json();
-    assert.ok(d.mensajes.some((m) => m.origen === 'bot' && m.texto.startsWith(PRESENTA)));
+    assert.ok(d.mensajes.some((m) => m.origen === 'bot' && m.texto));
     assert.ok(d.pedidos.length >= 3);
     const conArchivo = d.mensajes.find((m) => m.archivo);
     r = await adm(`/asistente/conversaciones/${x.id}/mensajes/${conArchivo.id}/archivo`);

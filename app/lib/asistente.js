@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import {
   CODIGO_EMAIL_INTENTOS, LIMITE_HORA, MAX_MEDIA, SILENCIO_JUAN_HORAS, hashCodigo, hashToken, leerAjustes, sinContacto, telefonoComparable,
 } from './asistente-comun.js';
-import { texto, presentacion, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto, esCierre } from './asistente-textos.js';
+import { texto, detectarIdioma, preguntaSiEsBot, codigoEnTexto, monedaEnTexto, esCierre } from './asistente-textos.js';
 import { textoAyuda } from './asistente-ayuda.js';
 import { promptSistema, limpiarRespuesta, HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR } from './asistente-llm.js';
 import { creditosEnOtroChip, letraDe } from './chips.js';
@@ -47,6 +47,7 @@ export class NoConectado extends Error { constructor() { super('WhatsApp no est�
 // espera ese tiempo desde el último mensaje de la persona; si manda otro, se vuelve a esperar y se contesta una sola vez,
 // leyendo todos. 0 = enseguida (las pruebas).
 export const ESPERA_AGRUPAR_MS = 15000;
+export const MOTIVO_AUDIO = 'Mandó un audio: escribí lo que dijo debajo del audio';
 export function createAsistente({ pool, creditos, planes, privado, telegram, llm = null, siteUrl = 'https://sexyrose.net', log = () => {}, enviar = null,
   pausaRecuperar = () => new Promise((r) => setTimeout(r, 40000 + Math.floor(Math.random() * 35000))), esperaAgrupar = ESPERA_AGRUPAR_MS }) {
   const url = String(siteUrl || 'https://sexyrose.net').replace(/\/+$/, '');
@@ -96,15 +97,14 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     return (rows[0] && rows[0].n) || '';
   }
 
-  // Responde en el chat. La primera respuesta de cada sesión (sin respuestas del bot en 24 h) empieza con la
-  // presentación como IA. forzar = mandar aunque el chat ya esté en "humano" (aviso de que pasa a una persona).
+  // Responde en el chat. forzar = mandar aunque el chat ya esté en "humano" (aviso de que pasa a una persona).
+  // 23/11/2026 (Juan, consultado con su abogado: "al decir 'soy el asistente virtual' se pierde contacto y queda muy
+  // largo"): ya no empieza con la presentación. Si le preguntan si es un bot, sigue diciendo que es una IA.
   async function responder(conv, t, { forzar = false } = {}) {
     const c = await releer(conv.id);
     if (!c || (!forzar && silenciado(c))) return false;
     if (!enviarWa) throw new NoConectado();
-    const { rows } = await pool.query(
-      "SELECT 1 FROM asistente_mensajes WHERE conversacion_id = $1 AND origen = 'bot' AND creado > now() - interval '24 hours' LIMIT 1", [c.id]);
-    const final = rows[0] ? String(t) : `${presentacion(c.idioma)}\n\n${t}`;
+    const final = String(t);
     const waId = await enviarWa(c.jid, final, Number(c.chip) || 1);
     await guardarMensaje(c, { dir: 'out', origen: 'bot', texto: final, waId: waId || null });
     return true;
@@ -123,6 +123,12 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     await pool.query("UPDATE asistente_conversaciones SET estado = 'humano', motivo_humano = $2, actualizado = now() WHERE id = $1", [conv.id, String(motivo || '').slice(0, 200)]);
     await avisarJuan(conv, 'Asistente: un chat de WhatsApp pasa a vos.', motivo, 'asistente_derivacion');
     log('asistente: chat derivado a una persona');
+  }
+  async function audioAJuan(conv) {
+    await pool.query("UPDATE asistente_conversaciones SET estado = 'humano', motivo_humano = $2, actualizado = now() WHERE id = $1",
+      [conv.id, MOTIVO_AUDIO]);
+    await avisarJuan(conv, 'Asistente: llegó un audio por WhatsApp. Escuchalo y escribí lo que dice debajo del audio en el admin (Mensajería → Conversaciones): el agente le responde con eso.', null, 'asistente_derivacion');
+    log('asistente: llegó un audio; el chat pasa a una persona');
   }
   async function alertar(conv, tipo, motivo) {
     await decir(conv, 'alertaNeutral').catch((e) => log('asistente: no se pudo responder la alerta:', e.code || e.message));
@@ -585,7 +591,8 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     for (const m of rows.reverse()) {
       const role = m.dir === 'in' ? 'user' : 'assistant';
       let t = m.texto || '';
-      if (m.tipo !== 'texto') t = `[${m.tipo === 'imagen' || m.tipo === 'documento' ? 'archivo' : m.tipo}]${t ? ' ' + t : ''}`;
+      if (m.tipo === 'audio' && t) t = `(Mandó un audio; lo que dijo, escrito por el equipo:) ${t}`;
+      else if (m.tipo !== 'texto') t = `[${m.tipo === 'imagen' || m.tipo === 'documento' ? 'archivo' : m.tipo}]${t ? ' ' + t : ''}`;
       if (m.origen === 'juan') t = '(Escribió una persona del equipo) ' + t;
       if (m.origen === 'captacion') t = '(Invitación que le mandó el equipo) ' + t;
       if (!t.trim()) continue;
@@ -609,21 +616,25 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     let herrs = captacion ? [...HERRAMIENTAS, HERRAMIENTA_NO_CONTACTAR] : HERRAMIENTAS;
     if (creditosEn) herrs = herrs.filter((h) => !SOLO_CHIP_CREDITOS.includes(h.name));
     let r;
-    try {
-      r = await llm.conversar({
-        system: promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion, creditosEn, demorado: demorados.has(c.id) }),
-        mensajes, ejecutar: (nombre, input) => (creditosEn && SOLO_CHIP_CREDITOS.includes(nombre)
-          ? { resultado: { error: `En este número no se compran créditos: pasale este link ${creditosEn}` } }
-          : herramienta(c.id, nombre, input)),
-        herramientas: herrs,
-      });
-    } catch (e) {
-      log('asistente: la IA no respondió:', e.message);
-      return sinIa(c, 'la IA no respondió');
+    const sistema = promptSistema({ siteUrl: url, identificado: Boolean(c.cuenta_id), nombre: await nombreCuenta(c.cuenta_id), idioma: c.idioma, captacion, creditosEn, demorado: demorados.has(c.id) });
+    const ejecutar = (nombre, input) => (creditosEn && SOLO_CHIP_CREDITOS.includes(nombre)
+      ? { resultado: { error: `En este número no se compran créditos: pasale este link ${creditosEn}` } }
+      : herramienta(c.id, nombre, input));
+    // Respuesta vacía (23/11/2026: el modelo a veces se queda sin lugar razonando): un reintento; si vuelve vacía, pasa a
+    // una persona con el aviso de siempre en vez de quedarse callado.
+    for (let intento = 0; intento < 2; intento++) {
+      try {
+        r = await llm.conversar({ system: sistema, mensajes, ejecutar, herramientas: herrs });
+      } catch (e) {
+        log('asistente: la IA no respondió:', e.message);
+        return sinIa(c, 'la IA no respondió');
+      }
+      if (r.detenido) return;
+      if (limpiarRespuesta(r.texto) || (r.usadas && r.usadas.length)) break;
     }
-    if (r.detenido) return;
     const t = limpiarRespuesta(r.texto);
     if (t) await responder(c, t);
+    else if (!(r.usadas && r.usadas.length)) { log('asistente: la IA devolvió dos respuestas vacías'); return sinIa(c, 'la IA devolvió una respuesta vacía'); }
   }
 
   // ---------- Agrupar mensajes seguidos (23/11/2026) ----------
@@ -679,6 +690,9 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
     if (!conv.cuenta_id && conv.telefono) conv = await identificarPorTelefono(conv);
 
     if (ev.tipo === 'imagen' || ev.tipo === 'documento') { await manejarArchivo(conv, ev, msg); return { archivo: true }; }
+    // Audio (23/11/2026, Juan: "cuando haya audios pasarlo a humano y que yo pueda escribir debajo del audio lo que dijo"):
+    // el chat pasa a Juan sin contestarle nada; él escribe en el admin lo que dijo y el agente le responde con eso.
+    if (ev.tipo === 'audio') { await audioAJuan(conv); return { audio: true }; }
     if (ev.tipo !== 'texto') { await decir(conv, 'soloComprobantes'); return { otro: true }; }
     const txt = String(ev.texto || '').trim();
     if (!txt) return { vacio: true };

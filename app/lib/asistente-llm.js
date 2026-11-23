@@ -123,8 +123,8 @@ Datos de la cuenta (estado del perfil, plan, saldo, pedidos) y pedidos nuevos so
 Si pregunta por qué se eliminó su cuenta: usá "motivo_eliminacion" (busca solo por el número de este chat; no hace falta identificar el chat ni pedir el email, la cuenta ya no existe). Si lo encuentra, decile la fecha y el motivo tal como está escrito, en pocas palabras y con amabilidad, sin agregar opiniones, consejos para apelar ni detalles internos. Si no lo encuentra, decile que desde este chat no podés ver ese dato y usá "derivar_a_juan". Nunca des datos de otra cuenta ni de otro número.
 Para pagar un pedido: "datos_transferencia" le manda los datos en un mensaje aparte (con "moneda" ARS o USD si dijo en qué moneda va a transferir); no los repitas. Los comprobantes de pago se mandan como foto o PDF en este chat.
 
-${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le escribió porque vio su perfil publicado en otro sitio y la invitó a crear su perfil en SexyRose. Respondé sus preguntas sobre crear el perfil, el plan Bronce (gratis), los planes, las fotos, la verificación y cómo registrarse (${url}/registro), con la herramienta "ayuda" (temas registro, planes, fotos, verificacion, publicar, apertura, contenido) y "precios". Si pregunta de dónde sacamos su número: de su aviso publicado en otro sitio. No insistas ni la presiones. Si no le interesa, pide que no le escribamos, se enoja o insulta: usá "no_contactar".
-Si responde que sí a la invitación o pide información ("sí", "contame", "info", "me interesa", "¿cómo es?"), NO le preguntes "¿en qué te puedo ayudar?" ni "¿querés que te cuente?": contale todo de una vez, en ese orden: el plan Bronce es gratis; se registra en ${url}/registro y carga su perfil (nombre artístico, ciudad, WhatsApp o Telegram y al menos 3 fotos reales); lo publicamos y después tiene 7 días para verificar su identidad desde su panel (el documento nunca se publica); abrimos en diciembre, así que si se registra ahora ya queda lista. Cerrá con el link de registro, sin otra pregunta. Los planes pagos y Destacado, solo si los pregunta.
+${captacion ? `Este chat empezó con una invitación de SexyRose: el equipo le escribió porque vio su perfil publicado en otro sitio y la invitó a crear su perfil en SexyRose. Respondé sus preguntas sobre crear el perfil, el plan Bronce (gratis), los planes, las fotos, la verificación y cómo registrarse (${url}/registro), con la herramienta "ayuda" (temas registro, planes, fotos, verificacion, publicar, apertura, contenido) y "precios". Si pregunta de dónde sacamos su número: de su aviso publicado en otro sitio. No insistas ni la presiones, pero NUNCA le ofrezcas dejar de escribirle ni le preguntes si prefiere que no le escribamos: "no_contactar" se usa solo si ELLA dice que no le interesa, pide que no le escribamos, se enoja o insulta.
+Cualquier respuesta a la invitación que no sea un rechazo claro es interés, aunque sea corta, ambigua o con errores ("sí", "contame", "info", "me interesa", "¿cómo es?", "qq como", "qué es", "?", "a ver", "de qué se trata"): NO le preguntes "¿en qué te puedo ayudar?" ni "¿querés que te cuente?", no le repitas la invitación ni contestes saludos que no hizo (nada de "Todo bien"): contale todo de una vez, en ese orden: el plan Bronce es gratis; se registra en ${url}/registro y carga su perfil (nombre artístico, ciudad, WhatsApp o Telegram y al menos 3 fotos reales); lo publicamos y después tiene 7 días para verificar su identidad desde su panel (el documento nunca se publica); abrimos en diciembre, así que si se registra ahora ya queda lista. Cerrá con el link de registro, sin otra pregunta. Los planes pagos y Destacado, solo si los pregunta. Hablá en plural como equipo, igual que la invitación ("te escribimos", "vimos"), nunca "te escribo".
 
 ` : ''}${creditosEn ? `En este número no se compran créditos: si quiere comprar créditos, pagar un pedido o mandar un comprobante, pasale este link al WhatsApp de créditos de SexyRose: ${creditosEn}. Todo lo demás lo respondés acá.
 
@@ -132,10 +132,12 @@ Si responde que sí a la invitación o pide información ("sí", "contame", "inf
 
 ` : ''}Estado de este chat: ${identificado ? `identificado (cuenta: ${nombre || 'sin nombre artístico'})` : 'NO identificado'}.
 Idioma: respondé en el idioma de la persona (${idioma === 'en' ? 'inglés' : idioma === 'pt' ? 'portugués' : 'español rioplatense, con "vos"'}).
-Estilo (21/11/2026, Juan: "estas personas no leen mucho"; 23/11/2026: "breve, pero completo cuando lo piden"): mensajes cortos de WhatsApp, como los escribiría una persona. Si pregunta una cosa puntual, contestá solo eso en 2 o 3 renglones (unos 300 caracteres): de los textos de ayuda tomá la parte que responde la pregunta, no los copies enteros. Si pide que le expliques todo, pide información en general o dice que sí a algo que le ofreciste, dáselo completo en UN mensaje: párrafos cortos separados por una línea en blanco y, para enumerar, una lista con "• " al principio de cada renglón (como máximo unos 8 renglones en total). Nunca la hagas responder "sí" varias veces para darle la información de a poco: como mucho una pregunta para ofrecer algo más, y si dice que sí, dale eso y lo que sigue sin otra pregunta. La verificación de identidad siempre como un paso posterior: primero se publica el perfil y después tiene 7 días para mandarla; el documento nunca se publica. No repitas lo que ya dijiste en el chat. Sin saludar de nuevo (el sistema ya se presenta), sin markdown, sin tablas, sin asteriscos ni títulos. Si solo agradece o se despide, contestá con muy pocas palabras o nada más que una despedida corta, una sola vez.`;
+Estilo (21/11/2026, Juan: "estas personas no leen mucho"; 23/11/2026: "breve, pero completo cuando lo piden"): mensajes cortos de WhatsApp, como los escribiría una persona. Si pregunta una cosa puntual, contestá solo eso en 2 o 3 renglones (unos 300 caracteres): de los textos de ayuda tomá la parte que responde la pregunta, no los copies enteros. Si pide que le expliques todo, pide información en general o dice que sí a algo que le ofreciste, dáselo completo en UN mensaje: párrafos cortos separados por una línea en blanco y, para enumerar, una lista con "• " al principio de cada renglón (como máximo unos 8 renglones en total). Nunca la hagas responder "sí" varias veces para darle la información de a poco: como mucho una pregunta para ofrecer algo más, y si dice que sí, dale eso y lo que sigue sin otra pregunta. La verificación de identidad siempre como un paso posterior: primero se publica el perfil y después tiene 7 días para mandarla; el documento nunca se publica. No repitas lo que ya dijiste en el chat. Sin presentarte ni saludar de nuevo si ya hubo saludo en el chat (si es el primer mensaje, como mucho un "Hola" corto), sin markdown, sin tablas, sin asteriscos ni títulos. Si solo agradece o se despide, contestá con muy pocas palabras o nada más que una despedida corta, una sola vez.`;
 }
 
-export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = () => {}, timeoutMs = 30000, maxTokens = 700 } = {}) {
+// maxTokens (23/11/2026): el modelo a veces razona antes de escribir y ese razonamiento usa el mismo límite; con 700
+// (300 en las invitaciones) a veces se quedaba sin lugar y devolvía la respuesta vacía.
+export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = () => {}, timeoutMs = 60000, maxTokens = 2000 } = {}) {
   const doFetch = fetchImpl || (typeof fetch === 'function' ? fetch : null);
   const model = String(modelo || '').trim() || MODELO_DEFAULT;
   const disponible = Boolean(apiKey) && Boolean(doFetch);
@@ -165,7 +167,10 @@ export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = ()
       const bloques = Array.isArray(d.content) ? d.content : [];
       const texto = bloques.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
       const usos = bloques.filter((b) => b.type === 'tool_use');
-      if (d.stop_reason !== 'tool_use' || !usos.length) return { texto, usadas, detenido: false };
+      if (d.stop_reason !== 'tool_use' || !usos.length) {
+        if (!texto) log(`asistente: la IA no devolvió texto (${d.stop_reason || '?'})`);
+        return { texto, usadas, detenido: false, fin: d.stop_reason || null };
+      }
       msgs.push({ role: 'assistant', content: bloques });
       const resultados = [];
       let detener = false;
@@ -186,10 +191,12 @@ export function createLlm({ apiKey = '', modelo = '', fetchImpl = null, log = ()
   }
 
   // Un pedido simple, sin herramientas (invitaciones de captación, 22/11/2026). Devuelve el texto.
-  async function completar({ system, prompt, maxTokens: mt = 200, temperatura = 1 }) {
+  async function completar({ system, prompt, maxTokens: mt = 1500, temperatura = 1 }) {
     if (!disponible) throw new LlmError('falta ANTHROPIC_API_KEY');
     const d = await llamar({ model, max_tokens: mt, temperature: temperatura, system, messages: [{ role: 'user', content: String(prompt) }] });
-    return (Array.isArray(d.content) ? d.content : []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    const t = (Array.isArray(d.content) ? d.content : []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    if (!t) log(`la IA no devolvió texto (${d.stop_reason || '?'})`);
+    return t;
   }
 
   return { disponible, modelo: model, conversar, completar };

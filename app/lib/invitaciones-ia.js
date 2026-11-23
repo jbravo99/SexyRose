@@ -42,7 +42,7 @@ export function createInvitacionesIa({ pool, llm, log = () => {}, azar = Math.ra
           try {
             const p = pedidoInvitacion(anteriores, azar);
             const prompt = previa ? correccionInvitacion(previa, falla) : p.prompt;
-            const crudo = await llm.completar({ system: p.system, prompt, maxTokens: 300 });
+            const crudo = await llm.completar({ system: p.system, prompt, maxTokens: 1500 });
             const r = revisarInvitacion(crudo);
             if (r.texto && anteriores.includes(r.texto)) { previa = null; log('captación: invitación descartada: repetida'); continue; }
             if (r.texto) ok = r.texto;

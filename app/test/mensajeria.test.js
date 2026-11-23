@@ -506,10 +506,15 @@ describe('captación en el agente', () => {
     assert.equal((await cap('+' + tel)).estado, 'respondio');
     assert.ok((await cap('+' + tel)).respondio);
     const t = ultimoA(tel);
-    assert.ok(t.startsWith(PRESENTA), t);
+    assert.ok(!t.startsWith(PRESENTA), 'sin presentación (23/11/2026): ' + t);
     assert.match(t, /plan Bronce/);
     const b = LLM.llamadas[n0];
     assert.match(b.system, /invitación de SexyRose/);
+    // 23/11/2026 ("Qq como" → "Todo bien… ¿preferís que no te escribamos?"): lo ambiguo es interés; nunca ofrecer la baja
+    assert.match(b.system, /"qq como"/);
+    assert.match(b.system, /NUNCA le ofrezcas dejar de escribirle/);
+    assert.match(b.system, /nada de "Todo bien"/);
+    assert.match(b.system, /nunca "te escribo"/);
     assert.match(b.system, /de su aviso publicado en otro sitio/);
     assert.ok(b.tools.some((h) => h.name === 'no_contactar'));
     LLM.guion = null;
@@ -538,7 +543,7 @@ describe('captación en el agente', () => {
     const x = await cap('+' + tel);
     assert.equal(x.estado, 'no_escribir');
     assert.ok(x.respondio && x.no_escribir);
-    assert.equal(ultimoA(tel), `${PRESENTA}\n\nPerfecto, no te vamos a escribir más. Disculpá la molestia.`);
+    assert.equal(ultimoA(tel), 'Perfecto, no te vamos a escribir más. Disculpá la molestia.');
     assert.equal(LLM.llamadas.length, n0, 'sin IA');
     const antes = enviadosA(tel).length;
     await llega(tel, 'NO');
@@ -556,7 +561,7 @@ describe('captación en el agente', () => {
     await llega(tel, MENSAJE_DEFAULT, { fromMe: true }); // ya estaba "enviado": reenvío, no silencia
     assert.equal((await conv(tel)).silenciado_hasta, null);
     await llega(tel, '¿Quién te dio mi número?');
-    assert.equal(ultimoA(tel), `${PRESENTA}\n\nTu número lo vimos en tu aviso publicado en otro sitio. Perfecto, no te vamos a escribir más. Disculpá la molestia.`);
+    assert.equal(ultimoA(tel), 'Tu número lo vimos en tu aviso publicado en otro sitio. Perfecto, no te vamos a escribir más. Disculpá la molestia.');
     assert.equal((await cap('+' + tel)).estado, 'no_escribir');
 
     const tel2 = '5491155550205';
@@ -567,7 +572,7 @@ describe('captación en el agente', () => {
     await llega(tel2, 'Mirá, la verdad que ahora estoy con otras cosas y prefiero que no');
     LLM.guion = null;
     assert.equal((await cap('+' + tel2)).estado, 'no_escribir');
-    assert.equal(ultimoA(tel2), `${PRESENTA}\n\nPerfecto, no te vamos a escribir más. Disculpá la molestia.`);
+    assert.equal(ultimoA(tel2), 'Perfecto, no te vamos a escribir más. Disculpá la molestia.');
   });
 
   test('si después Juan escribe a mano en ese chat, rige el silencio de 12 h de siempre', async () => {

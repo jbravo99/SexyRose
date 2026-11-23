@@ -909,6 +909,21 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Audios** (23/11/2026, pedido de Juan): un audio pasa el chat a Juan (`estado = 'humano'`, motivo "Mandó un audio…") sin
+contestarle nada, con aviso por Telegram. En la conversación del admin, debajo del audio, Juan escribe lo que dijo
+(`POST /asistente/conversaciones/:id/mensajes/:mid/audio {texto}`, hasta 2000): queda en el mensaje del audio, el chat
+vuelve al asistente y el agente responde (como "Agente responda último mensaje"); la IA lo lee como "(Mandó un audio; lo
+que dijo, escrito por el equipo:) …". Si no se puede pedir la respuesta (chip desconectado o el último mensaje ya es
+nuestro), el texto igual se guarda y avisa por qué.
+**Sin presentación** (23/11/2026, Juan, consultado con su abogado): las respuestas ya no empiezan con "Hola, soy el
+asistente…". Si preguntan si es un bot, sigue diciendo que es una IA ("¿sos un bot?").
+**Respuesta vacía** (23/11/2026): el modelo a veces razona y se queda sin lugar; límites 2000 (chat) y 1500
+(invitaciones). Si la respuesta del chat llega vacía, un reintento; si vuelve vacía, "Te va a responder una persona" y
+aviso (sinIa). Queda en el log.
+**Captación, respuestas** (23/11/2026, chat "Qq como"): cualquier respuesta que no sea un rechazo claro es interés y se
+cuenta todo de una; nunca ofrecer la baja ni preguntar si prefiere que no le escribamos; sin "Todo bien" ni repetir la
+invitación; en plural como equipo.
+
 **Mensajes seguidos** (23/11/2026, Juan: "esperar hasta 15 segundos, por si mandan otra cosa"): antes de un turno de la IA
 se esperan 15 s desde el último mensaje de la persona que va a la IA (`esperaAgrupar`); si manda otro, se vuelve a esperar
 y se contesta una sola vez leyendo todos. Al vencer contesta solo si nadie le respondió desde ese mensaje y el chat no está

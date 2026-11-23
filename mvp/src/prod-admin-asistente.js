@@ -326,9 +326,17 @@
       const msgs = (d.mensajes || []).map((m) => {
         const quien = m.dir === 'in' ? (c.cuenta && c.cuenta.nombre ? c.cuenta.nombre : c.telefono) : ORIGEN[m.origen];
         const archivo = m.archivo ? `<div class="pa-priv asis-adj" data-blob="/asistente/conversaciones/${esc(c.id)}/mensajes/${esc(m.id)}/archivo" data-alt="Comprobante">${loadingCard(1)}</div>` : '';
-        const tipo = !m.archivo && m.tipo !== 'texto' ? `<div class="small muted">${esc({ imagen: 'Foto', documento: 'Archivo', audio: 'Audio', video: 'Video' }[m.tipo] || 'Mensaje')} (no se guarda)</div>` : '';
+        const tipo = !m.archivo && m.tipo !== 'texto' ? `<div class="small muted">${esc({ imagen: 'Foto', documento: 'Archivo', audio: 'Audio', video: 'Video' }[m.tipo] || 'Mensaje')} (no se guarda${m.tipo === 'audio' ? ': escuchalo en el teléfono del chip' : ''})</div>` : '';
+        // Audio (23/11/2026): Juan escribe lo que dijo y el agente responde con eso
+        const audio = m.dir === 'in' && m.tipo === 'audio';
+        const cuerpo = audio
+          ? (m.texto
+            ? `<div class="tiny muted">Lo que dijo (lo escribiste vos):</div><div class="pa-pre" data-noi18n>${esc(m.texto)}</div>`
+            : `<div class="field" style="margin-top:6px"><label class="tiny muted" for="asisAudio${esc(m.id)}">Lo que dijo en el audio</label><textarea class="textarea" id="asisAudio${esc(m.id)}" rows="3" maxlength="2000" placeholder="Escribí lo que dijo y el agente le responde con eso"></textarea></div>
+               <div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-action="asisAudio" data-id="${esc(c.id)}" data-m="${esc(m.id)}">${icon('send')} Guardar y que responda el agente</button></div>`)
+          : (m.texto ? `<div class="pa-pre" data-noi18n>${esc(m.texto)}</div>` : '');
         return `<div class="mod-msg ${m.dir === 'in' ? 'cli' : 'aco'}${m.origen === 'juan' ? ' asis-juan' : ''}"><div class="small"><strong data-noi18n>${esc(quien)}</strong> <span class="tiny muted">${fecha(m.creado)}</span></div>
-          ${archivo}${tipo}${m.texto ? `<div class="pa-pre" data-noi18n>${esc(m.texto)}</div>` : ''}</div>`;
+          ${archivo}${tipo}${cuerpo}</div>`;
       }).join('');
       const chat = `<section class="card stack" style="gap:10px"><div class="row between"><div class="card-title">${icon('chat')} Chat</div><span class="small muted">${(d.mensajes || []).length} mensajes</span></div>
           <div class="mod-chat">${msgs || '<p class="small muted">Sin mensajes.</p>'}</div>
@@ -454,6 +462,20 @@
       HH.confirm({ title: `Quitar el chip ${l}`, text: '<span>El asistente se desconecta de ese chip y se borra su sesión.</span> <span>Sus chats quedan en Conversaciones. La letra no se vuelve a usar.</span>', okLabel: 'Quitar chip', cls: 'danger', onOk: () => {
         HH.api('DELETE', '/asistente/chips/' + encodeURIComponent(id), {}).then((d) => { S.asis = d; HH.toast(`Chip ${l} quitado`, { type: 'ok' }); rerender(); }).catch(fail);
       } });
+    },
+    asisAudio(el) {
+      const id = el.dataset.id; const mid = el.dataset.m;
+      const ta = document.getElementById('asisAudio' + mid);
+      const texto = ta ? ta.value.trim() : '';
+      if (!texto) { HH.toast('Escribí lo que dijo en el audio.', { type: 'warn' }); return; }
+      const recargar = () => { load('asd:' + id, '/asistente/conversaciones/' + encodeURIComponent(id), true); load('asc', '/asistente/conversaciones', true); };
+      el.disabled = true;
+      HH.api('POST', '/asistente/conversaciones/' + encodeURIComponent(id) + '/mensajes/' + encodeURIComponent(mid) + '/audio', { texto })
+        .then((r) => {
+          if (r && r.responde) { HH.toast('Guardado: el agente está respondiendo', { type: 'ok' }); setTimeout(recargar, 6000); setTimeout(recargar, 15000); }
+          else HH.toast(`Guardado. ${(r && r.aviso) || 'El agente no pudo responder ahora.'}`, { type: 'warn' });
+          recargar();
+        }).catch((x) => { el.disabled = false; fail(x); });
     },
     asisResponder(el) {
       const id = el.dataset.id;

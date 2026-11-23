@@ -292,8 +292,8 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
   // una persona). Vuelve al asistente (sin silencio) y el agente contesta YA el último mensaje de la otra persona,
   // leyendo todo el chat (también lo que escribió Juan) y aunque parezca una despedida. Se le pide por la base
   // (asistente_salida, tipo 'responder'). Solo si el último mensaje es de la otra persona y el chip está conectado.
-  r.post('/asistente/conversaciones/:id/responder', apiPost, ah(async (req, res) => {
-    const id = uuid(req.params.id);
+  // Pide al agente que responda ya el chat (lo usan el botón y "lo que dijo en el audio"). Error si no se puede.
+  async function pedirRespuesta(id) {
     const { rows } = await pool.query('SELECT id, chip FROM asistente_conversaciones WHERE id = $1', [id]);
     if (!rows[0]) throw he(404, 'Conversación no encontrada.');
     const chip = Number(rows[0].chip) || 1;
@@ -310,8 +310,30 @@ export function createAdminAsistenteRouter({ pool, privado, apiPost, log = () =>
       "INSERT INTO asistente_salida (destino, tipo, conversacion_id, clave) VALUES ('whatsapp', 'responder', $1, $2) ON CONFLICT (clave) DO NOTHING",
       [id, `responder:${id}:${u.rows[0].id}`]);
     log(`asistente: chip ${letra}: el admin pidió que el agente responda un chat`);
-    const c = await pool.query(`${SELECT_CONV} WHERE c.id = $1`, [id]);
-    res.json({ ok: true, conversacion: conversacionJson(c.rows[0]) });
+  }
+  const convJson = async (id) => conversacionJson((await pool.query(`${SELECT_CONV} WHERE c.id = $1`, [id])).rows[0]);
+
+  r.post('/asistente/conversaciones/:id/responder', apiPost, ah(async (req, res) => {
+    const id = uuid(req.params.id);
+    await pedirRespuesta(id);
+    res.json({ ok: true, conversacion: await convJson(id) });
+  }));
+
+  // Audio (23/11/2026, pedido de Juan): el chat pasó a él; escribe lo que dijo la persona debajo del audio y el agente le
+  // responde con eso (el texto queda guardado en el mensaje del audio y la IA lo lee como lo que dijo). Si no se puede
+  // pedir la respuesta (chip desconectado, el último mensaje ya es nuestro), el texto igual queda guardado.
+  r.post('/asistente/conversaciones/:id/mensajes/:mid/audio', apiPost, ah(async (req, res) => {
+    const id = uuid(req.params.id);
+    if (!/^\d{1,18}$/.test(String(req.params.mid))) throw he(404, 'No encontrado.');
+    const texto = String(body(req).texto || '').trim();
+    if (!texto) throw he(400, 'Escribí lo que dijo en el audio.');
+    if (texto.length > 2000) throw he(400, 'Como máximo 2000 caracteres.');
+    const { rowCount } = await pool.query(
+      "UPDATE asistente_mensajes SET texto = $3 WHERE id = $1 AND conversacion_id = $2 AND dir = 'in' AND tipo = 'audio'", [req.params.mid, id, texto]);
+    if (!rowCount) throw he(404, 'Audio no encontrado.');
+    let responde = true; let aviso = null;
+    try { await pedirRespuesta(id); } catch (e) { if (!e.expose) throw e; responde = false; aviso = e.message; }
+    res.json({ ok: true, responde, aviso, conversacion: await convJson(id) });
   }));
 
   r.use('/asistente', (e, req, res, next) => {
