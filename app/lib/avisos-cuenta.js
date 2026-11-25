@@ -17,7 +17,9 @@
 import { emailBasico, sendMail as enviarMail, urlSitio } from './mail.js';
 
 export const ABRIMOS_PRONTO = 'Todavía no se ve en el sitio: abrimos muy pronto.';
-export const DIAS_VERIFICACION = 7;
+// Días para mandar la verificación después de publicar. 0 = sin plazo (25/11/2026, Juan: "tiempo ilimitado; yo las
+// contacto por WhatsApp para que manden su ID"): al publicar no se fija plazo y nadie se pausa por no verificar.
+export const DIAS_VERIFICACION = 0;
 // Fecha del plazo como en los demás avisos ("26 de noviembre de 2026")
 const fmtPlazo = new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'long', year: 'numeric' });
 export const fechaPlazo = (d) => (d ? fmtPlazo.format(new Date(d)) : '');

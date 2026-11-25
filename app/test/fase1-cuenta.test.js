@@ -439,7 +439,8 @@ describe('envío automático a revisión y sitio público', () => {
     yo = (await a.get('/api/cuenta/yo')).body.cuenta;
     // Envío automático (18/11/2026) sin la verificación (19/11/2026: se puede publicar antes y tiene 7 días para mandarla);
     // la verificación sigue en lo que falta
-    assert.equal(yo.perfil.estado, 'en_revision'); assert.deepEqual(yo.perfil.faltantes, ['Enviá tu verificación de identidad (nombre completo, documento y selfie).']);
+    // 25/11/2026: la verificación ya no figura en lo que falta (sin plazo; se carga cuando quiera desde el panel)
+    assert.equal(yo.perfil.estado, 'en_revision'); assert.deepEqual(yo.perfil.faltantes, []);
     let r = await a.subir('/api/cuenta/verificacion', { selfie: await jpeg(), documento: await jpeg(), dorso: await jpeg(), consentimiento: '1', nombreCompleto: 'Zz Prueba Cuenta' });
     assert.equal(r.status, 201); assert.equal(r.body.cuenta.perfil.estado, 'en_revision');
 

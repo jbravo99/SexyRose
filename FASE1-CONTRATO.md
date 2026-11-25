@@ -909,6 +909,13 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Verificación sin fricción** (25/11/2026, Juan, consultado con su abogado: "es más fricción que no podemos exigir";
+"lo consultaré a medida que se registren", mientras puedan cargarla en el panel): sin el paso Verificación en Primeros
+pasos (Tus datos → Fotos → Email → Listo); la verificación ya no figura en lo que falta (`faltantesItems`); sin plazo
+(`DIAS_VERIFICACION = 0`: al publicar no se fija `verificacion_limite`, no hay aviso de 2 días ni pausa; migración 370
+levanta los plazos y las pausas que quedaron). Panel → Verificación sigue disponible. El asistente no menciona la
+verificación ni documentos salvo que pregunten (no hace falta para publicar, sin plazo).
+
 **Audios** (23/11/2026, pedido de Juan): un audio pasa el chat a Juan (`estado = 'humano'`, motivo "Mandó un audio…") sin
 contestarle nada, con aviso por Telegram. En la conversación del admin, debajo del audio, Juan escribe lo que dijo
 (`POST /asistente/conversaciones/:id/mensajes/:mid/audio {texto}`, hasta 2000): queda en el mensaje del audio, el chat

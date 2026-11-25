@@ -177,7 +177,7 @@ describe('nombre completo en la verificación', () => {
     assert.equal(await nombreCuenta(c.id), null);
     const yo = await c.yo();
     assert.equal(yo.perfil.verificacion, 'rechazada'); assert.equal(yo.perfil.ultimaVerificacion.nombreCompleto, 'Zz Nombre Mal');
-    assert.ok(yo.perfil.faltantes.includes('Enviá tu verificación de identidad (nombre completo, documento y selfie).'));
+    assert.ok(!yo.perfil.faltantesClaves.includes('verificacion'), '25/11/2026: la verificación ya no figura en lo que falta');
     assert.equal((await c.subir({ ...(await FOTOS()), consentimiento: '1', nombreCompleto: 'Zz Nombre Bien' })).status, 201);
     assert.equal((await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'aprobar' })).status, 200);
     assert.equal(await nombreCuenta(c.id), 'Zz Nombre Bien');

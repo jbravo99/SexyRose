@@ -19,8 +19,7 @@ export const AYUDA = Object.freeze({
   registro: 'Para publicar tu perfil:\n'
     + '1. Creá tu cuenta en {url}/registro con tu email y una contraseña de al menos 10 caracteres, y confirmá tu email con el link que te mandamos.\n'
     + '2. Completá tus datos y subí al menos 3 fotos.\n'
-    + '3. Mandá las fotos de tu documento y una selfie para verificar tu identidad: nunca se publican. Si publicamos tu perfil antes, tenés 7 días para mandarlas.\n'
-    + '4. Con tus datos, tus fotos y tu email confirmado, tu perfil pasa solo a revisión. No hace falta tocar ningún botón.\n'
+    + '3. Con tus datos, tus fotos y tu email confirmado, tu perfil pasa solo a revisión. No hace falta tocar ningún botón.\n'
     + 'La primera vez que entrás al panel te guiamos paso a paso ({url}/panel/primeros-pasos).\n'
     + 'Solo para acompañantes mayores de 18. Con el plan Bronce publicás gratis.',
 
@@ -30,13 +29,12 @@ export const AYUDA = Object.freeze({
     + '- Una selfie sosteniendo tu documento al lado de la cara, con buena luz.\n'
     + 'Confirmamos que sos vos y que sos mayor de 18. La selfie y el documento nunca se publican ni se comparten, y se borran a los 3 meses. '
     + 'Te avisamos por email cuando la revisemos. Si te equivocaste de archivo, podés mandarla de nuevo. '
-    + 'Si tu perfil ya está publicado, tenés 7 días desde que lo publicamos para mandarla; si no, se pausa hasta que la mandes y vuelve a verse solo.',
+    + 'No hace falta para publicar tu perfil: la mandás cuando quieras desde tu panel.',
 
   publicar: 'Tu perfil pasa solo a revisión cuando está completo: nombre artístico, género, fecha de nacimiento, provincia y ciudad, '
     + 'tu WhatsApp o tu usuario de Telegram, al menos 3 fotos y tu email confirmado. No hay que tocar ningún botón. '
-    + 'La verificación de identidad la podés mandar antes o dentro de los 7 días después de que publiquemos tu perfil; si no la mandás en ese plazo, tu perfil se pausa y vuelve a verse solo apenas la mandás. '
     + 'En {url}/panel ves qué te falta, con un botón "Completar" en cada cosa, y en {url}/panel/primeros-pasos lo hacés paso a paso. '
-    + 'Revisamos tu perfil y tu verificación y te avisamos por email. '
+    + 'Revisamos tu perfil y te avisamos por email. '
     + 'Si lo rechazamos, revisá el motivo y corregí lo necesario: cuando guardes los cambios, vuelve solo a revisión. '
     + 'Con "Ocultar mi perfil" lo sacás del sitio cuando quieras, sin perder nada.',
 

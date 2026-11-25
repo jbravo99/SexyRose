@@ -1609,8 +1609,8 @@
      /panel/primeros-pasos[/<paso>] (clave panel.primeros-pasos[.<paso>]): guía de una pantalla por paso para la
      acompañante recién registrada. Pasos: Tus datos (solo los obligatorios: nombre artístico, género, tipo, fecha de
      nacimiento, provincia y localidad, WhatsApp o Telegram; lo opcional sigue en Mi perfil), Fotos (al menos 3; la
-     primera es la principal), Verificación (nombre completo, tres fotos y consentimiento), Confirmá tu email (solo si
-     falta) y Listo. Usa los mismos campos, validaciones y llamadas que el panel (PUT /cuenta/perfil, POST /cuenta/fotos,
+     primera es la principal), Confirmá tu email (solo si falta) y Listo. 25/11/2026: sin el paso Verificación (se
+     carga cuando quiera desde Panel → Verificación). Usa los mismos campos, validaciones y llamadas que el panel (PUT /cuenta/perfil, POST /cuenta/fotos,
      POST /cuenta/verificacion, POST /cuenta/reenviar-verificacion).
      - Qué paso está hecho sale del servidor (faltantesClaves y emailVerificado), no del navegador: al volver, sigue en
        el primer paso sin completar. "Siguiente" guarda el paso y lleva al próximo sin completar.
@@ -1655,7 +1655,8 @@
     const pasos = [
       { id: 'datos', t: 'Tus datos', h: 'Tus datos', done: !GUIA_DATOS.some((k) => cl.includes(k)) },
       { id: 'fotos', t: 'Fotos', h: 'Tus fotos', done: !cl.includes('fotos') },
-      { id: 'verificacion', t: 'Verificación', h: 'Verificá tu identidad', done: !cl.includes('verificacion') },
+      // 25/11/2026 (Juan: "saquemos de la guía la parte de verificar ID; lo consultaré a medida que se registren",
+      // consultado con su abogado, mientras esté la opción de cargarla en el panel): sin paso de verificación.
       { id: 'email', t: 'Email', h: 'Confirmá tu email', done: !!y.emailVerificado },
       { id: 'listo', t: 'Listo', h: 'Listo', done: false },
     ];
@@ -1689,15 +1690,6 @@
           ${fotosGrilla(fotos)}
           ${fieldErr('spGErr')}
         </div>${nav(sig(S.up ? ' disabled' : ''))}`;
-    } else if (P.id === 'verificacion') {
-      const p = S.yo.perfil; const v = p.verificacion; const u = p.ultimaVerificacion;
-      const intro = `<p class="small muted" style="margin:0 0 12px">Confirmamos que sos vos y que sos mayor de 18. Las fotos de tu documento y tu selfie nunca se publican ni se comparten.</p>`;
-      if (v === 'pendiente' || v === 'verificada') {
-        body = intro + `<div class="card stack" style="gap:12px">${v === 'verificada' ? `<div class="notice ok">${icon('checkCircle')}<span>Tu identidad está verificada.</span></div>` : `<div class="notice ok">${icon('checkCircle')}<span>Recibimos tu verificación.</span></div><p class="small muted" style="margin:0">Si te equivocaste de archivo, podés mandarla de nuevo desde Panel → Verificación.</p>`}</div>${nav(sig())}`;
-      } else {
-        body = intro + (v === 'rechazada' && u && u.motivo ? `<div class="notice danger" style="margin-bottom:12px">${icon('alert')}<span><strong>Motivo:</strong> <span data-noi18n>${esc(u.motivo)}</span></span></div>` : '')
-          + verifForm(p, nav(`<button type="submit" class="btn"${S.busy.verif ? ' disabled' : ''}>${icon('shield')} <span>Enviar y seguir</span></button>`));
-      }
     } else if (P.id === 'email') {
       body = S.yo.emailVerificado
         ? `<div class="card stack" style="gap:12px"><div class="notice ok">${icon('checkCircle')}<span>Tu email está confirmado.</span></div></div>${nav(sig())}`

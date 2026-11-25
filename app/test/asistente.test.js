@@ -587,7 +587,12 @@ describe('IA, persona y límites', () => {
     // 23/11/2026: completo cuando lo piden, con lista "• "; sin hacerla responder "sí" varias veces; verificación después
     assert.ok(p.includes('dáselo completo en UN mensaje') && p.includes('"• "'));
     assert.ok(p.includes('Nunca la hagas responder "sí" varias veces'));
-    assert.ok(p.includes('primero se publica el perfil y después tiene 7 días'));
+    assert.ok(p.includes('No menciones la verificación de identidad ni documentos'), 'sin documentos salvo que pregunte (25/11/2026)');
+    assert.doesNotMatch(AYUDA.registro + AYUDA.publicar, /documento|selfie|7 días/, 'registro y publicar sin documentos ni plazo');
+    assert.match(AYUDA.verificacion, /No hace falta para publicar tu perfil/);
+    assert.doesNotMatch(AYUDA.verificacion, /7 días|se pausa/);
+    const pcap = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion: true });
+    assert.doesNotMatch(pcap.slice(pcap.indexOf('Cualquier respuesta a la invitación'), pcap.indexOf('Los planes pagos')), /verific|documento/);
     const pc = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion: true });
     assert.ok(pc.includes('NO le preguntes "¿en qué te puedo ayudar?"') && pc.includes(`Cerrá con el link de registro`));
     assert.ok(pc.includes('Los planes pagos y Destacado, solo si los pregunta.'));

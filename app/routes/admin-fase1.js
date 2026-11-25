@@ -193,8 +193,8 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (['rechazado', 'suspendido'].includes(b.estado) && !motivo) throw he(400, 'Escribí el motivo: se lo mandamos a la acompañante.');
     const cur = await pool.query('SELECT estado, verificacion FROM perfiles WHERE cuenta_id = $1', [id]);
     if (!cur.rows[0]) throw he(404, 'Acompañante no encontrada.');
-    // Publicar sin la identidad verificada (19/11/2026, decisión de Juan): se puede; desde ahí tiene 7 días para mandar
-    // la verificación (lib/plazo-verificacion.js). Si ya tenía un plazo que no venció, sigue ese; si no, uno nuevo.
+    // Publicar sin la identidad verificada (19/11/2026, decisión de Juan): se puede. Con DIAS_VERIFICACION > 0 tiene ese
+    // plazo para mandarla (lib/plazo-verificacion.js); desde el 25/11/2026 es 0: sin plazo.
     // Publicado y rechazado avisan a ella con notificación + email (lib/avisos-cuenta.js); pausado y suspendido, solo email.
     // El estado anterior se lee con la fila bloqueada: dos clics seguidos del admin hacen un solo aviso.
     const pre = b.estado === 'publicado' ? await prelanzamientoEn(pool) : false;
@@ -209,7 +209,7 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
       // Plazo: solo al pasar a publicado sin estar verificada; verificada = sin plazo; los demás cambios no lo tocan
       let limite = limAntes; let nuevoPlazo = false;
       if (b.estado === 'publicado' && ver === 'verificada') limite = null;
-      else if (b.estado === 'publicado' && antes !== 'publicado' && !(limAntes && new Date(limAntes) > new Date())) {
+      else if (DIAS_VERIFICACION > 0 && b.estado === 'publicado' && antes !== 'publicado' && !(limAntes && new Date(limAntes) > new Date())) {
         limite = new Date(Date.now() + DIAS_VERIFICACION * 24 * 60 * 60 * 1000); nuevoPlazo = true;
       }
       ({ rows } = await client.query(

@@ -238,7 +238,9 @@ export function faltantesItems({ datos = {}, fotosN = 0, emailVerificado = false
   if (!datos.provincia || !datos.ciudad) add('ubicacion', 'Elegí tu provincia y tu ciudad.');
   if (!datos.whatsapp && !datos.telegram) add('contacto', 'Agregá tu WhatsApp o tu usuario de Telegram.');
   if (fotosN < MIN_FOTOS) add('fotos', `Subí al menos ${MIN_FOTOS} fotos (tenés ${fotosN}).`);
-  if (verificacion === 'sin_enviar' || verificacion === 'rechazada') add('verificacion', 'Enviá tu verificación de identidad (nombre completo, documento y selfie).');
+  // 25/11/2026 (Juan): la verificación de identidad ya no figura en lo que falta (no hace falta para publicar ni tiene
+  // plazo; se carga cuando quiera desde Panel → Verificación). El parámetro verificacion queda por compatibilidad.
+  void verificacion;
   return f;
 }
 export const faltantesDe = (x) => faltantesItems(x).map((i) => i.texto);

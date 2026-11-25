@@ -181,9 +181,10 @@ describe('verificación en tres fotos', () => {
     assert.equal((await adm(`/verificaciones/${v.id}/selfie`)).status, 200);
     assert.equal((await adm(`/verificaciones/${v.id}/documento`)).status, 200);
     assert.equal((await adm(`/verificaciones/${v.id}/dorso`)).status, 404);
-    // Rechazada: ahí sí tiene que mandar las tres
+    // Rechazada (25/11/2026: igual no figura en lo que falta; la manda de nuevo cuando quiera)
     assert.equal((await admPost(`/acompanantes/${c.id}/verificacion`, { decision: 'rechazar', motivo: 'El documento no se lee completo.' })).status, 200);
-    assert.ok((await c.yo()).perfil.faltantesClaves.includes('verificacion'));
+    assert.equal((await c.yo()).perfil.verificacion, 'rechazada');
+    assert.ok(!(await c.yo()).perfil.faltantesClaves.includes('verificacion'));
     await db.query("UPDATE verificaciones SET revisado = now() - interval '91 days' WHERE cuenta_id = $1", [c.id]);
     assert.ok(await instance.ctx.retencionVerif.purgar() >= 1, 'la purga no se traba con el dorso vacío');
     assert.equal(await existe(selfie), false); assert.equal(await existe(doc), false);
@@ -193,12 +194,12 @@ describe('verificación en tres fotos', () => {
 describe('"Completar" en Para publicar te falta', () => {
   test('cada cosa que falta trae su clave, en el mismo orden que el texto', async () => {
     const todo = faltantesItems({});
-    assert.deepEqual(todo.map((x) => x.clave), ['email', 'nombre', 'genero', 'nacimiento', 'ubicacion', 'contacto', 'fotos', 'verificacion']);
+    assert.deepEqual(todo.map((x) => x.clave), ['email', 'nombre', 'genero', 'nacimiento', 'ubicacion', 'contacto', 'fotos'], '25/11/2026: sin verificación');
     assert.deepEqual(faltantesDe({}), todo.map((x) => x.texto));
     assert.deepEqual(faltantesItems({ datos: { displayName: 'x', genero: 'mujer', fechaNacimiento: '1990-01-01', provincia: 'p', ciudad: 'c', whatsapp: '+54' }, fotosN: 3, emailVerificado: true, verificacion: 'pendiente' }), []);
     const c = await cuenta();
     const p = (await c.yo()).perfil;
     assert.equal(p.faltantesClaves.length, p.faltantes.length);
-    assert.deepEqual(p.faltantesClaves, ['email', 'ubicacion', 'contacto', 'fotos', 'verificacion']);
+    assert.deepEqual(p.faltantesClaves, ['email', 'ubicacion', 'contacto', 'fotos']);
   });
 });

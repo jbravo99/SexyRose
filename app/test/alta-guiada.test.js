@@ -250,7 +250,7 @@ describe('primeros pasos: cuándo se abre sola (GET /cuenta/yo → guia.abrir)',
     const a = await cuenta({ datos: { displayName: 'Zz Nueva', genero: 'mujer', tipo: 'acompanante', fechaNacimiento: '1996-01-01', pais: 'argentina' }, fotos: 0, verificacion: 'sin_enviar' });
     let yo = await a.yo();
     assert.deepEqual(yo.guia, { abrir: true });
-    assert.deepEqual(yo.perfil.faltantesClaves, ['ubicacion', 'contacto', 'fotos', 'verificacion'], 'los pasos salen de acá: empieza en Tus datos');
+    assert.deepEqual(yo.perfil.faltantesClaves, ['ubicacion', 'contacto', 'fotos'], 'los pasos salen de acá: empieza en Tus datos (25/11/2026: sin verificación)');
     assert.equal((await a.json('POST', '/guia/vista', {})).status, 200);
     yo = await a.yo();
     assert.deepEqual(yo.guia, { abrir: false });
@@ -258,7 +258,7 @@ describe('primeros pasos: cuándo se abre sola (GET /cuenta/yo → guia.abrir)',
     assert.ok(rows[0].guia_vista);
     // Retoma en el primer paso sin completar: con los datos guardados, lo que falta empieza por las fotos
     await a.json('PUT', '/perfil', { provincia: 'provincia-de-cordoba', ciudad: 'cordoba', whatsapp: '+5493511234567' });
-    assert.deepEqual((await a.yo()).perfil.faltantesClaves, ['fotos', 'verificacion']);
+    assert.deepEqual((await a.yo()).perfil.faltantesClaves, ['fotos']);
   });
 
   test('completas, en revisión, publicadas o rechazadas: nunca', async () => {
@@ -323,17 +323,18 @@ describe('textos y panel (prod-sitio.js)', () => {
     vm.runInContext(f + '\nthis.pasos = guiaPasos; this.prox = guiaProximo;', ctx);
     const yo = (claves, email = true) => { ctx.S = Object.assign(ctx.S || {}, { yo: { id: 'A', emailVerificado: email, perfil: { faltantesClaves: claves } } }); vm.runInContext('S = this.S', ctx); };
     vm.runInContext('var S = this.S;', ctx);
-    yo(['ubicacion', 'contacto', 'fotos', 'verificacion']);
-    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'verificacion', 'listo'], 'sin el paso del email si ya está confirmado');
+    // 25/11/2026: sin el paso de verificación (se carga cuando quiera desde Panel → Verificación)
+    yo(['ubicacion', 'contacto', 'fotos']);
+    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'listo'], 'sin el paso del email si ya está confirmado');
     assert.equal(ctx.prox(ctx.pasos()), 'datos');
-    yo(['fotos', 'verificacion']);
+    yo(['fotos']);
     assert.equal(ctx.prox(ctx.pasos()), 'fotos', 'retoma en el primero sin completar');
-    assert.equal(ctx.prox(ctx.pasos(), 'fotos'), 'verificacion');
-    yo(['email', 'verificacion'], false);
-    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'verificacion', 'email', 'listo']);
-    assert.equal(ctx.prox(ctx.pasos(), 'verificacion'), 'email');
+    assert.equal(ctx.prox(ctx.pasos(), 'fotos'), 'listo');
+    yo(['email', 'fotos'], false);
+    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'email', 'listo']);
+    assert.equal(ctx.prox(ctx.pasos(), 'fotos'), 'email');
     yo([], true);
-    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'verificacion', 'email', 'listo'], 'el paso del email queda (hecho) si lo confirmó en el medio');
+    assert.deepEqual([...ctx.pasos().map((x) => x.id)], ['datos', 'fotos', 'email', 'listo'], 'el paso del email queda (hecho) si lo confirmó en el medio');
     assert.equal(ctx.prox(ctx.pasos()), 'listo');
   });
 
