@@ -637,6 +637,31 @@ describe('IA, persona y límites', () => {
     LLM.guion = null;
   });
 
+  test('email mal escrito (26/11/2026): respuesta fija, pasa a Juan con el email correcto en el motivo y aviso; email inválido: lo pide de nuevo', async () => {
+    const tel = '5491155550021';
+    const tg0 = TG.enviados.length;
+    // Inválido: la herramienta le devuelve el error a la IA, que lo vuelve a pedir; el chat sigue con el asistente
+    let n = 0;
+    LLM.guion = () => (++n === 1 ? usarHerramienta('corregir_email', { email: 'maria@gmail' }) : { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Pasame el email completo, por favor.' }] });
+    await llega(tel, 'puse mal mi mail, es maria@gmail');
+    assert.equal(ultimoA(tel), 'Pasame el email completo, por favor.');
+    assert.equal((await conv(tel)).estado, 'bot');
+    assert.match(JSON.stringify(LLM.llamadas.at(-1).messages), /no parece válido/);
+    // Válido: mensaje fijo, pasa a Juan con el email en el motivo, aviso por Telegram sin el email
+    LLM.guion = () => usarHerramienta('corregir_email', { email: 'Maria.Lopez@Gmail.com ' });
+    await llega(tel, 'maria.lopez@gmail.com');
+    assert.equal(ultimoA(tel), 'Listo, lo corregimos y te va a llegar un mail para confirmarlo. Revisá también la carpeta de spam.');
+    const k = await conv(tel);
+    assert.equal(k.estado, 'humano');
+    assert.equal(k.motivo_humano, 'Pide corregir su email a maria.lopez@gmail.com');
+    const aviso = await hasta(() => TG.enviados.slice(tg0).find((m) => /pide corregir su email/.test(m.text)));
+    assert.ok(aviso && !aviso.text.includes('maria.lopez@gmail.com'), 'Telegram sin el email');
+    LLM.guion = null;
+    // La herramienta está para todos los chats y el texto de ayuda lo explica
+    assert.ok(LLM.llamadas.at(-1).tools.some((h) => h.name === 'corregir_email'));
+    assert.match(AYUDA.email, /Si escribiste mal tu email al registrarte, no lo podés cambiar vos/);
+  });
+
   test('"Pasar a humano" desde el admin y Juan escribiendo desde el teléfono silencian el bot', async () => {
     const tel = '5491155550014';
     await llega(tel, 'hola');

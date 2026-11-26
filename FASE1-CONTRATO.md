@@ -909,6 +909,13 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Asistente, email mal escrito** (26/11/2026, decisión de Juan): herramienta `corregir_email {email}`. Si ella dice que
+escribió mal su email, la IA le pide el correcto (si no lo dio) y llama a la herramienta: valida el formato (si no, le
+devuelve el error a la IA para que lo pida de nuevo), manda la respuesta fija "Listo, lo corregimos y te va a llegar un mail
+para confirmarlo…" (es/en/pt), pasa el chat a Juan con el motivo "Pide corregir su email a <email>" y avisa por Telegram
+(sin el email). Juan lo corrige desde la ficha (Cuenta → Cambiar). El asistente nunca cambia el email solo. El tema de
+ayuda "email" lo explica.
+
 **Admin: cambiar el email de una acompañante** (26/11/2026, Juan: "una escribió mal su email"): botón "Cambiar" junto al
 email en la tarjeta Cuenta. `POST /acompanantes/:id/email {email}`: valida el formato y que no lo use otra cuenta, lo
 cambia, lo deja sin confirmar y le manda el link de confirmación al email nuevo (48 h; los links anteriores dejan de

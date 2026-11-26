@@ -70,7 +70,8 @@ export const AYUDA = Object.freeze({
 
   email: 'Si no te llega un email nuestro (confirmación de la cuenta o cambio de contraseña): revisá la carpeta de spam o correo no deseado '
     + 'y que el email esté bien escrito. El link para confirmar el email vence en 48 horas: desde tu panel podés pedirlo de nuevo '
-    + 'con "Mandar de nuevo". El de la contraseña se pide otra vez desde "¿Olvidaste tu contraseña?".',
+    + 'con "Mandar de nuevo". El de la contraseña se pide otra vez desde "¿Olvidaste tu contraseña?". '
+    + 'Si escribiste mal tu email al registrarte, no lo podés cambiar vos: pasanos por este chat el email correcto y lo corregimos; te llega un mail para confirmarlo.',
 
   perfil: 'Tu ficha se completa en {url}/panel/perfil. Lo que ves ahí es lo que se publica: tu email, tu documento y tu fecha de nacimiento no se muestran (de la fecha se publica solo tu edad).\n'
     + '- Datos básicos: nombre artístico, género, tipo de perfil (Acompañante, Virtual o Ambas; Virtual es sin encuentros en persona), fecha de nacimiento y nacionalidad.\n'

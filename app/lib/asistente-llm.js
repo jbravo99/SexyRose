@@ -74,6 +74,11 @@ export const HERRAMIENTAS = [
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
+    name: 'corregir_email',
+    description: 'Si dice que escribió mal su email al registrarse (o que no le llega la confirmación porque lo puso mal), y ya te dijo cuál es el correcto: le manda en un mensaje aparte que lo corregimos y que le va a llegar un mail para confirmarlo, y el chat pasa a una persona del equipo que lo corrige. Si todavía no te dijo el email correcto, pedíselo primero (un solo mensaje). Ella no lo puede cambiar sola.',
+    input_schema: { type: 'object', properties: { email: { type: 'string', description: 'El email correcto, tal como lo escribió' } }, required: ['email'], additionalProperties: false },
+  },
+  {
     name: 'derivar_a_juan',
     description: 'Pasa el chat a una persona del equipo (el asistente deja de responder en este chat). Usalo si piden hablar con una persona, si la consulta está fuera de lo que podés responder, si hay un problema con un pago, o si la persona está enojada.',
     input_schema: { type: 'object', properties: { motivo: { type: 'string', description: 'Motivo breve, sin datos de contacto' } }, required: ['motivo'], additionalProperties: false },

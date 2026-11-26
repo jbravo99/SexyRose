@@ -569,6 +569,20 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
         log('asistente: se informó el motivo de una cuenta eliminada');
         return { resultado: { encontrado: true, fecha: fmtFecha(rows[0].fecha), motivo: rows[0].motivo } };
       }
+      // Email mal escrito (26/11/2026, decisión de Juan): respuesta fija, el chat pasa a Juan y él lo corrige desde el
+      // admin (ficha → Cuenta → Cambiar, que manda la confirmación). El asistente nunca cambia el email solo.
+      case 'corregir_email': {
+        const email = String(input.email || '').trim().toLowerCase();
+        if (email.length > 254 || !/^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/.test(email)) {
+          return { resultado: { error: 'Ese email no parece válido: pedile que lo escriba de nuevo, completo.' } };
+        }
+        await decir(conv, 'emailCorregir');
+        await pool.query("UPDATE asistente_conversaciones SET estado = 'humano', motivo_humano = $2, actualizado = now() WHERE id = $1",
+          [conv.id, `Pide corregir su email a ${email}`.slice(0, 200)]);
+        await avisarJuan(conv, 'Asistente: una acompañante pide corregir su email.', 'Corregilo desde su ficha en el admin (Cuenta → Cambiar): el email correcto está en el chat y en el motivo.', 'asistente_derivacion');
+        log('asistente: pide corregir su email; el chat pasa a una persona');
+        return { resultado: { enviado: true, nota: 'Ya se le avisó en un mensaje aparte. No repitas nada.' }, detener: true };
+      }
       case 'derivar_a_juan':
         await derivar(conv, String(input.motivo || 'Pidió hablar con una persona'));
         return { resultado: { ok: true }, detener: true };
