@@ -129,6 +129,12 @@ export const AYUDA = Object.freeze({
     + 'Cuántos packs podés tener a la venta depende de tu plan: lo ves en esa misma sección, junto con tus ventas. '
     + 'Con Oro o Star y Mercado Pago conectado, los clientes también te pueden hacer pedidos personalizados desde tu perfil: los ves en {url}/panel/pedidos.',
 
+  // Ganancias de la venta de contenido (25/11/2026, decisión de Juan: "con el porcentaje"). {pct} = descuento total por
+  // venta, el mismo que ve en Panel → Contenido. Si la venta todavía no abrió, va con "próximamente" adelante.
+  ganancias: 'Lo que ganás vendiendo tu contenido va directo a tu cuenta de Mercado Pago: tus packs los vendés con tu propio Mercado Pago, que conectás desde {url}/panel/contenido. '
+    + 'Por cada venta se descuenta un {pct} % en total, entre la comisión de SexyRose y el costo de Mercado Pago por recibir el dinero al instante. '
+    + 'Si en Mercado Pago elegís recibirlo a más días, el descuento es menor. El resto es tuyo.',
+
   apertura: 'SexyRose ya está abierto: los perfiles publicados se ven en {url}.',
 
   enlaces: 'Enlaces del sitio:\n'
@@ -166,10 +172,15 @@ export const PRELANZAMIENTO_COMO_FUNCIONA = 'El sitio abre al público a partir 
 export const TEMAS_AYUDA = Object.freeze(Object.keys(AYUDA));
 // contenidoDisponible: solo cuenta para el tema "contenido" (sin el dato, "próximamente").
 // prelanzamiento: solo cuenta para "apertura" y "como_funciona" (sin el dato, los textos de la home provisoria).
-export function textoAyuda(tema, siteUrl, { contenidoDisponible = false, prelanzamiento = true } = {}) {
+// descuentoPct: solo cuenta para "ganancias" (el % que se descuenta por venta).
+export function textoAyuda(tema, siteUrl, { contenidoDisponible = false, prelanzamiento = true, descuentoPct = null } = {}) {
   if (!Object.hasOwn(AYUDA, tema)) return null;
   let t = AYUDA[tema];
   if (tema === 'contenido' && contenidoDisponible !== true) t = CONTENIDO_PROXIMAMENTE;
+  if (tema === 'ganancias') {
+    t = t.replace('{pct}', String(descuentoPct != null ? descuentoPct : '').replace('.', ','));
+    if (contenidoDisponible !== true) t = `${CONTENIDO_PROXIMAMENTE} Cuando abra, así funciona: ${t}`;
+  }
   if (tema === 'apertura' && prelanzamiento !== false) t = APERTURA_PRELANZAMIENTO;
   if (tema === 'como_funciona' && prelanzamiento !== false) t = `${t}\n${PRELANZAMIENTO_COMO_FUNCIONA}`;
   return t.replace(/\{url\}/g, String(siteUrl || '').replace(/\/+$/, ''));

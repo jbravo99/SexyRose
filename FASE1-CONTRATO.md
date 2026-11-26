@@ -909,6 +909,11 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Ganancias de la venta de contenido** (25/11/2026, decisión de Juan): tema de ayuda "ganancias": la plata de cada venta
+va directo a su Mercado Pago y por venta se descuenta el % del ajuste 'comision' (comisión de SexyRose + costo de Mercado
+Pago, el mismo texto que Panel → Contenido); con "próximamente" adelante mientras la venta no abrió. Es la única
+excepción a "no explicar comisiones" (prompt y prueba de textos internos).
+
 **Verificación sin fricción** (25/11/2026, Juan, consultado con su abogado: "es más fricción que no podemos exigir";
 "lo consultaré a medida que se registren", mientras puedan cargarla en el panel): sin el paso Verificación en Primeros
 pasos (Tus datos → Fotos → Email → Listo); la verificación ya no figura en lo que falta (`faltantesItems`); sin plazo

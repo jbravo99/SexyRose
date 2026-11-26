@@ -27,7 +27,7 @@ import { tipoPorFirma } from './privado.js';
 import { asignarCuenta, cuentaDelPedido, hayCuentaActiva } from './cuentas-transferencia.js';
 import { arsSugerido, fmtCreditos } from './creditos.js';
 import { PLAN_NOMBRE } from './planes.js';
-import { ventaContenidoDisponible } from './contenido.js';
+import { descuentoVentaContenido, ventaContenidoDisponible } from './contenido.js';
 import { prelanzamientoEn } from './prelanzamiento.js';
 
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -476,10 +476,11 @@ export function createAsistente({ pool, creditos, planes, privado, telegram, llm
       case 'ayuda': {
         const tema = String(input.tema || '');
         // "contenido": "próximamente" o cómo empezar, según lo que publicó el app en la base (lib/contenido.js)
-        const contenidoDisponible = tema === 'contenido' ? await ventaContenidoDisponible(pool) : false;
+        const contenidoDisponible = tema === 'contenido' || tema === 'ganancias' ? await ventaContenidoDisponible(pool) : false;
+        const descuentoPct = tema === 'ganancias' ? await descuentoVentaContenido(pool) : null;
         // "apertura" y "como_funciona": "a partir de diciembre" mientras la home provisoria está prendida (lib/prelanzamiento.js)
         const prelanzamiento = tema === 'apertura' || tema === 'como_funciona' ? await prelanzamientoEn(pool) : true;
-        const t = textoAyuda(tema, url, { contenidoDisponible, prelanzamiento });
+        const t = textoAyuda(tema, url, { contenidoDisponible, prelanzamiento, descuentoPct });
         return { resultado: t ? { texto: t } : { error: 'Tema desconocido.' } };
       }
       case 'pedido_por_codigo': {

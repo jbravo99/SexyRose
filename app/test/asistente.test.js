@@ -1451,11 +1451,23 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
   });
 
   test('ningún texto de ayuda nombra cosas internas; Mercado Pago solo en "contenido"', () => {
+    // Única excepción (25/11/2026, decisión de Juan): "ganancias" dice el descuento por venta de contenido, con las mismas
+    // palabras que ve en Panel → Contenido (comisión de SexyRose + costo de Mercado Pago); nada más de lo interno.
+    const EXCEPCION_GANANCIAS = [/comisi[oó]n/i, /%/, /\bcostos?\b/i];
     for (const [tema, t] of TODOS()) {
-      for (const re of PROHIBIDAS) assert.ok(!re.test(t), `${tema}: dice algo interno (${re})`);
-      if (tema !== 'contenido') assert.ok(!/mercado ?pago/i.test(t), `${tema}: nombra Mercado Pago`);
+      for (const re of PROHIBIDAS) {
+        if (tema === 'ganancias' && EXCEPCION_GANANCIAS.some((x) => String(x) === String(re))) continue;
+        assert.ok(!re.test(t), `${tema}: dice algo interno (${re})`);
+      }
+      if (tema !== 'contenido' && tema !== 'ganancias') assert.ok(!/mercado ?pago/i.test(t), `${tema}: nombra Mercado Pago`);
       assert.ok(!/sexual|sexo|desnud/i.test(t), `${tema}: contenido sexual`);
     }
+    // "ganancias": el % que está cargado, igual que el panel; con "próximamente" adelante si la venta no abrió
+    const g = textoAyuda('ganancias', SITE, { contenidoDisponible: true, descuentoPct: 12.5 });
+    assert.match(g, /Por cada venta se descuenta un 12,5 % en total, entre la comisión de SexyRose y el costo de Mercado Pago por recibir el dinero al instante\./);
+    assert.match(g, /va directo a tu cuenta de Mercado Pago/);
+    assert.ok(textoAyuda('ganancias', SITE, { contenidoDisponible: false, descuentoPct: 10 }).startsWith(CONTENIDO_PROXIMAMENTE + ' Cuando abra, así funciona:'));
+    assert.ok(!/\{pct\}/.test(textoAyuda('ganancias', SITE, { descuentoPct: 10 })));
     // "próximamente": sin fechas, sin motivos, sin Mercado Pago
     assert.equal(CONTENIDO_PROXIMAMENTE, 'La venta de contenido todavía no está disponible en SexyRose: va a estar próximamente.');
     assert.ok(!/\d|mercado|pago|configur|cuenta/i.test(CONTENIDO_PROXIMAMENTE));
@@ -1471,6 +1483,7 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
       assert.ok(p.includes('Para explicar cómo funciona algo usá la herramienta "ayuda"'));
       assert.ok(p.includes('Si piden hablar con una persona, si la consulta está fuera de estos temas o si la persona está enojada: usá "derivar_a_juan".'));
       assert.ok(p.includes('Expliques cómo funciona el negocio por dentro (comisiones, proveedores, costos'));
+      assert.ok(p.includes('Única excepción: si pregunta cuánto gana con la venta de contenido, usá el tema "ganancias"'));
     }
   });
 
@@ -1483,6 +1496,11 @@ describe('ayuda: contexto de todo el sitio y venta de contenido (17/11/2026)', (
     assert.deepEqual(fila.valor, { disponible: false });
     assert.equal(await ventaContenidoDisponible(dbAgente), false);
     assert.equal(await ayudaContenido(), CONTENIDO_PROXIMAMENTE);
+    // "ganancias" (25/11/2026): el % del ajuste de comisión, con "próximamente" adelante mientras no abrió
+    await db.query(`INSERT INTO ajustes (clave, valor) VALUES ('comision', '{"porcentaje": 14, "costoMp": 7.61}'::jsonb)
+      ON CONFLICT (clave) DO UPDATE SET valor = jsonb_set(ajustes.valor, '{porcentaje}', '14')`);
+    const gan = (await agente.asistente.herramienta(k.id, 'ayuda', { tema: 'ganancias' })).resultado.texto;
+    assert.ok(gan.startsWith(CONTENIDO_PROXIMAMENTE) && /se descuenta un 14 % en total/.test(gan), gan);
     // Juan carga la aplicación de Mercado Pago desde el admin: el agente (otra conexión, sin las credenciales) lo ve
     const APP = { nombre: 'Prueba asistente', clientId: '7777000011', clientSecret: 'secreto-app-asistente-123', webhookSecret: 'webhook-asistente-456' };
     let r = await admJson('POST', '/integraciones/mp', APP);

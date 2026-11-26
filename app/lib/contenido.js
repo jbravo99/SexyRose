@@ -105,6 +105,15 @@ export async function ventaContenidoDisponible(db) {
   return Boolean(v && typeof v === 'object' && v.disponible === true);
 }
 
+// Descuento total por venta (comisión de SexyRose + costo de Mercado Pago), el mismo que ve la acompañante en Panel →
+// Contenido (ajuste 'comision'). Lo usa el asistente para el tema "ganancias" (25/11/2026, decisión de Juan).
+export async function descuentoVentaContenido(db) {
+  const { rows } = await db.query("SELECT valor FROM ajustes WHERE clave = 'comision'");
+  const v = { ...COMISION_DEFAULT, ...(rows[0] && rows[0].valor && typeof rows[0].valor === 'object' ? rows[0].valor : {}) };
+  const n = Number(v.porcentaje);
+  return Number.isFinite(n) && n >= 0 && n <= 90 ? n : COMISION_DEFAULT.porcentaje;
+}
+
 export function createContenido({ pool, mp, cuentas = [], siteUrl = '', log = () => {}, invalidar = () => {}, now = () => Date.now(), planDe = async () => 'E', notify = () => {} }) {
   // Packs que puede tener a la venta según su plan (null = ilimitados).
   const limitePacks = async (cuentaId) => { const l = limitesDe(await planDe(cuentaId)).packs; return l === undefined ? 0 : l; };
