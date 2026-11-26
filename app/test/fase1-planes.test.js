@@ -569,6 +569,30 @@ describe('admin: acompañantes y verificación', () => {
   });
 });
 
+describe('admin: cambiar el WhatsApp de una acompañante (26/11/2026)', () => {
+  test('con código de país; vacío solo si tiene Telegram; 404 si no existe', async () => {
+    const c = await nuevaCuenta({ datos: { whatsapp: '+5491100000000' } });
+    let r = await admPost(`/acompanantes/${c.id}/whatsapp`, { whatsapp: '+54 9 11 2345-6789' });
+    assert.equal(r.status, 200);
+    let j = await r.json();
+    assert.deepEqual([j.whatsapp, j.antes], ['+5491123456789', '+5491100000000']);
+    const dat = async () => (await db.query('SELECT datos FROM perfiles WHERE cuenta_id = $1', [c.id])).rows[0].datos;
+    assert.equal((await dat()).whatsapp, '+5491123456789');
+    assert.equal((await dat()).displayName.startsWith('Prueba'), true, 'no toca los demás datos');
+    r = await admPost(`/acompanantes/${c.id}/whatsapp`, { whatsapp: '11 2345 6789' });
+    assert.equal(r.status, 400, 'sin código de país');
+    r = await admPost(`/acompanantes/${c.id}/whatsapp`, { whatsapp: '' });
+    assert.equal(r.status, 400, 'sin Telegram no puede quedar vacío');
+    await db.query("UPDATE perfiles SET datos = datos || '{\"telegram\": \"zz_usuario\"}'::jsonb WHERE cuenta_id = $1", [c.id]);
+    r = await admPost(`/acompanantes/${c.id}/whatsapp`, { whatsapp: '' });
+    assert.equal(r.status, 200);
+    assert.equal((await dat()).whatsapp, undefined);
+    assert.equal((await admPost('/acompanantes/00000000-0000-0000-0000-000000000000/whatsapp', { whatsapp: '+5491123456789' })).status, 404);
+    const j2 = await (await adm(`/acompanantes/${c.id}`)).json();
+    assert.equal(j2.perfil.datos.telegram, 'zz_usuario');
+  });
+});
+
 describe('admin: ajustes y catálogos', () => {
   test('ajustes GET/PUT con validación', async () => {
     let r = await admPost('/ajustes/portada', { valor: { titulo: 'Hola' } }, { method: 'PUT' });

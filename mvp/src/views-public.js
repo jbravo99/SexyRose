@@ -1071,7 +1071,9 @@
     );
     const city = cityCurrent();
     const gridAll = gridProfiles();
-    if (!S.gridShown) S.gridShown = GRID_PAGE; S.tierShown = {};
+    // 26/11/2026: el reinicio de "Ver más" va solo la primera vez (antes, sin llaves, se borraba en cada redibujo y el
+    // botón "Ver más <plan>" no mostraba nada nuevo)
+    if (!S.gridShown) { S.gridShown = GRID_PAGE; S.tierShown = {}; }
     const gridFirst = gridAll.slice(0, S.gridShown);
     const gSel = HH.genderLabel();
     return `

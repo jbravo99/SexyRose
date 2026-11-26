@@ -536,7 +536,7 @@
     return layout('acompanantes', `${head('Acompañantes', actualizar('ac'), S.ac ? `${(S.ac.items || []).length} ${HH.plural((S.ac.items || []).length, 'cuenta', 'cuentas')} · las que esperan revisión van primero` : 'Cuentas creadas en el sitio')}<div class="stack" style="gap:14px">${body}</div>`);
   }
 
-  function datoRows(d) {
+  function datoRows(d, cuentaId) {
     const rows = [];
     const add = (k, v) => { if (v != null && v !== '' && !(Array.isArray(v) && !v.length)) rows.push([k, v]); };
     const e = edadDe(d.fechaNacimiento);
@@ -546,7 +546,9 @@
     add('Nacionalidad', esc(d.nacionalidad || ''));
     add('Ubicación', esc([d.zona, ubNombre(d.ciudad), ubNombre(d.provincia), ubNombre(d.pais)].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ')));
     if (d.ciudadSugerida) add('Ciudad propuesta', `${esc(d.ciudadSugerida)} <span class="tiny muted">(no está en el catálogo: agregala en Ubicaciones si corresponde)</span>`);
-    add('WhatsApp', d.whatsapp ? ext('https://wa.me/' + String(d.whatsapp).replace(/\D/g, ''), esc(d.whatsapp)) : '');
+    // 26/11/2026: el admin puede corregirlo (si lo escribió mal)
+    const cambiarWa = cuentaId ? ` <button type="button" class="btn ghost sm" data-action="prodAcWhatsapp" data-id="${esc(cuentaId)}" data-wa="${esc(d.whatsapp || '')}">${icon('edit')} Cambiar</button>` : '';
+    if (d.whatsapp || cuentaId) rows.push(['WhatsApp', `${d.whatsapp ? ext('https://wa.me/' + String(d.whatsapp).replace(/\D/g, ''), esc(d.whatsapp)) : '<span class="muted">Sin WhatsApp</span>'}${cambiarWa}`]);
     add('Telegram', d.telegram ? ext('https://t.me/' + String(d.telegram).replace(/^@/, ''), esc('@' + String(d.telegram).replace(/^@/, ''))) : '');
     add('Tarifa desde', d.tarifaDesde != null && d.tarifaDesde !== '' ? money(d.tarifaDesde) + ' / h' : '');
     add('Idiomas', esc((d.idiomas || []).join(', ')));
@@ -685,7 +687,7 @@
         </section>`;
       body = `<div class="pa-detail">
           <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}${HH.paFichaExtra ? HH.paFichaExtra(id) : ''}</div>
-          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos)}</section>${credCard}${planCard}${cuentaCard}</div>
+          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos, c.id)}</section>${credCard}${planCard}${cuentaCard}</div>
         </div>`;
     }
     const nombre = d && d.perfil && d.perfil.datos ? d.perfil.datos.displayName : '';
@@ -1357,6 +1359,19 @@
       HH.api('GET', '/creditos/' + encodeURIComponent(id) + '?limite=20&antesDe=' + encodeURIComponent(d.siguiente))
         .then((r) => { d.movimientos = (d.movimientos || []).concat(r.movimientos || []); d.siguiente = r.siguiente; HH.refresh(); })
         .catch((e) => { el.disabled = false; fail(e); });
+    },
+    prodAcWhatsapp(el) {
+      const id = el.dataset.id;
+      HH.modal({ title: 'Cambiar el WhatsApp', body: `<div class="stack" style="gap:12px">
+          <p class="small">Es el número al que le escriben los clientes desde su perfil. Con código de país.</p>
+          <div class="field"><label for="acWa">WhatsApp</label><input class="input num" id="acWa" type="tel" inputmode="tel" maxlength="24" value="${esc(el.dataset.wa || '')}" placeholder="+54 9 11 1234 5678" autocomplete="off"></div>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Guardar', onClick: (btn) => {
+          const whatsapp = String(document.getElementById('acWa').value || '').trim();
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/acompanantes/' + encodeURIComponent(id) + '/whatsapp', { whatsapp })
+            .then((r) => { HH.closeModal(); HH.toast(r.whatsapp ? `WhatsApp cambiado a ${r.whatsapp}` : 'WhatsApp borrado', { type: 'ok' }); after(['acd:' + id, 'ac']); })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+        } }] });
     },
     prodAjuste(el) {
       const id = el.dataset.id; const d = S['cr:' + id];

@@ -909,6 +909,12 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Admin: cambiar el WhatsApp de una acompañante** (26/11/2026, Juan: "una escribió mal su número"): botón "Cambiar"
+junto al WhatsApp en Datos del perfil. `POST /acompanantes/:id/whatsapp {whatsapp}`: mismo formato que el panel (con código
+de país); vacío solo si tiene Telegram. Devuelve el nuevo y el anterior; invalida la caché del sitio.
+**Inicio, "Ver más <plan>"** (26/11/2026): el inicio reiniciaba lo abierto con "Ver más" en cada redibujo (faltaban las
+llaves del if) y el botón no mostraba más perfiles.
+
 **Ganancias de la venta de contenido** (25/11/2026, decisión de Juan): tema de ayuda "ganancias": la plata de cada venta
 va directo a su Mercado Pago y por venta se descuenta el % del ajuste 'comision' (comisión de SexyRose + costo de Mercado
 Pago, el mismo texto que Panel → Contenido); con "próximamente" adelante mientras la venta no abrió. Es la única

@@ -12,6 +12,7 @@ import {
   CONTACTO_DEFAULT, COTIZACION_DEFAULT, COMISION_DEFAULT, MENSAJES_DEFAULT, montoJson,
 } from '../lib/creditos.js';
 import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, prelanzamientoEn, validarPrelanzamiento } from '../lib/prelanzamiento.js';
+import { normalizarWhatsapp } from '../lib/perfiles.js';
 import { avisos as AVISOS, guardarAviso, createAvisosCuenta, fechaPlazo, DIAS_VERIFICACION } from '../lib/avisos-cuenta.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -251,6 +252,24 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!h) throw he(404, 'Historia no encontrada.');
     log('admin: historia borrada', req.params.hid, 'de', id, 'por', adminUser);
     res.json({ ok: true });
+  }));
+
+  // Cambiar el WhatsApp de una acompañante (26/11/2026, Juan: "una escribió mal su número y se lo voy a modificar").
+  // Mismo formato que en su panel (con código de país). Vacío solo si tiene Telegram (tiene que quedar al menos uno).
+  r.post('/acompanantes/:id/whatsapp', apiPost, ah(async (req, res) => {
+    const id = uuid(req);
+    const v = normalizarWhatsapp(body(req).whatsapp);
+    if (v === null) throw he(400, 'El WhatsApp tiene que incluir el código de país, por ejemplo +54 9 11 1234 5678.');
+    const { rows } = await pool.query("SELECT datos->>'whatsapp' AS wa, datos->>'telegram' AS tg FROM perfiles WHERE cuenta_id = $1", [id]);
+    if (!rows[0]) throw he(404, 'Acompañante no encontrada.');
+    if (!v && !rows[0].tg) throw he(400, 'Tiene que quedar con WhatsApp o Telegram: no tiene Telegram, así que el WhatsApp no puede quedar vacío.');
+    await pool.query(
+      v ? "UPDATE perfiles SET datos = jsonb_set(datos, '{whatsapp}', to_jsonb($2::text)), actualizado = now() WHERE cuenta_id = $1"
+        : "UPDATE perfiles SET datos = datos - 'whatsapp', actualizado = now() WHERE cuenta_id = $1",
+      v ? [id, v] : [id]);
+    invalidar();
+    log(`admin: WhatsApp de una acompañante cambiado por ${adminUser}`);
+    res.json({ ok: true, whatsapp: v || null, antes: rows[0].wa || null });
   }));
 
   r.post('/acompanantes/:id/plan', apiPost, ah(async (req, res) => {
