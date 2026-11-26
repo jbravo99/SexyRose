@@ -13,6 +13,10 @@ import {
 } from '../lib/creditos.js';
 import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, prelanzamientoEn, validarPrelanzamiento } from '../lib/prelanzamiento.js';
 import { normalizarWhatsapp } from '../lib/perfiles.js';
+import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
+import { sha256, tokenAleatorio } from '../lib/auth.js';
+// Mismo formato de email que el registro (routes/cuenta.js)
+const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
 import { avisos as AVISOS, guardarAviso, createAvisosCuenta, fechaPlazo, DIAS_VERIFICACION } from '../lib/avisos-cuenta.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -270,6 +274,43 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     invalidar();
     log(`admin: WhatsApp de una acompañante cambiado por ${adminUser}`);
     res.json({ ok: true, whatsapp: v || null, antes: rows[0].wa || null });
+  }));
+
+  // Cambiar el email de una acompañante y mandarle la confirmación (26/11/2026, Juan: "una escribió mal su email, debo
+  // poder modificarlo en el admin y enviar la confirmación a ese email"). Queda sin confirmar hasta que toque el link
+  // (48 h; el link también le abre la sesión). Desde ahí entra con el email nuevo y la misma contraseña. Si es el mismo
+  // email y todavía no lo confirmó, solo reenvía la confirmación.
+  r.post('/acompanantes/:id/email', apiPost, ah(async (req, res) => {
+    const id = uuid(req);
+    const email = String(body(req).email || '').trim().toLowerCase();
+    if (email.length > 254 || !EMAIL_RE.test(email)) throw he(400, 'Escribí un email válido.');
+    const { rows } = await pool.query(
+      "SELECT c.email, c.email_verificado, c.estado, p.datos->>'displayName' AS nombre FROM cuentas c LEFT JOIN perfiles p ON p.cuenta_id = c.id WHERE c.id = $1", [id]);
+    const c = rows[0];
+    if (!c || c.estado === 'baja') throw he(404, 'Acompañante no encontrada.');
+    const mismo = email === c.email;
+    if (mismo && c.email_verificado) throw he(409, 'Ese email ya está confirmado.');
+    if (!mismo) {
+      const otro = await pool.query('SELECT 1 FROM cuentas WHERE email = $1 AND id <> $2', [email, id]);
+      if (otro.rows[0]) throw he(409, 'Ya hay otra cuenta con ese email.');
+      try {
+        await pool.query('UPDATE cuentas SET email = $2, email_verificado = NULL WHERE id = $1', [id, email]);
+      } catch (e) {
+        if (e.code === '23505') throw he(409, 'Ya hay otra cuenta con ese email.');
+        throw e;
+      }
+    }
+    // Link de confirmación nuevo (los anteriores dejan de servir)
+    const token = tokenAleatorio(32);
+    await pool.query("UPDATE tokens_email SET usado = now() WHERE cuenta_id = $1 AND tipo = 'verificar' AND usado IS NULL", [id]);
+    await pool.query("INSERT INTO tokens_email (token_hash, cuenta_id, tipo, expira) VALUES ($1, $2, 'verificar', now() + interval '48 hours')", [sha256(token), id]);
+    // sendMail no tira error: devuelve { ok: false } si Mailgun falla (sin clave, en pruebas, { simulado: true })
+    const m = await sendMail({ to: email, ...plantillas.verificar({ nombre: c.nombre || '', url: urlSitio('/cuenta/verificar?token=' + token) }) })
+      .catch(() => ({ ok: false }));
+    const enviado = !(m && m.ok === false && !m.simulado);
+    if (!enviado) log('admin: no se pudo mandar la confirmación del email nuevo');
+    log(`admin: email de una acompañante ${mismo ? 'reenviada la confirmación' : 'cambiado'} por ${adminUser}`);
+    res.json({ ok: true, email, antes: mismo ? null : c.email, enviado });
   }));
 
   r.post('/acompanantes/:id/plan', apiPost, ah(async (req, res) => {

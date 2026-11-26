@@ -909,6 +909,12 @@ cortas, sin markdown (se limpia igual). Herramientas, con **permisos controlados
 Sin `ANTHROPIC_API_KEY` o si la API falla: lo determinístico sigue andando y el texto libre recibe "Te va a responder una
 persona del equipo." + aviso a Juan (una vez cada 30 min por chat).
 
+**Admin: cambiar el email de una acompañante** (26/11/2026, Juan: "una escribió mal su email"): botón "Cambiar" junto al
+email en la tarjeta Cuenta. `POST /acompanantes/:id/email {email}`: valida el formato y que no lo use otra cuenta, lo
+cambia, lo deja sin confirmar y le manda el link de confirmación al email nuevo (48 h; los links anteriores dejan de
+servir; el link le abre la sesión). Entra con el email nuevo y la misma contraseña. Mismo email sin confirmar = reenvía
+la confirmación; ya confirmado = 409. Devuelve `enviado` (si Mailgun lo aceptó).
+
 **Admin: cambiar el WhatsApp de una acompañante** (26/11/2026, Juan: "una escribió mal su número"): botón "Cambiar"
 junto al WhatsApp en Datos del perfil. `POST /acompanantes/:id/whatsapp {whatsapp}`: mismo formato que el panel (con código
 de país); vacío solo si tiene Telegram. Devuelve el nuevo y el anterior; invalida la caché del sitio.

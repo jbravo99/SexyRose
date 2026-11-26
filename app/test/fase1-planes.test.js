@@ -4,6 +4,7 @@
 // Aplica todos los db/*.sql (como el servidor) antes de arrancar.
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mailsEnviados } from '../lib/mail.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -590,6 +591,42 @@ describe('admin: cambiar el WhatsApp de una acompañante (26/11/2026)', () => {
     assert.equal((await admPost('/acompanantes/00000000-0000-0000-0000-000000000000/whatsapp', { whatsapp: '+5491123456789' })).status, 404);
     const j2 = await (await adm(`/acompanantes/${c.id}`)).json();
     assert.equal(j2.perfil.datos.telegram, 'zz_usuario');
+  });
+});
+
+describe('admin: cambiar el email de una acompañante y mandarle la confirmación (26/11/2026)', () => {
+  test('email nuevo sin confirmar + link que lo confirma; mismo email reenvía; repetido, inválido o confirmado: error', async () => {
+    const c = await nuevaCuenta();
+    const nuevo = `zzb-nuevo-${Date.now()}@example.com`;
+    const antes = mailsEnviados.length;
+    let r = await admPost(`/acompanantes/${c.id}/email`, { email: '  ' + nuevo.toUpperCase() + ' ' });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.deepEqual([j.email, j.antes, j.enviado], [nuevo, c.email, true]);
+    const fila = async () => (await db.query('SELECT email, email_verificado FROM cuentas WHERE id = $1', [c.id])).rows[0];
+    assert.deepEqual(await fila(), { email: nuevo, email_verificado: null });
+    const m = mailsEnviados.slice(antes).find((x) => x.to === nuevo);
+    assert.ok(m && /Confirmá tu email/.test(m.subject), 'confirmación al email nuevo');
+    const link = m.links.find((l) => l.includes('/cuenta/verificar?token='));
+    const token = new URL(link).searchParams.get('token');
+    // Mismo email, todavía sin confirmar: solo reenvía (y el link anterior deja de servir)
+    r = await admPost(`/acompanantes/${c.id}/email`, { email: nuevo });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).antes, null);
+    const m2 = mailsEnviados.slice(antes).filter((x) => x.to === nuevo).at(-1);
+    const token2 = new URL(m2.links.find((l) => l.includes('/cuenta/verificar?token='))).searchParams.get('token');
+    assert.notEqual(token2, token);
+    const verificar = (t) => fetch(BASE + '/api/cuenta/verificar-email', { method: 'POST', headers: { 'content-type': 'application/json', origin: BASE, 'x-sr': '1' }, body: JSON.stringify({ token: t }) });
+    assert.equal((await verificar(token)).status, 400, 'el link anterior ya no sirve');
+    assert.equal((await verificar(token2)).status, 200);
+    assert.ok((await fila()).email_verificado);
+    // Ya confirmado: el mismo email da error
+    assert.equal((await admPost(`/acompanantes/${c.id}/email`, { email: nuevo })).status, 409);
+    // Email de otra cuenta, inválido o cuenta inexistente
+    const otra = await nuevaCuenta();
+    assert.equal((await admPost(`/acompanantes/${c.id}/email`, { email: otra.email })).status, 409);
+    assert.equal((await admPost(`/acompanantes/${c.id}/email`, { email: 'sin-arroba.com' })).status, 400);
+    assert.equal((await admPost('/acompanantes/00000000-0000-0000-0000-000000000000/email', { email: 'x@example.com' })).status, 404);
   });
 });
 

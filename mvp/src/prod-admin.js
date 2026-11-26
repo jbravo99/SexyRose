@@ -674,7 +674,7 @@
       const cuentaCard = `<section class="card stack" style="gap:10px">
           <div class="card-title">${icon('user')} Cuenta</div>
           <dl class="pa-dl">
-            <div><dt>Email</dt><dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a> ${c.emailVerificado ? `<span class="badge ok">Confirmado</span>` : '<span class="badge warn">Sin confirmar</span>'}</dd></div>
+            <div><dt>Email</dt><dd><a href="mailto:${esc(c.email)}">${esc(c.email)}</a> ${c.emailVerificado ? `<span class="badge ok">Confirmado</span>` : '<span class="badge warn">Sin confirmar</span>'} <button type="button" class="btn ghost sm" data-action="prodAcEmail" data-id="${esc(c.id)}" data-email="${esc(c.email)}" data-ok="${c.emailVerificado ? '1' : ''}">${icon('edit')} Cambiar</button></dd></div>
             <div><dt>Nombre completo</dt><dd>${c.nombreCompleto ? `<span data-noi18n>${esc(c.nombreCompleto)}</span> <span class="badge ok">Verificado</span>`
               : vLast && vLast.nombreCompleto ? `<span data-noi18n>${esc(vLast.nombreCompleto)}</span> <span class="badge warn">Sin verificar</span>` : '—'} <span class="tiny muted">No se publica.</span></dd></div>
             <div><dt>Estado de la cuenta</dt><dd>${esc(c.estado || '')}</dd></div>
@@ -1359,6 +1359,25 @@
       HH.api('GET', '/creditos/' + encodeURIComponent(id) + '?limite=20&antesDe=' + encodeURIComponent(d.siguiente))
         .then((r) => { d.movimientos = (d.movimientos || []).concat(r.movimientos || []); d.siguiente = r.siguiente; HH.refresh(); })
         .catch((e) => { el.disabled = false; fail(e); });
+    },
+    prodAcEmail(el) {
+      const id = el.dataset.id; const antes = el.dataset.email || '';
+      HH.modal({ title: 'Cambiar el email', body: `<div class="stack" style="gap:12px">
+          <p class="small">Le mandamos un link de confirmación al email nuevo (vence en 48 h). Hasta que lo toque queda sin confirmar. Después entra con el email nuevo y su misma contraseña.${el.dataset.ok ? '' : ' Si dejás el mismo email, solo se le reenvía la confirmación.'}</p>
+          <div class="field"><label for="acEm">Email</label><input class="input" id="acEm" type="email" inputmode="email" maxlength="254" value="${esc(antes)}" autocomplete="off" spellcheck="false" autocapitalize="off"></div>
+        </div>`, actions: [{ label: 'Cancelar', cls: 'ghost', action: 'closeModal' }, { label: 'Guardar y mandar confirmación', onClick: (btn) => {
+          const email = String(document.getElementById('acEm').value || '').trim();
+          if (!email) { HH.toast('Escribí el email.', { type: 'warn' }); return; }
+          if (btn) btn.disabled = true;
+          HH.api('POST', '/acompanantes/' + encodeURIComponent(id) + '/email', { email })
+            .then((r) => {
+              HH.closeModal();
+              const que = r.antes ? `Email cambiado a ${r.email}` : `Confirmación reenviada a ${r.email}`;
+              HH.toast(r.enviado ? `${que}. Le mandamos el link para confirmarlo.` : `${que}, pero el email de confirmación no salió. Probá de nuevo en un rato.`, { type: r.enviado ? 'ok' : 'warn' });
+              after(['acd:' + id, 'ac']);
+            })
+            .catch((e) => { if (btn) btn.disabled = false; fail(e); });
+        } }] });
     },
     prodAcWhatsapp(el) {
       const id = el.dataset.id;
