@@ -1157,6 +1157,19 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
   y sumándose ahora sale desde el primer día; pregunta corta al final; sin link, sin emojis, sin "página de anuncios".
   `captacion_contactos.mensaje_reglas` = versión de las reglas (`REGLAS_INVITACION`); las de reglas anteriores que siguen
   "pendiente" se reescriben y mientras tanto va una fija; las "abierto" se respetan. `quitarLink` conserva los párrafos.
+- **Invitación v3: sitio abierto** (27/11/2026, Juan: "La página ya está visible al público"; `REGLAS_INVITACION` = 3):
+  sale "abrimos en diciembre / desde el primer día". Las 3 fijas, de los dos modelos de Juan recortados a 250 y con
+  *gratis* en negrita: "Hola, te escribimos de SexyRose: vimos tu perfil en otro sitio. / Sumarse es fácil y *gratis*
+  [o: Crear tu perfil es fácil y *gratis*], con fotos, videos e historias, y después podés vender tu contenido. / Ya
+  estamos online: te registrás en minutos y lo publicamos rápido. ¿Te interesa?" — una cierra con "Te dejamos el link."
+  a secas, SIN link (a Juan le dio bastante resultado; el link lo pasa el asistente cuando contestan).
+  - Reglas: tiene que decir "online"; no puede hablar de la apertura (diciembre, primer día, abrimos, lanzamos); termina en
+    pregunta o en "Te dejamos el link."; el resto igual que la v2. La IA alterna el cierre al azar y recibe los dos
+    modelos de Juan como ejemplo. Las pendientes escritas con la v2 se reescriben solas; las "abierto" se respetan.
+  - Las versiones de Mensajería → Mensajes que hablan de la apertura ("diciembre", "primer día") ya no se usan (va la
+    fija) y no se pueden guardar nuevas. Las invitaciones de diciembre (`MENSAJES_DICIEMBRE`) se siguen reconociendo.
+  - Asistente (contexto de invitación): "lo revisamos y lo publicamos rápido; ya estamos online, así que apenas lo
+    publicamos se ve en el sitio"; "link", "¿qué link?" o "pasame el link" es interés (cierra con el link de registro).
 - **Resultados** (`GET /captacion/resultados?dias=14`, 1 a 90): de las enviadas en esos días, por chip, por día y por
   franja horaria de Argentina (0–8, 8–12, 12–15, 15–19, 19–24): enviadas, contestaron dentro de las 48 h, se registraron,
   no escribir y "en espera" (menos de 48 h sin respuesta, fuera del porcentaje). Tarjeta "Resultados de las invitaciones"
@@ -1168,7 +1181,7 @@ Invitar a acompañantes que publican en otros sitios (la planilla `sexyrose-cont
 - **Número para comprar créditos** (23/11/2026, `lib/chips.js → numeroCreditos`): el chip de créditos activo o, si no
   hay, el chip 1, siempre que esté conectado; si está desvinculado (por ejemplo, WhatsApp lo desvinculó al
   restringirlo), el de otro chip conectado (primero los activos) hasta que vuelva. Sin ninguno conectado, como antes.
-- **Invitación por defecto** (19/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
+- **Invitación por defecto** (19/11/2026; reemplazada por la v3 el 27/11/2026): "abrimos en diciembre" y la venta de contenido "próximamente". El asistente
   contesta lo mismo con el tema de ayuda `apertura` ("a partir de diciembre" mientras la home provisoria está
   prendida; con el sitio abierto, que ya está abierto).
 - **Los N del día** (`GET /captacion` → `cola`): N = `ajustes.captacion.porDia` (1–200, por defecto 30) menos los enviados

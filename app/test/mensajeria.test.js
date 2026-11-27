@@ -19,6 +19,7 @@ import { crearXlsx } from '../lib/xlsx.js';
 import { leerCsv, leerPlanilla, leerXlsx } from '../lib/xlsx-lector.js';
 import {
   MENSAJE_DEFAULT, contactosDeFilas, esMensajeCaptacion, motivoJoven, normalizarTelefono, respuestaInvitada, validarInvitacion, quitarLink, MENSAJES_CORTOS,
+  REGLAS_INVITACION, MENSAJES_DICIEMBRE, mezclarAjustesCaptacion, validarAjustesCaptacion,
 } from '../lib/captacion.js';
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -344,7 +345,7 @@ describe('captación: importar, cola y estados', () => {
     // Cola: los de más avisos primero; nunca los de "revisar", "no escribir" ni los que ya están en el sitio
     const ids = d.resumen.cola.items.map((x) => x.nombres[0]);
     assert.deepEqual(ids, ['Luna', 'Mora', 'Kiara', 'Sol']);
-    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('Te escribimos de SexyRose'))));
+    assert.ok(d.resumen.cola.items.every((x) => x.waUrl.startsWith('https://wa.me/549115555020') && x.waUrl.includes(encodeURIComponent('escribimos de SexyRose'))));
     assert.ok(d.resumen.cola.items.every((x) => /\*{4}/.test(x.telefono)), 'teléfono enmascarado');
     assert.ok(d.resumen.revisar.every((x) => !x.waUrl && x.motivo));
     assert.equal(d.resumen.revisar[0].tipoMotivo, 'joven');
@@ -554,6 +555,13 @@ describe('captación en el agente', () => {
     await subir(Buffer.from('Nombres,Teléfono\nLuna,+5491155550202\n'), 'x.csv');
     assert.equal((await cap('+' + tel)).estado, 'no_escribir');
     assert.equal((await admJson('POST', `/captacion/${x.id}/abierto`, {})).status, 409);
+  });
+
+  test('sitio abierto (27/11/2026): una invitación vieja "Abrimos en diciembre" se sigue reconociendo', async () => {
+    await subir(Buffer.from('Nombres,Teléfono\nDiciembre,+5491155550977\n'), 'dic.csv');
+    await llega('5491155550977', MENSAJES_DICIEMBRE[1].replace(/\*/g, ''), { fromMe: true });
+    assert.equal((await cap('+5491155550977')).estado, 'enviado');
+    await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = '+5491155550977'");
   });
 
   test('"¿quién te dio mi número?": de su aviso en otro sitio y "no escribir"; la IA también puede usar no_contactar', async () => {
@@ -892,21 +900,26 @@ describe('responder lo que llegó sin conexión (20/11/2026)', () => {
 });
 
 describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026; v2 el 23/11/2026)', () => {
-  const ok1 = '¡Hola! Te escribimos de SexyRose. Vimos tu perfil en otro sitio.\n\nAcá tu perfil es *gratis*, con fotos, videos e historias, y más adelante podés vender tu contenido.\n\nAbrimos en diciembre: si te sumás ahora, salís desde el primer día. ¿Te interesa?';
-  const ok2 = 'Buenas, ¿qué tal? Somos de SexyRose y vimos tu perfil en otro sitio.\n\nTenés tu perfil *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\nAbrimos en diciembre y sumándote ya salís desde el primer día. ¿Te cuento?';
+  // 27/11/2026 (reglas v3): sitio abierto, "Ya estamos online"; cierre en pregunta o en "Te dejamos el link."
+  const ok1 = '¡Hola! Te escribimos de SexyRose. Vimos tu perfil en otro sitio.\n\nSumarse es fácil y *gratis*, con fotos, videos e historias, y después vendés tu contenido.\n\nYa estamos online: te registrás en minutos. ¿Te interesa?';
+  const ok2 = 'Buenas, ¿qué tal? Somos de SexyRose y vimos tu perfil en otro sitio.\n\nCrear tu perfil es fácil y *gratis*, con fotos, videos e historias, y después vendés tu contenido.\n\nYa estamos online y lo publicamos rápido. Te dejamos el link.';
   const decodificar = (u) => decodeURIComponent(new URL(u).searchParams.get('text'));
 
-  test('reglas v2: hasta 250, en párrafos separados, en plural, con contenido y primer día, sin link; las fijas también', () => {
+  test('reglas v3: hasta 250, en párrafos separados, en plural, con contenido y "online", sin apertura ni link; las fijas también', () => {
     assert.equal(validarInvitacion(ok1), ok1);
     assert.equal(validarInvitacion(`"${ok1}"`), ok1, 'saca comillas');
     assert.equal(validarInvitacion(ok1.replace(/\n\n/g, '\n')), ok1, 'un salto simple pasa a párrafo separado');
     assert.equal(validarInvitacion(ok1.replace(/\n+/g, ' ')), null, 'todo en un párrafo: choclo');
     assert.equal(validarInvitacion(ok1.replace('SexyRose.', 'SexyRose (sexyrose.net).')), null, 'con link');
     assert.equal(validarInvitacion(ok1.replace('¿Te interesa?', 'Escribinos.')), null, 'sin pregunta al final');
-    assert.equal(validarInvitacion(ok1.replace('Vimos tu perfil', 'Vimos tu perfil ' + 'x'.repeat(10))), null, 'más de 250');
+    assert.equal(validarInvitacion(ok2), ok2, 'termina en "Te dejamos el link." (sin link)');
+    assert.equal(validarInvitacion(ok2.replace('Te dejamos el link.', 'Te dejamos el link: sexyrose.net')), null, 'con el link');
+    assert.equal(validarInvitacion(ok1.replace('Vimos tu perfil', 'Vimos tu perfil ' + 'x'.repeat(60))), null, 'más de 250');
     assert.equal(validarInvitacion(ok1.replace('*gratis*', 'barato')), null, 'sin gratis');
-    assert.equal(validarInvitacion(ok1.replace(', y más adelante podés vender tu contenido', '')), null, 'sin vender contenido');
-    assert.equal(validarInvitacion(ok1.replace(', salís desde el primer día', ', te esperamos')), null, 'sin primer día');
+    assert.equal(validarInvitacion(ok1.replace(', y después vendés tu contenido', '')), null, 'sin vender contenido');
+    assert.equal(validarInvitacion(ok1.replace('Ya estamos online', 'Ya podés sumarte')), null, 'sin online');
+    assert.equal(validarInvitacion(ok1.replace('te registrás en minutos', 'abrimos en diciembre')), null, 'habla de la apertura');
+    assert.equal(validarInvitacion(ok1.replace('te registrás en minutos', 'salís desde el primer día')), null, 'primer día');
     assert.equal(validarInvitacion(ok1.replace('Te escribimos de SexyRose. Vimos', 'Te escribo de SexyRose. Vi')), null, 'en singular');
     assert.equal(validarInvitacion(ok1.replace('Te escribimos de SexyRose.', 'Te escribimos de SexyRose, una página nueva de anuncios.')), null, 'página de anuncios');
     assert.equal(validarInvitacion(ok1.replace('¡Hola!', '¡Hola! 😊')), null, 'emoji');
@@ -915,6 +928,12 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
       assert.equal(validarInvitacion(m), m, m);
       assert.ok(m.length <= 250 && !/sexyrose\.net/i.test(m) && m.split('\n\n').length >= 2);
     }
+    // 27/11/2026: las versiones guardadas que hablan de la apertura ya no van (va la fija); no se pueden guardar nuevas
+    assert.deepEqual(mezclarAjustesCaptacion({ mensajes: [...MENSAJES_DICIEMBRE] }).mensajes, [MENSAJE_DEFAULT]);
+    assert.deepEqual(mezclarAjustesCaptacion({ mensajes: [MENSAJES_DICIEMBRE[0], 'Hola, somos de SexyRose y te invitamos.'] }).mensajes, ['Hola, somos de SexyRose y te invitamos.']);
+    assert.equal(mezclarAjustesCaptacion({ mensaje: MENSAJES_DICIEMBRE[1] }).mensaje, MENSAJE_DEFAULT);
+    assert.match(validarAjustesCaptacion({ mensajes: [MENSAJES_DICIEMBRE[2]] }).error, /apertura/);
+    assert.match(validarAjustesCaptacion({ mensaje: 'Hola, abrimos en diciembre, sumate.' }).error, /apertura/);
     assert.equal(quitarLink('¡Hola! Soy de SexyRose (sexyrose.net), una página nueva. ¿Te cuento?'), '¡Hola! Soy de SexyRose, una página nueva. ¿Te cuento?');
     assert.equal(quitarLink('Hola, somos de SexyRose (sexyrose.net).\n\n¿Te cuento?'), 'Hola, somos de SexyRose.\n\n¿Te cuento?', 'conserva los párrafos');
   });
@@ -926,7 +945,7 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
       + 'IaUno;+5491155550981;Rosario;skokka;99\nIaDos;+5491155550982;Rosario;skokka;98\nIaTres;+5491155550983;Rosario;skokka;97\n';
     assert.equal((await subir(Buffer.from(csv, 'utf8'), 'ia.csv')).status, 200);
     let k = 0;
-    const textos = [ok1, ok2, 'Hola, mirá www.sexyrose.net: es *gratis*, abrimos en diciembre. ¿Te interesa?'];
+    const textos = [ok1, ok2, 'Hola, mirá www.sexyrose.net: es *gratis* y ya estamos online. ¿Te interesa?'];
     LLM.guion = () => ({ stop_reason: 'end_turn', content: [{ type: 'text', text: textos[Math.min(k++, 2)] }] });
     const n0 = LLM.llamadas.length;
     const n = await agente.invitaciones.completar({ porPasada: 3 });
@@ -1002,7 +1021,7 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
     LLM.guion = null;
     const segunda = LLM.llamadas[n0 + 1];
     assert.match(JSON.stringify(segunda.messages), /quedó de \d+ caracteres y el máximo es 250/);
-    assert.match(LLM.llamadas[n0].system, /Ejemplo del formato y el largo/);
+    assert.match(LLM.llamadas[n0].system, /Ejemplos del formato y el largo/);
     assert.match(String((await cap('+5491155550961')).mensaje), /^¡Buenas!/);
     await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = '+5491155550961'");
   });
@@ -1019,7 +1038,7 @@ describe('invitación distinta para cada contacto, escrita por la IA (22/11/2026
     LLM.guion = null;
     const p = await cap('+5491155550960');
     assert.match(String(p.mensaje), /^Buenas\./, 'el pendiente tiene la suya');
-    assert.equal(Number(p.mensaje_reglas), 2);
+    assert.equal(Number(p.mensaje_reglas), REGLAS_INVITACION);
     assert.equal((await cap(tels[0])).mensaje, 'vieja', 'los abiertos no se tocan');
     await db.query("UPDATE captacion_contactos SET estado = 'descartado' WHERE telefono = ANY($1)", [[...tels, '+5491155550960']]);
   });

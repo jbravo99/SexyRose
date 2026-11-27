@@ -29,12 +29,30 @@ export const MAX_VERSIONES = 5;
 // separados, si no parece un único choclo de texto"): en plural como equipo, "vimos tu perfil en otro sitio", tu propio
 // perfil gratis con fotos, videos e historias y más adelante vender tu contenido, abrimos en diciembre y sumándote ahora
 // salís desde el primer día; pregunta corta al final; sin link; no se presenta como "página de anuncios".
+// 27/11/2026 (Juan: "La página ya está visible al público"): sale "Abrimos en diciembre: sumándote ahora salís desde el
+// primer día". Gancho nuevo, de los dos modelos de Juan: "Sumarse a SexyRose es fácil y gratis…" / "En SexyRose crear tu
+// perfil es fácil y gratis…" + "Ya estamos online: te registrás en minutos y lo publicamos rápido. ¿Te interesa?".
+// Juan: hasta 250 (recortadas sus versiones), *gratis* en negrita, y el cierre varía entre "¿Te interesa?" y "Te dejamos
+// el link." (a secas, sin link: el link lo pasa el asistente cuando responde; le dio bastante resultado).
 // Versiones fijas de respaldo: se usan si la IA no escribió la de ese contacto o está apagada.
-export const MENSAJE_DEFAULT = 'Hola, ¿cómo estás? Te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
-  + 'Tu perfil es *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
-  + 'Abrimos en diciembre: sumándote ahora salís desde el primer día. ¿Te interesa?';
+export const MENSAJE_DEFAULT = 'Hola, te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
+  + 'Sumarse es fácil y *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
+  + 'Ya estamos online: te registrás en minutos y lo publicamos rápido. ¿Te interesa?';
 export const MENSAJES_CORTOS = Object.freeze([
   MENSAJE_DEFAULT,
+  'Hola, te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
+    + 'Sumarse es fácil y *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
+    + 'Ya estamos online: te registrás en minutos y lo publicamos rápido. Te dejamos el link.',
+  'Hola, te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
+    + 'Crear tu perfil es fácil y *gratis*, con fotos, videos e historias, y después vendés tu contenido.\n\n'
+    + 'Ya estamos online: te registrás en minutos y lo publicamos rápido. ¿Te interesa?',
+]);
+// Invitaciones anteriores, para seguir reconociéndolas si llegan respuestas: las de diciembre (v2 del 23/11), las cortas
+// del 22/11 y las de antes (con link)
+export const MENSAJES_DICIEMBRE = Object.freeze([
+  'Hola, ¿cómo estás? Te escribimos de SexyRose: vimos tu perfil en otro sitio.\n\n'
+    + 'Tu perfil es *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
+    + 'Abrimos en diciembre: sumándote ahora salís desde el primer día. ¿Te interesa?',
   '¡Hola! Somos de SexyRose, un sitio nuevo. Vimos tu perfil en otro lado.\n\n'
     + 'Tu perfil es *gratis*, con fotos, videos e historias, y después podés vender tu contenido.\n\n'
     + 'Abrimos en diciembre: sumándote ahora salís desde el primer día. ¿Te cuento?',
@@ -42,8 +60,8 @@ export const MENSAJES_CORTOS = Object.freeze([
     + 'Acá tenés tu perfil *gratis*, con fotos, videos e historias, y después vendés tu contenido.\n\n'
     + 'Abrimos en diciembre: si te sumás ya, salís desde el primer día. ¿Te interesa?',
 ]);
-// Invitaciones anteriores, para seguir reconociéndolas si llegan respuestas: las cortas del 22/11 y las de antes (con link)
 export const MENSAJES_ANTERIORES = Object.freeze([
+  ...MENSAJES_DICIEMBRE,
   'Hola, ¿cómo estás? Vi tu aviso. Soy de SexyRose, una página nueva de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
   '¡Hola! Te escribo de SexyRose, un sitio nuevo de anuncios. Vi tu aviso: publicar es *gratis* y arrancamos en diciembre. ¿Te cuento?',
   'Hola, ¿qué tal? Soy de SexyRose y vi tu aviso. Estamos lanzando una página de anuncios: el perfil es *gratis* y abrimos en diciembre. ¿Te interesa?',
@@ -71,7 +89,8 @@ export function invitacionDe(contacto, ajustes) {
 // ---------- Invitación escrita por la IA (22/11/2026; v2 el 23/11/2026) ----------
 export const INVITACION_MAX = 250;
 // Versión de las reglas: las invitaciones guardadas con reglas anteriores se vuelven a escribir (solo las "pendiente")
-export const REGLAS_INVITACION = 2;
+// 3 (27/11/2026): sitio abierto, "Ya estamos online" en vez de diciembre / primer día
+export const REGLAS_INVITACION = 3;
 // Párrafos separados por una línea en blanco (Juan: "sino parece un único choclo de texto")
 function enParrafos(t) {
   return String(t || '').replace(/\r/g, '').split(/\n+/).map((p) => p.replace(/[ \t]+/g, ' ').trim()).filter(Boolean);
@@ -85,13 +104,13 @@ export function revisarInvitacion(t) {
   if (ps.length < 2 || ps.length > 3) return { motivo: `${ps.length} párrafo(s), tienen que ser 2 o 3` };
   if (s.length > INVITACION_MAX) return { motivo: `larga: ${s.length} caracteres`, largo: s.length };
   if (s.length < 120) return { motivo: `corta: ${s.length} caracteres` };
-  if (!/\?$/.test(s)) return { motivo: 'no termina en pregunta' };
+  if (!/(\?|te dejamos el link\.?)$/i.test(s)) return { motivo: 'no termina en pregunta ni en "Te dejamos el link."' };
   if (/https?:|www\.|\.(net|com|ar|org)\b|sexyrose\.[a-z]|t\.me|wa\.me|@/i.test(s)) return { motivo: 'tiene un link' };
   if (!/sexyrose/i.test(s)) return { motivo: 'no dice SexyRose' };
   if (!/gratis/i.test(s)) return { motivo: 'no dice gratis' };
-  if (!/diciembre/i.test(s)) return { motivo: 'no dice diciembre' };
+  if (!/online/i.test(s)) return { motivo: 'no dice que ya estamos online' };
   if (!/contenido/i.test(s)) return { motivo: 'no dice vender su contenido' };
-  if (!/primer d[ií]a|desde el (inicio|arranque|lanzamiento|comienzo)|desde que abr/i.test(s)) return { motivo: 'no dice desde el primer día' };
+  if (/diciembre|primer d[ií]a|abrimos|vamos a abrir|lanzamos|estamos lanzando|pr[oó]ximamente abr/i.test(s)) return { motivo: 'habla de la apertura (ya estamos online)' };
   if (!/\b(escribimos|vimos|somos|contactamos|queremos|invitamos|nos encantar)/i.test(s)) return { motivo: 'no está en plural' };
   if (/(p[aá]gina|sitio|web) (nueva |nuevo )?de anuncios/i.test(s)) return { motivo: 'dice página de anuncios' };
   if (/\p{Extended_Pictographic}/u.test(s)) return { motivo: 'tiene emojis' };
@@ -100,23 +119,28 @@ export function revisarInvitacion(t) {
   return { texto: s };
 }
 export const validarInvitacion = (t) => revisarInvitacion(t).texto || null;
+// Los dos modelos de Juan (27/11/2026), recortados a 250
+const MODELOS = [MENSAJES_CORTOS[1], MENSAJES_CORTOS[2]];
 // Estilos para pedirle a la IA que varíe (uno al azar por mensaje)
 const ESTILOS = ['empezá con "Hola" y una pregunta de cortesía', 'empezá con "¡Hola!" y andá directo', 'empezá con "Buenas" o "Buen día"',
   'empezá contando que vimos su perfil en otro sitio', 'empezá presentándote como el equipo de SexyRose', 'usá un tono cálido y simple', 'usá un tono profesional y breve'];
 export function pedidoInvitacion(anteriores = [], azar = Math.random) {
   const estilo = ESTILOS[Math.floor(azar() * ESTILOS.length)];
+  // Juan (27/11/2026): "Te dejamos el link" a secas (sin link) en vez de "¿Te interesa?" le dio bastante resultado: se va variando
+  const cierre = azar() < 0.5 ? 'con la frase "Te dejamos el link." a secas (SIN poner ningún link)' : 'con una pregunta corta ("¿Te interesa?", "¿Te cuento?")';
   return {
-    system: 'Escribís la primera invitación por WhatsApp del equipo de SexyRose, un sitio nuevo en Argentina donde cada una tiene su propio '
-      + 'perfil con fotos, videos e historias, y más adelante va a poder vender su contenido. Le escribís a alguien que publica su perfil en '
+    system: 'Escribís la primera invitación por WhatsApp del equipo de SexyRose, un sitio de Argentina que ya está online, donde cada una tiene su '
+      + 'propio perfil con fotos, videos e historias, y más adelante va a poder vender su contenido. Le escribís a alguien que publica su perfil en '
       + 'otros sitios. Español rioplatense, con "vos", hablando en plural como equipo ("te escribimos", "vimos").\n'
       + 'Formato: 2 o 3 párrafos MUY cortos, separados por una línea en blanco; en total no más de 230 caracteres.\n'
-      + 'Tiene que decir: que vimos su perfil en otro sitio; que en SexyRose tiene su propio perfil gratis (la palabra gratis entre '
-      + 'asteriscos: *gratis*) con fotos, videos e historias, y que más adelante va a poder vender su contenido; que abrimos en diciembre y '
-      + 'que si se suma ahora sale desde el primer día. Terminá con una pregunta corta ("¿Te interesa?", "¿Te cuento?").\n'
+      + 'Tiene que decir: que vimos su perfil en otro sitio; que sumarse a SexyRose (o crear su perfil) es fácil y gratis (la palabra gratis '
+      + 'entre asteriscos: *gratis*), con fotos, videos e historias, y que después puede vender su contenido; que ya estamos online, que se '
+      + 'registra en minutos y lo publicamos rápido. No hables de la apertura (nada de "abrimos", "diciembre" ni "primer día"). '
+      + `Terminá ${cierre}.\n`
       + 'PROHIBIDO: links o direcciones (ni sexyrose.net ni www), emojis, nombres de personas, presentarlo como "página de anuncios", hablar '
       + 'de servicios, encuentros, tarifas o contenido sexual, prometer ganancias, y frases para darse de baja. Respondé solo con el mensaje, '
       + 'sin comillas.\n'
-      + `Ejemplo del formato y el largo (${MENSAJE_DEFAULT.length} caracteres; no lo copies, escribí otra con otras palabras):\n${MENSAJE_DEFAULT}`,
+      + `Ejemplos del formato y el largo (no los copies, escribí otra parecida con otras palabras):\n${MODELOS.join('\n---\n')}`,
     prompt: `Escribí una invitación nueva. Esta vez ${estilo}. Tiene que ser distinta de estas (otras palabras y otro orden):\n`
       + (anteriores.length ? anteriores.map((m) => '- ' + m.replace(/\n+/g, ' / ')).join('\n') : '- ' + MENSAJE_DEFAULT.replace(/\n+/g, ' / ')),
   };
@@ -138,11 +162,14 @@ export const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').
   .replace(/[^a-z0-9ñ]+/g, ' ').trim();
 
 // ---------- Ajustes (ajustes.clave = 'captacion': { mensaje, porDia }) ----------
+const APERTURA_VIEJA = /diciembre|primer d[ií]a/i;
 export function mezclarAjustesCaptacion(v) {
   const o = esObj(v) ? v : {};
   const n = Number(o.porDia);
-  const vs = Array.isArray(o.mensajes) ? o.mensajes.filter((x) => typeof x === 'string' && x.trim()).slice(0, MAX_VERSIONES) : [];
-  const mensajes = vs.length ? vs : [typeof o.mensaje === 'string' && o.mensaje.trim() ? o.mensaje : MENSAJE_DEFAULT];
+  // 27/11/2026 (sitio abierto): las versiones guardadas que hablan de la apertura ("diciembre", "primer día") ya no van
+  const vigente = (x) => typeof x === 'string' && x.trim() && !APERTURA_VIEJA.test(x);
+  const vs = Array.isArray(o.mensajes) ? o.mensajes.filter(vigente).slice(0, MAX_VERSIONES) : [];
+  const mensajes = vs.length ? vs : [vigente(o.mensaje) ? o.mensaje : MENSAJE_DEFAULT];
   return {
     mensaje: mensajes[0], // la primera versión (compatibilidad)
     mensajes,
@@ -169,6 +196,7 @@ export function validarAjustesCaptacion(v, actual = {}) {
       if (!t) continue;
       if (t.length > MENSAJE_MAX) return { error: `La versión ${i + 1} admite hasta ${MENSAJE_MAX} caracteres.` };
       if (t.length < 20) return { error: `La versión ${i + 1} es muy corta.` };
+      if (APERTURA_VIEJA.test(t)) return { error: `La versión ${i + 1} habla de la apertura ("diciembre", "primer día"): el sitio ya está abierto.` };
       ts.push(t);
     }
     out.mensajes = ts.length ? ts : [MENSAJE_DEFAULT]; // ninguna = el texto aprobado
@@ -178,6 +206,7 @@ export function validarAjustesCaptacion(v, actual = {}) {
     const t = v.mensaje.replace(/\r\n?/g, '\n').trim();
     if (t.length > MENSAJE_MAX) return { error: `El mensaje admite hasta ${MENSAJE_MAX} caracteres.` };
     if (t && t.length < 20) return { error: 'El mensaje es muy corto.' };
+    if (APERTURA_VIEJA.test(t)) return { error: 'El mensaje habla de la apertura ("diciembre", "primer día"): el sitio ya está abierto.' };
     out.mensaje = t || MENSAJE_DEFAULT; // vacío = el texto aprobado
     out.mensajes = [out.mensaje];
   }

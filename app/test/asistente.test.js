@@ -596,14 +596,17 @@ describe('IA, persona y límites', () => {
     const pc = promptSistema({ siteUrl: SITE, identificado: false, idioma: 'es', captacion: true });
     assert.ok(pc.includes('NO le preguntes "¿en qué te puedo ayudar?"') && pc.includes(`Cerrá con el link de registro`));
     assert.ok(pc.includes('Los planes pagos y Destacado, solo si los pregunta.'));
+    // 27/11/2026: sitio abierto; la invitación puede terminar en "Te dejamos el link" (sin link)
+    assert.ok(!pc.includes('diciembre') && pc.includes('ya estamos online') && pc.includes('"¿qué link?"'));
     assert.equal(MENSAJES_CORTOS[0], INVITACION);
     assert.equal(MENSAJES_CORTOS.length, 3);
+    assert.ok(MENSAJES_CORTOS.some((m) => m.endsWith('Te dejamos el link.')) && MENSAJES_CORTOS.some((m) => m.endsWith('?')));
     for (const m of MENSAJES_CORTOS) {
       assert.ok(m.length <= 250, `corta (${m.length})`);
       assert.ok(m.split('\n\n').length >= 2, 'en párrafos separados (23/11/2026)');
-      assert.ok(m.endsWith('?'), 'termina en pregunta');
+      assert.ok(m.endsWith('?') || m.endsWith('Te dejamos el link.'), 'termina en pregunta o en "Te dejamos el link." (27/11/2026)');
       // 22/11/2026: sin link en el primer mensaje (el asistente lo pasa cuando responde)
-      assert.ok(m.includes('SexyRose') && !/sexyrose\.net/i.test(m) && m.includes('*gratis*') && /diciembre/.test(m));
+      assert.ok(m.includes('SexyRose') && !/sexyrose\.net/i.test(m) && m.includes('*gratis*') && /Ya estamos online/.test(m) && !/diciembre|primer día/.test(m));
       assert.ok(!/no te (escribo|escribimos) más/i.test(m), 'sin línea de baja');
     }
   });
