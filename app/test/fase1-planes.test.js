@@ -630,6 +630,32 @@ describe('admin: cambiar el email de una acompañante y mandarle la confirmació
   });
 });
 
+describe('admin: mensajes a las acompañantes por email, desde la ficha o con Difusión (26/11/2026)', () => {
+  test('lo manda el sistema a las elegidas, con su nombre y botón al panel; la lista trae WhatsApp y Telegram', async () => {
+    const a = await nuevaCuenta({ datos: { whatsapp: '+5491111111111', telegram: 'zz_tele' } });
+    const b = await nuevaCuenta();
+    const antes = mailsEnviados.length;
+    let r = await admPost('/acompanantes/mensaje-email', { ids: [a.id, b.id, a.id], texto: 'Hola, te faltan fotos.\n\nCargalas desde tu panel.' });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.deepEqual([j.enviados, j.fallidos, j.noEncontradas], [2, [], 0]);
+    const ms = mailsEnviados.slice(antes);
+    const ma = ms.find((m) => m.to === a.email);
+    assert.ok(ma && ms.some((m) => m.to === b.email));
+    assert.equal(ma.subject, 'Un mensaje de SexyRose');
+    assert.match(ma.text, /^Hola, Prueba \d+/);
+    assert.match(ma.text, /Hola, te faltan fotos\.\n\nCargalas desde tu panel\./);
+    assert.match(ma.text, /Ir a mi panel: https?:\/\/[^\s]+\/panel/);
+    assert.equal((await admPost('/acompanantes/mensaje-email', { ids: [a.id], texto: '  ' })).status, 400);
+    assert.equal((await admPost('/acompanantes/mensaje-email', { ids: [], texto: 'x' })).status, 400);
+    assert.equal((await admPost('/acompanantes/mensaje-email', { ids: ['no-es-uuid'], texto: 'x' })).status, 400);
+    assert.equal((await admPost('/acompanantes/mensaje-email', { ids: [a.id], texto: 'x'.repeat(3001) })).status, 400);
+    const l = await (await adm('/acompanantes?q=' + encodeURIComponent(a.email))).json();
+    const it = l.items.find((x) => x.cuentaId === a.id);
+    assert.deepEqual([it.whatsapp, it.telegram], ['+5491111111111', 'zz_tele']);
+  });
+});
+
 describe('admin: ajustes y catálogos', () => {
   test('ajustes GET/PUT con validación', async () => {
     let r = await admPost('/ajustes/portada', { valor: { titulo: 'Hola' } }, { method: 'PUT' });

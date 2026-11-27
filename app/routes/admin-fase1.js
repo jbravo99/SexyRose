@@ -13,7 +13,7 @@ import {
 } from '../lib/creditos.js';
 import { CLAVE_PRELANZAMIENTO, prelanzamientoActivo, prelanzamientoEn, validarPrelanzamiento } from '../lib/prelanzamiento.js';
 import { normalizarWhatsapp } from '../lib/perfiles.js';
-import { plantillas, sendMail, urlSitio } from '../lib/mail.js';
+import { emailBasico, plantillas, sendMail, urlSitio } from '../lib/mail.js';
 import { sha256, tokenAleatorio } from '../lib/auth.js';
 // Mismo formato de email que el registro (routes/cuenta.js)
 const EMAIL_RE = /^[^\s@<>()[\]",;:\\]+@[^\s@<>()[\]",;:\\]+\.[^\s@<>()[\]",;:\\]{2,}$/;
@@ -76,6 +76,8 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
         cuentaId: x.id, email: x.email, emailVerificado: Boolean(x.email_verificado), cuentaEstado: x.cuenta_estado,
         slug: x.slug, displayName: (x.datos && x.datos.displayName) || '', ciudad: (x.datos && x.datos.ciudad) || '',
         provincia: (x.datos && x.datos.provincia) || '', estado: x.estado, verificacion: x.verificacion, oculto: x.oculto,
+        // Para los mensajes del admin (26/11/2026): WhatsApp y Telegram de su perfil
+        whatsapp: (x.datos && x.datos.whatsapp) || null, telegram: (x.datos && x.datos.telegram) || null,
         plan: efect.get(x.id) || 'E', creado: x.creado, fotos: x.n_fotos, fotoPrincipal: x.foto_mini || null,
         // Nombre completo (interno, nunca se publica): el aprobado; si todavía no hay, el del último envío (sin verificar)
         nombreCompleto: x.nombre_completo || x.nombre_enviado || null, nombreCompletoVerificado: Boolean(x.nombre_completo),
@@ -311,6 +313,35 @@ export function createAdminFase1Router({ pool, planes, privado, apiPost, adminUs
     if (!enviado) log('admin: no se pudo mandar la confirmación del email nuevo');
     log(`admin: email de una acompañante ${mismo ? 'reenviada la confirmación' : 'cambiado'} por ${adminUser}`);
     res.json({ ok: true, email, antes: mismo ? null : c.email, enviado });
+  }));
+
+  // Mensaje del admin por email a una o varias acompañantes (26/11/2026, Juan: "comunicarle a las acompañantes que
+  // carguen fotos, revisen datos, etc."; desde su ficha o con "Difusión"). Lo manda el sistema, con el diseño de los avisos
+  // y un botón a su panel; las respuestas van a contacto@ (Reply-To). WhatsApp y Telegram los abre y manda Juan.
+  r.post('/acompanantes/mensaje-email', apiPost, ah(async (req, res) => {
+    const b = body(req);
+    const texto = String(b.texto || '').replace(/\r/g, '').trim();
+    if (!texto) throw he(400, 'Escribí el mensaje.');
+    if (texto.length > 3000) throw he(400, 'El mensaje puede tener hasta 3000 caracteres.');
+    const ids = [...new Set(Array.isArray(b.ids) ? b.ids.map(String) : [])];
+    if (!ids.length) throw he(400, 'Elegí al menos una acompañante.');
+    if (ids.length > 500) throw he(400, 'Como máximo 500 por envío.');
+    if (!ids.every((x) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x))) throw he(400, 'Hay una acompañante inválida.');
+    const { rows } = await pool.query(
+      `SELECT c.id, c.email, p.datos->>'displayName' AS nombre FROM cuentas c LEFT JOIN perfiles p ON p.cuenta_id = c.id
+        WHERE c.id = ANY($1::uuid[]) AND c.estado <> 'baja'`, [ids]);
+    const parrafos = texto.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    let enviados = 0; const fallidos = [];
+    for (const c of rows) {
+      const m = emailBasico({
+        titulo: `Hola${c.nombre ? ', ' + c.nombre : ''}`, parrafos, boton: { texto: 'Ir a mi panel', url: urlSitio('/panel') },
+        pie: 'Te escribimos desde SexyRose. Si tenés dudas, respondé este email o escribinos a contacto@sexyrose.net.',
+      });
+      const r = await sendMail({ to: c.email, subject: 'Un mensaje de SexyRose', text: m.text, html: m.html }).catch(() => ({ ok: false }));
+      if (r && r.ok === false && !r.simulado) fallidos.push(c.id); else enviados++;
+    }
+    log(`admin: mensaje por email a ${enviados} acompañante(s)${fallidos.length ? ` (${fallidos.length} no salieron)` : ''}`);
+    res.json({ ok: true, enviados, fallidos, noEncontradas: ids.length - rows.length });
   }));
 
   r.post('/acompanantes/:id/plan', apiPost, ah(async (req, res) => {

@@ -533,7 +533,69 @@
         </div>
         <div id="prodAcRows">${acRows()}</div>`;
     }
-    return layout('acompanantes', `${head('Acompañantes', actualizar('ac'), S.ac ? `${(S.ac.items || []).length} ${HH.plural((S.ac.items || []).length, 'cuenta', 'cuentas')} · las que esperan revisión van primero` : 'Cuentas creadas en el sitio')}<div class="stack" style="gap:14px">${body}</div>`);
+    const difusion = S.ac && (S.ac.items || []).length ? `<button type="button" class="btn secondary sm" data-action="acDifusion">${icon('send')} Difusión</button>` : '';
+    return layout('acompanantes', `${head('Acompañantes', `<div class="row" style="gap:8px">${difusion}${actualizar('ac')}</div>`, S.ac ? `${(S.ac.items || []).length} ${HH.plural((S.ac.items || []).length, 'cuenta', 'cuentas')} · las que esperan revisión van primero` : 'Cuentas creadas en el sitio')}<div class="stack" style="gap:14px">${body}</div>`);
+  }
+
+  /* ---------- Mensajes a las acompañantes (26/11/2026, Juan: "que carguen fotos, revisen datos, etc.") ----------
+     WhatsApp: abre el chat con el texto escrito (lo manda Juan). Telegram: copia el texto y abre el chat (Telegram no
+     deja escribirlo de antemano). Email: lo manda el sistema (POST /acompanantes/mensaje-email). */
+  const waLink = (num, texto) => 'https://wa.me/' + String(num || '').replace(/\D/g, '') + (texto ? '?text=' + encodeURIComponent(texto) : '');
+  const tgLink = (u) => 'https://t.me/' + String(u || '').replace(/^@/, '').replace(/^https?:\/\/t\.me\//i, '');
+  const copiar = (t) => (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject(new Error('sin portapapeles')));
+  function abrirTelegram(user, texto) {
+    const w = window.open(tgLink(user), '_blank', 'noopener');
+    copiar(texto).then(() => HH.toast('Texto copiado: pegalo en el chat de Telegram.', { type: 'ok' }))
+      .catch(() => HH.toast('No pude copiar el texto: copialo a mano antes de pegarlo en Telegram.', { type: 'warn' }));
+    return w;
+  }
+  const menuEnviar = (attrs, d) => `<details class="pa-env"><summary class="btn sm">${icon('send')} Enviar por ${icon('chevronDown')}</summary>
+      <div class="pa-env-m" role="menu">
+        <button type="button" role="menuitem" class="btn ghost sm" data-action="acMsgCanal" data-canal="whatsapp" ${attrs}${d.whatsapp ? '' : ' disabled title="No tiene WhatsApp"'}>${icon('whatsapp')} WhatsApp</button>
+        <button type="button" role="menuitem" class="btn ghost sm" data-action="acMsgCanal" data-canal="telegram" ${attrs}${d.telegram ? '' : ' disabled title="No tiene Telegram"'}>${icon('send')} Telegram</button>
+        <button type="button" role="menuitem" class="btn ghost sm" data-action="acMsgCanal" data-canal="email" ${attrs}>${icon('mail')} Email</button>
+      </div></details>`;
+  function msgCard(c, d) {
+    if (!c || !c.id) return '';
+    return `<section class="card stack" style="gap:10px">
+        <div class="card-title">${icon('message')} Mensaje a <span data-noi18n>${esc(d.displayName || 'esta acompañante')}</span></div>
+        <div class="field"><label for="acMsg" class="sr-only">Mensaje</label><textarea class="textarea" id="acMsg" rows="4" maxlength="3000" placeholder="Ej.: Hola, te falta cargar fotos para que tu perfil se vea completo."></textarea></div>
+        <div class="row between" style="gap:8px;flex-wrap:wrap"><span class="tiny muted">WhatsApp y Telegram se abren para que lo mandes vos. El email sale solo, desde el sitio.</span>
+          ${menuEnviar(`data-id="${esc(c.id)}" data-wa="${esc(d.whatsapp || '')}" data-tg="${esc(d.telegram || '')}"`, d)}</div>
+      </section>`;
+  }
+  // Difusión: el mismo mensaje a varias (las del filtro actual de la lista)
+  S.difCanal = S.difCanal || 'whatsapp';
+  const difTexto = () => String((document.getElementById('difTxt') || {}).value || '').trim();
+  function difFilas() {
+    const items = ((S.ac && S.ac.items) || []).filter(acMatch);
+    const canal = S.difCanal; S.difAbiertos = S.difAbiertos || new Set();
+    return items.map((r) => {
+      const tiene = canal === 'whatsapp' ? r.whatsapp : canal === 'telegram' ? r.telegram : r.email;
+      const abrir = canal === 'email' ? '' : `<button type="button" class="btn ${S.difAbiertos.has(canal + r.cuentaId) ? 'ghost' : 'secondary'} sm" data-action="difAbrir" data-id="${esc(r.cuentaId)}"${tiene ? '' : ' disabled'}>${S.difAbiertos.has(canal + r.cuentaId) ? `${icon('check')} Abierto` : 'Abrir'}</button>`;
+      return `<label class="list-item small" style="gap:10px;align-items:center"><input type="checkbox" class="dif-chk" value="${esc(r.cuentaId)}"${tiene ? ' checked' : ' disabled'}>
+          <span class="grow" style="min-width:0"><strong data-noi18n>${esc(r.displayName || 'Sin nombre')}</strong> <span class="tiny muted">${esc(ESTADO_PERFIL_ADM[r.estado] || r.estado || '')}${tiene ? '' : canal === 'whatsapp' ? ' · sin WhatsApp' : ' · sin Telegram'}</span></span>${abrir}</label>`;
+    }).join('') || '<p class="small muted">No hay acompañantes con el filtro actual.</p>';
+  }
+  function difCuerpo() {
+    const n = ((S.ac && S.ac.items) || []).filter(acMatch).length;
+    const canales = [['whatsapp', 'WhatsApp'], ['telegram', 'Telegram'], ['email', 'Email']];
+    return `<div class="stack" style="gap:12px">
+        <p class="small muted" style="margin:0">Va a ${n} ${HH.plural(n, 'acompañante', 'acompañantes')}: las del filtro de la lista (${esc((AC_FILTROS.find((f) => f[0] === S.af) || [, 'Todas'])[1])}${S.aq ? ', con la búsqueda' : ''}). Destildá las que no.</p>
+        <div class="field"><label for="difTxt">Mensaje</label><textarea class="textarea" id="difTxt" rows="4" maxlength="3000" placeholder="Ej.: Hola, ya estamos online. Revisá que tus fotos y tus datos estén completos."></textarea></div>
+        <div class="chips" role="group" aria-label="Enviar por">${canales.map(([k, l]) => `<button type="button" class="chip${S.difCanal === k ? ' active' : ''}" data-action="difCanal" data-canal="${k}" aria-pressed="${S.difCanal === k}">${l}</button>`).join('')}</div>
+        <p class="tiny muted" style="margin:0" id="difAyuda">${S.difCanal === 'email' ? 'El email sale solo, desde el sitio, a las tildadas.' : S.difCanal === 'telegram' ? 'Tocá "Abrir" en cada una: se copia el texto y se abre su chat de Telegram para que lo pegues y lo mandes.' : 'Tocá "Abrir" en cada una: se abre su chat de WhatsApp con el texto escrito y vos tocás Enviar.'}</p>
+        <div class="list" id="difLista" style="max-height:340px;overflow:auto">${difFilas()}</div>
+      </div>`;
+  }
+  const ESTADO_PERFIL_ADM = { borrador: 'Borrador', en_revision: 'En revisión', publicado: 'Publicada', pausado: 'Pausada', rechazado: 'Rechazada', suspendido: 'Suspendida' };
+  function enviarEmails(ids, texto, btn, alTerminar) {
+    if (btn) btn.disabled = true;
+    return HH.api('POST', '/acompanantes/mensaje-email', { ids, texto })
+      .then((r) => {
+        HH.toast(r.fallidos && r.fallidos.length ? `Salieron ${r.enviados}; ${r.fallidos.length} no salieron. Probá de nuevo en un rato.` : `Email enviado a ${r.enviados} ${HH.plural(r.enviados, 'acompañante', 'acompañantes')}.`, { type: r.fallidos && r.fallidos.length ? 'warn' : 'ok' });
+        if (alTerminar) alTerminar(r);
+      }).catch((e) => { fail(e); }).finally(() => { if (btn) btn.disabled = false; });
   }
 
   function datoRows(d, cuentaId) {
@@ -617,7 +679,7 @@
           </div>
           ${d.pausadoPorVerificacion ? `<div class="notice warn">${icon('clock')}<span>Pausado solo: no mandó la verificación dentro de los 7 días. Vuelve a publicarse solo cuando la mande.</span></div>` : ''}
           ${d.verificacionLimite ? `<div class="notice warn">${icon('clock')}<span>Publicado sin verificar: tiene hasta el <strong>${fecha(d.verificacionLimite)}</strong> para mandar la verificación. Si no, se pausa solo.</span></div>` : ''}
-          ${est !== 'publicado' && p.verificacion !== 'verificada' ? `<p class="tiny muted">${['sin_enviar', 'rechazada'].includes(p.verificacion) ? 'Todavía no mandó la verificación: si lo publicás, tiene 7 días para mandarla; si no, se pausa solo.' : 'Mandó la verificación y todavía no la revisaste: podés publicarlo igual.'}</p>` : ''}
+          ${est !== 'publicado' && p.verificacion !== 'verificada' ? `<p class="tiny muted">${['sin_enviar', 'rechazada'].includes(p.verificacion) ? 'Todavía no mandó la verificación: podés publicarlo igual. No tiene plazo para mandarla (pedísela vos cuando quieras).' : 'Mandó la verificación y todavía no la revisaste: podés publicarlo igual.'}</p>` : ''}
         </section>`;
       const fotos = d.fotos || [];
       const fotosCard = `<section class="card stack" style="gap:12px">
@@ -687,7 +749,7 @@
         </section>`;
       body = `<div class="pa-detail">
           <div class="stack" style="gap:14px">${verifCard}${estadoCard}${fotosCard}${videosCard}${HH.paFichaExtra ? HH.paFichaExtra(id) : ''}</div>
-          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos, c.id)}</section>${credCard}${planCard}${cuentaCard}</div>
+          <div class="stack" style="gap:14px"><section class="card stack" style="gap:10px"><div class="card-title">${icon('edit')} Datos del perfil</div>${datoRows(datos, c.id)}</section>${msgCard(c, datos)}${credCard}${planCard}${cuentaCard}</div>
         </div>`;
     }
     const nombre = d && d.perfil && d.perfil.datos ? d.perfil.datos.displayName : '';
@@ -1360,6 +1422,47 @@
         .then((r) => { d.movimientos = (d.movimientos || []).concat(r.movimientos || []); d.siguiente = r.siguiente; HH.refresh(); })
         .catch((e) => { el.disabled = false; fail(e); });
     },
+    // Mensaje desde la ficha: WhatsApp / Telegram / Email
+    acMsgCanal(el) {
+      const det = el.closest('details'); if (det) det.open = false;
+      const texto = String((document.getElementById('acMsg') || {}).value || '').trim();
+      if (!texto) { HH.toast('Escribí el mensaje.', { type: 'warn' }); return; }
+      const canal = el.dataset.canal;
+      if (canal === 'whatsapp') { window.open(waLink(el.dataset.wa, texto), '_blank', 'noopener'); return; }
+      if (canal === 'telegram') { abrirTelegram(el.dataset.tg, texto); return; }
+      HH.confirm({ title: 'Mandar por email', text: 'Le llega desde el email del sitio, con un botón a su panel. Si responde, la respuesta va a contacto@.', okLabel: 'Mandar email', onOk: () => {
+        enviarEmails([el.dataset.id], texto, null, () => { const t = document.getElementById('acMsg'); if (t) t.value = ''; });
+      } });
+    },
+    // Difusión: el mismo mensaje a las del filtro actual
+    acDifusion() {
+      S.difAbiertos = new Set();
+      HH.modal({ title: 'Difusión', wide: true, body: difCuerpo(), actions: [
+        { label: 'Cerrar', cls: 'ghost', action: 'closeModal' },
+        { label: 'Mandar email a las tildadas', id: 'difEmailBtn', onClick: (btn) => {
+          if (S.difCanal !== 'email') { HH.toast('Para WhatsApp y Telegram, tocá "Abrir" en cada una.', { type: 'info' }); return; }
+          const texto = difTexto(); if (!texto) { HH.toast('Escribí el mensaje.', { type: 'warn' }); return; }
+          const ids = [...document.querySelectorAll('.dif-chk:checked')].map((x) => x.value);
+          if (!ids.length) { HH.toast('Tildá al menos una.', { type: 'warn' }); return; }
+          HH.confirm({ title: `Mandar email a ${ids.length}`, text: 'Les llega desde el email del sitio, con un botón a su panel.', okLabel: 'Mandar', onOk: () => enviarEmails(ids, texto, btn, () => HH.closeModal()) });
+        } },
+      ] });
+      const b = document.getElementById('difEmailBtn'); if (b) b.style.display = S.difCanal === 'email' ? '' : 'none';
+    },
+    difCanal(el) {
+      const txt = difTexto(); S.difCanal = el.dataset.canal;
+      const box = document.querySelector('#modalBox .modal-body'); if (!box) return;
+      box.innerHTML = difCuerpo(); const t = document.getElementById('difTxt'); if (t) t.value = txt;
+      const b = document.getElementById('difEmailBtn'); if (b) b.style.display = S.difCanal === 'email' ? '' : 'none';
+    },
+    difAbrir(el) {
+      const texto = difTexto(); if (!texto) { HH.toast('Escribí el mensaje.', { type: 'warn' }); return; }
+      const r = ((S.ac && S.ac.items) || []).find((x) => x.cuentaId === el.dataset.id); if (!r) return;
+      if (S.difCanal === 'whatsapp') window.open(waLink(r.whatsapp, texto), '_blank', 'noopener');
+      else if (S.difCanal === 'telegram') abrirTelegram(r.telegram, texto);
+      S.difAbiertos.add(S.difCanal + r.cuentaId);
+      el.className = 'btn ghost sm'; el.innerHTML = `${icon('check')} Abierto`;
+    },
     prodAcEmail(el) {
       const id = el.dataset.id; const antes = el.dataset.email || '';
       HH.modal({ title: 'Cambiar el email', body: `<div class="stack" style="gap:12px">
@@ -1469,7 +1572,7 @@
       const run = (motivo, reenable) => HH.api('POST', '/acompanantes/' + encodeURIComponent(id) + '/estado', { estado: to, motivo })
         .then(() => { HH.closeModal(); HH.toast({ publicado: 'Perfil publicado', pausado: 'Perfil pausado', suspendido: 'Perfil suspendido', rechazado: 'Perfil rechazado' }[to] + ': le avisamos por email', { type: 'ok' }); after([k, 'ac']); })
         .catch((e) => { if (reenable) reenable(); fail(e); });
-      if (to === 'publicado') HH.confirm({ title: 'Publicar perfil', text: el.dataset.sinverif ? '<span>El perfil pasa a verse en el sitio.</span> <span>Todavía no mandó la verificación de identidad: tiene 7 días para mandarla; si no, se pausa solo. Le avisamos por email y en su panel.</span>' : 'El perfil pasa a verse en el sitio.', okLabel: 'Publicar', onOk: () => run('') });
+      if (to === 'publicado') HH.confirm({ title: 'Publicar perfil', text: el.dataset.sinverif ? '<span>El perfil pasa a verse en el sitio.</span> <span>Todavía no mandó la verificación de identidad. No tiene plazo: la carga cuando quiera desde su panel.</span>' : 'El perfil pasa a verse en el sitio.', okLabel: 'Publicar', onOk: () => run('') });
       else if (to === 'pausado') pedirMotivo({ title: 'Pausar perfil', intro: 'El perfil deja de verse en el sitio hasta que lo vuelvas a publicar. El motivo es opcional.', motivos: [], okLabel: 'Pausar', requerido: false, onOk: run });
       else if (to === 'suspendido') pedirMotivo({ title: 'Suspender perfil', intro: 'El perfil deja de verse. Usalo ante incumplimientos de las normas.', motivos: MOTIVOS_PERFIL, okLabel: 'Suspender', cls: 'danger', onOk: run });
       else pedirMotivo({ title: 'Rechazar perfil', intro: 'Le mandamos el motivo para que lo corrija y lo vuelva a enviar.', motivos: MOTIVOS_PERFIL, okLabel: 'Rechazar', cls: 'danger', onOk: run });
@@ -2006,6 +2109,7 @@ html[data-prod="admin"] main#app{padding-bottom:24px;min-height:calc(100vh - var
 .pa-accard{color:inherit;text-decoration:none}
 .pa-detail{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 @media(min-width:1100px){.pa-detail{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start}}
+.pa-env{position:relative}.pa-env>summary{list-style:none;cursor:pointer}.pa-env>summary::-webkit-details-marker{display:none}.pa-env-m{position:absolute;right:0;bottom:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;gap:2px;min-width:170px;padding:6px;background:var(--card,#1F1C26);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}.pa-env-m .btn{justify-content:flex-start}
 .pa-dl{display:grid;gap:8px;margin:0}.pa-dl>div{display:grid;grid-template-columns:minmax(110px,34%) minmax(0,1fr);gap:10px;font-size:14px;padding-bottom:8px;border-bottom:1px solid var(--line)}.pa-dl>div:last-child{border-bottom:0}.pa-dl dt{color:var(--muted)}.pa-dl dd{margin:0;overflow-wrap:anywhere}
 .pa-verif{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pa-verif.tres{grid-template-columns:repeat(3,minmax(0,1fr))}.pa-verif figure{margin:0;display:grid;gap:6px;align-content:start;min-width:0}
 .pa-vnombre{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}.pa-vnombre strong{font-size:16px;overflow-wrap:anywhere}

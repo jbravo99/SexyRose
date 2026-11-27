@@ -1860,3 +1860,23 @@ Cada aviso = notificación del panel (Avisos y campana) + email (`emailBasico`, 
 - Misma fuente y mismo contador que Avisos y el menú del panel (`S.yo.notificaciones.noLeidas`): marcar en un lado marca en el otro. La cantidad se actualiza con los datos del panel (`GET /yo`) y al volver a la pestaña (foco o visibilidad, como mucho una vez por minuto); sin consultas periódicas. Funciona con la home provisoria prendida.
 - Avisos: subtítulo "Tu perfil, tu verificación, tus pagos, tu plan y Destacado."; usa el título del servidor si lo hay. Traducciones en prod-sitio.js ("Avisos del perfil y la verificación").
 - Migración `db/300-notificaciones-titulo.sql`: `notificaciones.titulo` (nullable) e índice parcial de las no leídas. Pruebas: `test/notificaciones.test.js`.
+
+## Mensajes del admin a las acompañantes — desde el 26/11/2026 (pedido de Juan)
+Para pedirles que carguen fotos, revisen datos, etc.
+
+### En la ficha (prod-admin.js → `msgCard`)
+- Tarjeta "Mensaje a <nombre>" (columna derecha, después de Datos del perfil): un cuadro de texto y el botón desplegable "Enviar por" (`menuEnviar`, `<details class="pa-env">`) con WhatsApp, Telegram y Email. Si no tiene WhatsApp o Telegram cargado, esa opción aparece desactivada.
+- WhatsApp: abre `wa.me/<número>?text=<texto>`; Juan lo manda él. Telegram: copia el texto y abre `t.me/<usuario>` (Telegram no deja precargar texto); Juan lo pega y lo manda. Email: lo manda el sistema (`POST /admin/acompanantes/mensaje-email`).
+
+### Difusión (botón en Acompañantes → acción `acDifusion`)
+- Usa las acompañantes del filtro actual de la lista (sin las dadas de baja). Texto, canal (WhatsApp / Telegram / Email) y una fila por acompañante con casilla.
+- WhatsApp y Telegram: botón "Abrir" por fila (lo manda Juan, una por una); la fila queda marcada "Abierto". Email: "Mandar email a las tildadas" (el sistema).
+- Cambiar de canal conserva el texto.
+
+### `POST /admin/acompanantes/mensaje-email` {ids, texto}
+- `texto` 1–3000 caracteres; `ids` 1–500 UUID sin repetir. Solo cuentas que no están de baja.
+- Email `emailBasico`: asunto "Un mensaje de SexyRose", título "Hola, <nombre>", el texto en párrafos (separados por línea en blanco), botón "Ir a mi panel" (`/panel`) y pie "Te escribimos desde SexyRose. Si tenés dudas, respondé este email o escribinos a contacto@sexyrose.net."
+- Responde `{ok, enviados, fallidos, noEncontradas}`.
+- `GET /admin/acompanantes` suma `whatsapp` y `telegram` de cada una (de `datos`).
+- Pruebas: `test/fase1-planes.test.js` ("admin: mensajes a las acompañantes por email…").
+- Además: los textos del admin que decían "tiene 7 días" para la verificación ahora dicen que no tiene plazo.
